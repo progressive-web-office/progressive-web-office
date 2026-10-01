@@ -66,6 +66,22 @@ export function handoffSendUrl(url: string, policy: SendPolicy): string {
   return `${base(url)}#/send?handoff=1&policy=${policy}`;
 }
 
+/**
+ * Whether the QRShare at `url` speaks the handoff protocol v1, read from the
+ * `qrshare_handoff` member of its web app manifest. Null when unknown.
+ */
+export async function probeHandoff(url: string, fetchFn: typeof fetch = (i, init) => fetch(i, init)): Promise<boolean | null> {
+  try {
+    const res = await fetchFn(new URL('manifest.webmanifest', base(url)).href, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const manifest = (await res.json()) as { qrshare_handoff?: { versions?: unknown } };
+    const versions = manifest.qrshare_handoff?.versions;
+    return Array.isArray(versions) && versions.includes(1);
+  } catch {
+    return null;
+  }
+}
+
 /** Origin of the configured QRShare, the only one allowed to hand files back. */
 export function qrshareOrigin(url: string): string {
   return new URL(url).origin;

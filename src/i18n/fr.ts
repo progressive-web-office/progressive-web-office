@@ -275,6 +275,7 @@ export const fr: Record<MessageKey, string> = {
   'share.planUrl': 'Le document va s’ouvrir dans QRShare, prêt à être envoyé.',
   'share.otherApp': 'Partager avec une autre application…',
   'share.popupBlocked': 'Le navigateur a bloqué la fenêtre de QRShare. Autorisez les fenêtres pop-up pour ce site et réessayez.',
+  'share.downloadFallback': 'Ce QRShare ne sait pas encore recevoir de fichiers d’une application : le fichier a été téléchargé ; sélectionnez-le dans « Préparer un transfert » de QRShare.',
   'share.handoffFallback': 'QRShare n’a pas répondu : le fichier a été téléchargé ; sélectionnez-le dans « Préparer un transfert » de QRShare.',
   'share.sendButton': 'Envoyer',
   'ai.title': 'Assistant',

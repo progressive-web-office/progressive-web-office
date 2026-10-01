@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_QRSHARE_URL,
   handoffSendUrl,
+  probeHandoff,
   loadShareSettings,
   planSend,
   prepareTransferUrl,
@@ -54,5 +55,29 @@ describe('SHARE-004 settings', () => {
     expect(loadShareSettings()).toEqual({ url: 'https://qr.example.org/', policy: 'airgap' });
     saveShareSettings({ url: 'javascript:alert(1)', policy: 'any' });
     expect(loadShareSettings()).toEqual({ url: DEFAULT_QRSHARE_URL, policy: 'any' });
+  });
+});
+
+describe('SHARE-007 detecting QRShare handoff support', () => {
+  const fetchJson = (body: unknown, ok = true) => (async () => new Response(JSON.stringify(body), { status: ok ? 200 : 404 })) as typeof fetch;
+
+  it('reads the protocol versions from the QRShare manifest', async () => {
+    const urls: string[] = [];
+    const fetchFn = (async (input: RequestInfo | URL) => {
+      urls.push(String(input));
+      return new Response(JSON.stringify({ qrshare_handoff: { versions: [1] } }));
+    }) as typeof fetch;
+    expect(await probeHandoff('https://example.org/qr/#/about', fetchFn)).toBe(true);
+    expect(urls).toEqual(['https://example.org/qr/manifest.webmanifest']);
+  });
+
+  it('reports older QRShare versions as unsupported', async () => {
+    expect(await probeHandoff('https://example.org/qr/', fetchJson({ name: 'QRShare' }))).toBe(false);
+    expect(await probeHandoff('https://example.org/qr/', fetchJson({ qrshare_handoff: { versions: [2] } }))).toBe(false);
+  });
+
+  it('is unknown when the manifest cannot be read (offline, CORS)', async () => {
+    expect(await probeHandoff('https://example.org/qr/', (async () => { throw new TypeError('Failed to fetch'); }) as typeof fetch)).toBeNull();
+    expect(await probeHandoff('https://example.org/qr/', fetchJson({}, false))).toBeNull();
   });
 });

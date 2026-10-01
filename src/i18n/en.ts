@@ -273,6 +273,7 @@ export const en = {
   'share.planUrl': 'The document will open in QRShare, ready to send.',
   'share.otherApp': 'Share with another app…',
   'share.popupBlocked': 'The browser blocked the QRShare window. Allow pop-ups for this site and try again.',
+  'share.downloadFallback': 'This QRShare cannot receive files from apps yet: the file was downloaded; select it in QRShare’s “Prepare a transfer”.',
   'share.handoffFallback': 'QRShare did not answer: the file was downloaded; select it in QRShare’s “Prepare a transfer”.',
   'share.sendButton': 'Send',
   'ai.title': 'Assistant',

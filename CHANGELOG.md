@@ -13,7 +13,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Documents that are not small text are handed to QRShare inside the browser
   (QRShare app handoff protocol), without a download; QRShare can hand received
   files back to Progressive Web Office, which accepts them only from the
-  configured QRShare. Older QRShare versions get the download fallback.
+  configured QRShare. Support is read from QRShare's web app manifest: an
+  older QRShare gets the download and its "Prepare a transfer" screen right
+  away, instead of a screen saying that no data was provided.
 - "Share with another app…" in the send dialog opens the system share sheet.
 - Light / dark / system theme: a toolbar button cycles between following the
   device setting, light and dark; the choice is remembered.

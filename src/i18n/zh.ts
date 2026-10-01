@@ -275,6 +275,7 @@ export const zh: Record<MessageKey, string> = {
   'share.planUrl': '文档将在 QRShare 中打开，准备发送。',
   'share.otherApp': '用其他应用分享…',
   'share.popupBlocked': '浏览器阻止了 QRShare 窗口。请允许此网站弹出窗口后重试。',
+  'share.downloadFallback': '此 QRShare 暂不支持从应用接收文件：文件已下载，请在 QRShare 的“准备传输”中选择它。',
   'share.handoffFallback': 'QRShare 未响应：文件已下载，请在 QRShare 的“准备传输”中选择它。',
   'share.sendButton': '发送',
   'ai.title': '助手',

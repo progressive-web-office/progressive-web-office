@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext } from '@playwright/test';
 import { openApp, openFile } from './helpers';
 
 /**
@@ -17,8 +17,20 @@ if (location.hash.includes('handoff=1') && window.opener) {
 }
 </script>`;
 
+/** Serve a stand-in QRShare whose manifest declares (or not) the handoff protocol. */
+async function fakeQrShare(context: BrowserContext, opts: { page?: string; manifest?: object | null } = {}): Promise<void> {
+  await context.route('https://s-celles.github.io/**', (route) => {
+    if (route.request().url().endsWith('/manifest.webmanifest')) {
+      // GitHub Pages serves everything with permissive CORS.
+      if (opts.manifest === null) return route.fulfill({ status: 404, headers: { 'access-control-allow-origin': '*' } });
+      return route.fulfill({ contentType: 'application/manifest+json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(opts.manifest ?? { name: 'QRShare', qrshare_handoff: { versions: [1] } }) });
+    }
+    return route.fulfill({ contentType: 'text/html', body: opts.page ?? FAKE_QRSHARE });
+  });
+}
+
 test.beforeEach(async ({ context }) => {
-  await context.route('https://s-celles.github.io/**', (route) => route.fulfill({ contentType: 'text/html', body: FAKE_QRSHARE }));
+  await fakeQrShare(context);
 });
 
 test('sends a small text document to QRShare with the chosen policy (SHARE-002, SHARE-004)', async ({ page, context }) => {
@@ -68,10 +80,30 @@ test('binary documents are handed to QRShare without a download (SHARE-007)', as
   expect(errors).toEqual([]);
 });
 
-test('falls back to a download and "Prepare a transfer" when QRShare does not answer (SHARE-001)', async ({ page, context }) => {
+test('an older QRShare gets the file downloaded and "Prepare a transfer" right away (SHARE-001)', async ({ page, context }) => {
+  // Its manifest does not declare the handoff protocol.
+  await context.unrouteAll();
+  await fakeQrShare(context, { page: '<title>QRShare</title>', manifest: { name: 'QRShare' } });
+  await openApp(page);
+  await page.getByRole('button', { name: 'New spreadsheet' }).click();
+  await page.getByRole('button', { name: 'Send to another device…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Send to another device' });
+  // Let the support check complete.
+  await page.waitForResponse((r) => r.url().endsWith('/manifest.webmanifest'));
+  const download = page.waitForEvent('download');
+  const popup = context.waitForEvent('page');
+  const start = Date.now();
+  await dialog.getByRole('button', { name: 'Send', exact: true }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
+  expect((await popup).url()).toBe('https://s-celles.github.io/QRShare/#/create/url');
+  expect(Date.now() - start).toBeLessThan(5000);
+  await expect(page.getByRole('alert')).toContainText('This QRShare cannot receive files from apps yet');
+});
+
+test('falls back after a delay when QRShare cannot be checked and does not answer (SHARE-001)', async ({ page, context }) => {
   test.setTimeout(60_000);
-  // An older QRShare that does not speak the handoff protocol.
-  await context.route('https://s-celles.github.io/**', (route) => route.fulfill({ contentType: 'text/html', body: '<title>QRShare</title>' }));
+  await context.unrouteAll();
+  await fakeQrShare(context, { page: '<title>QRShare</title>', manifest: null });
   await openApp(page);
   await page.getByRole('button', { name: 'New spreadsheet' }).click();
   await page.getByRole('button', { name: 'Send to another device…' }).click();

@@ -3,7 +3,7 @@ import { button, h } from '../app/dom';
 import type { DocumentFormat } from '../core/format';
 import { t } from '../i18n';
 import { sendFileToWindow, type WindowLike } from './handoff';
-import { canShareFiles, handoffSendUrl, loadShareSettings, planSend, prepareTransferUrl, qrshareOrigin, saveShareSettings, SEND_POLICIES, sendTextUrl, type SendPolicy } from './qrshare';
+import { canShareFiles, handoffSendUrl, loadShareSettings, planSend, probeHandoff, prepareTransferUrl, qrshareOrigin, saveShareSettings, SEND_POLICIES, sendTextUrl, type SendPolicy } from './qrshare';
 
 /** How long to wait for QRShare to announce it is ready before falling back. */
 export const HANDOFF_TIMEOUT_MS = 15_000;
@@ -32,6 +32,16 @@ export async function openSendDialog(host: HTMLElement, file: File, format: Docu
       ...SEND_POLICIES.map((p) => h('option', { value: p, selected: p === settings.policy }, t(`share.policy.${p}`))),
     );
     const url = h('input', { type: 'url', value: settings.url, 'aria-label': t('share.url'), spellcheck: 'false' });
+    // Does this QRShare accept files from apps? Checked ahead of the click,
+    // which must open the window synchronously. Null while unknown.
+    let supportsHandoff: boolean | null = null;
+    const probe = (): void => {
+      supportsHandoff = null;
+      const probed = url.value.trim();
+      if (plan.kind === 'handoff') void probeHandoff(probed).then((result) => (supportsHandoff = url.value.trim() === probed ? result : supportsHandoff));
+    };
+    url.addEventListener('change', probe);
+    probe();
     const finish = (value: boolean): void => {
       dialog.close();
       dialog.remove();
@@ -45,6 +55,11 @@ export async function openSendDialog(host: HTMLElement, file: File, format: Docu
       const target = loadShareSettings().url;
       if (plan.kind === 'url') {
         window.open(sendTextUrl(target, plan.text, chosen.policy), '_blank', 'noopener');
+      } else if (supportsHandoff === false) {
+        // An older QRShare: download and open "Prepare a transfer" right away.
+        download(file);
+        window.open(prepareTransferUrl(target), '_blank', 'noopener');
+        notify(t('share.downloadFallback'));
       } else {
         // Keep `opener`: QRShare announces it is ready through it (SHARE-007).
         const win = window.open(handoffSendUrl(target, chosen.policy), '_blank');
