@@ -197,8 +197,49 @@ export function isoTimestamp(date: string | undefined, zulu: boolean): string | 
   return zulu ? iso : iso.replace(/Z$/, '');
 }
 
+/** Text of a header or footer zone; `{page}`, `{pages}`, `{title}` and `{date}` are fields (DOC-024). */
+export interface PageZones {
+  left?: string;
+  center?: string;
+  right?: string;
+}
+
+export interface PageSetup {
+  header?: PageZones;
+  footer?: PageZones;
+}
+
+export const PAGE_FIELDS = ['page', 'pages', 'title', 'date'] as const;
+export type PageField = (typeof PAGE_FIELDS)[number];
+
+/** A zone's text split into literal text and fields. */
+export function zoneParts(text: string): (string | { field: PageField })[] {
+  const out: (string | { field: PageField })[] = [];
+  for (const part of text.split(/(\{(?:page|pages|title|date)\})/)) {
+    if (!part) continue;
+    const m = /^\{(page|pages|title|date)\}$/.exec(part);
+    out.push(m ? { field: m[1] as PageField } : part);
+  }
+  return out;
+}
+
+/** Drop empty zones and empty header/footer; undefined when nothing is left. */
+export function cleanPageSetup(page: PageSetup | undefined): PageSetup | undefined {
+  const zones = (z: PageZones | undefined): PageZones | undefined => {
+    if (!z) return undefined;
+    const out: PageZones = {};
+    for (const k of ['left', 'center', 'right'] as const) if (z[k]?.trim()) out[k] = z[k]!.trim();
+    return Object.keys(out).length ? out : undefined;
+  };
+  const header = zones(page?.header);
+  const footer = zones(page?.footer);
+  return header || footer ? { ...(header ? { header } : {}), ...(footer ? { footer } : {}) } : undefined;
+}
+
 export interface RichDocument {
   blocks: Block[];
+  /** Header and footer (DOC-024). */
+  page?: PageSetup;
   /** Embedded binary resources (images), content-addressed. */
   resources: Map<string, Resource>;
   meta: DocumentMeta;

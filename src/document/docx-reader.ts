@@ -7,6 +7,9 @@ import {
   emptyDocument,
   normalizeRuns,
   PAGE_BREAK,
+  cleanPageSetup,
+  type PageSetup,
+  type PageZones,
   type Align,
   type Block,
   type ListInfo,
@@ -41,6 +44,23 @@ class DocxReader {
     this.rels = readRels(zip, 'word/document.xml');
     this.readStyles();
     this.readNumbering();
+  }
+
+  /** Default header and footer of the (last) section, as zones (DOC-024). */
+  private readFurniture(body: Element): PageSetup | undefined {
+    const sect = descendants(body, 'sectPr').pop();
+    if (!sect) return undefined;
+    const setup: PageSetup = {};
+    for (const kind of ['header', 'footer'] as const) {
+      const refs = children(sect, `${kind}Reference`);
+      const ref = refs.find((r) => attr(r, 'type') === 'default') ?? refs[0];
+      const target = ref ? this.rels.get(attr(ref, 'id') ?? '')?.target : undefined;
+      const text = target ? readZipText(this.zip, target) : undefined;
+      if (!text) continue;
+      const zones = furnitureZones(parseXml(text).documentElement);
+      if (zones) setup[kind] = zones;
+    }
+    return cleanPageSetup(setup);
   }
 
   private footnoteXml: Map<string, Element> | undefined;
@@ -145,6 +165,8 @@ class DocxReader {
     const body = descendants(parseXml(text), 'body')[0];
     if (!body) throw new Error('Not a Word document: missing body.');
     this.doc.blocks = this.readBlocks(body);
+    const page = this.readFurniture(body);
+    if (page) this.doc.page = page;
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
     this.doc.meta = readCoreProps(this.zip);
     return this.doc;
@@ -396,6 +418,53 @@ class DocxReader {
     }
     return { type: 'table', rows };
   }
+}
+
+const FIELD_OF: Record<string, string> = { PAGE: '{page}', NUMPAGES: '{pages}', SECTIONPAGES: '{pages}', TITLE: '{title}', DATE: '{date}', CREATEDATE: '{date}', SAVEDATE: '{date}' };
+
+/** Zones of a header/footer part: its first non-empty paragraph, split at tabs (DOC-024). */
+function furnitureZones(root: Element): PageZones | undefined {
+  for (const p of descendants(root, 'p')) {
+    let text = '';
+    let inField = false;
+    let instr = '';
+    const walk = (el: Element): void => {
+      for (const c of children(el)) {
+        const name = c.localName;
+        if (name === 'fldSimple') {
+          text += FIELD_OF[(attr(c, 'instr') ?? '').trim().split(/\s+/)[0]!.toUpperCase()] ?? c.textContent ?? '';
+        } else if (name === 'fldChar') {
+          const type = attr(c, 'fldCharType');
+          if (type === 'begin') {
+            inField = true;
+            instr = '';
+          } else if (type === 'separate') {
+            const field = FIELD_OF[instr.trim().split(/\s+/)[0]!.toUpperCase()];
+            if (field) text += field;
+            else inField = false; // unknown field: keep its shown text
+          } else if (type === 'end') {
+            inField = false;
+          }
+        } else if (name === 'instrText') {
+          instr += c.textContent ?? '';
+        } else if (name === 't') {
+          if (!inField) text += c.textContent ?? '';
+        } else if (name === 'tab' && el.localName === 'r') {
+          if (!inField) text += '\t';
+        } else if (name !== 'pPr' && name !== 'rPr') {
+          walk(c);
+        }
+      }
+    };
+    walk(p);
+    if (!text.trim()) continue;
+    const parts = text.split('\t').map((x) => x.trim());
+    const jc = attr(descendants(p, 'jc')[0] ?? p, 'val');
+    if (parts.length === 1) return jc === 'center' ? { center: parts[0] } : jc === 'right' || jc === 'end' ? { right: parts[0] } : { left: parts[0] };
+    if (parts.length === 2) return { left: parts[0], center: parts[1] };
+    return { left: parts[0], center: parts[1], right: parts.slice(2).join(' ') };
+  }
+  return undefined;
 }
 
 /**

@@ -14,6 +14,8 @@ import {
   isFootnoteRun,
   splitParagraphs,
   tocEntries,
+  cleanPageSetup,
+  zoneParts,
   nestLists,
   splitListSegments,
   type Block,
@@ -85,7 +87,7 @@ class OdtWriter {
       { path: 'mimetype', data: MIME_TYPES.odt, store: true },
       { path: 'META-INF/manifest.xml', data: manifestXml(MIME_TYPES.odt, manifest) },
       { path: 'content.xml', data: content },
-      { path: 'styles.xml', data: STYLES_XML },
+      { path: 'styles.xml', data: stylesXml(this.doc) },
       { path: 'meta.xml', data: metaXml(this.doc.meta) },
       ...files,
     ]);
@@ -317,6 +319,33 @@ const heading = (n: number, size: string): string =>
   `<style:style style:name="Heading_20_${n}" style:display-name="Heading ${n}" style:family="paragraph" style:parent-style-name="Heading" style:next-style-name="Standard" style:default-outline-level="${n}" style:class="text">` +
   `<style:text-properties fo:font-size="${size}" fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/></style:style>`;
 
+/** styles.xml, with the header and footer on the master page (DOC-024). */
+function stylesXml(doc: RichDocument): string {
+  const page = cleanPageSetup(doc.page);
+  const zoneXml = (text: string | undefined): string =>
+    zoneParts(text ?? '')
+      .map((p) =>
+        typeof p === 'string'
+          ? odfText(p, false)
+          : p.field === 'page'
+            ? '<text:page-number text:select-page="current">1</text:page-number>'
+            : p.field === 'pages'
+              ? '<text:page-count>1</text:page-count>'
+              : p.field === 'title'
+                ? `<text:title>${esc(doc.meta.title ?? '')}</text:title>`
+                : `<text:date>${new Date().toISOString().slice(0, 10)}</text:date>`,
+      )
+      .join('');
+  const part = (kind: 'header' | 'footer'): string => {
+    const z = page?.[kind];
+    if (!z) return '';
+    const style = kind === 'header' ? 'Header' : 'Footer';
+    return `<style:${kind}><text:p text:style-name="${style}">${zoneXml(z.left)}<text:tab/>${zoneXml(z.center)}<text:tab/>${zoneXml(z.right)}</text:p></style:${kind}>`;
+  };
+  const master = `<style:master-page style:name="Standard" style:page-layout-name="pm1">${part('header')}${part('footer')}</style:master-page>`;
+  return STYLES_XML.replace('@MASTER@', master);
+}
+
 const STYLES_XML =
   '<?xml version="1.0" encoding="UTF-8"?>\n' +
   `<office:document-styles ${ODF_XMLNS} office:version="1.3">` +
@@ -341,14 +370,18 @@ const STYLES_XML =
   '<style:style style:name="Contents_20_4" style:display-name="Contents 4" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="0.6in" fo:margin-bottom="0.04in"/></style:style>' +
   '<style:style style:name="Contents_20_5" style:display-name="Contents 5" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="0.8in" fo:margin-bottom="0.04in"/></style:style>' +
   '<style:style style:name="Contents_20_6" style:display-name="Contents 6" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="1.0in" fo:margin-bottom="0.04in"/></style:style>' +
+  '<style:style style:name="Header" style:family="paragraph" style:parent-style-name="Standard" style:class="extra"><style:paragraph-properties fo:margin-bottom="0in"><style:tab-stops><style:tab-stop style:position="3.3465in" style:type="center"/><style:tab-stop style:position="6.6929in" style:type="right"/></style:tab-stops></style:paragraph-properties><style:text-properties fo:font-size="9pt"/></style:style>' +
+  '<style:style style:name="Footer" style:family="paragraph" style:parent-style-name="Standard" style:class="extra"><style:paragraph-properties fo:margin-bottom="0in"><style:tab-stops><style:tab-stop style:position="3.3465in" style:type="center"/><style:tab-stop style:position="6.6929in" style:type="right"/></style:tab-stops></style:paragraph-properties><style:text-properties fo:font-size="9pt"/></style:style>' +
   '<style:style style:name="Footnote" style:family="paragraph" style:parent-style-name="Standard" style:class="extra"><style:paragraph-properties fo:margin-left="0.2in" fo:text-indent="-0.2in" fo:margin-bottom="0in"/><style:text-properties fo:font-size="9pt"/></style:style>' +
   '<style:style style:name="Source_20_Text" style:display-name="Source Text" style:family="text"><style:text-properties style:font-name="Liberation Mono"/></style:style>' +
   '<style:style style:name="Graphics" style:family="graphic"><style:graphic-properties text:anchor-type="as-char" style:vertical-pos="top" style:vertical-rel="baseline"/></style:style>' +
   '</office:styles>' +
   '<office:automatic-styles>' +
-  '<style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="8.2681in" fo:page-height="11.6929in" fo:margin-top="0.7874in" fo:margin-bottom="0.7874in" fo:margin-left="0.7874in" fo:margin-right="0.7874in"/></style:page-layout>' +
+  '<style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="8.2681in" fo:page-height="11.6929in" fo:margin-top="0.7874in" fo:margin-bottom="0.7874in" fo:margin-left="0.7874in" fo:margin-right="0.7874in"/>' +
+  '<style:header-style><style:header-footer-properties fo:min-height="0in" fo:margin-bottom="0.1in"/></style:header-style>' +
+  '<style:footer-style><style:header-footer-properties fo:min-height="0in" fo:margin-top="0.1in"/></style:footer-style></style:page-layout>' +
   '</office:automatic-styles>' +
-  '<office:master-styles><style:master-page style:name="Standard" style:page-layout-name="pm1"/></office:master-styles>' +
+  '<office:master-styles>@MASTER@</office:master-styles>' +
   '</office:document-styles>';
 
 export function writeOdt(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {

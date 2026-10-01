@@ -8,6 +8,8 @@ import {
   isImageRun,
   isMathRun,
   isFootnoteRun,
+  cleanPageSetup,
+  zoneParts,
   nestLists,
   splitListSegments,
   type Block,
@@ -56,6 +58,27 @@ class LatexWriter {
 
   constructor(private readonly doc: RichDocument) {}
 
+  /** Header and footer with fancyhdr (DOC-024). */
+  private furniture(): string[] {
+    const page = cleanPageSetup(this.doc.page);
+    if (!page) return [];
+    const zone = (text: string): string =>
+      zoneParts(text)
+        // `{}` keeps the space after a command word.
+        .map((p) => (typeof p === 'string' ? escapeLatex(p) : p.field === 'page' ? '\\thepage{}' : p.field === 'pages' ? '\\pageref*{LastPage}' : p.field === 'title' ? '\\thetitle{}' : '\\today{}'))
+        .join('');
+    const all = JSON.stringify(page);
+    const lines = ['\\usepackage{fancyhdr}', ...(all.includes('{pages}') ? ['\\usepackage{lastpage}'] : []), ...(all.includes('{title}') ? ['\\usepackage{titling}'] : []), '\\pagestyle{fancy}', '\\fancyhf{}', '\\renewcommand{\\headrulewidth}{0pt}'];
+    const pos = { left: 'L', center: 'C', right: 'R' } as const;
+    for (const kind of ['header', 'footer'] as const) {
+      for (const k of ['left', 'center', 'right'] as const) {
+        const text = page[kind]?.[k];
+        if (text) lines.push(`\\fancy${kind === 'header' ? 'head' : 'foot'}[${pos[k]}]{${zone(text)}}`);
+      }
+    }
+    return lines;
+  }
+
   write(): string {
     const body = this.blocks(this.doc.blocks);
     const cjk = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/.test(body);
@@ -75,6 +98,7 @@ class LatexWriter {
       '\\usepackage{graphicx}',
       '\\usepackage[normalem]{ulem}',
       '\\usepackage{hyperref}',
+      ...this.furniture(),
       ...(meta.title ? [`\\title{${escapeLatex(meta.title)}}`] : []),
       ...(meta.author ? [`\\author{${escapeLatex(meta.author)}}`] : []),
       ...(meta.title || meta.date ? [`\\date{${meta.date ? escapeLatex(meta.date) : ''}}`] : []),

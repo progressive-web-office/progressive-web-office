@@ -611,6 +611,22 @@ export const en = {
   'toc.button': 'Table of contents',
   'toc.insertTitle': 'Insert a table of contents (from the headings)',
   'toc.empty': 'The table of contents lists the headings (Heading 1 to 3). Add headings to fill it.',
+  'hf.button': 'Header and footer',
+  'hf.title_': 'Header and footer',
+  'hf.header': 'Header',
+  'hf.footer': 'Footer',
+  'hf.left': 'Left',
+  'hf.center': 'Centre',
+  'hf.right': 'Right',
+  'hf.insert': 'Insert:',
+  'hf.page': 'Page number',
+  'hf.pages': 'Page count',
+  'hf.title': 'Title',
+  'hf.date': 'Date',
+  'hf.pageOfPages': '“Page 1 of N” in the footer',
+  'hf.pageOfPagesValue': 'Page {page} of {pages}',
+  'hf.hint': 'Shown on every printed page and kept in Word, OpenDocument, LaTeX and Markdown files. The title is the one of the document properties (ⓘ).',
+  'hf.edit': 'Click to edit the header and footer',
 } as const;
 
 export type MessageKey = keyof typeof en;

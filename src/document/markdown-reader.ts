@@ -15,6 +15,9 @@ import {
   isTextRun,
   normalizeRuns,
   runsText,
+  cleanPageSetup,
+  type PageSetup,
+  type PageZones,
   type Block,
   type CodeCellRun,
   type CodeLang,
@@ -143,7 +146,26 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   const front = parseFrontMatter(source.replace(/^﻿/, ''));
   const text = front.body;
   doc.meta = { ...front.meta };
-  if (front.extra) doc.extras = { ...doc.extras, frontMatter: front.extra };
+  // DOC-024: header-left / footer-center… keys are the header and footer.
+  const kept: string[] = [];
+  const page: PageSetup = {};
+  for (const line of front.extra ? front.extra.split('\n') : []) {
+    const m = /^(header|footer)-(left|center|right):\s*(.*)$/.exec(line);
+    if (!m) {
+      kept.push(line);
+      continue;
+    }
+    let value = m[3]!.trim();
+    try {
+      if (/^["']/.test(value)) value = value.startsWith('"') ? (JSON.parse(value) as string) : value.slice(1, -1).replace(/''/g, "'");
+    } catch {
+      /* keep the raw text */
+    }
+    ((page[m[1] as 'header'] ??= {}) as PageZones)[m[2] as 'left'] = value;
+  }
+  const setup = cleanPageSetup(page);
+  if (setup) doc.page = setup;
+  if (kept.join('\n').trim()) doc.extras = { ...doc.extras, frontMatter: kept.join('\n') };
   const env: { footnotes?: { list?: { tokens?: Token[] }[] } } = {};
   const tokens = getParser().parse(text, env);
   // DOC-022: footnote contents, gathered before the text that refers to them.

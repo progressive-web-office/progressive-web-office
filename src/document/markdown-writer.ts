@@ -10,6 +10,7 @@ import {
   isMathRun,
   isFootnoteRun,
   splitParagraphs,
+  cleanPageSetup,
   isTextRun,
   nestLists,
   splitListSegments,
@@ -288,7 +289,13 @@ export function writeMarkdown(doc: RichDocument, opts: MarkdownWriteOptions = {}
  */
 function markdownFrontMatter(doc: RichDocument): string {
   const meta = cleanMeta(doc.meta);
-  const extra = typeof doc.extras?.frontMatter === 'string' ? doc.extras.frontMatter : '';
+  const kept = typeof doc.extras?.frontMatter === 'string' ? doc.extras.frontMatter : '';
+  // DOC-024: header and footer zones as flat keys (header-left: …).
+  const page = cleanPageSetup(doc.page);
+  const furniture = (['header', 'footer'] as const).flatMap((kind) =>
+    (['left', 'center', 'right'] as const).flatMap((k) => (page?.[kind]?.[k] ? [`${kind}-${k}: ${JSON.stringify(page[kind]![k])}`] : [])),
+  );
+  const extra = [kept, ...furniture].filter(Boolean).join('\n');
   const firstHeading = doc.blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   const onlyHeadingTitle = Object.keys(meta).length === 1 && meta.title !== undefined && firstHeading !== undefined && paragraphText(firstHeading) === meta.title;
   if (!extra && (Object.keys(meta).length === 0 || onlyHeadingTitle)) return '';

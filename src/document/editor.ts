@@ -28,6 +28,7 @@ import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
 import { listCss } from './pm/list-css';
 import { FindBar } from './find-bar';
+import { editPageSetup, pageSetupCss, zonePreview } from './page-setup';
 import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-tables/style/tables.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
@@ -75,6 +76,9 @@ export class DocumentEditor implements EditorView {
   private readonly tocViews = new Set<{ refresh(): void }>();
   /** The footnotes, listed under the page (DOC-022). */
   private readonly notes = h('aside', { class: 'doc-notes', 'aria-label': t('note.notes') });
+  /** Header and footer previews around the page (DOC-024). */
+  private readonly headerStrip = h('div', { class: 'doc-furniture header', role: 'button', tabindex: '0', title: t('hf.edit'), 'aria-label': t('hf.header') });
+  private readonly footerStrip = h('div', { class: 'doc-furniture footer', role: 'button', tabindex: '0', title: t('hf.edit'), 'aria-label': t('hf.footer') });
   /** CODE-004: the user agreed to run this document's code. */
   private trusted = false;
 
@@ -108,7 +112,17 @@ export class DocumentEditor implements EditorView {
       this.refocus();
     });
     this.findBar = new FindBar(() => this.view);
-    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.page, this.notes));
+    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes));
+    for (const strip of [this.headerStrip, this.footerStrip]) {
+      strip.addEventListener('click', () => void this.editPageSetup());
+      strip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          void this.editPageSetup();
+        }
+      });
+    }
+    this.renderFurniture();
     this.view = new PmView(
       { mount: this.page },
       {
@@ -138,6 +152,27 @@ export class DocumentEditor implements EditorView {
     this.updateToolbar();
     this.renderNotes();
     for (const toc of this.tocViews) toc.refresh();
+  }
+
+  /** Header and footer shown above and below the page, fields as examples. */
+  private renderFurniture(): void {
+    const page = this.doc.page;
+    const title = this.doc.meta.title ?? '';
+    for (const [strip, kind] of [[this.headerStrip, 'header'], [this.footerStrip, 'footer']] as const) {
+      const zones = page?.[kind];
+      strip.hidden = !zones;
+      strip.replaceChildren(...(['left', 'center', 'right'] as const).map((z) => h('span', { class: `zone ${z}` }, zones?.[z] ? zonePreview(zones[z]!, title) : '')));
+    }
+  }
+
+  /** Header and footer dialog (DOC-024). */
+  private async editPageSetup(): Promise<void> {
+    const setup = await editPageSetup(this.element, this.doc.page);
+    if (!setup) return;
+    if (setup.header || setup.footer) this.doc.page = setup;
+    else delete this.doc.page;
+    this.renderFurniture();
+    this.changed();
   }
 
   /** Top-level headings up to `levels`, with their positions (DOC-023). */
@@ -302,6 +337,7 @@ export class DocumentEditor implements EditorView {
     const meta = await editProperties(this.element, this.doc.meta);
     if (!meta) return;
     this.doc.meta = meta;
+    this.renderFurniture();
     this.changed();
   }
 
@@ -363,7 +399,10 @@ export class DocumentEditor implements EditorView {
   collab(): CollabAdapter {
     return {
       read: () => documentParts(this.doc, this.currentBlocks()),
-      write: (parts) => this.replaceBlocks(applyDocumentParts(this.doc, parts), true),
+      write: (parts) => {
+        this.replaceBlocks(applyDocumentParts(this.doc, parts), true);
+        this.renderFurniture();
+      },
       cursor: () => ({ block: this.view.state.selection.$from.index(0) }),
       showPeers: (peers: PeerCursor[]) => {
         const markers: PeerMarker[] = peers.flatMap((p) => {
@@ -381,6 +420,9 @@ export class DocumentEditor implements EditorView {
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');
     for (const el of Array.from(root.querySelectorAll('.code-cell-bar, .ProseMirror-trailingBreak, .ProseMirror-separator, .column-resize-handle'))) el.remove();
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('.peer-here'))) el.classList.remove('peer-here');
+    // Header and footer in the page margins (DOC-024).
+    const css = pageSetupCss(this.doc.page, this.doc.meta.title ?? '');
+    if (css) root.prepend(h('style', {}, css));
     // Footnotes are printed as notes at the end of the document (DOC-022).
     if (!this.notes.hidden) {
       const notes = this.notes.cloneNode(true) as HTMLElement;
@@ -516,6 +558,7 @@ export class DocumentEditor implements EditorView {
       act(t('doc.insertCode'), '{ }', () => void this.editCell(), t('doc.insertCodeTitle')),
       act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
       act(t('meta.button'), 'ⓘ', () => void this.editProperties(), t('meta.buttonTitle')),
+      act(t('hf.button'), '▤', () => void this.editPageSetup()),
       act(t('toc.button'), '§', () => this.command(insertToc), t('toc.insertTitle')),
       act(t('doc.insertRule'), '―', () => this.command(insertRule())),
       act(t('doc.pageBreak'), '⤓', () => this.command(insertRule(true)), `${t('doc.pageBreak')} (Ctrl+Enter)`),

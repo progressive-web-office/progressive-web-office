@@ -33,6 +33,7 @@ and any ZIP archive of Markdown files.
 | Page break | ⤓ | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> |
 | Footnote | ¹ | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> |
 | Table of contents | § | |
+| Header and footer | ▤ | |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
 | Diagram | ⧉ (see [Diagrams](./diagrams.md)) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> |
 | Code cell | { } (see [Code cells](./code.md)) | |
@@ -66,6 +67,20 @@ recomputes it, with page numbers, when the file is opened (it may ask to
 update the fields), and LibreOffice updates it with *Tools › Update*. In
 Markdown it is written `[[_TOC_]]` (shown as a table of contents by GitLab,
 Typora and others) and in LaTeX `\tableofcontents`.
+
+### Header and footer
+
+▤ opens the header and footer: each has a left, a centre and a right part.
+*Insert* adds a field where the cursor is: **page number**, **page count**,
+**title** (from the document properties ⓘ) or **date**; *“Page 1 of N” in
+the footer* fills the footer's centre for you. The header and footer are
+shown above and below the page (click them to change them) and printed on
+every page.
+
+They are kept as real headers and footers in Word and OpenDocument files
+(with page fields that the application updates), with `fancyhdr` in LaTeX,
+and as `header-left: …`, `footer-center: …` keys in the front matter of a
+Markdown file.
 
 ### Find and replace
 

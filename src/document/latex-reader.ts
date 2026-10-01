@@ -2,7 +2,7 @@
  * LaTeX import (TEX-003, TEX-004): the common subset of `article` documents.
  * Unsupported constructs are kept as visible source text.
  */
-import { addResource, cleanFormat, cleanMeta, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TextFormat } from './model';
+import { addResource, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TextFormat } from './model';
 
 type Node =
   | { k: 'text'; v: string }
@@ -24,7 +24,11 @@ const ARITY: Record<string, [boolean, number]> = {
   vspace: [false, 1], hspace: [false, 1], item: [true, 0], documentclass: [true, 1], usepackage: [true, 1],
   c: [false, 1], v: [false, 1], H: [false, 1], u: [false, 1], k: [false, 1], r: [false, 1], d: [false, 1], b: [false, 1],
   thanks: [false, 1], phantom: [false, 1], hyperref: [true, 1], newpage: [false, 0], clearpage: [false, 0],
+  fancyhead: [true, 1], fancyfoot: [true, 1], lhead: [false, 1], chead: [false, 1], rhead: [false, 1], lfoot: [false, 1], cfoot: [false, 1], rfoot: [false, 1],
+  fancyhf: [true, 1], pageref: [false, 1],
 };
+
+const FANCY = new Set(['fancyhead', 'fancyfoot', 'lhead', 'chead', 'rhead', 'lfoot', 'cfoot', 'rfoot']);
 
 const ACCENTS: Record<string, string> = {
   "'": '́', '`': '̀', '^': '̂', '"': '̈', '~': '̃', '=': '̄', '.': '̇',
@@ -375,6 +379,30 @@ class Builder {
   }
 
   /** Runs of an argument (used for headings, cells, titles). */
+  /** \\fancyhead[L]{…}, \\cfoot{…}… into the document's page setup (DOC-024). */
+  furniture(name: string, raw: string): void {
+    const m = /^\\\w+(?:\[([LCRE,O]*)\])?\{([\s\S]*)\}$/.exec(raw.trim());
+    if (!m) return;
+    const kind = /head/.test(name) ? 'header' : 'footer';
+    const short = /^[lcr]/.exec(name)?.[0].toUpperCase();
+    const where = (m[1] ?? short ?? 'C').replace(/[EO,]/g, '') || 'C';
+    const text = m[2]!
+      .replace(/\\(thepage|today|thetitle)\{\}/g, '\\$1')
+      .replace(/\\thepage\b/g, '{page}')
+      .replace(/\\pageref\*?\{LastPage\}/g, '{pages}')
+      .replace(/\\today\b/g, '{date}')
+      .replace(/\\thetitle\b|\\@title\b/g, '{title}');
+    const plain = text.replace(/\{(page|pages|date|title)\}/g, '\u0001$1\u0002');
+    const value = this.plain(plain).replace(/\u0001(\w+)\u0002/g, '{$1}');
+    const page = (this.doc.page ??= {});
+    const zones = (page[kind] ??= {});
+    for (const c of where) {
+      const key = c === 'L' ? 'left' : c === 'R' ? 'right' : 'center';
+      if (value) zones[key] = value;
+      else delete zones[key];
+    }
+  }
+
   /** Runs of a LaTeX fragment; its paragraphs are joined with `paragraphSep`. */
   inlineRuns(src: string, fmt: TextFormat = {}, paragraphSep?: string): Run[] {
     const sub = new Builder(this.doc, this.opts);
@@ -437,6 +465,11 @@ class Builder {
       // DOC-021: page breaks between paragraphs.
       this.flush();
       if (this.blocks.length) this.blocks.push({ type: 'rule', page: true });
+      return;
+    }
+    if (FANCY.has(name)) {
+      // DOC-024: fancyhdr header and footer zones.
+      this.furniture(name, node.raw);
       return;
     }
     if (name === 'tableofcontents') {
@@ -729,6 +762,7 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
       const v = builder.plain((node.args[0] ?? '').replace(/\\thanks\{[^}]*\}/g, '').replace(/\\and\b/g, ', '));
       if (v) doc.meta[node.name] = v;
     }
+    if (node.k === 'cmd' && FANCY.has(node.name)) builder.furniture(node.name, node.raw);
     if (node.k === 'cmd' && node.name === 'date') {
       const v = builder.plain(node.args[0] ?? '');
       if (v && !/\\today/.test(node.args[0] ?? '')) doc.meta.date = v;
@@ -747,6 +781,9 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
     }
   }
   doc.meta = cleanMeta(doc.meta);
+  const page = cleanPageSetup(doc.page);
+  if (page) doc.page = page;
+  else delete doc.page;
   builder.walk(parse(body), {}, { style: 'normal', listDepth: 0, ordered: false, inList: false });
   builder.flush();
   doc.blocks = builder.blocks.length ? builder.blocks : emptyDocument().blocks;

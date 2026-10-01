@@ -13,6 +13,9 @@ import {
   isFootnoteRun,
   splitParagraphs,
   tocEntries,
+  cleanPageSetup,
+  zoneParts,
+  type PageZones,
   isMathRun,
   type Block,
   type ImageRun,
@@ -67,10 +70,22 @@ class DocxWriter {
     this.rels.push({ id: this.nextRid(), type: REL.numbering, target: 'numbering.xml' });
     const body = this.blocks(this.doc.blocks);
     if (this.footnotes.length) this.rels.push({ id: this.nextRid(), type: REL.footnotes, target: 'footnotes.xml' });
+    // DOC-024: header and footer parts.
+    const furniture: { kind: 'header' | 'footer'; rid: string; xml: string }[] = [];
+    const page = cleanPageSetup(this.doc.page);
+    for (const kind of ['header', 'footer'] as const) {
+      const zones = page?.[kind];
+      if (!zones) continue;
+      const rid = this.nextRid();
+      this.rels.push({ id: rid, type: REL[kind], target: `${kind}1.xml` });
+      furniture.push({ kind, rid, xml: this.furnitureXml(kind, zones) });
+    }
+    this.furnitureKinds = furniture.map((f) => f.kind);
+    const refs = furniture.map((f) => `<w:${f.kind}Reference w:type="default" r:id="${f.rid}"/>`).join('');
     const documentXml =
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<w:document xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}">` +
-      `<w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>` +
+      `<w:body>${body}<w:sectPr>${refs}<w:pgSz w:w="11906" w:h="16838"/>` +
       '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>' +
       '</w:sectPr></w:body></w:document>';
 
@@ -85,6 +100,7 @@ class DocxWriter {
       { path: 'word/_rels/document.xml.rels', data: this.relsXml() },
     ];
     if (this.footnotes.length) entries.push({ path: 'word/footnotes.xml', data: this.footnotesXml() });
+    for (const f of furniture) entries.push({ path: `word/${f.kind}1.xml`, data: f.xml });
     for (const [key, m] of this.media) {
       const res = this.doc.resources.get(key);
       if (res) entries.push({ path: `word/${m.path}`, data: res.data });
@@ -106,6 +122,7 @@ class DocxWriter {
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
       '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
       (this.footnotes.length ? '<Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>' : '') +
+      this.furnitureKinds.map((k) => `<Override PartName="/word/${k}1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.${k}+xml"/>`).join('') +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
       '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
       '</Types>'
@@ -210,6 +227,36 @@ class DocxWriter {
     pPr += layoutPPr(p);
     if (p.align && p.align !== 'left') pPr += `<w:jc w:val="${p.align === 'justify' ? 'both' : p.align}"/>`;
     return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${p.runs.map((r) => this.run(r)).join('')}</w:p>`;
+  }
+
+  private furnitureKinds: ('header' | 'footer')[] = [];
+
+  /** A header or footer: left, centre and right zones separated by tabs, with fields (DOC-024). */
+  private furnitureXml(kind: 'header' | 'footer', zones: PageZones): string {
+    const field = (instr: string, shown: string): string => `<w:fldSimple w:instr=" ${esc(instr)} "><w:r><w:t xml:space="preserve">${esc(shown)}</w:t></w:r></w:fldSimple>`;
+    const runs = (text: string | undefined): string =>
+      zoneParts(text ?? '')
+        .map((p) =>
+          typeof p === 'string'
+            ? `<w:r><w:t xml:space="preserve">${esc(p)}</w:t></w:r>`
+            : p.field === 'page'
+              ? field('PAGE', '1')
+              : p.field === 'pages'
+                ? field('NUMPAGES', '1')
+                : p.field === 'title'
+                  ? field('TITLE', this.doc.meta.title ?? '')
+                  : field('DATE \\@ "yyyy-MM-dd"', new Date().toISOString().slice(0, 10)),
+        )
+        .join('');
+    const tag = kind === 'header' ? 'hdr' : 'ftr';
+    const style = kind === 'header' ? 'Header' : 'Footer';
+    return (
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      `<w:${tag} xmlns:w="${NS.w}" xmlns:r="${NS.r}">` +
+      `<w:p><w:pPr><w:pStyle w:val="${style}"/><w:tabs><w:tab w:val="center" w:pos="4513"/><w:tab w:val="right" w:pos="9026"/></w:tabs></w:pPr>` +
+      `${runs(zones.left)}<w:r><w:tab/></w:r>${runs(zones.center)}<w:r><w:tab/></w:r>${runs(zones.right)}</w:p>` +
+      `</w:${tag}>`
+    );
   }
 
   private footnotesXml(): string {
@@ -396,6 +443,8 @@ const STYLES_XML =
   '<w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>' +
   '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>' +
   '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="Header"><w:name w:val="header"/><w:basedOn w:val="Normal"/><w:pPr><w:tabs><w:tab w:val="center" w:pos="4513"/><w:tab w:val="right" w:pos="9026"/></w:tabs><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="18"/></w:rPr></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="Footer"><w:name w:val="footer"/><w:basedOn w:val="Normal"/><w:pPr><w:tabs><w:tab w:val="center" w:pos="4513"/><w:tab w:val="right" w:pos="9026"/></w:tabs><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="18"/></w:rPr></w:style>' +
   '<w:style w:type="paragraph" w:styleId="TOCHeading"><w:name w:val="TOC Heading"/><w:basedOn w:val="Heading1"/><w:next w:val="Normal"/><w:pPr><w:outlineLvl w:val="9"/></w:pPr></w:style>' +
   [1, 2, 3, 4, 5, 6].map((n) => `<w:style w:type="paragraph" w:styleId="TOC${n}"><w:name w:val="toc ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:spacing w:after="100"/><w:ind w:left="${(n - 1) * 220}"/></w:pPr></w:style>`).join('') +
   '<w:style w:type="paragraph" w:styleId="FootnoteText"><w:name w:val="footnote text"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>' +

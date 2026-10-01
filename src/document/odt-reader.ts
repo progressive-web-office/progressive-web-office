@@ -8,6 +8,8 @@ import {
   mediaTypeForName,
   normalizeRuns,
   PAGE_BREAK,
+  cleanPageSetup,
+  type PageSetup,
   type Align,
   type Block,
   type Paragraph,
@@ -34,6 +36,55 @@ interface OdfStyle {
   /** fo:break-before / fo:break-after="page" (DOC-021). */
   pageBefore?: boolean;
   pageAfter?: boolean;
+}
+
+/** Header and footer of the first master page, as zones split at tabs (DOC-024). */
+function readFurniture(xml: Document): PageSetup | undefined {
+  const master = descendants(xml, 'master-page')[0];
+  if (!master) return undefined;
+  const setup: PageSetup = {};
+  for (const kind of ['header', 'footer'] as const) {
+    const part = child(master, kind);
+    const p = part ? descendants(part, 'p').find((e) => (e.textContent ?? '').trim() || descendants(e, 'page-number').length) : undefined;
+    if (!p) continue;
+    let text = '';
+    const walk = (el: Element): void => {
+      for (const n of Array.from(el.childNodes)) {
+        if (n.nodeType === 3) {
+          text += n.textContent ?? '';
+          continue;
+        }
+        if (n.nodeType !== 1) continue;
+        const e = n as Element;
+        switch (e.localName) {
+          case 'tab':
+            text += '\t';
+            break;
+          case 's':
+            text += ' '.repeat(Number(attr(e, 'c') ?? 1) || 1);
+            break;
+          case 'page-number':
+            text += '{page}';
+            break;
+          case 'page-count':
+            text += '{pages}';
+            break;
+          case 'title':
+            text += '{title}';
+            break;
+          case 'date':
+            text += '{date}';
+            break;
+          default:
+            walk(e);
+        }
+      }
+    };
+    walk(p);
+    const parts = text.split('\t').map((x) => x.trim());
+    setup[kind] = parts.length === 1 ? { left: parts[0] } : parts.length === 2 ? { left: parts[0], center: parts[1] } : { left: parts[0], center: parts[1], right: parts.slice(2).join(' ') };
+  }
+  return cleanPageSetup(setup);
 }
 
 /** `12pt`, `0.5in`, `1cm`… in points. */
@@ -69,6 +120,10 @@ class OdtReader {
     this.doc.blocks = this.readBlocks(body, undefined, 0);
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
     this.doc.meta = readOdfMeta(this.zip);
+    if (stylesText) {
+      const page = readFurniture(parseXml(stylesText));
+      if (page) this.doc.page = page;
+    }
     return this.doc;
   }
 

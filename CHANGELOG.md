@@ -24,6 +24,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   (Ctrl+] / Ctrl+[), line spacing, and a paragraph spacing dialog (left and
   first-line indents, space before and after). Kept in DOCX and ODT, and
   read from them as direct formatting only.
+- Header and footer in text documents (▤): left, centre and right parts
+  with page number, page count, title and date fields; shown around the
+  page, printed on every page (CSS page margin boxes), kept in DOCX, ODT,
+  LaTeX (fancyhdr) and Markdown front matter, shared in collaboration.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF
