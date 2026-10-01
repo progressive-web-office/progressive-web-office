@@ -38,6 +38,19 @@ preview: build
 e2e: build
     npm run test:e2e
 
+# Integration tests against a real QRShare build (needs bun and git).
+# Clones/updates QRShare in ../QRShare-for-tests, builds and serves it.
+e2e-qrshare port='3100': build
+    #!/usr/bin/env bash
+    set -euo pipefail
+    dir=../QRShare-for-tests
+    if [ -d "$dir/.git" ]; then git -C "$dir" pull --ff-only -q; else git clone -q --depth 1 https://github.com/s-celles/QRShare "$dir"; fi
+    (cd "$dir" && bun install --frozen-lockfile && bun run build)
+    (cd "$dir" && PORT={{port}} bun run scripts/serve.ts) & server=$!
+    trap 'kill $server' EXIT
+    sleep 2
+    QRSHARE_URL=http://localhost:{{port}}/ npx playwright test e2e/qrshare.integration.spec.ts
+
 # Build the documentation, llms.txt and llms-full.txt (fails on warnings)
 docs:
     #!/usr/bin/env bash

@@ -24,3 +24,32 @@ jobs:
       - run: npm run docs:build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+
+  # SHARE-001..SHARE-005 against the current QRShare (built from its main branch).
+  qrshare-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: s-celles/QRShare
+          path: qrshare
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci
+      - run: npm run build
+      - name: Build and serve QRShare
+        working-directory: qrshare
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+          PORT=3100 nohup bun run scripts/serve.ts > ../qrshare-serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3100/ > /dev/null && exit 0; sleep 1; done
+          cat ../qrshare-serve.log; exit 1
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test e2e/qrshare.integration.spec.ts
+        env:
+          QRSHARE_URL: http://localhost:3100/

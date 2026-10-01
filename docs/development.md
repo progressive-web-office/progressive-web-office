@@ -9,6 +9,7 @@ description: How to build, test and contribute to Progressive Web Office.
 - Node.js ≥ 20 and npm
 - [just](https://github.com/casey/just) (command runner)
 - Chromium for end-to-end tests (Playwright)
+- [bun](https://bun.sh) only for the QRShare integration tests
 
 ## Commands
 
@@ -21,6 +22,7 @@ description: How to build, test and contribute to Progressive Web Office.
 | `just build` | Production build into `dist/` (with service worker) |
 | `just preview` | Serve the production build |
 | `just e2e` | End-to-end smoke tests (Playwright) |
+| `just e2e-qrshare` | Integration tests with a real [QRShare](https://github.com/s-celles/QRShare) build (requires [bun](https://bun.sh)) |
 | `just docs` | Build this documentation, plus `llms.txt` and `llms-full.txt` |
 | `just docs-dev` | Live-preview this documentation |
 | `just check` | Everything a contributor must run before committing |

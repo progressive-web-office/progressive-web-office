@@ -8,6 +8,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ## [Unreleased]
 
+### Added
+
+- Integration tests against a real QRShare build (`just e2e-qrshare`, and a
+  dedicated CI job): the document sent to QRShare's transfer chooser is
+  checked byte for byte, encoded as a static QR code and decoded back; the
+  "Prepare a transfer" and receive screens are checked too.
+
 ### Changed
 
 - The project is now licensed under the GNU Affero General Public License
