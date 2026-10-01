@@ -118,6 +118,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- The start screen cards have icons (📝 document, 📊 spreadsheet, 📽️
+  presentation, 📂 open, 🗂️ repository, 📲 receive, ☁️ cloud, 🗃️ Grist);
+  they are decorative and do not change the buttons' names for screen
+  readers.
+
 - New text editor engine (ProseMirror) instead of the browser's editing
   commands: the document is edited as a structure through transactions, so
   editing behaves the same in every browser, undo/redo is reliable, and

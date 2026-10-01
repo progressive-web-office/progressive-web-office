@@ -32,7 +32,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 export function button(
   label: string,
   onClick: (ev: MouseEvent) => void,
-  opts: { title?: string; className?: string; text?: string; pressed?: boolean } = {},
+  opts: { title?: string; className?: string; text?: string; pressed?: boolean; icon?: string } = {},
 ): HTMLButtonElement {
   const b = h(
     'button',
@@ -42,6 +42,8 @@ export function button(
       title: opts.title ?? label,
       'aria-label': opts.text !== undefined && opts.text !== label ? label : undefined,
       'aria-pressed': opts.pressed === undefined ? undefined : String(opts.pressed),
+      // Decorative icon, drawn by CSS (::before) so that the name stays the label.
+      'data-icon': opts.icon,
     },
     opts.text ?? label,
   );

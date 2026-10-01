@@ -142,8 +142,13 @@ button:disabled { opacity: 0.5; cursor: default; }
 .card {
   min-height: 110px; font-size: 1.05rem; font-weight: 600; text-align: left;
   padding: 16px; border-radius: var(--radius); border-left: 6px solid var(--accent);
-  display: flex; align-items: flex-end;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px;
 }
+.card[data-icon]::before {
+  content: attr(data-icon); content: attr(data-icon) / '';
+  font-size: 2rem; line-height: 1; font-weight: 400;
+}
+.card:hover[data-icon]::before { transform: scale(1.08); }
 .card.doc { border-left-color: var(--doc); }
 .card.sheet { border-left-color: var(--sheet); }
 .card.pres { border-left-color: var(--pres); }
