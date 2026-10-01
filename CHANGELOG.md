@@ -14,6 +14,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   v3.0 or later (previously MIT); the start screen links to the source code.
 - Clearer wording for saving the AI assistant's API key.
 
+### Fixed
+
+- Equation editor on phones and tablets: MathLive's virtual keyboard was shown
+  behind the modal dialog and could not be used; it now opens above it, docked
+  at the bottom of the screen.
+
 ## [0.0.13] - 2026-10-01
 
 ### Added

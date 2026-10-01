@@ -68,7 +68,14 @@ export async function editEquation(host: HTMLElement, initial: EquationValue = {
     const display = h('input', { type: 'checkbox', id: 'eq-display' });
     display.checked = initial.display;
     const dialog = h('dialog', { class: 'dialog equation-dialog', 'aria-labelledby': 'eq-title' });
+    // A modal dialog makes the rest of the page inert: the MathLive virtual
+    // keyboard (shown on touch devices) must live inside the dialog to be usable.
+    const keyboard = (window as unknown as { mathVirtualKeyboard?: { container: HTMLElement | null; hide(): void } }).mathVirtualKeyboard;
     const finish = (ok: boolean): void => {
+      if (keyboard) {
+        keyboard.hide();
+        keyboard.container = document.body;
+      }
       dialog.close();
       dialog.remove();
       resolve(ok && source.value.trim() ? { latex: source.value.trim(), display: display.checked } : null);
@@ -85,6 +92,7 @@ export async function editEquation(host: HTMLElement, initial: EquationValue = {
       finish(false);
     });
     host.append(dialog);
+    if (keyboard) keyboard.container = dialog;
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     setTimeout(() => field.focus(), 0);

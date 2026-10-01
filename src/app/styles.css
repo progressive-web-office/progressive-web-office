@@ -407,3 +407,8 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
   .app.with-ai .app-main, .app.with-ai .app-status { margin-right: 0; }
 }
 @media print { .ai-panel { display: none !important; } }
+
+/* MathLive virtual keyboard inside the modal equation dialog (touch devices):
+   keep it docked at the bottom of the viewport, above the dialog backdrop. */
+.equation-dialog > .ML__keyboard { position: fixed; left: 0; right: 0; bottom: 0; top: auto; height: var(--_keyboard-height, 280px); z-index: 1; }
+.equation-dialog:has(> .ML__keyboard.is-visible) { margin-top: 8px; }
