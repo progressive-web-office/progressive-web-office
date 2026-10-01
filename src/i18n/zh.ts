@@ -562,4 +562,7 @@ export const zh: Record<MessageKey, string> = {
   'formats.title': '新文档的格式，以及保存时优先提供的格式',
   'formats.open': 'OpenDocument — 开放标准（.odt、.ods、.odp）',
   'formats.microsoft': 'Microsoft Office（.docx、.xlsx、.pptx）',
+  'qr.enlarge': '放大二维码',
+  'qr.enlargeTitle': '点击全屏显示二维码，更易扫描',
+  'qr.fullScreen': '全屏二维码',
 };

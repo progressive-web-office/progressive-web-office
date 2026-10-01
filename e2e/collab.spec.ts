@@ -134,7 +134,7 @@ test('offers several ways to send the invitation (COLLAB-001)', async ({ context
 
   // Full screen, for a projector.
   await invite.getByRole('button', { name: 'Show full screen' }).click();
-  const big = page.getByRole('dialog', { name: 'Show full screen' });
+  const big = page.getByRole('dialog', { name: 'QR code, full screen' });
   await expect(big.getByRole('img', { name: 'QR code of the invitation link' })).toBeVisible();
   await expect(big).toContainText(url);
   await page.keyboard.press('Escape');

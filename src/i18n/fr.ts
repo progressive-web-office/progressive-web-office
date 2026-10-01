@@ -562,4 +562,7 @@ export const fr: Record<MessageKey, string> = {
   'formats.title': 'Format des nouveaux documents, et celui proposé en premier à l’enregistrement',
   'formats.open': 'OpenDocument — norme ouverte (.odt, .ods, .odp)',
   'formats.microsoft': 'Microsoft Office (.docx, .xlsx, .pptx)',
+  'qr.enlarge': 'Agrandir le QR code',
+  'qr.enlargeTitle': 'Cliquez pour afficher le QR code en plein écran, plus facile à scanner',
+  'qr.fullScreen': 'QR code en plein écran',
 };

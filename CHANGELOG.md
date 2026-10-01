@@ -21,7 +21,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   device setting, light and dark; the choice is remembered.
 - About window (**?** in the toolbar, *About* on the start screen): version,
   git commit and build date, licence, installed / offline status, a QR code
-  of the app address to open it on another device, links to the
+  of the app address to open it on another device (click it to show it full
+  screen, easier to scan), links to the
   documentation, source code, changelog, requirements and problem reports,
   and *Copy details* for a bug report. The version and short git commit
   (e.g. `v0.0.13 (6cae6fc)`) are also shown next to the name in the toolbar

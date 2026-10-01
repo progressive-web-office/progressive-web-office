@@ -560,6 +560,9 @@ export const en = {
   'formats.title': 'Format of new documents, and the one offered first when saving',
   'formats.open': 'OpenDocument — open standard (.odt, .ods, .odp)',
   'formats.microsoft': 'Microsoft Office (.docx, .xlsx, .pptx)',
+  'qr.enlarge': 'Enlarge the QR code',
+  'qr.enlargeTitle': 'Click to show the QR code full screen, easier to scan',
+  'qr.fullScreen': 'QR code, full screen',
 } as const;
 
 export type MessageKey = keyof typeof en;

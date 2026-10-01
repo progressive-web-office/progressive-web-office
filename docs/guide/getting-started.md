@@ -87,7 +87,8 @@ you before closing the tab in that case.
 the git commit of the build, whether the app is installed and works offline,
 and links to this documentation, the source code, the changelog and the
 problem tracker. Its **QR code** opens the app on another device: scan it with
-a phone camera. When reporting a problem, **Copy details** copies the version
+a phone camera. Click it to show it full screen, which is easier to scan from
+a distance or on a projector. When reporting a problem, **Copy details** copies the version
 and browser information to paste into the report.
 
 ## Limits

@@ -235,7 +235,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-009 | M | 0.0.8 | Every user-visible string shall come from a translation catalog; a test shall fail if a key is missing in any language. |
 | UI-010 | S | 0.0.8 | The system shall set the `lang` attribute of the document to the selected language. |
 | UI-011 | S | 0.0.14 | The system shall let the user choose a light, dark or system theme (following the operating system preference by default); the choice shall persist and apply to native controls. Document pages and slides shall stay light, as on paper. |
-| UI-012 | S | 0.0.14 | The system shall offer an About window, from the toolbar and the start screen, showing the version, the git commit and date of the build, the licence, whether the app is installed and works offline, a QR code of the app address to open it on another device, and links to the documentation, source code, changelog, requirements and problem reports; it shall copy these details for a problem report. |
+| UI-012 | S | 0.0.14 | The system shall offer an About window, from the toolbar and the start screen, showing the version, the git commit and date of the build, the licence, whether the app is installed and works offline, a QR code of the app address to open it on another device (shown full screen when activated), and links to the documentation, source code, changelog, requirements and problem reports; it shall copy these details for a problem report. |
 | UI-013 | S | 0.0.14 | The system shall display its version and the short git commit of the build (e.g. `v0.0.13 (6cae6fc)`) in the toolbar and on the start screen, as QRShare does; activating it shall open the About window. |
 
 ## 9. Quality (QA)

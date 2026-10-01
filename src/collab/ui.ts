@@ -5,7 +5,7 @@
  */
 import { CollabSession, colorOf, createIdentity, loadIdentity, saveIdentity, type CollabRoom, type Participant, type VersionEntry } from '@scelles/collab';
 import { button, h } from '../app/dom';
-import { qrImage } from '../app/qr';
+import { showQrFullScreen, zoomableQr } from '../app/qr';
 import { t } from '../i18n';
 import { CollabBinding } from './binding';
 import { collabHash, collabUrl, type CollabLink } from './link';
@@ -181,7 +181,7 @@ export class Collaboration {
     };
     const field = h('input', { type: 'text', value: url, readonly: true, 'aria-label': t('collab.link'), class: 'collab-link' });
     field.addEventListener('focus', () => field.select());
-    const qr = qrImage(url, t('collab.qrAlt'), 200, 'collab-qr');
+    const qr = zoomableQr(() => this.host.dialogHost, url, t('collab.qrAlt'), 200, 'collab-qr');
     const subject = t('collab.mailSubject');
     const body = t('collab.mailBody', { url });
     const ways: HTMLElement[] = [
@@ -199,7 +199,7 @@ export class Collaboration {
     ways.push(
       h('a', { class: 'button-like', href: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, title: t('collab.emailTitle') }, t('collab.email')),
       button(t('collab.qrshare'), () => void this.sendWithQrShare(url), { title: t('collab.qrshareTitle') }),
-      button(t('collab.bigQr'), () => this.showBigQr(url), { title: t('collab.bigQrTitle') }),
+      button(t('collab.bigQr'), () => showQrFullScreen(this.host.dialogHost, url, t('collab.qrAlt')), { title: t('collab.bigQrTitle') }),
     );
     await this.dialog(
       t('collab.inviteTitle'),
@@ -225,30 +225,6 @@ export class Collaboration {
     const { loadShareSettings, sendTextUrl } = await import('../share/qrshare');
     const settings = loadShareSettings();
     window.open(sendTextUrl(settings.url, url, settings.policy), '_blank', 'noopener');
-  }
-
-  /** The QR code full screen, to scan from across a room (projector, classroom). */
-  private showBigQr(url: string): void {
-    const overlay = h('dialog', { class: 'collab-qr-full', 'aria-label': t('collab.bigQr') });
-    const close = (): void => {
-      overlay.close();
-      overlay.remove();
-    };
-    overlay.append(
-      qrImage(url, t('collab.qrAlt'), 640, 'collab-qr-big'),
-      h('p', { class: 'collab-qr-full-url' }, url),
-      button(t('common.close'), close, { className: 'primary' }),
-    );
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) close();
-    });
-    overlay.addEventListener('cancel', (e) => {
-      e.preventDefault();
-      close();
-    });
-    this.host.dialogHost.append(overlay);
-    if (typeof overlay.showModal === 'function') overlay.showModal();
-    else overlay.setAttribute('open', '');
   }
 
   private showVersions(): void {

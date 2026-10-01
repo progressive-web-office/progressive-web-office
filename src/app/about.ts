@@ -1,7 +1,7 @@
 /** About window: version, build, QR code of the app, documentation and source links (UI-012). */
 import { t } from '../i18n';
 import { button, h } from './dom';
-import { qrImage } from './qr';
+import { zoomableQr } from './qr';
 import { BUILD, shortCommit } from './build-info';
 
 export { BUILD };
@@ -36,7 +36,12 @@ const link = (href: string, text: string): HTMLAnchorElement => h('a', { href, t
 
 /** The content of the About window for the app published at `appUrl`. */
 export function aboutContent(appUrl: string): HTMLElement {
-  const qr = qrImage(appUrl, t('about.qrAlt', { url: appUrl }), 160, 'about-qr');
+  const figure = h('figure', { class: 'about-qr-figure' });
+  // A click enlarges it, to scan from a distance or with a poor camera.
+  figure.append(
+    zoomableQr(() => (figure.closest('dialog') as HTMLElement | null) ?? document.body, appUrl, t('about.qrAlt', { url: appUrl }), 160, 'about-qr'),
+    h('figcaption', { class: 'hint' }, t('about.qrCaption'), h('br'), h('span', { class: 'mono' }, appUrl)),
+  );
   const date = new Date(BUILD.date);
   const commit = BUILD.commit === 'unknown' ? h('span', {}, shortCommit()) : link(`${SOURCE_URL}/commit/${BUILD.commit}`, shortCommit());
   commit.classList.add('mono');
@@ -62,7 +67,7 @@ export function aboutContent(appUrl: string): HTMLElement {
       'div',
       { class: 'about-body' },
       h('dl', { class: 'about-facts' }, ...rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)])),
-      h('figure', { class: 'about-qr-figure' }, qr, h('figcaption', { class: 'hint' }, t('about.qrCaption'), h('br'), h('span', { class: 'mono' }, appUrl))),
+      figure,
     ),
     h(
       'ul',
