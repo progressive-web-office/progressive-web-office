@@ -708,6 +708,8 @@ export class App {
           h('a', { href: new URL('docs/', document.baseURI).href, target: '_blank', rel: 'noopener' }, t('app.docs')),
           ' · ',
           h('a', { href: SOURCE_URL, target: '_blank', rel: 'noopener' }, t('app.source')),
+          ' · ',
+          button(t('about.open'), () => void this.showAbout(), { className: 'link', title: t('about.openTitle') }),
         ),
         recent,
       ),
@@ -817,6 +819,7 @@ export class App {
       actions.append(button(t('collab.start'), () => (this.collab ? this.leaveCollaboration() : void this.startCollaboration()), { title: this.collab ? t('collab.leaveTitle') : t('collab.startTitle'), text: '👥', className: 'icon', pressed: !!this.collab }));
     }
     actions.append(this.themeButton());
+    actions.append(button(t('about.open'), () => void this.showAbout(), { title: t('about.openTitle'), text: '?', className: 'icon' }));
     if (doc) {
       actions.append(
         button(t('file.print'), () => void this.print(), { title: t('file.printTitle') }),
@@ -824,6 +827,12 @@ export class App {
       );
     }
     this.header.replaceChildren(...items.filter((n): n is Node => n !== null), actions);
+  }
+
+  /** About window (UI-012). */
+  async showAbout(): Promise<void> {
+    const { showAbout } = await import('./about');
+    showAbout(this.root);
   }
 
   /** Cycles System → Light → Dark (UI-011). */

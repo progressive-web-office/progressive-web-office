@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -7,6 +8,17 @@ import { SANDBOX_BOOTSTRAP } from './src/code/sandbox-html.ts';
 
 /** Hash of the code sandbox bootstrap, the only inline script the policy allows (CODE-003). */
 const SANDBOX_HASH = `'sha256-${createHash('sha256').update(SANDBOX_BOOTSTRAP).digest('base64')}'`;
+
+/** Build information shown in the About window (UI-012). */
+const PKG = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')) as { version: string };
+function gitCommit(): string {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA;
+  try {
+    return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+  } catch {
+    return 'unknown';
+  }
+}
 
 /** Content-Security-Policy injected in production builds only (PLT-008). */
 const CSP = [
@@ -99,6 +111,11 @@ const fileTypes = {
 
 export default defineConfig({
   base: './',
+  define: {
+    __APP_VERSION__: JSON.stringify(PKG.version),
+    __GIT_COMMIT__: JSON.stringify(gitCommit()),
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+  },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
   worker: { format: 'es' },
   plugins: [

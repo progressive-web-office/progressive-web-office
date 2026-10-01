@@ -19,6 +19,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - "Share with another app…" in the send dialog opens the system share sheet.
 - Light / dark / system theme: a toolbar button cycles between following the
   device setting, light and dark; the choice is remembered.
+- About window (**?** in the toolbar, *About* on the start screen): version,
+  git commit and build date, licence, installed / offline status, a QR code
+  of the app address to open it on another device, links to the
+  documentation, source code, changelog, requirements and problem reports,
+  and *Copy details* for a bug report.
 - Real-time collaboration on text documents and spreadsheets (👥): an
   invitation link opens the same document for others; edits are merged per
   cell or paragraph, peer to peer (WebRTC, end-to-end encrypted, introduced

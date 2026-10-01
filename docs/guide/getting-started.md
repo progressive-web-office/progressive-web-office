@@ -81,6 +81,15 @@ you before closing the tab in that case.
 | <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open a file |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save |
 
+## About
+
+**?** in the toolbar (or *About* on the start screen) shows the version and
+the git commit of the build, whether the app is installed and works offline,
+and links to this documentation, the source code, the changelog and the
+problem tracker. Its **QR code** opens the app on another device: scan it with
+a phone camera. When reporting a problem, **Copy details** copies the version
+and browser information to paste into the report.
+
 ## Limits
 
 Files larger than 50 MB are refused to keep the browser responsive.
