@@ -53,7 +53,7 @@ describe('DOC-002 ODT reader', () => {
       { type: 'paragraph', style: 'normal', list: { ordered: true, level: 0 }, runs: [{ text: 'one' }] },
       { type: 'paragraph', style: 'normal', list: { ordered: false, level: 1 }, runs: [{ text: 'sub' }] },
       { type: 'paragraph', style: 'quote', runs: [{ text: 'quoted' }] },
-      { type: 'table', rows: [[{ blocks: [{ type: 'paragraph', style: 'normal', runs: [{ text: 'h1' }] }] }, { blocks: [{ type: 'paragraph', style: 'normal', runs: [] }] }]] },
+      { type: 'table', header: true, rows: [[{ blocks: [{ type: 'paragraph', style: 'normal', runs: [{ text: 'h1' }] }] }, { blocks: [{ type: 'paragraph', style: 'normal', runs: [] }] }]] },
       { type: 'paragraph', style: 'normal', runs: [{ image: img, alt: 'alt text', width: 96, height: 96 }] },
     ]);
   });

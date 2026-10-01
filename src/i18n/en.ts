@@ -627,6 +627,17 @@ export const en = {
   'hf.pageOfPagesValue': 'Page {page} of {pages}',
   'hf.hint': 'Shown on every printed page and kept in Word, OpenDocument, LaTeX and Markdown files. The title is the one of the document properties (ⓘ).',
   'hf.edit': 'Click to edit the header and footer',
+  'table.bar': 'Table',
+  'table.rowAbove': 'Insert a row above',
+  'table.rowBelow': 'Insert a row below',
+  'table.colLeft': 'Insert a column on the left',
+  'table.colRight': 'Insert a column on the right',
+  'table.deleteRow': 'Delete the row',
+  'table.deleteCol': 'Delete the column',
+  'table.merge': 'Merge the selected cells',
+  'table.split': 'Split the cell',
+  'table.header': 'Header row (repeated on each page)',
+  'table.delete': 'Delete the table',
 } as const;
 
 export type MessageKey = keyof typeof en;

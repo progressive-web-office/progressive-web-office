@@ -13,6 +13,8 @@ import {
   isFootnoteRun,
   splitParagraphs,
   tocEntries,
+  tableGrid,
+  type Table,
   cleanPageSetup,
   zoneParts,
   type PageZones,
@@ -23,7 +25,6 @@ import {
   type ParagraphLayout,
   type RichDocument,
   type Run,
-  type TableCell,
   type WriteOptions,
 } from './model';
 import { mathmlToOmml, OMML_NS } from '../math/convert';
@@ -181,7 +182,7 @@ class DocxWriter {
       } else if (group.type === 'paragraph') {
         out += this.paragraph(group);
       } else if (group.type === 'table') {
-        out += this.table(group.rows);
+        out += this.table(group);
       } else if (group.type === 'toc') {
         out += this.toc(group.levels ?? 3);
       } else if (group.page) {
@@ -362,25 +363,40 @@ class DocxWriter {
     );
   }
 
-  private table(rows: TableCell[][]): string {
-    const cols = Math.max(1, ...rows.map((r) => r.length));
+  /** A table on its grid: merged cells as gridSpan / vMerge, the header row repeated (DOC-025). */
+  private table(t: Table): string {
+    const { cols, slots } = tableGrid(t.rows);
     const colW = Math.floor(9026 / cols);
     let out =
       '<w:tbl><w:tblPr><w:tblStyle w:val="TableGrid"/><w:tblW w:w="0" w:type="auto"/><w:tblLook w:val="04A0"/></w:tblPr><w:tblGrid>' +
       `<w:gridCol w:w="${colW}"/>`.repeat(cols) +
       '</w:tblGrid>';
-    for (const row of rows) {
-      out += '<w:tr>';
-      for (let c = 0; c < cols; c++) {
-        const cell = row[c];
-        const paras = cell?.blocks.length ? cell.blocks : [];
-        const inner = paras.map((p) => this.paragraph(p)).join('') || '<w:p/>';
-        out += `<w:tc><w:tcPr><w:tcW w:w="${colW}" w:type="dxa"/></w:tcPr>${inner}</w:tc>`;
+    slots.forEach((row, r) => {
+      out += `<w:tr>${r === 0 && t.header ? '<w:trPr><w:tblHeader/></w:trPr>' : ''}`;
+      for (let c = 0; c < cols; ) {
+        const slot = row[c];
+        if (!slot) {
+          out += `<w:tc><w:tcPr><w:tcW w:w="${colW}" w:type="dxa"/></w:tcPr><w:p/></w:tc>`;
+          c++;
+          continue;
+        }
+        const span = Math.max(1, slot.cell.colSpan ?? 1);
+        const merged = (slot.cell.rowSpan ?? 1) > 1;
+        const tcPr = `<w:tcPr><w:tcW w:w="${colW * span}" w:type="dxa"/>${span > 1 ? `<w:gridSpan w:val="${span}"/>` : ''}${merged ? (slot.row === r ? '<w:vMerge w:val="restart"/>' : '<w:vMerge/>') : ''}</w:tcPr>`;
+        if (slot.row === r) {
+          const inner = slot.cell.blocks.map((p) => this.paragraph(p)).join('') || '<w:p/>';
+          out += `<w:tc>${tcPr}${inner}</w:tc>`;
+        } else {
+          // Continuation of a cell merged from above.
+          out += `<w:tc>${tcPr}<w:p/></w:tc>`;
+        }
+        c += span;
       }
       out += '</w:tr>';
-    }
+    });
     return `${out}</w:tbl>`;
   }
+
 }
 
 const ROOT_RELS =

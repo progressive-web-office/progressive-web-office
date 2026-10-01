@@ -28,7 +28,8 @@ test('opens a Markdown file and converts it to DOCX and ODT (FILE-006)', async (
   expect(docx.name).toBe('notes.docx');
   expect(docx.data.subarray(0, 2).toString()).toBe('PK');
   await openFile(page, 'notes.docx', docx.data);
-  await expect(page.locator('.doc-page td')).toHaveCount(4);
+  await expect(page.locator('.doc-page th')).toHaveCount(2); // the GFM header row (DOC-025)
+  await expect(page.locator('.doc-page td')).toHaveCount(2);
   expect(errors).toEqual([]);
 });
 

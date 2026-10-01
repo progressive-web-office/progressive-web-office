@@ -18,8 +18,10 @@ import {
   type DocumentMeta,
   type RichDocument,
   type Run,
+  type Table,
   type TableCell,
   type WriteOptions,
+  tableGrid,
 } from './model';
 import { cellsAsBlocks } from './code-cells';
 import { diagramLangOf, diagramsAsPictures } from './diagram';
@@ -55,6 +57,7 @@ export interface LatexOutput {
 class LatexWriter {
   readonly images = new Map<string, Uint8Array>();
   private imagePaths = new Map<string, string>();
+  private multirow = false;
 
   constructor(private readonly doc: RichDocument) {}
 
@@ -98,6 +101,7 @@ class LatexWriter {
       '\\usepackage{graphicx}',
       '\\usepackage[normalem]{ulem}',
       '\\usepackage{hyperref}',
+      ...(this.multirow ? ['\\usepackage{multirow}'] : []),
       ...this.furniture(),
       ...(meta.title ? [`\\title{${escapeLatex(meta.title)}}`] : []),
       ...(meta.author ? [`\\author{${escapeLatex(meta.author)}}`] : []),
@@ -125,7 +129,7 @@ class LatexWriter {
       if (group.type === 'list') {
         for (const seg of splitListSegments(group.items)) for (const list of nestLists(seg)) out.push(this.list(list, ''));
       } else if (group.type === 'table') {
-        out.push(this.table(group.rows));
+        out.push(this.table(group));
       } else if (group.type === 'toc') {
         out.push('\\tableofcontents');
       } else if (group.type === 'rule') {
@@ -166,12 +170,45 @@ class LatexWriter {
     return lines.join('\n');
   }
 
-  private table(rows: TableCell[][]): string {
-    const cols = Math.max(1, ...rows.map((r) => r.length));
-    const cell = (c: TableCell | undefined): string => (c?.blocks ?? []).map((p) => this.inline(p.runs).replace(/\\\\\n?/g, ' ')).join(' ');
-    const body = rows.map((r) => `  ${Array.from({ length: cols }, (_, i) => cell(r[i])).join(' & ')} \\\\ \\hline`).join('\n');
-    return `\\begin{tabular}{|${'l|'.repeat(cols)}}\n  \\hline\n${body}\n\\end{tabular}`;
+  /** Merged cells with \multicolumn / \multirow; a double rule under the header row (DOC-025). */
+  private table(t: Table): string {
+    const { cols, slots } = tableGrid(t.rows);
+    const text = (c: TableCell): string => c.blocks.map((p) => this.inline(p.runs).replace(/\\\\\n?/g, ' ')).join(' ');
+    const lines = slots.map((row, r) => {
+      const cells: string[] = [];
+      for (let c = 0; c < cols; ) {
+        const slot = row[c];
+        const span = slot ? Math.max(1, slot.cell.colSpan ?? 1) : 1;
+        let body = slot && slot.row === r ? text(slot.cell) : '';
+        if (slot && slot.row === r && (slot.cell.rowSpan ?? 1) > 1) body = `\\multirow{${slot.cell.rowSpan}}{*}{${body}}`;
+        if (span > 1) body = `\\multicolumn{${span}}{${c === 0 ? '|' : ''}l|}{${body}}`;
+        cells.push(body);
+        c += span;
+      }
+      // Rules stop under cells merged with the next row.
+      const open = Array.from({ length: cols }, (_, c) => {
+        const s = row[c];
+        return !!s && s.row + (s.cell.rowSpan ?? 1) - 1 > r;
+      });
+      let rule = '\\hline';
+      if (open.some(Boolean)) {
+        const parts: string[] = [];
+        for (let c = 0; c < cols; c++) {
+          if (open[c]) continue;
+          let e = c;
+          while (e + 1 < cols && !open[e + 1]) e++;
+          parts.push(`\\cline{${c + 1}-${e + 1}}`);
+          c = e;
+        }
+        rule = parts.join('');
+      }
+      if (r === 0 && t.header && !open.some(Boolean)) rule = '\\hline\\hline';
+      return `  ${cells.join(' & ')} \\\\ ${rule}`;
+    });
+    if (slots.some((row) => row.some((s) => (s?.cell.rowSpan ?? 1) > 1))) this.multirow = true;
+    return `\\begin{tabular}{|${'l|'.repeat(cols)}}\n  \\hline\n${lines.join('\n')}\n\\end{tabular}`;
   }
+
 
   private inline(runs: Run[]): string {
     let out = '';

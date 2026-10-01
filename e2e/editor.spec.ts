@@ -228,3 +228,36 @@ test('header and footer with page numbers (DOC-024)', async ({ page }) => {
   expect(strFromU8(docx['word/header1.xml']!)).toContain('TP 3');
   expect(strFromU8(docx['word/footer1.xml']!)).toContain('w:instr=" NUMPAGES "');
 });
+
+test('edits tables: rows, columns, merged cells and header row (DOC-025)', async ({ page }) => {
+  const editor = await newDocument(page);
+  const bar = page.getByRole('toolbar', { name: 'Table' });
+  await expect(bar).toBeHidden();
+  await page.getByRole('button', { name: 'Insert table' }).click();
+  await expect(bar).toBeVisible();
+  await page.keyboard.type('Name');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('Unit');
+  await bar.getByRole('button', { name: 'Insert a column on the right' }).click();
+  await bar.getByRole('button', { name: 'Insert a row below' }).click();
+  await expect(editor.locator('tr')).toHaveCount(4);
+  await expect(editor.locator('tr').first().locator('td, th')).toHaveCount(4);
+  await bar.getByRole('button', { name: 'Delete the column' }).click();
+  await expect(editor.locator('tr').first().locator('td, th')).toHaveCount(3);
+  // Merge the first two cells of the first row (shift-click makes a cell selection).
+  const first = editor.locator('tr').first().locator('td, th');
+  await first.nth(0).click();
+  await first.nth(1).click({ modifiers: ['Shift'] });
+  await bar.getByRole('button', { name: 'Merge the selected cells' }).click();
+  await expect(editor.locator('tr').first().locator('td, th').first()).toHaveAttribute('colspan', '2');
+  await bar.getByRole('button', { name: 'Header row (repeated on each page)' }).click();
+  await expect(editor.locator('th')).toHaveCount(2);
+  // Leaving the table hides the bar.
+  await editor.locator('p').last().click();
+  await expect(bar).toBeHidden();
+
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const xml = strFromU8(unzipSync(new Uint8Array((await saveAs(page, 'Word document (.docx)')).data))['word/document.xml']!);
+  expect(xml).toContain('<w:gridSpan w:val="2"/>');
+  expect(xml).toContain('<w:tblHeader/>');
+});

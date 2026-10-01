@@ -7,6 +7,7 @@ import { Fragment, Slice, type Node as PmNode } from 'prosemirror-model';
 import { EditorState, TextSelection, type Command, type Transaction } from 'prosemirror-state';
 import { EditorView as PmView } from 'prosemirror-view';
 import { toggleMark } from 'prosemirror-commands';
+import { addColumnAfter, addColumnBefore, addRowAfter, addRowBefore, deleteColumn, deleteRow, deleteTable, isInTable, mergeCells, splitCell, toggleHeaderRow } from 'prosemirror-tables';
 import { redo, undo } from 'prosemirror-history';
 import { applyDocumentParts, documentParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { documentTools, type AgentTool } from '../ai/tools';
@@ -69,6 +70,9 @@ export class DocumentEditor implements EditorView {
   private readonly lineSelect: HTMLSelectElement;
   private readonly markButtons: [string, HTMLButtonElement][] = [];
   private readonly stateButtons: [() => boolean, HTMLButtonElement][] = [];
+  /** Table commands, enabled when they apply (DOC-025). */
+  private readonly tableButtons: [Command, HTMLButtonElement][] = [];
+  private tableBar!: HTMLElement;
   private readonly urls = new Map<string, string>();
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
   private runner: CodeRunner | undefined;
@@ -112,7 +116,7 @@ export class DocumentEditor implements EditorView {
       this.refocus();
     });
     this.findBar = new FindBar(() => this.view);
-    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes));
+    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.buildTableBar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes));
     for (const strip of [this.headerStrip, this.footerStrip]) {
       strip.addEventListener('click', () => void this.editPageSetup());
       strip.addEventListener('keydown', (e) => {
@@ -565,9 +569,50 @@ export class DocumentEditor implements EditorView {
     );
   }
 
+  /** Contextual bar shown while the cursor is in a table (DOC-025). */
+  private buildTableBar(): HTMLElement {
+    const act = (key: MessageKey, text: string, cmd: Command): HTMLButtonElement => {
+      const b = button(
+        t(key),
+        () => {
+          this.command(cmd);
+          this.refocus();
+        },
+        { text, title: t(key) },
+      );
+      this.tableButtons.push([cmd, b]);
+      return b;
+    };
+    this.tableBar = h(
+      'div',
+      { class: 'toolbar table-bar', role: 'toolbar', 'aria-label': t('table.bar'), hidden: '' },
+      h('span', { class: 'table-bar-label' }, t('table.bar')),
+      act('table.rowAbove', '⬆+', addRowBefore),
+      act('table.rowBelow', '⬇+', addRowAfter),
+      act('table.colLeft', '⬅+', addColumnBefore),
+      act('table.colRight', '➡+', addColumnAfter),
+      h('span', { class: 'sep' }),
+      act('table.deleteRow', '⬌−', deleteRow),
+      act('table.deleteCol', '⬍−', deleteColumn),
+      h('span', { class: 'sep' }),
+      act('table.merge', '⊞', mergeCells),
+      act('table.split', '⊟', splitCell),
+      act('table.header', 'H', toggleHeaderRow),
+      h('span', { class: 'sep' }),
+      act('table.delete', '🗑', deleteTable),
+    );
+    this.tableBar.addEventListener('mousedown', (e) => {
+      if ((e.target as HTMLElement).closest('button')) e.preventDefault();
+    });
+    return this.tableBar;
+  }
+
   private updateToolbar(): void {
     const state = this.view?.state;
     if (!state) return;
+    const inTable = isInTable(state);
+    this.tableBar.hidden = !inTable;
+    if (inTable) for (const [cmd, b] of this.tableButtons) b.disabled = !cmd(state);
     for (const [name, b] of this.markButtons) b.setAttribute('aria-pressed', String(markActive(state, schema.marks[name]!)));
     for (const [active, b] of this.stateButtons) b.setAttribute('aria-pressed', String(active()));
     this.styleSelect.value = currentStyle(state);

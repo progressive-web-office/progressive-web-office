@@ -303,7 +303,8 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         table = [];
         break;
       case 'table_close':
-        if (table) blocks.push({ type: 'table', rows: table });
+        // GFM tables always start with a header row (DOC-025).
+        if (table) blocks.push({ type: 'table', rows: table, header: true });
         table = null;
         break;
       case 'tr_open':

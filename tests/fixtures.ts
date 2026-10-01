@@ -42,6 +42,7 @@ export function richSample(): RichDocument {
     paragraph('two', { list: { ordered: true, level: 0 } }),
     {
       type: 'table',
+      header: true,
       rows: [
         [{ blocks: [paragraph('A1')] }, { blocks: [{ type: 'paragraph', style: 'normal', runs: [{ text: 'B1', bold: true }] }] }],
         [{ blocks: [paragraph('A2')] }, { blocks: [paragraph('B2')] }],

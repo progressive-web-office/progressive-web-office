@@ -2,7 +2,7 @@
  * LaTeX import (TEX-003, TEX-004): the common subset of `article` documents.
  * Unsupported constructs are kept as visible source text.
  */
-import { addResource, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TextFormat } from './model';
+import { addResource, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat } from './model';
 
 type Node =
   | { k: 'text'; v: string }
@@ -706,17 +706,47 @@ class Builder {
       rows.push(row);
     }
     const clean = (s: string): string => s.replace(/\\(hline|toprule|midrule|bottomrule|endhead|endfoot|endfirsthead)\b/g, '').replace(/\\cline\{[^}]*\}/g, '').trim();
-    const cells = rows.map((r) => r.map(clean)).filter((r) => r.some((c) => c));
-    if (!cells.length) return;
-    this.blocks.push({
-      type: 'table',
-      rows: cells.map((r) =>
-        r.map((c) => {
-          const runs = normalizeRuns(this.inlineRuns(c));
-          return { blocks: [{ type: 'paragraph', style: 'normal', runs } as Paragraph] };
-        }),
-      ),
+    // A double rule or a booktabs \midrule under the first row marks the header row (DOC-025).
+    const kept = rows.filter((r) => r.map(clean).some((c) => c));
+    const header = kept.length > 1 && /^\s*(?:\\hline\s*\\hline|\\midrule)/.test(kept[1]![0] ?? '');
+    if (!kept.length) return;
+    /** Columns still covered by a \multirow from a row above: column -> rows left. */
+    const covered = new Map<number, number>();
+    const out: TableCell[][] = kept.map((raw) => {
+      const row: TableCell[] = [];
+      let col = 0;
+      for (let text of raw.map(clean)) {
+        if (covered.get(col)) {
+          // The empty placeholder under a \multirow (a \multicolumn when it is wide).
+          const n = Math.max(1, Number(/^\\multicolumn\s*\{(\d+)\}/.exec(text)?.[1] ?? 1));
+          for (let i = 0; i < n; i++) covered.set(col + i, Math.max(0, (covered.get(col + i) ?? 0) - 1));
+          col += n;
+          continue;
+        }
+        let colSpan = 1;
+        let rowSpan = 1;
+        const mc = /^\\multicolumn\s*\{(\d+)\}\s*\{[^}]*\}\s*\{([\s\S]*)\}$/.exec(text);
+        if (mc) {
+          colSpan = Math.max(1, Number(mc[1]));
+          text = mc[2]!.trim();
+        }
+        const mr = /^\\multirow\s*\{(\d+)\}\s*\{[^}]*\}\s*\{([\s\S]*)\}$/.exec(text);
+        if (mr) {
+          rowSpan = Math.max(1, Number(mr[1]));
+          text = mr[2]!.trim();
+        }
+        const cell: TableCell = { blocks: [{ type: 'paragraph', style: 'normal', runs: normalizeRuns(this.inlineRuns(text)) }] };
+        if (colSpan > 1) cell.colSpan = colSpan;
+        if (rowSpan > 1) {
+          cell.rowSpan = rowSpan;
+          for (let i = 0; i < colSpan; i++) covered.set(col + i, rowSpan - 1);
+        }
+        row.push(cell);
+        col += colSpan;
+      }
+      return row;
     });
+    this.blocks.push(header ? { type: 'table', rows: out, header } : { type: 'table', rows: out });
   }
 }
 

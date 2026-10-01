@@ -404,20 +404,42 @@ class DocxReader {
     out.push(run);
   }
 
+  /** Table cells with their spans (gridSpan, vMerge) and header row (DOC-025). */
   private readTable(tbl: Element): Block {
     const rows: TableCell[][] = [];
-    for (const tr of children(tbl, 'tr')) {
+    /** The cell occupying each grid column, for vertical merges. */
+    const above = new Map<number, TableCell>();
+    let header = false;
+    children(tbl, 'tr').forEach((tr, r) => {
       const row: TableCell[] = [];
+      const trPr = child(tr, 'trPr');
+      if (r === 0 && trPr && child(trPr, 'tblHeader') && onOff(child(trPr, 'tblHeader')) !== false) header = true;
+      let col = 0;
       for (const tc of children(tr, 'tc')) {
+        const tcPr = child(tc, 'tcPr');
+        const span = Math.max(1, Number(tcPr && child(tcPr, 'gridSpan') ? attr(child(tcPr, 'gridSpan')!, 'val') : 1) || 1);
+        const vMerge = tcPr ? child(tcPr, 'vMerge') : undefined;
+        const restart = vMerge && attr(vMerge, 'val') === 'restart';
+        if (vMerge && !restart && above.has(col)) {
+          const origin = above.get(col)!;
+          origin.rowSpan = (origin.rowSpan ?? 1) + 1;
+          col += span;
+          continue;
+        }
         const blocks = this.readBlocks(tc).flatMap((b): Paragraph[] =>
           b.type === 'paragraph' ? [b] : b.type === 'table' ? b.rows.flat().flatMap((c) => c.blocks) : [],
         );
-        row.push({ blocks: blocks.length ? blocks : [{ type: 'paragraph', style: 'normal', runs: [] }] });
+        const cell: TableCell = { blocks: blocks.length ? blocks : [{ type: 'paragraph', style: 'normal', runs: [] }] };
+        if (span > 1) cell.colSpan = span;
+        row.push(cell);
+        for (let i = 0; i < span; i++) above.set(col + i, cell);
+        col += span;
       }
       rows.push(row);
-    }
-    return { type: 'table', rows };
+    });
+    return header ? { type: 'table', rows, header } : { type: 'table', rows };
   }
+
 }
 
 const FIELD_OF: Record<string, string> = { PAGE: '{page}', NUMPAGES: '{pages}', SECTIONPAGES: '{pages}', TITLE: '{title}', DATE: '{date}', CREATEDATE: '{date}', SAVEDATE: '{date}' };

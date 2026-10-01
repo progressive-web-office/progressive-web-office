@@ -24,9 +24,10 @@ import {
   type ParagraphLayout,
   type RichDocument,
   type Run,
-  type TableCell,
+  type Table,
   type TextRun,
   type WriteOptions,
+  tableGrid,
 } from './model';
 import { MATHML_NS } from '../math/convert';
 import { cellsAsBlocks } from './code-cells';
@@ -143,7 +144,7 @@ class OdtWriter {
       } else if (group.type === 'paragraph') {
         out += this.paragraph(group);
       } else if (group.type === 'table') {
-        out += this.table(group.rows);
+        out += this.table(group);
       } else if (group.type === 'toc') {
         out += this.toc(group.levels ?? 3);
       } else {
@@ -293,21 +294,32 @@ class OdtWriter {
     );
   }
 
-  private table(rows: TableCell[][]): string {
-    const cols = Math.max(1, ...rows.map((r) => r.length));
+  /** Merged cells span with covered cells under them; the header row repeats (DOC-025). */
+  private table(t: Table): string {
+    const { cols, slots } = tableGrid(t.rows);
     const name = `Table${++this.tableCount}`;
     let out = `<table:table table:name="${name}" table:style-name="Table"><table:table-column table:style-name="TableColumn" table:number-columns-repeated="${cols}"/>`;
-    for (const row of rows) {
-      out += '<table:table-row>';
+    slots.forEach((row, r) => {
+      let tr = '<table:table-row>';
       for (let c = 0; c < cols; c++) {
-        const paras = row[c]?.blocks ?? [];
-        const inner = paras.map((p) => this.paragraph(p)).join('') || '<text:p text:style-name="Standard"/>';
-        out += `<table:table-cell table:style-name="TableCell" office:value-type="string">${inner}</table:table-cell>`;
+        const slot = row[c];
+        if (slot && (slot.row !== r || slot.col !== c)) {
+          tr += '<table:covered-table-cell/>';
+          continue;
+        }
+        const cell = slot?.cell;
+        const spans =
+          ((cell?.colSpan ?? 1) > 1 ? ` table:number-columns-spanned="${cell!.colSpan}"` : '') +
+          ((cell?.rowSpan ?? 1) > 1 ? ` table:number-rows-spanned="${cell!.rowSpan}"` : '');
+        const inner = (cell?.blocks ?? []).map((p) => this.paragraph(p)).join('') || '<text:p text:style-name="Standard"/>';
+        tr += `<table:table-cell table:style-name="TableCell" office:value-type="string"${spans}>${inner}</table:table-cell>`;
       }
-      out += '</table:table-row>';
-    }
+      tr += '</table:table-row>';
+      out += r === 0 && t.header ? `<table:table-header-rows>${tr}</table:table-header-rows>` : tr;
+    });
     return `${out}</table:table>`;
   }
+
 }
 
 const TABLE_STYLES =

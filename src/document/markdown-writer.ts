@@ -19,9 +19,11 @@ import {
   type Paragraph,
   type RichDocument,
   type Run,
+  type Table,
   type TableCell,
   type TextRun,
   type CodeCellRun,
+  tableGrid,
 } from './model';
 
 export interface MarkdownWriteOptions {
@@ -104,7 +106,7 @@ class MarkdownWriter {
           for (const list of nestLists(segment)) parts.push(this.list(list, ''));
         }
       } else if (group.type === 'table') {
-        parts.push(this.table(group.rows));
+        parts.push(this.table(group));
       } else if (group.type === 'toc') {
         // GitLab, Typora, MkDocs and others render a table of contents here (DOC-023).
         parts.push('[[_TOC_]]');
@@ -165,17 +167,24 @@ class MarkdownWriter {
     return lines.join('\n');
   }
 
-  private table(rows: TableCell[][]): string {
-    const cols = Math.max(1, ...rows.map((r) => r.length));
+  /** GFM tables have no merged cells: a merged cell keeps its text in its first slot (DOC-025). */
+  private table(t: Table): string {
+    const { cols, slots } = tableGrid(t.rows);
     const cell = (c: TableCell | undefined): string =>
       (c?.blocks ?? [])
         .map((p) => this.inline(p.runs, false).replace(/\n/g, '<br>'))
         .join('<br>')
         .replace(/\|/g, '\\|') || ' ';
-    const line = (r: TableCell[]): string => `| ${Array.from({ length: cols }, (_, i) => cell(r[i])).join(' | ')} |`;
-    const [head = [], ...body] = rows;
-    return [line(head), `|${' --- |'.repeat(cols)}`, ...body.map(line)].join('\n');
+    const line = (r: number): string =>
+      `| ${Array.from({ length: cols }, (_, c) => {
+        const slot = slots[r]![c];
+        return cell(slot && slot.row === r && slot.col === c ? slot.cell : undefined);
+      }).join(' | ')} |`;
+    const lines = slots.map((_, r) => line(r));
+    const [head = line(0), ...body] = lines;
+    return [head, `|${' --- |'.repeat(cols)}`, ...body].join('\n');
   }
+
 
   /** Render runs with a minimal, always-valid nesting of emphasis markers. */
   private inline(runs: Run[], escapeStarts: boolean): string {

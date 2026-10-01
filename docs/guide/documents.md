@@ -28,7 +28,7 @@ and any ZIP archive of Markdown files.
 | Line break in the same paragraph | | <kbd>Shift</kbd>+<kbd>Enter</kbd> |
 | Link | 🔗 | <kbd>Ctrl</kbd>+<kbd>K</kbd> |
 | Image | 🖼 (or paste / drop an image) | |
-| Table | ▦ (3×3) | |
+| Table | ▦ (3×3), then the table bar (below) | <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> to move between cells |
 | Horizontal rule | ― | |
 | Page break | ⤓ | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> |
 | Footnote | ¹ | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> |
@@ -67,6 +67,29 @@ recomputes it, with page numbers, when the file is opened (it may ask to
 update the fields), and LibreOffice updates it with *Tools › Update*. In
 Markdown it is written `[[_TOC_]]` (shown as a table of contents by GitLab,
 Typora and others) and in LaTeX `\tableofcontents`.
+
+### Tables
+
+▦ inserts a 3×3 table. While the cursor is in a table, a **Table** bar
+appears under the toolbar:
+
+| Button | Action |
+|--------|--------|
+| ⬆+ ⬇+ | insert a row above / below |
+| ⬅+ ➡+ | insert a column on the left / right |
+| ⬌− ⬍− | delete the row / the column |
+| ⊞ | merge the selected cells (select them with <kbd>Shift</kbd>+click or by dragging) |
+| ⊟ | split a merged cell |
+| H | make the first row a header row (bold, shaded, repeated on each printed page) |
+| 🗑 | delete the table |
+
+Buttons that do not apply (merging a single cell, for example) are greyed
+out. Merged cells and the header row are kept in Word (`gridSpan`,
+`vMerge`, repeated header row), OpenDocument (spanned and covered cells,
+header rows) and LaTeX (`\multicolumn`, `\multirow`, a double rule under the
+header). Markdown tables cannot merge cells: a merged cell keeps its text in
+its first position and the others are left empty; their first row is always
+the header.
 
 ### Header and footer
 
@@ -124,17 +147,23 @@ accepted.
 | Headings 1–6, paragraphs | ✅ | ✅ | ✅ | ✅ |
 | Bold, italic, strikethrough, inline code | ✅ | ✅ | ✅ | ✅ |
 | Underline | ✅ | ✅ | ✅ (`<u>`) | ✅ (`<u>`) |
-| Alignment | ✅ | ✅ | ❌ | ❌ |
+| Fonts, sizes, colours, highlight | ✅ | ✅ | ❌ | ❌ |
+| Alignment, indents, paragraph and line spacing | ✅ | ✅ | ❌ | ❌ |
 | Nested bulleted / numbered lists | ✅ | ✅ | ✅ | ✅ |
 | Tables | ✅ | ✅ | ✅ (GFM) | ✅ (GFM) |
+| Merged cells, header row | ✅ | ✅ | header row only | header row only |
 | Links | ✅ | ✅ | ✅ | ✅ |
 | Images | ✅ | ✅ | ✅ (`data:` URI) | ✅ (`assets/images/`) |
 | Quotes, code blocks, rules | ✅ | ✅ | ✅ | ✅ |
+| Page breaks | ✅ | ✅ | ✅ (`\newpage`) | ✅ (`\newpage`) |
+| Footnotes | ✅ | ✅ | ✅ (`[^1]`) | ✅ (`[^1]`) |
+| Table of contents | ✅ (field) | ✅ | ✅ (`[[_TOC_]]`) | ✅ (`[[_TOC_]]`) |
+| Header and footer | ✅ | ✅ | ✅ (front matter) | ✅ (front matter) |
 
-Other features of Word/LibreOffice files (headers and footers, footnotes,
-comments, tracked changes, fonts and colours, page layout) are **not**
-preserved when saving. Tracked insertions are accepted and deletions are
-dropped when a `.docx` is opened.
+Other features of Word/LibreOffice files (comments, tracked changes, named
+styles beyond headings, sections and page layout) are **not** preserved
+when saving. Tracked insertions are accepted and deletions are dropped when
+a `.docx` is opened.
 
 ## Document properties
 

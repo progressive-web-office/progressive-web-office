@@ -27,6 +27,7 @@ import {
   type ParagraphLayout,
   type ParagraphStyle,
   type Run,
+  type Table,
   type TableCell,
   type TextFormat,
 } from './model';
@@ -62,7 +63,7 @@ export function blocksToDom(
     if (group.type === 'list') {
       for (const list of nestLists(group.items)) frag.append(listToDom(list, doc, resolveImage));
     } else if (group.type === 'table') {
-      frag.append(tableToDom(group.rows, doc, resolveImage));
+      frag.append(tableToDom(group, doc, resolveImage));
     } else if (group.type === 'toc') {
       frag.append(tocElement(blocks, group.levels ?? 3, doc));
     } else if (group.type === 'rule') {
@@ -335,18 +336,25 @@ function listToDom(list: ListNode, doc: Document, resolveImage: (key: string) =>
   return el;
 }
 
-function tableToDom(rows: TableCell[][], doc: Document, resolveImage: (key: string) => ImageInfo | undefined): HTMLElement {
+function tableToDom(t: Table, doc: Document, resolveImage: (key: string) => ImageInfo | undefined): HTMLElement {
   const table = doc.createElement('table');
   const body = doc.createElement('tbody');
-  for (const row of rows) {
+  t.rows.forEach((row, r) => {
     const tr = doc.createElement('tr');
     for (const cell of row) {
-      const td = doc.createElement('td');
+      const td = doc.createElement(r === 0 && t.header ? 'th' : 'td');
+      if ((cell.colSpan ?? 1) > 1) td.colSpan = cell.colSpan!;
+      if ((cell.rowSpan ?? 1) > 1) td.rowSpan = cell.rowSpan!;
       td.append(blocksToDom(cell.blocks.length ? cell.blocks : [{ type: 'paragraph', style: 'normal', runs: [] }], doc, resolveImage));
       tr.append(td);
     }
-    body.append(tr);
-  }
+    // The header row repeats on each printed page.
+    if (r === 0 && t.header) {
+      const head = doc.createElement('thead');
+      head.append(tr);
+      table.append(head);
+    } else body.append(tr);
+  });
   table.append(body);
   return table;
 }
@@ -548,11 +556,20 @@ function tableFromDom(
       const inner = domToBlocks(cell, lookupImage, opts).flatMap((b): Paragraph[] =>
         b.type === 'paragraph' ? [b] : b.type === 'table' ? b.rows.flat().flatMap((c) => c.blocks) : [],
       );
-      row.push({ blocks: inner.length ? inner : [{ type: 'paragraph', style: 'normal', runs: [] }] });
+      const out: TableCell = { blocks: inner.length ? inner : [{ type: 'paragraph', style: 'normal', runs: [] }] };
+      const colSpan = Number(cell.getAttribute('colspan') ?? 1);
+      const rowSpan = Number(cell.getAttribute('rowspan') ?? 1);
+      if (colSpan > 1) out.colSpan = Math.min(colSpan, 64);
+      if (rowSpan > 1) out.rowSpan = Math.min(rowSpan, 1000);
+      row.push(out);
     }
     if (row.length) rows.push(row);
   }
-  return { type: 'table', rows };
+  // A first row made only of <th> cells is the header row (DOC-025).
+  const first = Array.from(table.querySelectorAll('tr')).find((tr) => tr.closest('table') === table);
+  const cells = first ? Array.from(first.children).filter((c) => c.localName === 'td' || c.localName === 'th') : [];
+  const header = cells.length > 0 && cells.every((c) => c.localName === 'th');
+  return header ? { type: 'table', rows, header } : { type: 'table', rows };
 }
 
 function alignOf(el: HTMLElement): Align | undefined {

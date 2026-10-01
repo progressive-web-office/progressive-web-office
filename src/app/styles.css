@@ -216,7 +216,11 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 .doc-page code { padding: 0 3px; border-radius: 3px; }
 .doc-page table { border-collapse: collapse; width: 100%; margin: 0 0 8pt; }
 .doc-page td, .doc-page th { border: 1px solid #8a94a3; padding: 4px 6px; vertical-align: top; }
-.doc-page td p { margin: 0; }
+.doc-page td p, .doc-page th p { margin: 0; }
+.doc-page th { background: #eef1f5; font-weight: 600; text-align: left; }
+.toolbar.table-bar { position: static; padding: 4px 12px; background: var(--bg); }
+.toolbar.table-bar[hidden] { display: none; }
+.table-bar-label { font-weight: 600; color: var(--muted); margin-right: 4px; }
 .doc-page img { max-width: 100%; height: auto; }
 .doc-page a { color: #0563c1; }
 .doc-page hr { border: 0; border-top: 1px solid #8a94a3; margin: 12pt 0; }

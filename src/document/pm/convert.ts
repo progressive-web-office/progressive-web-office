@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { LAYOUT_KEYS, normalizeRuns, type Block, type Paragraph, type Run, type Table, type TextFormat } from '../model';
+import { LAYOUT_KEYS, normalizeRuns, type Block, type Paragraph, type Run, type Table, type TableCell, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -77,10 +77,15 @@ export function paragraphToPm(p: Paragraph): PmNode {
 }
 
 function tableToPm(t: Table): PmNode {
-  const rows = t.rows.map((row) =>
+  const rows = t.rows.map((row, r) =>
     schema.nodes.table_row!.create(
       null,
-      row.map((cell) => schema.nodes.table_cell!.create(null, (cell.blocks.length ? cell.blocks : [{ type: 'paragraph', style: 'normal', runs: [] } as Paragraph]).map(paragraphToPm))),
+      row.map((cell) =>
+        (r === 0 && t.header ? schema.nodes.table_header! : schema.nodes.table_cell!).create(
+          { colspan: Math.max(1, cell.colSpan ?? 1), rowspan: Math.max(1, cell.rowSpan ?? 1) },
+          (cell.blocks.length ? cell.blocks : [{ type: 'paragraph', style: 'normal', runs: [] } as Paragraph]).map(paragraphToPm),
+        ),
+      ),
     ),
   );
   return schema.nodes.table!.create(null, rows);
@@ -157,11 +162,17 @@ function pmToBlock(node: PmNode): Block {
       row.forEach((cell) => {
         const blocks: Paragraph[] = [];
         cell.forEach((p) => blocks.push(pmToParagraph(p)));
-        cells.push({ blocks });
+        const out: TableCell = { blocks };
+        if ((cell.attrs.colspan as number) > 1) out.colSpan = cell.attrs.colspan as number;
+        if ((cell.attrs.rowspan as number) > 1) out.rowSpan = cell.attrs.rowspan as number;
+        cells.push(out);
       });
       rows.push(cells);
     });
-    return { type: 'table', rows };
+    // The header row: every cell of the first row is a header cell.
+    const first = node.firstChild;
+    const header = !!first && first.childCount > 0 && Array.from({ length: first.childCount }, (_, i) => first.child(i)).every((c) => c.type.name === 'table_header');
+    return header ? { type: 'table', rows, header } : { type: 'table', rows };
   }
   if (node.type.name === 'toc') return node.attrs.levels === 3 ? { type: 'toc' } : { type: 'toc', levels: node.attrs.levels as number };
   if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : { type: 'rule' };

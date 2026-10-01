@@ -426,32 +426,40 @@ class OdtReader {
     out.push(run);
   }
 
+  /** Table cells with their spans and header rows (DOC-025); covered cells are skipped. */
   private readTable(table: Element): Block {
     const rows: TableCell[][] = [];
-    const visit = (el: Element): void => {
+    let header = false;
+    const visit = (el: Element, inHeader: boolean): void => {
       for (const c of children(el)) {
         if (c.localName === 'table-row') {
+          if (inHeader && rows.length === 0) header = true;
           const row: TableCell[] = [];
           for (const cell of children(c)) {
-            if (cell.localName !== 'table-cell' && cell.localName !== 'covered-table-cell') continue;
+            if (cell.localName !== 'table-cell') continue;
             const repeat = Math.min(64, Number(attr(cell, 'number-columns-repeated') ?? 1) || 1);
+            const colSpan = Number(attr(cell, 'number-columns-spanned') ?? 1) || 1;
+            const rowSpan = Number(attr(cell, 'number-rows-spanned') ?? 1) || 1;
             const blocks = this.readBlocks(cell, undefined, 0).flatMap((b): Paragraph[] =>
               b.type === 'paragraph' ? [b] : b.type === 'table' ? b.rows.flat().flatMap((x) => x.blocks) : [],
             );
             for (let i = 0; i < repeat; i++) {
-              row.push({ blocks: blocks.length ? structuredClone(blocks) : [{ type: 'paragraph', style: 'normal', runs: [] }] });
+              const out: TableCell = { blocks: blocks.length ? structuredClone(blocks) : [{ type: 'paragraph', style: 'normal', runs: [] }] };
+              if (colSpan > 1) out.colSpan = colSpan;
+              if (rowSpan > 1) out.rowSpan = rowSpan;
+              row.push(out);
             }
           }
-          // Drop trailing repeated empty cells beyond the content (LibreOffice padding).
           rows.push(row);
         } else if (['table-header-rows', 'table-rows', 'table-row-group'].includes(c.localName)) {
-          visit(c);
+          visit(c, inHeader || c.localName === 'table-header-rows');
         }
       }
     };
-    visit(table);
-    return { type: 'table', rows };
+    visit(table, false);
+    return header ? { type: 'table', rows, header } : { type: 'table', rows };
   }
+
 }
 
 export function readOdt(bytes: Uint8Array): RichDocument {

@@ -28,6 +28,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   with page number, page count, title and date fields; shown around the
   page, printed on every page (CSS page margin boxes), kept in DOCX, ODT,
   LaTeX (fancyhdr) and Markdown front matter, shared in collaboration.
+- Tables in text documents: a table bar (shown while the cursor is in a
+  table) inserts and deletes rows and columns, merges and splits cells,
+  toggles a header row (repeated on each printed page) and deletes the
+  table. Merged cells and header rows are kept in DOCX, ODT, HTML and LaTeX
+  (`\multicolumn` / `\multirow`); Markdown tables are read with their header
+  row.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

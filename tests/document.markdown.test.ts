@@ -41,6 +41,7 @@ describe('MD-001 Markdown reader', () => {
       { type: 'rule' },
       {
         type: 'table',
+        header: true,
         rows: [
           [{ blocks: [paragraph('h')] }, { blocks: [paragraph('i')] }],
           [{ blocks: [paragraph('1')] }, { blocks: [{ type: 'paragraph', style: 'normal', runs: [{ text: '2', bold: true }] }] }],

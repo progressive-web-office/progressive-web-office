@@ -117,11 +117,45 @@ export const LAYOUT_KEYS: (keyof ParagraphLayout)[] = ['indent', 'firstLine', 's
 
 export interface TableCell {
   blocks: Paragraph[];
+  /** Merged cells (DOC-025): covered cells are left out of the rows, as in HTML. */
+  colSpan?: number;
+  rowSpan?: number;
 }
 
 export interface Table {
   type: 'table';
   rows: TableCell[][];
+  /** The first row is a header row, repeated on each page (DOC-025). */
+  header?: boolean;
+}
+
+/** A position of a table's grid: the cell starting there, or the cell covering it. */
+export interface GridSlot {
+  cell: TableCell;
+  /** Where the cell starts. */
+  row: number;
+  col: number;
+}
+
+/**
+ * Place the cells of a table on its grid, like an HTML table: each row's cells
+ * fill the columns not covered by row spans from above (DOC-025).
+ */
+export function tableGrid(rows: TableCell[][]): { cols: number; slots: (GridSlot | undefined)[][] } {
+  const slots: (GridSlot | undefined)[][] = rows.map(() => []);
+  let cols = 0;
+  rows.forEach((row, r) => {
+    let c = 0;
+    for (const cell of row) {
+      while (slots[r]![c]) c++;
+      const cs = Math.max(1, cell.colSpan ?? 1);
+      const rs = Math.max(1, Math.min(cell.rowSpan ?? 1, rows.length - r));
+      for (let dr = 0; dr < rs; dr++) for (let dc = 0; dc < cs; dc++) slots[r + dr]![c + dc] = { cell, row: r, col: c };
+      c += cs;
+      cols = Math.max(cols, c);
+    }
+  });
+  return { cols: Math.max(1, cols), slots };
 }
 
 export interface Rule {
