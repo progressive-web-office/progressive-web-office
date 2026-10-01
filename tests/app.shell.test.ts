@@ -55,7 +55,7 @@ describe('FILE-007 / FILE-001 documents in the shell', () => {
     const app = new App(root);
     await app.newDocument('document');
     expect(root.querySelector('.doc-page[contenteditable="true"]')).not.toBeNull();
-    expect(root.querySelector('.doc-name')?.textContent).toBe('Untitled document.docx');
+    expect(root.querySelector('.doc-name')?.textContent).toBe('Untitled document.odt'); // FILE-016: open formats by default
   });
 
   it('opens a Markdown file and shows its content', async () => {

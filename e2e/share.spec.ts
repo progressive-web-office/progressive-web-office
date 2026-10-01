@@ -75,7 +75,7 @@ test('binary documents are handed to QRShare without a download (SHARE-007)', as
   const qrshare = await popup;
   expect(qrshare.url()).toBe('https://s-celles.github.io/QRShare/#/send?handoff=1&policy=prefer-airgap');
   // The stand-in QRShare received the workbook from PWO's origin.
-  await expect(qrshare).toHaveTitle(new RegExp(`^got Untitled spreadsheet\\.xlsx \\d+ from ${new URL(page.url()).origin}$`));
+  await expect(qrshare).toHaveTitle(new RegExp(`^got Untitled spreadsheet\\.ods \\d+ from ${new URL(page.url()).origin}$`));
   expect(downloaded).toBe(false);
   expect(errors).toEqual([]);
 });
@@ -94,7 +94,7 @@ test('an older QRShare gets the file downloaded and "Prepare a transfer" right a
   const popup = context.waitForEvent('page');
   const start = Date.now();
   await dialog.getByRole('button', { name: 'Send', exact: true }).click();
-  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
+  expect((await download).suggestedFilename()).toMatch(/\.ods$/);
   expect((await popup).url()).toBe('https://s-celles.github.io/QRShare/#/create/url');
   expect(Date.now() - start).toBeLessThan(5000);
   await expect(page.getByRole('alert')).toContainText('This QRShare cannot receive files from apps yet');
@@ -111,7 +111,7 @@ test('falls back after a delay when QRShare cannot be checked and does not answe
   const popup = context.waitForEvent('page');
   await page.getByRole('dialog', { name: 'Send to another device' }).getByRole('button', { name: 'Send', exact: true }).click();
   const qrshare = await popup;
-  expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
+  expect((await download).suggestedFilename()).toMatch(/\.ods$/);
   await expect(qrshare).toHaveURL('https://s-celles.github.io/QRShare/#/create/url');
   await expect(page.getByRole('alert')).toContainText('QRShare did not answer');
 });

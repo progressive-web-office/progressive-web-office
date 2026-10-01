@@ -62,7 +62,7 @@ test('opens a Grist document as a spreadsheet and sends the changes back (GRIST-
   await dialog.getByRole('button', { name: 'Add account' }).click();
   await dialog.getByRole('button', { name: 'Notes 2nde' }).click();
 
-  await expect(page.locator('.doc-name')).toHaveText('Notes 2nde.xlsx');
+  await expect(page.locator('.doc-name')).toHaveText('Notes 2nde.ods');
   await expect(page.locator('.doc-source')).toHaveText('Grist · grist.example.org');
   const cell = (ref: string) => page.locator(`td[data-r="${Number(ref.slice(1)) - 1}"][data-c="${ref.charCodeAt(0) - 65}"]`);
   await expect(cell('B2')).toHaveText('Ada');

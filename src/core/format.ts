@@ -54,10 +54,12 @@ export function formatKind(format: DocumentFormat): DocumentKind {
 }
 
 /** Formats a document of the given kind can be saved to. */
-export function saveFormatsFor(kind: DocumentKind): DocumentFormat[] {
-  if (kind === 'document') return ['docx', 'odt', 'md', 'mdz', 'tex', 'texzip'];
-  if (kind === 'spreadsheet') return ['xlsx', 'ods', 'csv'];
-  if (kind === 'presentation') return ['pptx', 'odp'];
+/** Formats a document can be saved in, the preferred family first (FILE-016). */
+export function saveFormatsFor(kind: DocumentKind, family: 'open' | 'microsoft' = 'open'): DocumentFormat[] {
+  const pair = (open: DocumentFormat, ms: DocumentFormat): DocumentFormat[] => (family === 'open' ? [open, ms] : [ms, open]);
+  if (kind === 'document') return [...pair('odt', 'docx'), 'md', 'mdz', 'tex', 'texzip'];
+  if (kind === 'spreadsheet') return [...pair('ods', 'xlsx'), 'csv'];
+  if (kind === 'presentation') return pair('odp', 'pptx');
   return ['pdf'];
 }
 

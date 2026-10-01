@@ -97,6 +97,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- Open formats first: new documents, spreadsheets and presentations are
+  created as OpenDocument files (`.odt`, `.ods`, `.odp`) instead of
+  Microsoft Office ones, and *Save as* lists the open format first. "New
+  files in" on the start screen switches to Microsoft Office formats; an
+  opened file still keeps its format.
+
 - PDF forms: the little-noticed **Flatten** checkbox of the PDF toolbar is
   replaced by the "Flattened PDF" entry of **Save as…**.
 - Recent files show the date and time they were last opened, in the interface

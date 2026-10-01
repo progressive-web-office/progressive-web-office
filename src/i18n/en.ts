@@ -9,7 +9,7 @@ export const en = {
   'start.newSpreadsheet': 'New spreadsheet',
   'start.newPresentation': 'New presentation',
   'start.open': 'Open file…',
-  'start.tip': 'Tip: drop a .docx, .odt, .md, .mdz, .tex, .zip, .xlsx, .ods, .csv, .pptx, .odp or .pdf file anywhere in this window.',
+  'start.tip': 'Tip: drop an .odt, .ods, .odp, .md, .mdz, .tex, .zip, .csv, .docx, .xlsx, .pptx or .pdf file anywhere in this window.',
   'start.recent': 'Recent files',
   'start.drop': 'Drop the file to open it',
   'kind.document': 'document',
@@ -556,6 +556,10 @@ export const en = {
   'collab.bigQrTitle': 'Show the QR code full screen, to scan from across a room or on a projector',
   'collab.anyoneWithLink': 'Anyone with the link can edit: share it only with the people you want to work with.',
   'collab.privacyTitle': 'Where does the document go?',
+  'formats.label': 'New files in',
+  'formats.title': 'Format of new documents, and the one offered first when saving',
+  'formats.open': 'OpenDocument — open standard (.odt, .ods, .odp)',
+  'formats.microsoft': 'Microsoft Office (.docx, .xlsx, .pptx)',
 } as const;
 
 export type MessageKey = keyof typeof en;

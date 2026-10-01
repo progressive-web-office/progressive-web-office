@@ -81,7 +81,7 @@ test('binary documents are handed to QRShare, and receiving opens its QR receive
   const qr = await popup;
 
   // QRShare with the app handoff shows the file; an older one gets the fallback.
-  const fileSummary = qr.getByText(/^File: Untitled spreadsheet\.xlsx \(/);
+  const fileSummary = qr.getByText(/^File: Untitled spreadsheet\.ods \(/);
   const prepare = qr.getByRole('heading', { name: 'Prepare a transfer' });
   await expect(fileSummary.or(prepare)).toBeVisible({ timeout: 30_000 });
   if (await fileSummary.isVisible()) {

@@ -88,7 +88,7 @@ export async function openView(
 }
 
 /** Create a view for a new, empty document of the given kind. */
-export async function newView(kind: DocumentKind, ctx: ViewContext): Promise<EditorView> {
+export async function newView(kind: DocumentKind, ctx: ViewContext, format?: DocumentFormat): Promise<EditorView> {
   switch (kind) {
     case 'document': {
       const [{ DocumentEditor }, { emptyDocument }] = await Promise.all([import('../document/editor'), import('../document/model')]);
@@ -96,11 +96,11 @@ export async function newView(kind: DocumentKind, ctx: ViewContext): Promise<Edi
     }
     case 'spreadsheet': {
       const [{ SheetEditor }, { newWorkbook }] = await Promise.all([import('../sheet/grid'), import('../sheet/model')]);
-      return new SheetEditor(newWorkbook(), ctx, 'xlsx');
+      return new SheetEditor(newWorkbook(), ctx, format === 'xlsx' ? 'xlsx' : 'ods');
     }
     case 'presentation': {
       const [{ SlideEditor }, { emptyPresentation }] = await Promise.all([import('../slides/editor'), import('../slides/model')]);
-      return new SlideEditor(emptyPresentation(), ctx, 'pptx');
+      return new SlideEditor(emptyPresentation(), ctx, format === 'pptx' ? 'pptx' : 'odp');
     }
     default:
       throw new Error(`Creating a ${kind} is not available yet.`);

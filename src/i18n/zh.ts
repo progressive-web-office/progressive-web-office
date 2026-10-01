@@ -11,7 +11,7 @@ export const zh: Record<MessageKey, string> = {
   'start.newSpreadsheet': '新建电子表格',
   'start.newPresentation': '新建演示文稿',
   'start.open': '打开文件…',
-  'start.tip': '提示：可将 .docx、.odt、.md、.mdz、.tex、.zip、.xlsx、.ods、.csv、.pptx、.odp 或 .pdf 文件拖放到此窗口任意位置。',
+  'start.tip': '提示：可将 .odt、.ods、.odp、.md、.mdz、.tex、.zip、.csv、.docx、.xlsx、.pptx 或 .pdf 文件拖放到此窗口任意位置。',
   'start.recent': '最近的文件',
   'start.drop': '松开以打开文件',
   'kind.document': '文档',
@@ -558,4 +558,8 @@ export const zh: Record<MessageKey, string> = {
   'collab.bigQrTitle': '全屏显示二维码，便于在房间另一端或投影仪上扫描',
   'collab.anyoneWithLink': '拥有链接的任何人都可以编辑：只与你想合作的人分享。',
   'collab.privacyTitle': '文档会去哪里？',
+  'formats.label': '新文件格式',
+  'formats.title': '新文档的格式，以及保存时优先提供的格式',
+  'formats.open': 'OpenDocument — 开放标准（.odt、.ods、.odp）',
+  'formats.microsoft': 'Microsoft Office（.docx、.xlsx、.pptx）',
 };

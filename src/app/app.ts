@@ -11,6 +11,7 @@ import {
   type DocumentFormat,
   type DocumentKind,
 } from '../core/format';
+import { defaultFormat, FORMAT_FAMILIES, loadFormatFamily, saveFormatFamily, type FormatFamily } from '../core/format-preference';
 import { pickFile, readFileBytes, replaceExtension, saveFile } from '../storage/file-io';
 import type { AssistantPanel } from '../ai/panel';
 import type { GitAccount } from '../git/accounts';
@@ -53,11 +54,6 @@ interface GristSource {
   snapshot: import('../grist/workbook').GristSnapshot;
 }
 
-const DEFAULT_FORMAT: Record<Exclude<DocumentKind, 'pdf'>, DocumentFormat> = {
-  document: 'docx',
-  spreadsheet: 'xlsx',
-  presentation: 'pptx',
-};
 
 /** Storage for the autosaved draft (FILE-011). */
 export interface DraftStore {
@@ -180,7 +176,7 @@ export class App {
     if (!target) {
       const chosen = await browseCloud(this.root, 'save', doc.name);
       if (!chosen) return;
-      const formats = saveFormatsFor(doc.kind);
+      const formats = saveFormatsFor(doc.kind, loadFormatFamily());
       const ext = chosen.path.slice(chosen.path.lastIndexOf('.') + 1).toLowerCase();
       const match = formats.find((f) => fileExtension(f) === ext);
       if (!match) {
@@ -247,8 +243,9 @@ export class App {
 
   private async showGristDocument(source: GristSource): Promise<void> {
     const [{ gristToWorkbook }, { writeWorkbook }] = await Promise.all([import('../grist/workbook'), import('../sheet/io')]);
-    const bytes = writeWorkbook(gristToWorkbook(source.snapshot), 'xlsx');
-    if (!(await this.openBytes(`${source.doc.name}.xlsx`, bytes))) return;
+    const format = defaultFormat('spreadsheet') as 'ods' | 'xlsx';
+    const bytes = writeWorkbook(gristToWorkbook(source.snapshot), format);
+    if (!(await this.openBytes(`${source.doc.name}.${format}`, bytes))) return;
     if (this.current) this.current.grist = source;
     this.dirty = false;
     this.renderHeader();
@@ -307,7 +304,7 @@ export class App {
     } else {
       const chosen = await browseRepository(this.root, 'save', doc.name);
       if (!chosen) return;
-      const formats = saveFormatsFor(doc.kind);
+      const formats = saveFormatsFor(doc.kind, loadFormatFamily());
       const ext = chosen.path.slice(chosen.path.lastIndexOf('.') + 1).toLowerCase();
       const match = formats.find((f) => fileExtension(f) === ext);
       if (!match) {
@@ -384,8 +381,8 @@ export class App {
     if (!this.confirmDiscard()) return;
     await this.withBusy(async () => {
       try {
-        const view = await newView(kind, this.viewContext());
-        const format = DEFAULT_FORMAT[kind];
+        const format = defaultFormat(kind);
+        const view = await newView(kind, this.viewContext(), format);
         this.setDocument({ name: replaceExtension(t('file.untitled', { kind: t(KIND_KEY[kind]) }), fileExtension(format)), format, kind, view });
       } catch (err) {
         this.showError((err as Error).message);
@@ -616,8 +613,8 @@ export class App {
     }
     this.leaveCollaboration();
     this.dirty = false;
-    const view = await newView(link.kind, this.viewContext());
-    const format = DEFAULT_FORMAT[link.kind];
+    const format = defaultFormat(link.kind);
+    const view = await newView(link.kind, this.viewContext(), format);
     this.setDocument({ name: replaceExtension(t('file.untitled', { kind: t(KIND_KEY[link.kind]) }), fileExtension(format)), format, kind: link.kind, view });
     await this.runCollaboration(link, false);
   }
@@ -700,7 +697,7 @@ export class App {
           button(t('grist.open'), () => void this.openFromGrist(), { className: 'card grist', title: t('grist.openTitle') }),
         ),
         h('p', { class: 'hint' }, t('start.tip')),
-        this.languagePicker(),
+        h('div', { class: 'start-prefs' }, this.languagePicker(), this.formatPicker()),
         h(
           'p',
           { class: 'source-link' },
@@ -802,7 +799,7 @@ export class App {
         'select',
         { 'aria-label': t('file.saveAsFormat'), title: t('file.saveAsTitle') },
         h('option', { value: '' }, t('file.saveAs')),
-        ...saveFormatsFor(doc.kind).map((f) => h('option', { value: f }, formatLabel(f))),
+        ...saveFormatsFor(doc.kind, loadFormatFamily()).map((f) => h('option', { value: f }, formatLabel(f))),
         ...(doc.view.saveVariants?.() ?? []).map((v) => h('option', { value: `variant:${v.id}` }, v.label)),
       );
       select.addEventListener('change', () => {
@@ -864,6 +861,14 @@ export class App {
 
   private confirmDiscard(): boolean {
     return !this.dirty || window.confirm(t('file.discardConfirm'));
+  }
+
+  /** Format of new documents: open standards by default (FILE-016). */
+  private formatPicker(): HTMLElement {
+    const labels: Record<FormatFamily, string> = { open: t('formats.open'), microsoft: t('formats.microsoft') };
+    const select = h('select', { 'aria-label': t('formats.label'), class: 'language', title: t('formats.title') }, ...FORMAT_FAMILIES.map((f) => h('option', { value: f, selected: f === loadFormatFamily() }, labels[f])));
+    select.addEventListener('change', () => saveFormatFamily(select.value as FormatFamily));
+    return h('label', { class: 'language-picker' }, `📄 ${t('formats.label')} `, select);
   }
 
   private languagePicker(): HTMLElement {

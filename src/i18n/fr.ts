@@ -11,7 +11,7 @@ export const fr: Record<MessageKey, string> = {
   'start.newSpreadsheet': 'Nouveau classeur',
   'start.newPresentation': 'Nouvelle présentation',
   'start.open': 'Ouvrir un fichier…',
-  'start.tip': 'Astuce : déposez un fichier .docx, .odt, .md, .mdz, .tex, .zip, .xlsx, .ods, .csv, .pptx, .odp ou .pdf n’importe où dans cette fenêtre.',
+  'start.tip': 'Astuce : déposez un fichier .odt, .ods, .odp, .md, .mdz, .tex, .zip, .csv, .docx, .xlsx, .pptx ou .pdf n’importe où dans cette fenêtre.',
   'start.recent': 'Fichiers récents',
   'start.drop': 'Déposez le fichier pour l’ouvrir',
   'kind.document': 'document',
@@ -558,4 +558,8 @@ export const fr: Record<MessageKey, string> = {
   'collab.bigQrTitle': 'Afficher le QR code en plein écran, pour le scanner de loin ou au vidéoprojecteur',
   'collab.anyoneWithLink': 'Toute personne ayant le lien peut modifier : ne le partagez qu’avec les personnes avec qui vous voulez travailler.',
   'collab.privacyTitle': 'Où va le document ?',
+  'formats.label': 'Nouveaux fichiers en',
+  'formats.title': 'Format des nouveaux documents, et celui proposé en premier à l’enregistrement',
+  'formats.open': 'OpenDocument — norme ouverte (.odt, .ods, .odp)',
+  'formats.microsoft': 'Microsoft Office (.docx, .xlsx, .pptx)',
 };

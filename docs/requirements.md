@@ -61,6 +61,7 @@ spreadsheets (Excel `.xlsx`, OpenDocument `.ods`, `.csv`), presentations
 | FILE-010 | S | 0.0.2 | While a document has unsaved modifications, the system shall show a modified indicator and warn before the page is closed. |
 | FILE-011 | C | 0.0.6 | The system shall autosave a draft of the open document to browser storage every 30 seconds while it has unsaved modifications. |
 | FILE-012 | M | 0.0.1 | If a file larger than 50 MB is opened, then the system shall refuse it with an explanatory message. |
+| FILE-016 | S | 0.0.14 | The system shall prefer open standards: new documents, spreadsheets and presentations shall be created in OpenDocument formats (`.odt`, `.ods`, `.odp`) by default, and the open format shall be offered first when saving; the user shall be able to choose Microsoft Office formats instead, and the choice shall persist. Opening and saving every supported format shall remain available. |
 
 ## 4. Word processing (DOC)
 

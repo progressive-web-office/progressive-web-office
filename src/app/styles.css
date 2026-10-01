@@ -352,6 +352,7 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .equation-field { display: block; width: 100%; font-size: 1.6rem; padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; }
 .equation-label { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .equation-source { flex: 1; font-family: ui-monospace, monospace; padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; }
+.start-prefs { display: flex; flex-wrap: wrap; gap: 0 20px; }
 .language-picker { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 0.9rem; margin: 4px 0 16px; }
 .language-picker select { min-height: 28px; }
 .source-link { margin: 0 0 16px; font-size: 0.85rem; }
@@ -619,3 +620,5 @@ td.peer::after {
 .about-links { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; padding: 0; margin: 16px 0 8px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .about-dialog .dialog-actions .hint { margin-right: auto; }
+
+.source-link button.link { margin: 0; padding: 0; min-height: 0; font: inherit; color: inherit; }
