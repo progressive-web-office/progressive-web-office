@@ -13,6 +13,7 @@ import {
   isTextRun,
   nestLists,
   normalizeRuns,
+  MONO_FONT,
   type Align,
   type Block,
   type CodeCellRun,
@@ -21,6 +22,7 @@ import {
   type ListInfo,
   type ListNode,
   type Paragraph,
+  type ParagraphLayout,
   type ParagraphStyle,
   type Run,
   type TableCell,
@@ -79,9 +81,27 @@ function tagFor(style: ParagraphStyle): string {
   return style;
 }
 
+/** A CSS font-family value for a font name, with a generic fallback. */
+export function cssFontFamily(font: string): string {
+  const generic = /mono|courier|consol/i.test(font) ? 'monospace' : /serif|times|georgia|garamond|cambria|book/i.test(font) && !/sans/i.test(font) ? 'serif' : 'sans-serif';
+  return `"${font.replace(/["\\]/g, '')}", ${generic}`;
+}
+
+/** Paragraph spacing as CSS (DOC-020). */
+export function layoutStyle(p: ParagraphLayout): Partial<CSSStyleDeclaration> {
+  const css: Partial<CSSStyleDeclaration> = {};
+  if (p.indent) css.marginLeft = `${p.indent}pt`;
+  if (p.firstLine) css.textIndent = `${p.firstLine}pt`;
+  if (p.spaceBefore !== undefined) css.marginTop = `${p.spaceBefore}pt`;
+  if (p.spaceAfter !== undefined) css.marginBottom = `${p.spaceAfter}pt`;
+  if (p.lineHeight) css.lineHeight = String(p.lineHeight * 1.2);
+  return css;
+}
+
 function paragraphToDom(p: Paragraph, tag: string, doc: Document, resolveImage: (key: string) => ImageInfo | undefined): HTMLElement {
   const el = doc.createElement(tag);
   if (p.align && p.align !== 'left') el.style.textAlign = p.align;
+  Object.assign(el.style, layoutStyle(p));
   appendRuns(el, p.runs, doc, resolveImage);
   return el;
 }
@@ -118,10 +138,12 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
       w.append(node);
       node = w;
     };
-    if (run.size || run.color) {
+    if (run.size || run.color || run.font || run.highlight) {
       const span = doc.createElement('span');
       if (run.size) span.style.fontSize = `${run.size}pt`;
       if (run.color) span.style.color = run.color;
+      if (run.font) span.style.fontFamily = cssFontFamily(run.font);
+      if (run.highlight) span.style.backgroundColor = run.highlight;
       span.append(node);
       node = span;
     }
@@ -485,6 +507,13 @@ function inlineFormat(el: HTMLElement, parent: TextFormat): TextFormat {
     if (size) f.size = Math.round((size[2] === 'px' ? (Number(size[1]) * 72) / 96 : Number(size[1])) * 10) / 10;
     const color = cssColorToHex(style.color ?? '');
     if (color) f.color = color;
+    const highlight = cssColorToHex(style.backgroundColor ?? '');
+    if (highlight && highlight !== '#ffffff') f.highlight = highlight;
+    const family = (style.fontFamily ?? '').split(',')[0]?.trim().replace(/^["']|["']$/g, '');
+    if (family && !/^(serif|sans-serif|monospace|cursive|fantasy|system-ui|inherit|initial|-apple-system|ui-\w+)$/i.test(family)) {
+      if (MONO_FONT.test(family)) f.code = true;
+      else f.font = family;
+    }
   }
   return f;
 }

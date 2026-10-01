@@ -157,6 +157,7 @@ class DocxReader {
       if (align) para.align = align;
       const list = this.listInfo(pPr, styleId);
       if (list) para.list = list;
+      readLayout(pPr, para, !!list);
     } else if (styleId) {
       const list = this.listInfo(undefined, styleId);
       if (list) para.list = list;
@@ -259,7 +260,21 @@ class DocxReader {
       f.code = true;
     }
     const fonts = child(rPr, 'rFonts');
-    if (fonts && MONO.test(attr(fonts, 'ascii') ?? '')) f.code = true;
+    const family = fonts ? (attr(fonts, 'ascii') ?? attr(fonts, 'hAnsi')) : null;
+    if (family && MONO.test(family)) f.code = true;
+    else if (family) f.font = family;
+    const sz = child(rPr, 'sz');
+    const half = sz ? Number(attr(sz, 'val')) : NaN;
+    if (half > 0) f.size = half / 2;
+    const color = child(rPr, 'color');
+    const cv = color ? attr(color, 'val') : null;
+    if (cv && /^[0-9a-f]{6}$/i.test(cv)) f.color = `#${cv.toLowerCase()}`;
+    const shd = child(rPr, 'shd');
+    const fill = shd ? attr(shd, 'fill') : null;
+    if (fill && /^[0-9a-f]{6}$/i.test(fill) && fill.toLowerCase() !== 'ffffff') f.highlight = `#${fill.toLowerCase()}`;
+    const hl = child(rPr, 'highlight');
+    const named = hl ? HIGHLIGHTS[attr(hl, 'val') ?? ''] : undefined;
+    if (named) f.highlight = named;
     return f;
   }
 
@@ -338,6 +353,41 @@ class DocxReader {
       rows.push(row);
     }
     return { type: 'table', rows };
+  }
+}
+
+/** Word's highlight colour names. */
+const HIGHLIGHTS: Record<string, string> = {
+  yellow: '#ffff00', green: '#00ff00', cyan: '#00ffff', magenta: '#ff00ff', blue: '#0000ff', red: '#ff0000',
+  darkBlue: '#000080', darkCyan: '#008080', darkGreen: '#008000', darkMagenta: '#800080', darkRed: '#800000',
+  darkYellow: '#808000', darkGray: '#808080', lightGray: '#c0c0c0', black: '#000000',
+};
+
+const pt = (twips: string | null): number | undefined => {
+  const n = Number(twips);
+  return twips !== null && Number.isFinite(n) ? Math.round((n / 20) * 10) / 10 : undefined;
+};
+
+/** Direct paragraph spacing (DOC-020); list indents come from the numbering, not the paragraph. */
+function readLayout(pPr: Element, para: Paragraph, inList: boolean): void {
+  const spacing = child(pPr, 'spacing');
+  if (spacing) {
+    const before = pt(attr(spacing, 'before'));
+    const after = pt(attr(spacing, 'after'));
+    if (before !== undefined) para.spaceBefore = before;
+    if (after !== undefined) para.spaceAfter = after;
+    const line = Number(attr(spacing, 'line'));
+    const rule = attr(spacing, 'lineRule') ?? 'auto';
+    if (line > 0 && rule === 'auto' && line !== 240) para.lineHeight = Math.round((line / 240) * 100) / 100;
+  }
+  const ind = child(pPr, 'ind');
+  if (ind && !inList) {
+    const left = pt(attr(ind, 'left') ?? attr(ind, 'start'));
+    if (left) para.indent = left;
+    const first = pt(attr(ind, 'firstLine'));
+    const hanging = pt(attr(ind, 'hanging'));
+    if (first) para.firstLine = first;
+    else if (hanging) para.firstLine = -hanging;
   }
 }
 

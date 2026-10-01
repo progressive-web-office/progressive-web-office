@@ -10,6 +10,7 @@ import {
   type Align,
   type Block,
   type Paragraph,
+  type ParagraphLayout,
   type ParagraphStyle,
   type RichDocument,
   type Run,
@@ -27,7 +28,20 @@ interface OdfStyle {
   automatic: boolean;
   format: TextFormat;
   align?: Align;
+  /** Direct paragraph spacing, from automatic styles only (DOC-020). */
+  layout?: ParagraphLayout;
 }
+
+/** `12pt`, `0.5in`, `1cm`… in points. */
+function lengthPt(value: string | null): number | undefined {
+  const m = /^(-?[\d.]+)(pt|in|cm|mm|px|pc)$/.exec(value?.trim() ?? '');
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  const factor = { pt: 1, in: 72, cm: 72 / 2.54, mm: 72 / 25.4, px: 0.75, pc: 12 }[m[2] as 'pt'];
+  return Math.round(n * factor * 10) / 10;
+}
+
+const odfColor = (v: string | null): string | undefined => (v && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : undefined);
 
 const MONO = /mono|courier|consolas|menlo|source code|liberation mono/i;
 
@@ -72,7 +86,19 @@ class OdtReader {
         if (u && u !== 'none') style.format.underline = true;
         const lt = attr(tp, 'text-line-through-style');
         if (lt && lt !== 'none') style.format.strike = true;
-        if (MONO.test(attr(tp, 'font-name') ?? '') || MONO.test(attr(tp, 'font-family') ?? '')) style.format.code = true;
+        const family = (attr(tp, 'font-family') ?? attr(tp, 'font-name') ?? '').replace(/^['"]|['"]$/g, '');
+        if (MONO.test(family)) style.format.code = true;
+        else if (family && style.automatic) style.format.font = family;
+        // Size, colour and highlight are direct formatting only: those of named
+        // styles (headings…) belong to the style, not to every run.
+        if (style.automatic) {
+          const size = lengthPt(attr(tp, 'font-size'));
+          if (size) style.format.size = size;
+          const color = odfColor(attr(tp, 'color'));
+          if (color) style.format.color = color;
+          const bg = odfColor(attr(tp, 'background-color'));
+          if (bg && bg !== '#ffffff') style.format.highlight = bg;
+        }
       }
       const pp = child(s, 'paragraph-properties');
       const ta = pp ? attr(pp, 'text-align') : null;
@@ -80,6 +106,20 @@ class OdtReader {
       else if (ta === 'end' || ta === 'right') style.align = 'right';
       else if (ta === 'justify') style.align = 'justify';
       else if (ta === 'start' || ta === 'left') style.align = 'left';
+      if (pp && style.automatic) {
+        const layout: ParagraphLayout = {};
+        const left = lengthPt(attr(pp, 'margin-left'));
+        if (left) layout.indent = left;
+        const first = lengthPt(attr(pp, 'text-indent'));
+        if (first) layout.firstLine = first;
+        const before = lengthPt(attr(pp, 'margin-top'));
+        if (before !== undefined) layout.spaceBefore = before;
+        const after = lengthPt(attr(pp, 'margin-bottom'));
+        if (after !== undefined) layout.spaceAfter = after;
+        const lh = /^(\d+)%$/.exec(attr(pp, 'line-height') ?? '');
+        if (lh && lh[1] !== '100') layout.lineHeight = Number(lh[1]) / 100;
+        if (Object.keys(layout).length) style.layout = layout;
+      }
       this.styles.set(`${style.family}:${name}`, style);
     }
     for (const ls of descendants(xml, 'list-style')) {
@@ -179,6 +219,9 @@ class OdtReader {
     const align = chain.find((s) => s.align)?.align;
     if (align && align !== 'left') para.align = align;
     if (list && !para.style.startsWith('h')) para.list = list;
+    const layout = chain.find((s) => s.layout)?.layout;
+    if (layout) Object.assign(para, list ? { ...layout, indent: undefined, firstLine: undefined } : layout);
+    for (const k of ['indent', 'firstLine'] as const) if (para[k] === undefined) delete para[k];
     // Text formatting set on automatic paragraph styles applies to the whole paragraph.
     const base: TextFormat = {};
     for (const s of chain) if (s.automatic) Object.assign(base, s.format);

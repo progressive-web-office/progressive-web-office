@@ -11,7 +11,8 @@
  */
 import { Schema, type DOMOutputSpec, type Mark, type Node as PmNode } from 'prosemirror-model';
 import { tableNodes } from 'prosemirror-tables';
-import type { Align, CellOutput, ParagraphStyle } from '../model';
+import { LAYOUT_KEYS, type Align, type CellOutput, type ParagraphStyle } from '../model';
+import { cssFontFamily } from '../html';
 
 const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code'];
 const ALIGNS: Align[] = ['left', 'center', 'right', 'justify'];
@@ -19,20 +20,39 @@ const ALIGNS: Align[] = ['left', 'center', 'right', 'justify'];
 function paragraphAttrs(dom: HTMLElement, style: ParagraphStyle): Record<string, unknown> {
   const align = ALIGNS.find((a) => a === (dom.style.textAlign || dom.dataset.align)) ?? null;
   const list = dom.dataset.list;
-  return {
+  const attrs: Record<string, unknown> = {
     style,
     align,
     listOrdered: list === 'ol' ? true : list === 'ul' ? false : null,
     listLevel: Number(dom.dataset.level ?? 0) || 0,
   };
+  // Spacing is read back from the editor's own data attributes only (DOC-020).
+  for (const k of LAYOUT_KEYS) {
+    const v = dom.dataset[k];
+    if (v !== undefined && Number.isFinite(Number(v))) attrs[k] = Number(v);
+  }
+  return attrs;
+}
+
+/** CSS of the paragraph spacing attributes (lengths in points). */
+function layoutCss(a: Record<string, unknown>): string {
+  const css: string[] = [];
+  if (a.indent) css.push(`margin-left: ${a.indent as number}pt`);
+  if (a.firstLine) css.push(`text-indent: ${a.firstLine as number}pt`);
+  if (a.spaceBefore !== null) css.push(`margin-top: ${a.spaceBefore as number}pt`);
+  if (a.spaceAfter !== null) css.push(`margin-bottom: ${a.spaceAfter as number}pt`);
+  if (a.lineHeight) css.push(`line-height: ${(a.lineHeight as number) * 1.2}`);
+  return css.join('; ');
 }
 
 function paragraphDom(node: PmNode): DOMOutputSpec {
   const { style, align, listOrdered, listLevel } = node.attrs as { style: ParagraphStyle; align: Align | null; listOrdered: boolean | null; listLevel: number };
   const tag = style === 'normal' ? 'p' : style === 'quote' ? 'blockquote' : style === 'code' ? 'pre' : style;
   const attrs: Record<string, string> = {};
-  if (align) attrs.style = `text-align: ${align}`;
+  const css = [align ? `text-align: ${align}` : '', layoutCss(node.attrs)].filter(Boolean).join('; ');
+  if (css) attrs.style = css;
   if (align) attrs['data-align'] = align;
+  for (const k of LAYOUT_KEYS) if (node.attrs[k] !== null) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(node.attrs[k]);
   if (listOrdered !== null) {
     attrs.class = 'list-item';
     attrs['data-list'] = listOrdered ? 'ol' : 'ul';
@@ -49,7 +69,17 @@ export const schema = new Schema({
     paragraph: {
       group: 'block',
       content: 'inline*',
-      attrs: { style: { default: 'normal' }, align: { default: null }, listOrdered: { default: null }, listLevel: { default: 0 } },
+      attrs: {
+        style: { default: 'normal' },
+        align: { default: null },
+        listOrdered: { default: null },
+        listLevel: { default: 0 },
+        indent: { default: null },
+        firstLine: { default: null },
+        spaceBefore: { default: null },
+        spaceAfter: { default: null },
+        lineHeight: { default: null },
+      },
       parseDOM: [
         ...STYLES.filter((s) => /^h\d$/.test(s)).map((s) => ({ tag: s, getAttrs: (d: HTMLElement) => paragraphAttrs(d, s) })),
         { tag: 'blockquote', getAttrs: (d: HTMLElement) => paragraphAttrs(d, 'quote') },
@@ -123,13 +153,23 @@ export const schema = new Schema({
     code: { parseDOM: [{ tag: 'code' }], toDOM: () => ['code', 0] },
     size: {
       attrs: { pt: {} },
-      parseDOM: [{ style: 'font-size', getAttrs: (v: string) => (/^[\d.]+pt$/.test(v) ? { pt: parseFloat(v) } : false) }],
-      toDOM: (m: Mark) => ['span', { style: `font-size: ${m.attrs.pt}pt` }, 0],
+      parseDOM: [{ tag: 'span[data-size]', getAttrs: (d: HTMLElement) => ({ pt: Number(d.dataset.size) }) }],
+      toDOM: (m: Mark) => ['span', { style: `font-size: ${m.attrs.pt}pt`, 'data-size': String(m.attrs.pt) }, 0],
     },
     color: {
       attrs: { hex: {} },
       parseDOM: [{ tag: 'span[data-color]', getAttrs: (d: HTMLElement) => ({ hex: d.dataset.color }) }],
       toDOM: (m: Mark) => ['span', { style: `color: ${m.attrs.hex}`, 'data-color': m.attrs.hex }, 0],
+    },
+    font: {
+      attrs: { family: {} },
+      parseDOM: [{ tag: 'span[data-font]', getAttrs: (d: HTMLElement) => ({ family: d.dataset.font }) }],
+      toDOM: (m: Mark) => ['span', { style: `font-family: ${cssFontFamily(m.attrs.family as string)}`, 'data-font': m.attrs.family }, 0],
+    },
+    highlight: {
+      attrs: { hex: {} },
+      parseDOM: [{ tag: 'mark[data-highlight]', getAttrs: (d: HTMLElement) => ({ hex: d.dataset.highlight }) }],
+      toDOM: (m: Mark) => ['mark', { style: `background-color: ${m.attrs.hex}`, 'data-highlight': m.attrs.hex }, 0],
     },
   },
 });

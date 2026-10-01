@@ -17,6 +17,12 @@ and any ZIP archive of Markdown files.
 | Bold / italic / underline | **B** *I* U | <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
 | Strikethrough | S | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> |
 | Inline code | `</>` | <kbd>Ctrl</kbd>+<kbd>`</kbd> |
+| Font and size | *Default ▾* *— ▾* | |
+| Text colour / highlight | **A** 🖍 (the swatch chooses the colour, × removes it) | |
+| Clear formatting | ⌫ | <kbd>Ctrl</kbd>+<kbd>Space</kbd> |
+| Indent / outdent | ⇢ ⇠ | <kbd>Ctrl</kbd>+<kbd>]</kbd> / <kbd>Ctrl</kbd>+<kbd>[</kbd> |
+| Line spacing | ↕ ▾ (1, 1.15, 1.5, 2…) | |
+| Paragraph spacing | ¶: left and first-line indents (cm, negative for a hanging indent), space before and after (pt), line spacing | |
 | Bulleted / numbered list | •≡ 1≡ | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>8</kbd> / <kbd>7</kbd>; <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> to indent / outdent |
 | Alignment | ⇤ ↔ ⇥ ☰ | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>E</kbd> / <kbd>R</kbd> / <kbd>J</kbd> |
 | Line break in the same paragraph | | <kbd>Shift</kbd>+<kbd>Enter</kbd> |
@@ -29,6 +35,12 @@ and any ZIP archive of Markdown files.
 | Code cell | { } (see [Code cells](./code.md)) | |
 
 The status bar shows the word and character count.
+
+Fonts that are not installed on the device are shown with a similar one
+(serif or sans-serif) but kept in the file, so the document looks right
+where the font exists. Formatting that comes from a paragraph style (for
+example the size of a heading) is not copied onto the text, so changing the
+style in Word or LibreOffice still changes it.
 
 ### Find and replace
 

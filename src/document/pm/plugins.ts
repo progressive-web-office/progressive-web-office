@@ -3,7 +3,8 @@ import { baseKeymap, chainCommands, toggleMark } from 'prosemirror-commands';
 import { history, redo, undo } from 'prosemirror-history';
 import { InputRule, inputRules } from 'prosemirror-inputrules';
 import { keymap } from 'prosemirror-keymap';
-import { Plugin, PluginKey, type Command, type EditorState } from 'prosemirror-state';
+import { Plugin, PluginKey, TextSelection, type Command, type EditorState } from 'prosemirror-state';
+import type { EditorView } from 'prosemirror-view';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 import { dropCursor } from 'prosemirror-dropcursor';
 import { gapCursor } from 'prosemirror-gapcursor';
@@ -11,7 +12,7 @@ import { columnResizing, goToNextCell, tableEditing } from 'prosemirror-tables';
 import { findTypedMath } from '../../math/inline';
 import type { ParagraphStyle } from '../model';
 import { searchPlugin } from './search';
-import { backspace, enter, setAlign, setStyle, shiftListLevel, toggleList } from './commands';
+import { backspace, changeIndent, clearFormatting, enter, setAlign, setStyle, shiftListLevel, toggleList } from './commands';
 import { schema } from './schema';
 
 /** Paragraph style rule: `# ` → heading, `> ` → quote, `- ` → list… */
@@ -84,6 +85,9 @@ export function editorKeymap(actions: EditorActions): Plugin[] {
       'Mod-Alt-2': setStyle('h2'),
       'Mod-Alt-3': setStyle('h3'),
       'Mod-k': run(actions.link),
+      'Mod-Space': clearFormatting,
+      'Mod-]': changeIndent(1),
+      'Mod-[': changeIndent(-1),
       'Mod-f': run(() => actions.find(false)),
       'Mod-h': run(() => actions.find(true)),
       'Mod-m': run(actions.math),
@@ -137,6 +141,34 @@ export function peersPlugin(): Plugin<PeerMarker[]> {
   });
 }
 
+/**
+ * The browser reports caret moves (End, arrows…) with a `selectionchange`
+ * event that comes asynchronously; a key pressed right after (Enter, Delete…)
+ * would act on the previous selection, e.g. replace a line that was selected
+ * a moment before. Read the DOM selection first on every key press.
+ */
+function syncSelectionOnKey(): Plugin {
+  return new Plugin({
+    props: {
+      handleKeyDown(view: EditorView) {
+        const sel = view.dom.ownerDocument.getSelection();
+        if (!sel?.anchorNode || !sel.focusNode || !view.dom.contains(sel.anchorNode) || !view.dom.contains(sel.focusNode)) return false;
+        try {
+          const anchor = view.posAtDOM(sel.anchorNode, sel.anchorOffset);
+          const head = view.posAtDOM(sel.focusNode, sel.focusOffset);
+          const { state } = view;
+          if (state.selection instanceof TextSelection && (state.selection.anchor !== anchor || state.selection.head !== head)) {
+            view.dispatch(state.tr.setSelection(TextSelection.create(state.doc, anchor, head)));
+          }
+        } catch {
+          /* inside a node view: leave the selection to ProseMirror */
+        }
+        return false;
+      },
+    },
+  });
+}
+
 export function basePlugins(actions: EditorActions): Plugin[] {
-  return [editorInputRules(), ...editorKeymap(actions), history(), dropCursor(), gapCursor(), columnResizing(), tableEditing(), peersPlugin(), searchPlugin()];
+  return [syncSelectionOnKey(), editorInputRules(), ...editorKeymap(actions), history(), dropCursor(), gapCursor(), columnResizing(), tableEditing(), peersPlugin(), searchPlugin()];
 }

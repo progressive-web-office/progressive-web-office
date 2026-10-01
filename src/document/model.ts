@@ -14,10 +14,14 @@ export interface TextFormat {
   code?: boolean;
   /** Hyperlink target (validated with `isSafeUrl` before rendering). */
   link?: string;
-  /** Font size in points (used by presentations). */
+  /** Font size in points. */
   size?: number;
-  /** Text colour as `#rrggbb` (used by presentations). */
+  /** Text colour as `#rrggbb`. */
   color?: string;
+  /** Font family name (e.g. `Liberation Serif`). */
+  font?: string;
+  /** Background (highlight) colour as `#rrggbb`. */
+  highlight?: string;
 }
 
 export interface TextRun extends TextFormat {
@@ -80,13 +84,30 @@ export interface ListInfo {
   level: number;
 }
 
-export interface Paragraph {
+/** Direct paragraph spacing (DOC-020); lengths in points. */
+export interface ParagraphLayout {
+  /** Left indent. */
+  indent?: number;
+  /** First-line indent (negative for a hanging indent). */
+  firstLine?: number;
+  spaceBefore?: number;
+  spaceAfter?: number;
+  /** Line spacing as a multiple of single spacing (1.15, 1.5, 2…). */
+  lineHeight?: number;
+}
+
+export interface Paragraph extends ParagraphLayout {
   type: 'paragraph';
   style: ParagraphStyle;
   align?: Align;
   list?: ListInfo;
   runs: Run[];
 }
+
+/** Monospaced font names: text in them is inline code. */
+export const MONO_FONT = /mono|courier|consolas|menlo|monaco|source code|fira code/i;
+
+export const LAYOUT_KEYS: (keyof ParagraphLayout)[] = ['indent', 'firstLine', 'spaceBefore', 'spaceAfter', 'lineHeight'];
 
 export interface TableCell {
   blocks: Paragraph[];
@@ -182,7 +203,7 @@ export function paragraph(text: string, opts: Partial<Omit<Paragraph, 'type' | '
   return { type: 'paragraph', style: opts.style ?? 'normal', ...opts, runs: text ? [{ text }] : [] };
 }
 
-const FORMAT_KEYS: (keyof TextFormat)[] = ['bold', 'italic', 'underline', 'strike', 'code', 'link', 'size', 'color'];
+const FORMAT_KEYS: (keyof TextFormat)[] = ['bold', 'italic', 'underline', 'strike', 'code', 'link', 'size', 'color', 'font', 'highlight'];
 
 export function sameFormat(a: TextFormat, b: TextFormat): boolean {
   return FORMAT_KEYS.every((k) => (a[k] || undefined) === (b[k] || undefined));

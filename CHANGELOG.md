@@ -19,6 +19,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - "Share with another app…" in the send dialog opens the system share sheet.
 - Light / dark / system theme: a toolbar button cycles between following the
   device setting, light and dark; the choice is remembered.
+- Character and paragraph formatting in text documents: font, size, text
+  colour, highlight, clear formatting (Ctrl+Space), indent / outdent
+  (Ctrl+] / Ctrl+[), line spacing, and a paragraph spacing dialog (left and
+  first-line indents, space before and after). Kept in DOCX and ODT, and
+  read from them as direct formatting only.
 - Find and replace in text documents (🔍, Ctrl+F / Ctrl+H): highlighted
   matches with a count, match case, whole words, regular expressions with
   `$1` groups, replace one or all in a single undoable step.
@@ -112,6 +117,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   Enter on an empty list item leaves the list; Shift+Enter inserts a line
   break; Ctrl+Alt+1…3 apply heading styles. Pasted content from other
   applications keeps headings, lists and formatting and drops the rest.
+  Toolbar buttons keep the focus in the document, and a key pressed right
+  after moving the caret acts at the new position.
 
 - Open formats first: new documents, spreadsheets and presentations are
   created as OpenDocument files (`.odt`, `.ods`, `.odp`) instead of

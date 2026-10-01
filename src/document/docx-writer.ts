@@ -13,6 +13,7 @@ import {
   type Block,
   type ImageRun,
   type Paragraph,
+  type ParagraphLayout,
   type RichDocument,
   type Run,
   type TableCell,
@@ -168,6 +169,7 @@ class DocxWriter {
     if (styleId) pPr += `<w:pStyle w:val="${styleId}"/>`;
     else if (numId) pPr += '<w:pStyle w:val="ListParagraph"/>';
     if (numId) pPr += `<w:numPr><w:ilvl w:val="${Math.min(8, p.list?.level ?? 0)}"/><w:numId w:val="${numId}"/></w:numPr>`;
+    pPr += layoutPPr(p);
     if (p.align && p.align !== 'left') pPr += `<w:jc w:val="${p.align === 'justify' ? 'both' : p.align}"/>`;
     return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${p.runs.map((r) => this.run(r)).join('')}</w:p>`;
   }
@@ -181,13 +183,18 @@ class DocxWriter {
       const omml = `<m:oMath>${mathmlToOmml(mathml)}</m:oMath>`;
       return run.display ? `<m:oMathPara>${omml}</m:oMathPara>` : omml;
     }
+    // Elements in the order of the OOXML schema (Word rejects other orders).
     let rPr = '';
     if (run.code) rPr += '<w:rStyle w:val="CodeChar"/>';
     else if (run.link) rPr += '<w:rStyle w:val="Hyperlink"/>';
+    if (run.font && !run.code) rPr += `<w:rFonts w:ascii="${esc(run.font)}" w:hAnsi="${esc(run.font)}" w:eastAsia="${esc(run.font)}" w:cs="${esc(run.font)}"/>`;
     if (run.bold) rPr += '<w:b/><w:bCs/>';
     if (run.italic) rPr += '<w:i/><w:iCs/>';
     if (run.strike) rPr += '<w:strike/>';
+    if (run.color) rPr += `<w:color w:val="${run.color.slice(1).toUpperCase()}"/>`;
+    if (run.size) rPr += `<w:sz w:val="${Math.round(run.size * 2)}"/><w:szCs w:val="${Math.round(run.size * 2)}"/>`;
     if (run.underline) rPr += '<w:u w:val="single"/>';
+    if (run.highlight) rPr += `<w:shd w:val="clear" w:color="auto" w:fill="${run.highlight.slice(1).toUpperCase()}"/>`;
     let content = '';
     for (const part of run.text.split(/(\t|\n)/)) {
       if (part === '\t') content += '<w:tab/>';
@@ -267,6 +274,23 @@ const ROOT_RELS =
   `<Relationship Id="rId2" Type="${REL.coreProps}" Target="docProps/core.xml"/>` +
   `<Relationship Id="rId3" Type="${REL.extendedProps}" Target="docProps/app.xml"/>` +
   '</Relationships>';
+
+const twips = (pt: number): number => Math.round(pt * 20);
+
+/** Direct paragraph spacing (DOC-020): w:spacing then w:ind, as the schema orders them. */
+export function layoutPPr(p: ParagraphLayout): string {
+  let out = '';
+  const spacing: string[] = [];
+  if (p.spaceBefore !== undefined) spacing.push(`w:before="${twips(p.spaceBefore)}"`);
+  if (p.spaceAfter !== undefined) spacing.push(`w:after="${twips(p.spaceAfter)}"`);
+  if (p.lineHeight) spacing.push(`w:line="${Math.round(p.lineHeight * 240)}" w:lineRule="auto"`);
+  if (spacing.length) out += `<w:spacing ${spacing.join(' ')}/>`;
+  const ind: string[] = [];
+  if (p.indent) ind.push(`w:left="${twips(p.indent)}"`);
+  if (p.firstLine) ind.push(p.firstLine > 0 ? `w:firstLine="${twips(p.firstLine)}"` : `w:hanging="${twips(-p.firstLine)}"`);
+  if (ind.length) out += `<w:ind ${ind.join(' ')}/>`;
+  return out;
+}
 
 const heading = (n: number, size: number): string =>
   `<w:style w:type="paragraph" w:styleId="Heading${n}"><w:name w:val="heading ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/>` +

@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { normalizeRuns, type Block, type Paragraph, type Run, type Table, type TextFormat } from '../model';
+import { LAYOUT_KEYS, normalizeRuns, type Block, type Paragraph, type Run, type Table, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -13,6 +13,8 @@ function marksFor(f: TextFormat): Mark[] {
   if (f.code) marks.push(schema.marks.code!.create());
   if (f.size) marks.push(schema.marks.size!.create({ pt: f.size }));
   if (f.color) marks.push(schema.marks.color!.create({ hex: f.color }));
+  if (f.font) marks.push(schema.marks.font!.create({ family: f.font }));
+  if (f.highlight) marks.push(schema.marks.highlight!.create({ hex: f.highlight }));
   return marks;
 }
 
@@ -28,6 +30,12 @@ function formatOf(marks: readonly Mark[]): TextFormat {
         break;
       case 'color':
         f.color = m.attrs.hex as string;
+        break;
+      case 'font':
+        f.font = m.attrs.family as string;
+        break;
+      case 'highlight':
+        f.highlight = m.attrs.hex as string;
         break;
       default:
         (f as Record<string, unknown>)[m.type.name] = true;
@@ -59,8 +67,9 @@ function runsToInline(runs: Run[]): PmNode[] {
 }
 
 export function paragraphToPm(p: Paragraph): PmNode {
+  const layout = Object.fromEntries(LAYOUT_KEYS.map((k) => [k, p[k] ?? null]));
   return schema.nodes.paragraph!.create(
-    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0 },
+    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, ...layout },
     runsToInline(p.runs),
   );
 }
@@ -129,6 +138,7 @@ export function pmToParagraph(node: PmNode): Paragraph {
     style: a.style,
     ...(a.align ? { align: a.align } : {}),
     ...(a.listOrdered !== null ? { list: { ordered: a.listOrdered, level: a.listLevel } } : {}),
+    ...Object.fromEntries(LAYOUT_KEYS.filter((k) => node.attrs[k] !== null).map((k) => [k, node.attrs[k] as number])),
     runs: inlineToRuns(node),
   };
 }

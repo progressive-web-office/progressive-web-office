@@ -22,7 +22,8 @@ import { addResource, wordCount, type Align, type Block, type ParagraphStyle, ty
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmToBlocks } from './pm/convert';
 import { schema } from './pm/schema';
-import { currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, setAlign, setLink, setStyle, toggleList } from './pm/commands';
+import { changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
+import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
 import { listCss } from './pm/list-css';
@@ -39,6 +40,10 @@ function installListCss(): void {
   style.textContent = listCss('.doc-page');
   document.head.append(style);
 }
+
+/** Fonts offered in the toolbar: common names, rendered with metric-compatible fallbacks when missing. */
+const FONTS = ['Arial', 'Calibri', 'Cambria', 'Georgia', 'Liberation Sans', 'Liberation Serif', 'Times New Roman', 'Verdana', 'OpenDyslexic'];
+const SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 60, 72];
 
 const STYLES: [ParagraphStyle, MessageKey][] = [
   ['normal', 'doc.style.normal'],
@@ -58,6 +63,9 @@ export class DocumentEditor implements EditorView {
   private readonly page: HTMLElement;
   readonly view: PmView;
   private readonly styleSelect: HTMLSelectElement;
+  private readonly fontSelect: HTMLSelectElement;
+  private readonly sizeSelect: HTMLSelectElement;
+  private readonly lineSelect: HTMLSelectElement;
   private readonly markButtons: [string, HTMLButtonElement][] = [];
   private readonly stateButtons: [() => boolean, HTMLButtonElement][] = [];
   private readonly urls = new Map<string, string>();
@@ -76,7 +84,25 @@ export class DocumentEditor implements EditorView {
     this.styleSelect = h('select', { 'aria-label': t('doc.style'), title: t('doc.style') }, ...STYLES.map(([v, l]) => h('option', { value: v }, t(l))));
     this.styleSelect.addEventListener('change', () => {
       this.command(setStyle(this.styleSelect.value as ParagraphStyle));
-      this.view.focus();
+      this.refocus();
+    });
+    this.fontSelect = h('select', { 'aria-label': t('fmt.font'), title: t('fmt.font'), class: 'font-select' }, h('option', { value: '' }, t('fmt.default')), ...FONTS.map((f) => h('option', { value: f, style: `font-family: "${f}"` }, f)));
+    this.fontSelect.addEventListener('change', () => {
+      const v = this.fontSelect.value;
+      this.command(setMarkValue(schema.marks.font!, v ? { family: v } : null));
+      this.refocus();
+    });
+    this.sizeSelect = h('select', { 'aria-label': t('fmt.size'), title: t('fmt.size'), class: 'size-select' }, h('option', { value: '' }, '—'), ...SIZES.map((n) => h('option', { value: String(n) }, String(n))));
+    this.sizeSelect.addEventListener('change', () => {
+      const v = Number(this.sizeSelect.value);
+      this.command(setMarkValue(schema.marks.size!, v ? { pt: v } : null));
+      this.refocus();
+    });
+    this.lineSelect = h('select', { 'aria-label': t('para.lineSpacing'), title: t('para.lineSpacing'), class: 'size-select' }, h('option', { value: '' }, '↕'), ...LINE_SPACINGS.map((n) => h('option', { value: String(n) }, `↕ ${n}`)));
+    this.lineSelect.addEventListener('change', () => {
+      const v = Number(this.lineSelect.value);
+      this.command(setParagraphAttrs({ lineHeight: v || null }));
+      this.refocus();
     });
     this.findBar = new FindBar(() => this.view);
     this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.page));
@@ -111,6 +137,11 @@ export class DocumentEditor implements EditorView {
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
   }
 
+  /** Give the focus back to the document, without touching the selection when it already has it. */
+  private refocus(): void {
+    if (!this.view.hasFocus()) this.view.focus();
+  }
+
   private command(cmd: Command): boolean {
     return cmd(this.view.state, (tr) => this.view.dispatch(tr), this.view);
   }
@@ -143,7 +174,7 @@ export class DocumentEditor implements EditorView {
     const attrs = { cell: value.code, lang: value.lang, output: unchanged ? current.output : null };
     if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, attrs));
     else this.command(insertOnOwnLine(schema.nodes.code_cell!.create(attrs)));
-    this.view.focus();
+    this.refocus();
   }
 
   /** Run cells in order in the sandbox and store their output in the document (CODE-002, CODE-005). */
@@ -191,7 +222,7 @@ export class DocumentEditor implements EditorView {
     if (source === null) return;
     if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, diagram: source }));
     else this.command(insertOnOwnLine(schema.nodes.diagram!.create({ diagram: source, lang: 'mermaid' })));
-    this.view.focus();
+    this.refocus();
   }
 
   /** Insert a new equation at the cursor, or edit an existing one (MATH-001). */
@@ -202,7 +233,7 @@ export class DocumentEditor implements EditorView {
     const attrs = { math: value.latex, display: value.display };
     if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, attrs));
     else this.command(insertInline(schema.nodes.math!.create(attrs)));
-    this.view.focus();
+    this.refocus();
   }
 
   /** Document properties: title, author, keywords… (DOC-017). */
@@ -346,12 +377,22 @@ export class DocumentEditor implements EditorView {
   // --- toolbar ------------------------------------------------------------------
 
   private toolbar(): HTMLElement {
+    const bar = this.buildToolbar();
+    // Toolbar buttons never take the focus: the editor keeps its selection, and
+    // the next key goes to the document (a refocus could lose the selection).
+    bar.addEventListener('mousedown', (e) => {
+      if ((e.target as HTMLElement).closest('button')) e.preventDefault();
+    });
+    return bar;
+  }
+
+  private buildToolbar(): HTMLElement {
     const act = (label: string, text: string, fn: () => void, title = label): HTMLButtonElement =>
       button(
         label,
         () => {
           fn();
-          this.view.focus();
+          this.refocus();
         },
         { text, title },
       );
@@ -382,6 +423,12 @@ export class DocumentEditor implements EditorView {
       mark('strike', t('common.strike'), 'S', 'Ctrl+Shift+X'),
       mark('code', t('doc.inlineCode'), '</>', 'Ctrl+`'),
       h('span', { class: 'sep' }),
+      this.fontSelect,
+      this.sizeSelect,
+      this.colorControl(t('fmt.color'), 'A', '#c00000', (hex) => this.command(setMarkValue(schema.marks.color!, hex ? { hex } : null)), t('fmt.automatic')),
+      this.colorControl(t('fmt.highlight'), '🖍', '#ffff00', (hex) => this.command(setMarkValue(schema.marks.highlight!, hex ? { hex } : null)), t('fmt.noHighlight')),
+      act(t('fmt.clear'), '⌫', () => this.command(clearFormatting), `${t('fmt.clear')} (Ctrl+Space)`),
+      h('span', { class: 'sep' }),
       state(t('common.bullets'), '•≡', toggleList(false), () => inList(this.view.state, false), 'Ctrl+Shift+8'),
       state(t('common.numbering'), '1≡', toggleList(true), () => inList(this.view.state, true), 'Ctrl+Shift+7'),
       h('span', { class: 'sep' }),
@@ -389,6 +436,10 @@ export class DocumentEditor implements EditorView {
       align('center', t('common.alignCenter'), '↔', 'Ctrl+E'),
       align('right', t('common.alignRight'), '⇥', 'Ctrl+R'),
       align('justify', t('common.justify'), '☰', 'Ctrl+J'),
+      act(t('para.indentLess'), '⇠', () => this.command(changeIndent(-1))),
+      act(t('para.indentMore'), '⇢', () => this.command(changeIndent(1))),
+      this.lineSelect,
+      act(t('para.button'), '¶', () => void this.editParagraph()),
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
       act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
@@ -408,6 +459,48 @@ export class DocumentEditor implements EditorView {
     for (const [name, b] of this.markButtons) b.setAttribute('aria-pressed', String(markActive(state, schema.marks[name]!)));
     for (const [active, b] of this.stateButtons) b.setAttribute('aria-pressed', String(active()));
     this.styleSelect.value = currentStyle(state);
+    const font = (markValue(state, schema.marks.font!, 'family') as string | undefined) ?? '';
+    if (font && ![...this.fontSelect.options].some((o) => o.value === font)) this.fontSelect.append(h('option', { value: font }, font));
+    this.fontSelect.value = font;
+    const size = markValue(state, schema.marks.size!, 'pt') as number | undefined;
+    if (size && ![...this.sizeSelect.options].some((o) => o.value === String(size))) this.sizeSelect.append(h('option', { value: String(size) }, String(size)));
+    this.sizeSelect.value = size ? String(size) : '';
+    const line = paragraphAttr(state, 'lineHeight') as number | null | undefined;
+    if (line && ![...this.lineSelect.options].some((o) => o.value === String(line))) this.lineSelect.append(h('option', { value: String(line) }, `↕ ${line}`));
+    this.lineSelect.value = line ? String(line) : '';
+  }
+
+  /** A colour button: applies the last colour; the swatch picks another; × removes it. */
+  private colorControl(label: string, text: string, initial: string, apply: (hex: string | null) => void, resetLabel: string): HTMLElement {
+    const picker = h('input', { type: 'color', value: initial, 'aria-label': label, title: label });
+    const main = button(label, () => {
+      apply(picker.value);
+      this.refocus();
+    }, { text, title: label, className: 'color-apply' });
+    main.style.setProperty('--swatch', initial);
+    picker.addEventListener('change', () => {
+      main.style.setProperty('--swatch', picker.value);
+      apply(picker.value);
+      this.refocus();
+    });
+    const reset = button(resetLabel, () => {
+      apply(null);
+      this.refocus();
+    }, { text: '×', title: resetLabel, className: 'color-reset' });
+    return h('span', { class: 'color-control' }, main, picker, reset);
+  }
+
+  /** Paragraph spacing dialog (DOC-020). */
+  private async editParagraph(): Promise<void> {
+    const { editParagraphLayout } = await import('./paragraph-dialog');
+    const node = this.view.state.selection.$from.parent;
+    const a = node.attrs as Record<string, number | null>;
+    const pick = (k: string): number | undefined => a[k] ?? undefined;
+    const initial = { indent: pick('indent'), firstLine: pick('firstLine'), spaceBefore: pick('spaceBefore'), spaceAfter: pick('spaceAfter'), lineHeight: pick('lineHeight') };
+    const value = await editParagraphLayout(this.element, Object.fromEntries(Object.entries(initial).filter(([, v]) => v !== undefined)));
+    if (!value) return;
+    this.command(setParagraphAttrs({ indent: value.indent ?? null, firstLine: value.firstLine ?? null, spaceBefore: value.spaceBefore ?? null, spaceAfter: value.spaceAfter ?? null, lineHeight: value.lineHeight ?? null }));
+    this.refocus();
   }
 
   private insertLink(): void {

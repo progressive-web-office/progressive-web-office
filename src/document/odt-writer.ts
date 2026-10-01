@@ -1,5 +1,5 @@
 /** OpenDocument Text (.odt) writer (DOC-007). */
-import { escapeXml as esc } from '../core/xml';
+import { escapeXml as esc, escapeXmlAttr as escAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
 import { MIME_TYPES } from '../core/format';
@@ -15,6 +15,7 @@ import {
   type Block,
   type ListNode,
   type Paragraph,
+  type ParagraphLayout,
   type RichDocument,
   type Run,
   type TableCell,
@@ -34,6 +35,8 @@ const PARA_STYLE: Record<string, string> = {
 
 class OdtWriter {
   private autoStyles = new Map<string, string>();
+  private readonly paraNames = new Map<string, string>();
+  private readonly textNames = new Map<string, string>();
   private listStyles: string[] = [];
   private pictures = new Map<string, string>();
   private tableCount = 0;
@@ -82,34 +85,42 @@ class OdtWriter {
     ]);
   }
 
-  /** Automatic paragraph style for alignment on top of a common style. */
-  private paraStyle(common: string, align?: string): string {
-    if (!align || align === 'left') return common;
-    const name = `P_${common}_${align}`;
-    if (!this.autoStyles.has(name)) {
-      const fo = align === 'right' ? 'end' : align;
-      this.autoStyles.set(
-        name,
-        `<style:style style:name="${name}" style:family="paragraph" style:parent-style-name="${common}"><style:paragraph-properties fo:text-align="${fo}"/></style:style>`,
-      );
+  /** Automatic paragraph style for alignment and spacing on top of a common style (DOC-020). */
+  private paraStyle(common: string, p: ParagraphLayout & Pick<Paragraph, 'align'>): string {
+    const props: string[] = [];
+    if (p.align && p.align !== 'left') props.push(`fo:text-align="${p.align === 'right' ? 'end' : p.align}"`);
+    if (p.indent) props.push(`fo:margin-left="${p.indent}pt"`);
+    if (p.firstLine) props.push(`fo:text-indent="${p.firstLine}pt"`);
+    if (p.spaceBefore !== undefined) props.push(`fo:margin-top="${p.spaceBefore}pt"`);
+    if (p.spaceAfter !== undefined) props.push(`fo:margin-bottom="${p.spaceAfter}pt"`);
+    if (p.lineHeight) props.push(`fo:line-height="${Math.round(p.lineHeight * 100)}%"`);
+    if (!props.length) return common;
+    const key = `${common}|${props.join(' ')}`;
+    let name = this.paraNames.get(key);
+    if (!name) {
+      name = `P${this.paraNames.size + 1}_${common}`;
+      this.paraNames.set(key, name);
+      this.autoStyles.set(name, `<style:style style:name="${name}" style:family="paragraph" style:parent-style-name="${common}"><style:paragraph-properties ${props.join(' ')}/></style:style>`);
     }
     return name;
   }
 
   private textStyle(run: TextRun): string | undefined {
-    const flags = `${run.bold ? 'b' : ''}${run.italic ? 'i' : ''}${run.underline ? 'u' : ''}${run.strike ? 's' : ''}`;
-    if (!flags) return undefined;
-    const name = `T_${flags}`;
-    if (!this.autoStyles.has(name)) {
-      this.autoStyles.set(
-        name,
-        `<style:style style:name="${name}" style:family="text"><style:text-properties` +
-          (run.bold ? ' fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"' : '') +
-          (run.italic ? ' fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic"' : '') +
-          (run.underline ? ' style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"' : '') +
-          (run.strike ? ' style:text-line-through-style="solid" style:text-line-through-type="single"' : '') +
-          '/></style:style>',
-      );
+    const props =
+      (run.bold ? ' fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"' : '') +
+      (run.italic ? ' fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic"' : '') +
+      (run.underline ? ' style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"' : '') +
+      (run.strike ? ' style:text-line-through-style="solid" style:text-line-through-type="single"' : '') +
+      (run.font && !run.code ? ` fo:font-family="${escAttr(run.font)}" style:font-family-asian="${escAttr(run.font)}" style:font-family-complex="${escAttr(run.font)}"` : '') +
+      (run.size ? ` fo:font-size="${run.size}pt" style:font-size-asian="${run.size}pt" style:font-size-complex="${run.size}pt"` : '') +
+      (run.color ? ` fo:color="${run.color}"` : '') +
+      (run.highlight ? ` fo:background-color="${run.highlight}"` : '');
+    if (!props) return undefined;
+    let name = this.textNames.get(props);
+    if (!name) {
+      name = `T${this.textNames.size + 1}`;
+      this.textNames.set(props, name);
+      this.autoStyles.set(name, `<style:style style:name="${name}" style:family="text"><style:text-properties${props}/></style:style>`);
     }
     return name;
   }
@@ -169,10 +180,10 @@ class OdtWriter {
     const runs = this.runs(p.runs);
     const heading = /^h(\d)$/.exec(p.style);
     if (heading) {
-      const style = this.paraStyle(`Heading_20_${heading[1]}`, p.align);
+      const style = this.paraStyle(`Heading_20_${heading[1]}`, p);
       return `<text:h text:style-name="${style}" text:outline-level="${heading[1]}">${runs}</text:h>`;
     }
-    const style = this.paraStyle(PARA_STYLE[p.style] ?? 'Standard', p.align);
+    const style = this.paraStyle(PARA_STYLE[p.style] ?? 'Standard', p);
     return `<text:p text:style-name="${style}">${runs}</text:p>`;
   }
 

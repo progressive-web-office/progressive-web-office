@@ -223,3 +223,68 @@ export const insertRule: Command = (state, dispatch) => {
 export function selectedNode(state: EditorState): PmNode | undefined {
   return state.selection instanceof NodeSelection ? state.selection.node : undefined;
 }
+
+// --- character and paragraph formatting (DOC-020) -----------------------------
+
+/** Set a valued mark (font, size, colour, highlight) on the selection, or remove it with `null`. */
+export const setMarkValue =
+  (type: MarkType, attrs: Record<string, unknown> | null): Command =>
+  (state, dispatch) => {
+    if (!dispatch) return true;
+    const { from, to, empty } = state.selection;
+    if (empty) {
+      const marks = type.removeFromSet(state.storedMarks ?? state.selection.$from.marks());
+      dispatch(state.tr.setStoredMarks(attrs ? type.create(attrs).addToSet(marks) : marks));
+      return true;
+    }
+    const tr = state.tr.removeMark(from, to, type);
+    if (attrs) tr.addMark(from, to, type.create(attrs));
+    dispatch(tr);
+    return true;
+  };
+
+/** The value of a mark attribute at the cursor (or the start of the selection). */
+export function markValue(state: EditorState, type: MarkType, attr: string): unknown {
+  const { $from, empty } = state.selection;
+  const marks = empty ? (state.storedMarks ?? $from.marks()) : (state.doc.nodeAt($from.pos)?.marks ?? $from.marks());
+  return type.isInSet(marks)?.attrs[attr];
+}
+
+/** Change paragraph attributes of the selected paragraphs (null resets). */
+export const setParagraphAttrs =
+  (attrs: Record<string, unknown>): Command =>
+  (state, dispatch) =>
+    updateParagraphs(state, dispatch, (a) => ({ ...a, ...attrs }));
+
+export function paragraphAttr(state: EditorState, name: string): unknown {
+  return selectedParagraphs(state)[0]?.node.attrs[name];
+}
+
+const INDENT_STEP = 36; // pt (1.27 cm), Word's and LibreOffice's default tab
+
+/** Indent: list items change level, other paragraphs move by one step. */
+export const changeIndent =
+  (delta: 1 | -1): Command =>
+  (state, dispatch) => {
+    if (inList(state)) return shiftListLevel(delta)(state, dispatch);
+    return updateParagraphs(state, dispatch, (a) => {
+      const next = Math.max(0, ((a.indent as number | null) ?? 0) + delta * INDENT_STEP);
+      return { ...a, indent: next || null };
+    });
+  };
+
+const DIRECT_MARKS = ['bold', 'italic', 'underline', 'strike', 'size', 'color', 'font', 'highlight'];
+
+/** Remove character formatting (links and inline code stay) and paragraph spacing. */
+export const clearFormatting: Command = (state, dispatch) => {
+  if (!dispatch) return true;
+  const { from, to } = state.selection;
+  const tr = state.tr;
+  for (const name of DIRECT_MARKS) tr.removeMark(from, to, schema.marks[name]!);
+  for (const { node, pos } of selectedParagraphs(state)) {
+    tr.setNodeMarkup(pos, undefined, { ...node.attrs, align: null, indent: null, firstLine: null, spaceBefore: null, spaceAfter: null, lineHeight: null });
+  }
+  tr.setStoredMarks([]);
+  dispatch(tr.scrollIntoView());
+  return true;
+};

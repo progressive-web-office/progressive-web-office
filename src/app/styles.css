@@ -649,3 +649,15 @@ button.qr-zoom img { display: block; margin: 0; }
 .find-count { min-width: 6rem; font-size: 0.85rem; color: var(--muted); }
 .doc-page .search-match { background: #ffe58a; border-radius: 2px; }
 .doc-page .search-match.current { background: #ff9d3d; outline: 1px solid #c25e00; }
+
+/* Character formatting controls (DOC-020) */
+.toolbar .font-select { max-width: 9.5rem; }
+.toolbar .size-select { width: 4.5rem; }
+.color-control { display: inline-flex; align-items: stretch; }
+.color-control button.color-apply { border-top-right-radius: 0; border-bottom-right-radius: 0; box-shadow: inset 0 -4px 0 var(--swatch, transparent); }
+.color-control input[type='color'] { width: 22px; min-height: 32px; padding: 0 2px; border: 1px solid var(--border); border-left: 0; background: var(--surface); cursor: pointer; }
+.color-control button.color-reset { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; padding: 4px 6px; color: var(--muted); }
+.doc-page mark { color: inherit; }
+.para-dialog fieldset { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 12px; padding: 8px 12px; }
+.para-row { display: grid; grid-template-columns: 10rem 7rem auto; align-items: center; gap: 8px; margin: 4px 0; }
+.para-row input, .para-row select { min-height: 30px; }

@@ -108,3 +108,44 @@ test('finds and replaces text (DOC-019)', async ({ page }) => {
   await page.keyboard.press('Control+z');
   await expect(editor).toHaveText('Le chat et le chaton. Un CHAT.');
 });
+
+test('character formatting and paragraph spacing reach the file (DOC-020)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Titre rouge');
+  await page.keyboard.press('Shift+Home');
+  await page.getByLabel('Font', { exact: true }).selectOption('Georgia');
+  await page.getByLabel('Font size').selectOption('18');
+  await page.getByRole('button', { name: 'Text colour' }).click(); // applies the default red
+  await page.getByRole('button', { name: 'Highlight colour' }).click();
+  const span = editor.locator('span[data-font="Georgia"]');
+  await expect(span).toHaveText('Titre rouge');
+  await expect(editor.locator('[data-size="18"]')).toHaveText('Titre rouge');
+  await expect(editor.locator('mark[data-highlight="#ffff00"]')).toHaveCount(1);
+  // The toolbar shows the formatting at the cursor.
+  await expect(page.getByLabel('Font', { exact: true })).toHaveValue('Georgia');
+
+  await page.getByRole('button', { name: 'Paragraph spacing…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Paragraph' });
+  await dialog.getByLabel('Left indent (cm)').fill('1');
+  await dialog.getByLabel('After (pt)').fill('18');
+  await dialog.getByLabel('Line spacing').selectOption('1.5');
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(editor.locator('p').first()).toHaveAttribute('data-indent', '28.3');
+  await expect(page.getByLabel('Line spacing')).toHaveValue('1.5');
+
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const odt = await saveAs(page, 'OpenDocument text (.odt)');
+  const content = strFromU8(unzipSync(new Uint8Array(odt.data))['content.xml']!);
+  expect(content).toContain('fo:font-family="Georgia"');
+  expect(content).toContain('fo:font-size="18pt"');
+  expect(content).toContain('fo:color="#c00000"');
+  expect(content).toContain('fo:background-color="#ffff00"');
+  expect(content).toContain('fo:margin-left="28.3pt"');
+  expect(content).toContain('fo:line-height="150%"');
+
+  // Clear formatting removes it all.
+  await editor.click();
+  await page.keyboard.press('Control+a');
+  await page.getByRole('button', { name: 'Clear formatting' }).click();
+  await expect(editor.locator('span[data-font], [data-size], mark')).toHaveCount(0);
+});
