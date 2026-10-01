@@ -48,7 +48,8 @@ background in every theme, as on paper.
 ## Recent files and recovered drafts
 
 Files you open are added to **Recent files** on the start screen (up to 12,
-files under 25 MB). The copies are stored only in this browser (IndexedDB);
+files under 25 MB), with their format, size and the date and time they were
+last opened. The copies are stored only in this browser (IndexedDB);
 **×** removes an entry and deletes its stored copy, **Clear recent files**
 removes them all.
 

@@ -68,6 +68,7 @@ export const zh: Record<MessageKey, string> = {
   'recent.remove': '从最近文件中移除 {name}',
   'recent.removeTitle': '从列表中移除（并删除保存的副本）',
   'recent.hint': '最近打开的文件副本仅保存在此浏览器中。',
+  'recent.opened': '打开于 {when}',
   'recent.clear': '清除最近的文件',
   'mdz.chooseTitle': '选择主文档',
   'mdz.chooseMessage': '此压缩包包含多个 Markdown 文件。哪一个是入口文件？',

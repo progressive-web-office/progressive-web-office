@@ -68,6 +68,7 @@ export const fr: Record<MessageKey, string> = {
   'recent.remove': 'Retirer {name} des fichiers récents',
   'recent.removeTitle': 'Retirer de la liste (supprime la copie conservée)',
   'recent.hint': 'Les copies des fichiers récemment ouverts sont conservées uniquement dans ce navigateur.',
+  'recent.opened': 'ouvert le {when}',
   'recent.clear': 'Effacer les fichiers récents',
   'mdz.chooseTitle': 'Choisir le document principal',
   'mdz.chooseMessage': 'Cette archive contient plusieurs fichiers Markdown. Lequel est le point d’entrée ?',

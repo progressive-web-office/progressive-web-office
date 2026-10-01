@@ -66,6 +66,7 @@ export const en = {
   'recent.remove': 'Remove {name} from recent files',
   'recent.removeTitle': 'Remove from the list (deletes the stored copy)',
   'recent.hint': 'Copies of recently opened files are kept only in this browser.',
+  'recent.opened': 'opened {when}',
   'recent.clear': 'Clear recent files',
   'mdz.chooseTitle': 'Choose the main document',
   'mdz.chooseMessage': 'This archive contains several Markdown files. Which one is the entry point?',

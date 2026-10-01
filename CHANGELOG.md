@@ -20,6 +20,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Light / dark / system theme: a toolbar button cycles between following the
   device setting, light and dark; the choice is remembered.
 
+### Changed
+
+- Recent files show the date and time they were last opened, in the interface
+  language (previously only the date, in the browser's language).
+
 - Integration tests against a real QRShare build (`just e2e-qrshare`, and a
   dedicated CI job): the document sent to QRShare's transfer chooser is
   checked byte for byte, encoded as a static QR code and decoded back; the

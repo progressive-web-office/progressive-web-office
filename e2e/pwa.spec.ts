@@ -8,6 +8,8 @@ test('lists recently opened files and reopens them (FILE-008, FILE-009)', async 
   await page.getByRole('button', { name: 'Close' }).click();
   const entry = page.getByRole('button', { name: 'Open remember-me.md' });
   await expect(entry).toBeVisible();
+  // Date and time it was opened.
+  await expect(entry.locator('.meta')).toHaveText(/ · opened \d{1,2}\/\d{1,2}\/\d{2}, \d{1,2}:\d{2}\s?[AP]M$/);
   await page.reload();
   await entry.click();
   await expect(page.locator('.doc-page h1')).toHaveText('Remember me');
