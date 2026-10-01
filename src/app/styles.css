@@ -504,3 +504,21 @@ iframe.code-sandbox { display: none; }
 .ai-setup label.git-row { display: flex; gap: 6px; align-items: flex-start; }
 .card.cloud { border-left-color: #0082c9; }
 .dav-dialog { width: min(640px, calc(100vw - 32px)); max-width: none; }
+
+/* Spreadsheet charts (SHEET-020) */
+.chart-layer { position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 4; }
+.sheet-chart { position: absolute; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); cursor: move; touch-action: none; overflow: hidden; }
+.sheet-chart:focus-visible, .sheet-chart:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sheet-chart-figure, .sheet-chart-figure svg { width: 100%; height: 100%; display: block; }
+.sheet-chart-tools { position: absolute; top: 4px; right: 4px; display: none; gap: 2px; }
+.sheet-chart:hover .sheet-chart-tools, .sheet-chart:focus-within .sheet-chart-tools { display: flex; }
+.sheet-chart-tools button { min-width: 28px; padding: 2px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+.sheet-chart-resize { position: absolute; right: 0; bottom: 0; width: 14px; height: 14px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--muted) 50%); opacity: 0.5; }
+.chart-dialog { width: min(820px, calc(100vw - 32px)); max-width: none; }
+.chart-dialog .chart-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 16px; }
+.chart-dialog .chart-form label:not(.git-row) { display: grid; gap: 2px; }
+.chart-preview { margin-top: 12px; min-height: 280px; display: flex; justify-content: center; border: 1px solid var(--border); border-radius: 6px; background: #fff; overflow: auto; }
+.chart-error { min-height: 1.2em; color: var(--danger); }
+.print-chart { margin: 12pt 0; break-inside: avoid; page-break-inside: avoid; }
+.print-chart svg { max-width: 100%; height: auto; }
+.chart-dialog .chart-form label.git-row { display: flex; gap: 6px; align-items: center; }

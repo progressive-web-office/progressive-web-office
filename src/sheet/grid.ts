@@ -7,7 +7,8 @@ import type { EditorView, ViewContext } from '../app/views';
 import { cellKey, colName, refName } from './address';
 import { Calculator, formatGeneral } from './engine';
 import { writeWorkbook, type SheetFormat } from './io';
-import { cellInput, getCell, isError, setInput, usedSize, type Workbook } from './model';
+import { cellInput, getCell, isError, setInput, usedSize, type Chart, type Workbook } from './model';
+import { chartData, parseRange, renderChartSvg } from './chart';
 import { formatValue } from './number-format';
 import { fillWithMath, typesetMath } from '../math/inline';
 import { addSheet, clearRange, copyRange, deleteCells, deleteSheet, insertCells, pasteText, renameSheet, type Range } from './ops';
@@ -53,6 +54,8 @@ export class SheetEditor implements EditorView {
   private readonly viewport = h('div', { class: 'grid-viewport', tabindex: '0', role: 'grid', 'aria-label': t('sheet.label') });
   private readonly table = h('table', { class: 'grid' });
   private readonly tabs = h('div', { class: 'sheet-tabs', role: 'tablist', 'aria-label': t('sheet.sheets') });
+  /** Charts float above the grid, positioned on their anchor cell (SHEET-020). */
+  private readonly chartLayer = h('div', { class: 'chart-layer' });
 
   constructor(
     private wb: Workbook,
@@ -60,7 +63,7 @@ export class SheetEditor implements EditorView {
     private readonly sourceFormat: SheetFormat,
   ) {
     this.calc = new Calculator(wb);
-    this.viewport.append(this.table);
+    this.viewport.append(this.table, this.chartLayer);
     this.element = h(
       'div',
       { class: 'sheet-editor' },
@@ -149,7 +152,12 @@ export class SheetEditor implements EditorView {
         body.append(tr);
       }
       table.append(body);
-      root.append(h('div', { class: 'sheet-block' }, indices.length > 1 ? h('h2', {}, sheet.name) : null, table));
+      const charts = (sheet.charts ?? []).map((chart) => {
+        const figure = h('div', { class: 'print-chart' });
+        figure.innerHTML = renderChartSvg(chart, chartData(chart, (r, c) => this.calc.value(si, [r, c])));
+        return figure;
+      });
+      root.append(h('div', { class: 'sheet-block' }, indices.length > 1 ? h('h2', {}, sheet.name) : null, table, ...charts));
     }
     await typesetMath(root);
     return root;
@@ -214,6 +222,7 @@ export class SheetEditor implements EditorView {
     this.renderBody(true);
     this.renderTabs();
     this.renderSelection();
+    this.renderCharts();
   }
 
   private renderBody(force = false): void {
@@ -296,8 +305,188 @@ export class SheetEditor implements EditorView {
   private changed(full = false): void {
     this.calc.invalidate();
     if (full) this.renderAll();
-    else this.renderBody(true);
+    else {
+      this.renderBody(true);
+      this.renderCharts();
+    }
     this.ctx.changed();
+  }
+
+  // --- charts (SHEET-020, SHEET-023) -------------------------------------------------
+
+  private chartDataOf(chart: Chart): ReturnType<typeof chartData> {
+    return chartData(chart, (r, c) => this.calc.value(this.si, [r, c]));
+  }
+
+  private cellPosition(row: number, col: number): { x: number; y: number } {
+    let x = 48;
+    for (let c = 0; c < col; c++) x += this.width(c);
+    return { x, y: (this.table.tHead?.offsetHeight || ROW_H) + row * ROW_H };
+  }
+
+  private cellAt(x: number, y: number): { row: number; col: number } {
+    const head = this.table.tHead?.offsetHeight || ROW_H;
+    let col = 0;
+    let left = 48;
+    while (left + this.width(col) / 2 < x && col < 16_000) left += this.width(col++);
+    return { row: Math.max(0, Math.round((y - head) / ROW_H)), col };
+  }
+
+  private renderCharts(): void {
+    const charts = this.wb.sheets[this.si]!.charts ?? [];
+    this.chartLayer.replaceChildren(...charts.map((chart, i) => this.chartElement(chart, i)));
+  }
+
+  private chartElement(chart: Chart, index: number): HTMLElement {
+    const pos = this.cellPosition(chart.anchor.row, chart.anchor.col);
+    const name = chart.title || t('chart.untitled');
+    const el = h('div', {
+      class: 'sheet-chart',
+      tabindex: '0',
+      role: 'figure',
+      'aria-label': `${t('chart.label')}: ${name}`,
+      style: `left: ${pos.x}px; top: ${pos.y}px; width: ${chart.width}px; height: ${chart.height}px`,
+    });
+    // Our own SVG: every text from the sheet is escaped by renderChartSvg.
+    const figure = h('div', { class: 'sheet-chart-figure' });
+    figure.innerHTML = renderChartSvg(chart, this.chartDataOf(chart));
+    const tools = h(
+      'div',
+      { class: 'sheet-chart-tools' },
+      button(t('chart.edit'), () => void this.editChartAt(index), { text: '✎', title: t('chart.edit') }),
+      button(t('chart.copyImage'), (e) => void this.copyChartImage(chart, e.currentTarget as HTMLButtonElement), { text: '⧉', title: t('chart.copyImageTitle') }),
+      button(t('chart.delete'), () => this.removeChart(index), { text: '🗑', title: t('chart.delete') }),
+    );
+    const handle = h('span', { class: 'sheet-chart-resize', 'aria-hidden': 'true' });
+    el.append(figure, tools, handle);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        this.removeChart(index);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        void this.editChartAt(index);
+      }
+      e.stopPropagation();
+    });
+    // Drag to move (snapping to cells) and resize from the corner.
+    el.addEventListener('pointerdown', (e) => {
+      if ((e.target as HTMLElement).closest('button')) return;
+      const resizing = e.target === handle;
+      e.preventDefault();
+      el.focus();
+      el.setPointerCapture(e.pointerId);
+      const start = { x: e.clientX, y: e.clientY };
+      let dx = 0;
+      let dy = 0;
+      const move = (ev: PointerEvent): void => {
+        dx = ev.clientX - start.x;
+        dy = ev.clientY - start.y;
+        if (resizing) {
+          el.style.width = `${Math.max(160, chart.width + dx)}px`;
+          el.style.height = `${Math.max(120, chart.height + dy)}px`;
+        } else {
+          el.style.transform = `translate(${dx}px, ${dy}px)`;
+        }
+      };
+      const up = (): void => {
+        el.removeEventListener('pointermove', move);
+        el.removeEventListener('pointerup', up);
+        if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
+          el.style.transform = '';
+          return;
+        }
+        this.snapshot();
+        const target = this.wb.sheets[this.si]!.charts![index]!;
+        if (resizing) {
+          target.width = Math.max(160, Math.round(chart.width + dx));
+          target.height = Math.max(120, Math.round(chart.height + dy));
+        } else {
+          target.anchor = this.cellAt(pos.x + dx, pos.y + dy);
+        }
+        this.renderCharts();
+        this.ctx.changed();
+      };
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', up);
+    });
+    return el;
+  }
+
+  /** Default data: the selection, or the block of filled cells around the active cell. */
+  private chartRangeGuess(): string {
+    let r = this.range();
+    if (r.r1 === r.r2 && r.c1 === r.c2) {
+      const sheet = this.wb.sheets[this.si]!;
+      const filled = (row: number, col: number): boolean => row >= 0 && col >= 0 && sheet.cells.has(cellKey(row, col));
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (let c = r.c1; c <= r.c2 && !grew; c++) if (filled(r.r1 - 1, c)) (r = { ...r, r1: r.r1 - 1 }), (grew = true);
+        for (let c = r.c1; c <= r.c2 && !grew; c++) if (filled(r.r2 + 1, c)) (r = { ...r, r2: r.r2 + 1 }), (grew = true);
+        for (let row = r.r1; row <= r.r2 && !grew; row++) if (filled(row, r.c1 - 1)) (r = { ...r, c1: r.c1 - 1 }), (grew = true);
+        for (let row = r.r1; row <= r.r2 && !grew; row++) if (filled(row, r.c2 + 1)) (r = { ...r, c2: r.c2 + 1 }), (grew = true);
+      }
+    }
+    return `${refName(r.r1, r.c1)}:${refName(r.r2, r.c2)}`;
+  }
+
+  private async insertChart(): Promise<void> {
+    this.commitEdit();
+    const range = this.chartRangeGuess();
+    const r = parseRange(range)!;
+    const sheet = this.wb.sheets[this.si]!;
+    const firstRowText = Array.from({ length: r.c2 - r.c1 + 1 }, (_, i) => this.calc.value(this.si, [r.r1, r.c1 + i])).slice(r.c2 > r.c1 ? 1 : 0).some((v) => typeof v === 'string');
+    const draft: Chart = { type: 'column', range, headers: firstRowText, anchor: { row: r.r1, col: r.c2 + 2 }, width: 480, height: 300 };
+    const { editChart } = await import('./chart-ui');
+    const chart = await editChart(this.element, draft, (c) => this.chartDataOf(c), false);
+    if (!chart) return;
+    this.snapshot();
+    (sheet.charts ??= []).push(chart);
+    this.renderCharts();
+    this.ctx.changed();
+  }
+
+  private async editChartAt(index: number): Promise<void> {
+    const current = this.wb.sheets[this.si]!.charts?.[index];
+    if (!current) return;
+    const { editChart } = await import('./chart-ui');
+    const chart = await editChart(this.element, current, (c) => this.chartDataOf(c), true);
+    if (!chart) return;
+    this.snapshot();
+    this.wb.sheets[this.si]!.charts![index] = chart;
+    this.renderCharts();
+    this.ctx.changed();
+  }
+
+  private removeChart(index: number): void {
+    const charts = this.wb.sheets[this.si]!.charts;
+    if (!charts?.[index]) return;
+    this.snapshot();
+    charts.splice(index, 1);
+    if (!charts.length) delete this.wb.sheets[this.si]!.charts;
+    this.renderCharts();
+    this.ctx.changed();
+    this.viewport.focus();
+  }
+
+  /** SHEET-023: copy the chart as a PNG image, to paste it into a document or a slide. */
+  private async copyChartImage(chart: Chart, b: HTMLButtonElement): Promise<void> {
+    const { chartPng } = await import('./chart-ui');
+    const blob = await chartPng(renderChartSvg(chart, this.chartDataOf(chart)), chart.width, chart.height);
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      b.textContent = '✓';
+      setTimeout(() => (b.textContent = '⧉'), 1500);
+    } catch {
+      // No clipboard access: download the image instead.
+      const url = URL.createObjectURL(blob);
+      const a = h('a', { href: url, download: `${chart.title || 'chart'}.png` });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    }
   }
 
   private restore(from: { si: number; wb: Workbook }[], to: { si: number; wb: Workbook }[]): void {
@@ -492,6 +681,7 @@ export class SheetEditor implements EditorView {
       h('span', { class: 'sep' }),
       this.formatSelect,
       act(t('sheet.autoSum'), 'Σ', () => this.autoSum()),
+      act(t('sheet.insertChart'), '📊', () => void this.insertChart()),
     );
   }
 

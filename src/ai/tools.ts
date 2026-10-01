@@ -3,6 +3,8 @@
  * assistant and exposed to external agents through WebMCP (AI-006).
  * Inputs come from a model, so they are validated before use.
  */
+import { parseRange } from '../sheet/chart';
+import type { Chart, ChartType } from '../sheet/model';
 import { readMarkdown } from '../document/markdown-reader';
 import { writeMarkdown } from '../document/markdown-writer';
 import { isTextRun, normalizeRuns, type Block, type Paragraph, type RichDocument } from '../document/model';
@@ -261,6 +263,43 @@ export function sheetTools(host: SheetHost): AgentTool[] {
         host.calc.invalidate();
         host.refresh();
         return `Sheet ${name} added.`;
+      },
+    },
+    {
+      name: 'add_chart',
+      description:
+        'Add a chart drawn from a range of a sheet (SHEET-020). The first column of the range holds the categories (x values for scatter), each other column a series; with headers, the first row holds the series names. The chart is placed at `anchor` (default: right of the range).',
+      input_schema: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['column', 'bar', 'line', 'pie', 'scatter'] },
+          range: { type: 'string', description: 'A1 range such as A1:C10' },
+          title: { type: 'string' },
+          headers: { type: 'boolean', description: 'First row holds series names (default true)' },
+          anchor: { type: 'string', description: 'Top-left cell of the chart, e.g. E2' },
+          sheet: { type: 'string' },
+        },
+        required: ['type', 'range'],
+      },
+      mutates: true,
+      run: async (input) => {
+        const si = sheetIndex(input.sheet);
+        const range = parseRange(String(input.range));
+        if (!range) throw new Error(`Invalid range ${String(input.range)}; use A1 notation like A1:C10.`);
+        const at = input.anchor ? parseRef(String(input.anchor)) : undefined;
+        const sheet = host.wb.sheets[si]!;
+        const chart: Chart = {
+          type: input.type as ChartType,
+          range: `${refName(range.r1, range.c1)}:${refName(range.r2, range.c2)}`,
+          headers: input.headers !== false,
+          anchor: at ? { row: at.row, col: at.col } : { row: range.r1, col: range.c2 + 2 },
+          width: 480,
+          height: 300,
+          ...(typeof input.title === 'string' && input.title.trim() ? { title: input.title.trim() } : {}),
+        };
+        (sheet.charts ??= []).push(chart);
+        host.refresh();
+        return `Chart added on ${sheet.name} at ${refName(chart.anchor.row, chart.anchor.col)}.`;
       },
     },
   ];

@@ -1,4 +1,5 @@
 /** OpenDocument Spreadsheet (.ods) reader (SHEET-002). */
+import { readChartFrame } from './chart-odf';
 import { attr, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText } from '../core/zip';
 import { lengthToPx, ODF_NS } from '../document/odf';
@@ -164,6 +165,11 @@ export function readOds(bytes: Uint8Array): Workbook {
       for (const cellEl of children(rowEl)) {
         if (cellEl.localName !== 'table-cell' && cellEl.localName !== 'covered-table-cell') continue;
         const repeat = Number(attr(cellEl, 'number-columns-repeated') ?? 1) || 1;
+        // SHEET-022: charts anchored in this cell.
+        for (const frame of children(cellEl, 'frame')) {
+          const chart = readChartFrame(zip, frame, row, c);
+          if (chart) (sheet.charts ??= []).push(chart);
+        }
         const cell = readCell(cellEl);
         if (cell) for (let i = 0; i < Math.min(repeat, MAX_REPEAT_CONTENT); i++) out.push([c + i, { ...cell }]);
         c += repeat;

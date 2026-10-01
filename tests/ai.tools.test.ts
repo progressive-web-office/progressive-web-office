@@ -67,6 +67,13 @@ describe('AI-001 spreadsheet tools', () => {
     return { wb, tools, refreshed: () => refreshed };
   };
 
+  it('adds a chart from a range (SHEET-020)', async () => {
+    const s = setup();
+    expect(await tool(s.tools, 'add_chart').run({ type: 'line', range: 'a1:b5', title: 'Trend' })).toBe('Chart added on Sheet1 at D1.');
+    expect(s.wb.sheets[0]!.charts).toEqual([{ type: 'line', range: 'A1:B5', headers: true, anchor: { row: 0, col: 3 }, width: 480, height: 300, title: 'Trend' }]);
+    await expect(tool(s.tools, 'add_chart').run({ type: 'pie', range: 'nope' })).rejects.toThrow(/Invalid range/);
+  });
+
   it('writes values and formulas and reads computed values (AI-005)', async () => {
     const s = setup();
     expect(await tool(s.tools, 'set_cells').run({ cells: [{ ref: 'A1', value: '2' }, { ref: 'A2', value: '3' }, { ref: 'A3', value: '=SUM(A1:A2)' }, { ref: 'B1', value: 'Total' }] })).toBe('4 cell(s) updated in Sheet1.');

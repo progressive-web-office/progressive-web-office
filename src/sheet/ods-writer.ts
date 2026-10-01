@@ -8,6 +8,7 @@ import { Calculator, formatGeneral } from './engine';
 import { isError, serialToDate, usedSize, type Cell, type Value, type Workbook } from './model';
 import { isDateFormat } from './number-format';
 import { excelToOf } from './openformula';
+import { chartFrameXml, chartObjectXml, CHART_MIME } from './chart-odf';
 
 /** ODF data style XML for a number format code. */
 function dataStyle(name: string, fmt: string): string {
@@ -112,8 +113,19 @@ export function writeOds(wb: Workbook): Uint8Array {
     return v;
   };
 
+  // SHEET-022: chart objects, each anchored in a cell by a frame.
+  const objects: { dir: string; xml: string }[] = [];
   const tables = wb.sheets.map((sheet, si) => {
-    const [rows, cols] = usedSize(sheet);
+    let [rows, cols] = usedSize(sheet);
+    const frames = new Map<string, string>();
+    for (const chart of sheet.charts ?? []) {
+      const dir = `Object ${objects.length + 1}`;
+      objects.push({ dir, xml: chartObjectXml(chart, sheet.name) });
+      const key = `${chart.anchor.row},${chart.anchor.col}`;
+      frames.set(key, (frames.get(key) ?? '') + chartFrameXml(chart, sheet.name, dir));
+      rows = Math.max(rows, chart.anchor.row + 1);
+      cols = Math.max(cols, chart.anchor.col + 1);
+    }
     let columns = '';
     for (let c = 0; c < cols; c++) {
       const w = sheet.colWidths?.get(c);
@@ -124,6 +136,10 @@ export function writeOds(wb: Workbook): Uint8Array {
       const [r, c] = parseKey(key);
       if (!byRow.has(r)) byRow.set(r, new Map());
       byRow.get(r)!.set(c, cell);
+    }
+    for (const key of frames.keys()) {
+      const [r] = parseKey(key);
+      if (!byRow.has(r)) byRow.set(r, new Map());
     }
     let body = '';
     let emptyRun = 0;
@@ -142,16 +158,21 @@ export function writeOds(wb: Workbook): Uint8Array {
       let gap = 0;
       for (let c = 0; c < cols; c++) {
         const cell = rowCells.get(c);
-        if (!cell) {
+        const frame = frames.get(`${r},${c}`) ?? '';
+        if (!cell && !frame) {
           gap++;
           continue;
         }
         if (gap) rowXml += `<table:table-cell${gap > 1 ? ` table:number-columns-repeated="${gap}"` : ''}/>`;
         gap = 0;
+        if (!cell) {
+          rowXml += `<table:table-cell>${frame}</table:table-cell>`;
+          continue;
+        }
         const v = cell.formula !== undefined ? calc.value(si, [r, c]) : cell.value;
         const formula = cell.formula !== undefined ? ` table:formula="${esc(excelToOf(cell.formula))}"` : '';
         const text = display(v);
-        rowXml += `<table:table-cell${cellStyle(cell.numFmt)}${formula}${valueAttrs(v, cell)}>${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
+        rowXml += `<table:table-cell${cellStyle(cell.numFmt)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
       }
       if (gap) rowXml += `<table:table-cell${gap > 1 ? ` table:number-columns-repeated="${gap}"` : ''}/>`;
       body += `<table:table-row>${rowXml}</table:table-row>`;
@@ -183,10 +204,15 @@ export function writeOds(wb: Workbook): Uint8Array {
         { path: 'content.xml', mediaType: 'text/xml' },
         { path: 'styles.xml', mediaType: 'text/xml' },
         { path: 'meta.xml', mediaType: 'text/xml' },
+        ...objects.flatMap((o) => [
+          { path: `${o.dir}/`, mediaType: CHART_MIME },
+          { path: `${o.dir}/content.xml`, mediaType: 'text/xml' },
+        ]),
       ]),
     },
     { path: 'content.xml', data: content },
     { path: 'styles.xml', data: stylesXml },
     { path: 'meta.xml', data: metaXml({}) },
+    ...objects.map((o) => ({ path: `${o.dir}/content.xml`, data: o.xml })),
   ]);
 }

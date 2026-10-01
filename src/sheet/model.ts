@@ -16,11 +16,29 @@ export interface Cell {
   numFmt?: string;
 }
 
+export type ChartType = 'column' | 'bar' | 'line' | 'pie' | 'scatter';
+
+/** A chart drawn from a range of its sheet (SHEET-020). */
+export interface Chart {
+  type: ChartType;
+  title?: string;
+  /** Data range in A1 notation: the first column holds categories (x values for scatter), the others series. */
+  range: string;
+  /** The first row of the range holds series names. */
+  headers: boolean;
+  /** Top-left cell the chart is anchored to. */
+  anchor: { row: number; col: number };
+  /** Size in CSS pixels. */
+  width: number;
+  height: number;
+}
+
 export interface Sheet {
   name: string;
   cells: Map<string, Cell>;
   /** Column widths in pixels, by column index. */
   colWidths?: Map<number, number>;
+  charts?: Chart[];
 }
 
 export interface Workbook {

@@ -68,6 +68,30 @@ function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`
 - The format list applies a number format (decimals, thousands separator,
   percent, dates, currency) to the selection.
 
+## Charts
+
+1. Select the data — or just click inside a block of data: the whole block is
+   proposed.
+2. Click **📊** (*Insert chart*). Choose the type — **columns**, **bars**,
+   **lines**, **pie** or **scatter (X, Y)** — and a title; the preview updates
+   as you go.
+3. Click **Insert**.
+
+The first column gives the categories (the X values for a scatter chart),
+each other column is a series; tick *First row contains series names* when the
+range starts with headers (detected automatically). Charts update as soon as
+the data changes, and follow inserted or deleted rows and columns.
+
+Drag a chart to move it, drag its corner to resize it. Its buttons (shown on
+hover or focus): **✎** edit, **⧉** copy as an image — then paste it into a
+text document or a slide — and **🗑** delete (or <kbd>Delete</kbd> when the
+chart has the focus; <kbd>Enter</kbd> edits it). The AI assistant can also add
+charts.
+
+Charts are saved as real charts in XLSX and ODS files, so Excel and
+LibreOffice show them (and Progressive Web Office reads them back); CSV
+files keep only the data. Charts are printed with their sheet.
+
 ## Formats
 
 | Feature | XLSX | ODS | CSV |
@@ -76,8 +100,10 @@ function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`
 | Formulas | ✅ | ✅ (OpenFormula) | computed values |
 | Number formats | ✅ | ✅ | dates as `yyyy-mm-dd` |
 | Column widths | ✅ | ✅ | — |
+| Charts | ✅ | ✅ | — |
 
 CSV import detects the delimiter (`,` `;` tab `|`), accepts UTF-8 and
 Windows-1252 files and **never** turns cells starting with `=` into formulas
-(protection against CSV injection). Fonts, colours, borders, merged cells,
-charts and pivot tables are not preserved.
+(protection against CSV injection). Fonts, colours, borders, merged cells
+and pivot tables are not preserved; chart styling made in other applications
+(colours, 3-D, secondary axes) is replaced by Progressive Web Office's.

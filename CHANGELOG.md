@@ -44,6 +44,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   Markdown and MDZ, and as code and pictures in Word, OpenDocument and LaTeX.
   The Python runtime is served by the application and, like the packages
   (downloaded from the Pyodide CDN on first use), kept for offline use.
+- **Spreadsheet charts** (📊): columns, bars, lines, pie and scatter, from the
+  selection or the data block around the active cell, with a live preview.
+  Charts update with the data, can be moved, resized, edited, deleted and
+  copied as an image (to paste into a document or a slide), are printed, and
+  are saved as native charts in XLSX and ODS. The AI assistant can add charts.
 - **Nextcloud / WebDAV** (start screen, and **☁** to save any document): open
   and save files on Nextcloud, ownCloud or any WebDAV server. Saving never
   overwrites a file changed by someone else meanwhile: a copy is offered

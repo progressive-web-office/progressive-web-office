@@ -35,6 +35,17 @@ function moveCells(wb: Workbook, si: number, axis: 'rows' | 'cols', index: numbe
     moved.set(cellKey(r, c), cell);
   }
   sheet.cells = moved;
+  // SHEET-020: charts follow their data; a chart whose data is deleted goes too.
+  if (sheet.charts) {
+    sheet.charts = sheet.charts.flatMap((chart) => {
+      const range = shiftFormula(chart.range, axis, index, count, { formulaSheet: sheet.name, targetSheet: sheet.name });
+      if (range.includes('#REF!')) return [];
+      const anchor = { ...chart.anchor };
+      const key = axis === 'rows' ? 'row' : 'col';
+      if (anchor[key] >= index) anchor[key] = count < 0 && anchor[key] < index - count ? index : anchor[key] + count;
+      return [{ ...chart, range, anchor }];
+    });
+  }
   if (axis === 'cols' && sheet.colWidths) {
     const widths = new Map<number, number>();
     for (const [c, w] of sheet.colWidths) {

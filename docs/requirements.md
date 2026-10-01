@@ -176,7 +176,11 @@ keyboard. Equations are stored as LaTeX in the document model.
 | SHEET-012 | S | 0.0.3 | Where formulas are written to `.ods`, the system shall translate references to OpenFormula syntax (`of:=SUM([.A1:.B2])`) and back when reading. |
 | SHEET-013 | C | 0.0.6 | The system shall support copy / paste of cell ranges as tab-separated text. |
 | SHEET-014 | C | — | Cell formatting (fonts, colours, number formats, borders). |
-| SHEET-015 | W | — | Charts, pivot tables, macros. |
+| SHEET-015 | W | — | Pivot tables, macros. |
+| SHEET-020 | M | 0.0.14 | The system shall let the user insert column, bar, line, pie and scatter charts drawn from a range of a sheet (first column: categories or x values; other columns: series; optional header row with series names), proposing the selection or the block of data around the active cell; charts shall update when the data changes and follow inserted or deleted rows and columns. |
+| SHEET-021 | M | 0.0.14 | The system shall draw charts as accessible SVG (title, legend for several series, value tooltips) with a colour-blind-checked categorical palette, and let the user move, resize, edit and delete them with the mouse or the keyboard. |
+| SHEET-022 | M | 0.0.14 | When a workbook is saved as XLSX or ODS, the system shall write its charts as native charts (DrawingML chart parts; ODF chart objects anchored in their cell) that Excel and LibreOffice display, and read them back. |
+| SHEET-023 | S | 0.0.14 | The system shall let the user copy a chart as a PNG image (to paste it into a document or a slide), and print charts with their sheet. |
 
 ## 6. Presentations (PRES)
 

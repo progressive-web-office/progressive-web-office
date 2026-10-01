@@ -6,6 +6,7 @@ import { parseKey, refName } from './address';
 import { Calculator } from './engine';
 import { isError, type Workbook } from './model';
 import { BUILTIN_FORMATS, pxToWidth } from './xlsx-reader';
+import { chartXml, CT_CHART, CT_DRAWING, drawingXml, REL_DRAWING } from './chart-ooxml';
 
 /** Functions that Excel stores with a `_xlfn.` prefix. */
 const FUTURE_FUNCTIONS = ['CONCAT', 'IFS', 'SWITCH', 'TEXTJOIN', 'MAXIFS', 'MINIFS', 'XLOOKUP'];
@@ -87,8 +88,24 @@ export function writeXlsx(wb: Workbook): Uint8Array {
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${NS.r}">` +
       `${si === 0 ? '<sheetViews><sheetView workbookViewId="0" tabSelected="1"/></sheetViews>' : ''}` +
-      `<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData></worksheet>`
+      `<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData>${sheet.charts?.length ? '<drawing r:id="rId1"/>' : ''}</worksheet>`
     );
+  });
+
+  // SHEET-022: one drawing per sheet with charts, one chart part per chart.
+  const drawingParts: { path: string; data: string }[] = [];
+  const chartParts: { path: string; data: string }[] = [];
+  const sheetRels: { path: string; data: string }[] = [];
+  wb.sheets.forEach((sheet, si) => {
+    if (!sheet.charts?.length) return;
+    const d = drawingParts.length + 1;
+    const { xml, rels } = drawingXml(sheet, chartParts.length + 1);
+    drawingParts.push({ path: `xl/drawings/drawing${d}.xml`, data: xml }, { path: `xl/drawings/_rels/drawing${d}.xml.rels`, data: rels });
+    for (const chart of sheet.charts) chartParts.push({ path: `xl/charts/chart${chartParts.length + 1}.xml`, data: chartXml(chart, sheet.name) });
+    sheetRels.push({
+      path: `xl/worksheets/_rels/sheet${si + 1}.xml.rels`,
+      data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="${NS.rel}"><Relationship Id="rId1" Type="${REL_DRAWING}" Target="../drawings/drawing${d}.xml"/></Relationships>`,
+    });
   });
 
   const workbookXml =
@@ -136,6 +153,8 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     wb.sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') +
     '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
     '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>' +
+    drawingParts.filter((p) => !p.path.includes('_rels')).map((p) => `<Override PartName="/${p.path}" ContentType="${CT_DRAWING}"/>`).join('') +
+    chartParts.map((p) => `<Override PartName="/${p.path}" ContentType="${CT_CHART}"/>`).join('') +
     '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
     '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
     '</Types>';
@@ -158,5 +177,8 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     { path: 'xl/styles.xml', data: stylesXml },
     { path: 'xl/sharedStrings.xml', data: sstXml },
     ...sheetXml.map((data, i) => ({ path: `xl/worksheets/sheet${i + 1}.xml`, data })),
+    ...sheetRels,
+    ...drawingParts,
+    ...chartParts,
   ]);
 }
