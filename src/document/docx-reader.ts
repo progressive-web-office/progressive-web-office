@@ -17,6 +17,7 @@ import {
   type TextFormat,
 } from './model';
 import { ommlToLatex } from '../math/convert';
+import { diagramLangOf } from './diagram';
 import { EMU_PER_PX, IMAGE_CONTENT_TYPES, onOff, readCoreProps, readRels, type Relationship } from './ooxml';
 
 interface StyleInfo {
@@ -294,6 +295,14 @@ class DocxReader {
   }
 
   private readDrawing(drawing: Element, out: Run[]): void {
+    const docPr = descendants(drawing, 'docPr')[0];
+    // A picture rendered from a diagram: keep the editable source (DIAG-005).
+    const lang = docPr ? diagramLangOf(attr(docPr, 'title')) : undefined;
+    const source = docPr ? attr(docPr, 'descr')?.replace(/\s+$/, '') : undefined;
+    if (lang && source) {
+      out.push({ diagram: source, lang });
+      return;
+    }
     const blip = descendants(drawing, 'blip')[0];
     const rid = blip ? (blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed') ?? attr(blip, 'embed')) : null;
     const rel = rid ? this.rels.get(rid) : undefined;
@@ -304,7 +313,6 @@ class DocxReader {
     const name = rel.target.slice(rel.target.lastIndexOf('/') + 1);
     const key = addResource(this.doc, data, IMAGE_CONTENT_TYPES[ext] ?? 'application/octet-stream', name);
     const run: Run = { image: key };
-    const docPr = descendants(drawing, 'docPr')[0];
     const alt = docPr ? attr(docPr, 'descr') : null;
     if (alt) run.alt = alt;
     const extent = descendants(drawing, 'extent')[0];

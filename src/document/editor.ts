@@ -5,11 +5,11 @@ import type { PrintSettings } from '../print/settings';
 import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import type { EditorView, ViewContext } from '../app/views';
-import { blocksToDom, domToBlocks, isSafeUrl, mathElement, sanitizeHtml } from './html';
+import { blocksToDom, diagramElement, domToBlocks, isSafeUrl, mathElement, sanitizeHtml } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, collectMath, wordCount, type Block, type RichDocument } from './model';
+import { addResource, collectDiagrams, collectMath, wordCount, type Block, type RichDocument } from './model';
 
 const STYLES: [string, MessageKey][] = [
   ['p', 'doc.style.normal'],
@@ -66,9 +66,46 @@ export class DocumentEditor implements EditorView {
     this.page.addEventListener('click', (e) => {
       const math = (e.target as HTMLElement).closest<HTMLElement>('span.math');
       if (math && this.page.contains(math)) void this.editMath(math);
+      const diagram = (e.target as HTMLElement).closest<HTMLElement>('span.diagram');
+      if (diagram && this.page.contains(diagram)) void this.editDiagram(diagram);
     });
     document.addEventListener('selectionchange', this.onSelection);
     if (collectMath(doc.blocks).length) void this.renderEquations();
+    if (collectDiagrams(doc.blocks).length) void this.renderDiagrams();
+  }
+
+  private async renderDiagrams(): Promise<void> {
+    const { renderDiagrams } = await import('../diagram/ui');
+    await renderDiagrams(this.page);
+  }
+
+  /** Insert a new diagram on its own line after the caret's block, or edit an existing one (DIAG-001). */
+  private async editDiagram(existing?: HTMLElement): Promise<void> {
+    const sel = document.getSelection();
+    let anchor: Node | null = !existing && sel?.rangeCount && this.page.contains(sel.anchorNode) ? sel.anchorNode : null;
+    while (anchor && anchor.parentNode !== this.page) anchor = anchor.parentNode;
+    const { editDiagram } = await import('../diagram/ui');
+    const source = await editDiagram(this.element, existing?.dataset.source ?? '');
+    if (source === null) return;
+    const el = diagramElement(source, 'mermaid', document);
+    if (existing) {
+      existing.replaceWith(el);
+    } else {
+      const p = document.createElement('p');
+      p.append(el);
+      const block = anchor as HTMLElement | null;
+      if (block && block.nodeType === Node.ELEMENT_NODE && block.localName === 'p' && !block.textContent?.trim() && !block.querySelector('img, span.math, span.diagram')) block.replaceWith(p);
+      else if (block) block.after(p);
+      else this.page.append(p);
+      if (!p.nextSibling) {
+        // Leave a line to keep typing after the diagram.
+        const next = document.createElement('p');
+        next.append(document.createElement('br'));
+        p.after(next);
+      }
+    }
+    this.changed();
+    await this.renderDiagrams();
   }
 
   private async renderEquations(): Promise<void> {
@@ -163,6 +200,7 @@ export class DocumentEditor implements EditorView {
       setBlocks: (blocks) => {
         this.page.replaceChildren(blocksToDom(blocks, document, (key) => this.resolve(key)));
         if (collectMath(blocks).length) void this.renderEquations();
+        if (collectDiagrams(blocks).length) void this.renderDiagrams();
         this.changed();
       },
     });
@@ -269,6 +307,7 @@ export class DocumentEditor implements EditorView {
       button(t('common.insertImage'), () => void this.pickImage(), { text: '🖼', title: t('common.insertImage') }),
       button(t('doc.insertTable'), () => this.insertTable(), { text: '▦', title: t('doc.insertTableTitle') }),
       button(t('doc.insertEquation'), () => void this.editMath(), { text: '∑', title: t('doc.insertEquationTitle') }),
+      button(t('doc.insertDiagram'), () => void this.editDiagram(), { text: '⧉', title: t('doc.insertDiagramTitle') }),
       button(t('meta.button'), () => void this.editProperties(), { text: 'ⓘ', title: t('meta.buttonTitle') }),
       button(t('doc.insertRule'), () => {
         exec('insertHorizontalRule');
@@ -406,6 +445,9 @@ export class DocumentEditor implements EditorView {
         exec(e.shiftKey ? 'outdent' : 'indent');
         this.changed();
       }
+    } else if (mod && e.shiftKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      void this.editDiagram();
     } else if (mod && e.key.toLowerCase() === 'm') {
       e.preventDefault();
       void this.editMath();

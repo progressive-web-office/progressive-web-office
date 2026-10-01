@@ -1,11 +1,12 @@
 /** DOCX writer producing a minimal, standards-conformant package (DOC-006). */
-import { escapeXml as esc } from '../core/xml';
+import { escapeXml as esc, escapeXmlAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
 import {
   extensionForType,
   groupBlocks,
   splitListSegments,
+  isDiagramRun,
   isImageRun,
   isMathRun,
   type Block,
@@ -17,6 +18,7 @@ import {
   type WriteOptions,
 } from './model';
 import { mathmlToOmml, OMML_NS } from '../math/convert';
+import { diagramsAsPictures } from './diagram';
 import { APP_XML, coreXml, EMU_PER_PX, NS, REL } from './ooxml';
 
 const STYLE_IDS: Record<string, string> = {
@@ -170,6 +172,7 @@ class DocxWriter {
 
   private run(run: Run): string {
     if (isImageRun(run)) return this.image(run);
+    if (isDiagramRun(run)) return ''; // replaced by diagramsAsPictures
     if (isMathRun(run)) {
       const mathml = this.opts.mathml?.get(run.math);
       if (!mathml) return `<w:r><w:t xml:space="preserve">${esc(run.display ? `$$${run.math}$$` : `$${run.math}$`)}</w:t></w:r>`;
@@ -220,13 +223,14 @@ class DocxWriter {
     const cx = w * EMU_PER_PX;
     const cy = h * EMU_PER_PX;
     const id = this.drawingId++;
-    const alt = esc(run.alt ?? '');
+    const alt = escapeXmlAttr(run.alt ?? '');
+    const title = run.title ? ` title="${escapeXmlAttr(run.title)}"` : '';
     return (
       '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0">' +
-      `<wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Picture ${id}" descr="${alt}"/>` +
+      `<wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${id}" name="Picture ${id}" descr="${alt}"${title}/>` +
       '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
       '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>' +
-      `<pic:nvPicPr><pic:cNvPr id="${id}" name="Picture ${id}" descr="${alt}"/><pic:cNvPicPr/></pic:nvPicPr>` +
+      `<pic:nvPicPr><pic:cNvPr id="${id}" name="Picture ${id}" descr="${alt}"${title}/><pic:cNvPicPr/></pic:nvPicPr>` +
       `<pic:blipFill><a:blip r:embed="${m.rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
       `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
       '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'
@@ -299,6 +303,6 @@ const STYLES_XML =
   '</w:styles>';
 
 export function writeDocx(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
-  return new DocxWriter(doc, opts).write();
+  return new DocxWriter(diagramsAsPictures(doc, opts.diagrams), opts).write();
 }
 

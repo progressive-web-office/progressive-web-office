@@ -26,6 +26,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   LaTeX (title page and PDF properties) and the YAML front matter of Markdown
   files, whose other keys are preserved. The original creation date is kept
   instead of being reset on every save.
+- Mermaid diagrams in text documents (⧉, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>):
+  flowcharts, sequence, class, state, entity-relationship, Gantt, pie and mind
+  map diagrams, edited in a dialog with templates and a live preview, rendered
+  offline in strict security mode. Stored as ```` ```mermaid ```` blocks in
+  Markdown and MDZ, and as PNG pictures carrying their source in Word,
+  OpenDocument and LaTeX projects, so they stay editable after a round trip.
 - MDZ manifest schema: optional `subject`, `description`, `keywords`,
   `language` and `license` fields.
 

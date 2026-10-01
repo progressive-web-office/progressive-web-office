@@ -16,6 +16,7 @@ import {
   type TableCell,
   type TextFormat,
 } from './model';
+import { diagramLangOf } from './diagram';
 import { lengthToPx, ODF_NS, readOdfMeta } from './odf';
 import { mathmlToLatex } from '../math/convert';
 
@@ -273,6 +274,13 @@ class OdtReader {
     }
     const image = children(frame, 'image')[0];
     if (!image) return;
+    // A picture rendered from a diagram: keep the editable source (DIAG-005).
+    const lang = diagramLangOf(child(frame, 'title')?.textContent);
+    const source = child(frame, 'desc')?.textContent?.replace(/\s+$/, '');
+    if (lang && source) {
+      out.push({ diagram: source, lang });
+      return;
+    }
     const href = image.getAttributeNS(ODF_NS.xlink, 'href') ?? attr(image, 'href');
     if (!href || /^[a-z]+:/i.test(href)) return;
     const path = href.replace(/^\.\//, '');

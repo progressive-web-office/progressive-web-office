@@ -3,6 +3,7 @@ import {
   cleanMeta,
   extensionForType,
   groupBlocks,
+  isDiagramRun,
   isImageRun,
   isMathRun,
   nestLists,
@@ -14,7 +15,9 @@ import {
   type RichDocument,
   type Run,
   type TableCell,
+  type WriteOptions,
 } from './model';
+import { diagramLangOf, diagramsAsPictures } from './diagram';
 
 const SPECIAL: Record<string, string> = {
   '\\': '\\textbackslash{}',
@@ -149,9 +152,13 @@ class LatexWriter {
         continue;
       }
       if (isImageRun(run)) {
+        const lang = diagramLangOf(run.title);
+        // Keep the diagram source next to its picture (DIAG-006).
+        if (lang && run.alt) out += `% ${lang}\n${run.alt.split('\n').map((l) => `% ${l}`.trimEnd()).join('\n')}\n`;
         out += this.image(run.image, run.width, run.src);
         continue;
       }
+      if (isDiagramRun(run)) continue; // replaced by diagramsAsPictures
       let text = run.text
         .split('\n')
         .map((part) => escapeLatex(part).replace(/\t/g, '\\quad '))
@@ -197,8 +204,8 @@ function pdfMetadata(meta: DocumentMeta): string[] {
   return set.length ? ['\\hypersetup{', set.join(',\n'), '}'] : [];
 }
 
-export function writeLatex(doc: RichDocument): LatexOutput {
-  const writer = new LatexWriter(doc);
+export function writeLatex(doc: RichDocument, opts: WriteOptions = {}): LatexOutput {
+  const writer = new LatexWriter(diagramsAsPictures(doc, opts.diagrams));
   const tex = writer.write();
   return { tex, images: writer.images };
 }

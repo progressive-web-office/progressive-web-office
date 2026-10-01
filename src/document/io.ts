@@ -9,7 +9,7 @@ import { readMarkdown } from './markdown-reader';
 import { writeMarkdown } from './markdown-writer';
 import { readMdz, type MdzReadOptions } from './mdz-reader';
 import { writeMdz } from './mdz-writer';
-import { collectMath, type RichDocument, type WriteOptions } from './model';
+import { collectDiagrams, collectMath, type RenderedDiagram, type RichDocument, type WriteOptions } from './model';
 import { readOdt } from './odt-reader';
 import { writeOdt } from './odt-writer';
 
@@ -45,7 +45,7 @@ export function writeDocument(doc: RichDocument, format: TextFormat, opts: Write
     case 'tex':
       return new TextEncoder().encode(writeLatex(doc).tex);
     case 'texzip':
-      return writeLatexZip(doc);
+      return writeLatexZip(doc, opts);
   }
 }
 
@@ -63,5 +63,25 @@ export async function writeDocumentAsync(doc: RichDocument, format: TextFormat):
       }
     }
   }
-  return writeDocument(doc, format, { mathml });
+  return writeDocument(doc, format, { mathml, diagrams: await renderDiagrams(doc, format) });
+}
+
+/** Rasterise diagrams for formats that embed them as pictures (DIAG-005, DIAG-006). */
+async function renderDiagrams(doc: RichDocument, format: TextFormat): Promise<Map<string, RenderedDiagram>> {
+  const out = new Map<string, RenderedDiagram>();
+  const sources = format === 'docx' || format === 'odt' || format === 'texzip' ? collectDiagrams(doc.blocks) : [];
+  if (!sources.length) return out;
+  try {
+    const { renderDiagramPng } = await import('../diagram/mermaid');
+    for (const source of sources) {
+      try {
+        out.set(source, await renderDiagramPng(source));
+      } catch {
+        /* invalid diagram: written as text (DIAG-007) */
+      }
+    }
+  } catch {
+    /* engine unavailable: diagrams written as text (DIAG-007) */
+  }
+  return out;
 }

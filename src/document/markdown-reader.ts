@@ -178,6 +178,12 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
       }
       case 'fence':
       case 'code_block': {
+        if (tok.type === 'fence' && tok.info.trim().split(/\s+/)[0]?.toLowerCase() === 'mermaid') {
+          const p = newParagraph();
+          p.runs = [{ diagram: tok.content.replace(/\n$/, ''), lang: 'mermaid' }];
+          push(p);
+          break;
+        }
         const p = newParagraph('code');
         p.style = 'code';
         const code = tok.content.replace(/\n$/, '');

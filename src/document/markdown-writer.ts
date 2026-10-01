@@ -5,6 +5,7 @@ import {
   groupBlocks,
   paragraphText,
   isImageRun,
+  isDiagramRun,
   isMathRun,
   isTextRun,
   nestLists,
@@ -51,6 +52,13 @@ function escapeLineStart(line: string): string {
     .replace(/^(\s*\d+)([.)])/, '$1\\$2');
 }
 
+/** A fenced code block, with a fence longer than any backtick run starting a line. */
+function fenced(body: string, info = ''): string {
+  const longest = Math.max(2, ...(body.match(/^\s*`+/gm) ?? []).map((m) => m.trim().length));
+  const fence = '`'.repeat(longest + 1);
+  return `${fence}${info}\n${body}\n${fence}`;
+}
+
 function codeSpan(text: string): string {
   const longest = Math.max(0, ...(text.match(/`+/g) ?? []).map((m) => m.length));
   const fence = '`'.repeat(longest + 1);
@@ -74,10 +82,7 @@ class MarkdownWriter {
     };
     const flushCode = (): void => {
       if (code.length) {
-        const body = code.join('\n');
-        const longest = Math.max(2, ...(body.match(/^`+/gm) ?? []).map((m) => m.length));
-        const fence = '`'.repeat(longest + 1);
-        parts.push(`${fence}\n${body}\n${fence}`);
+        parts.push(fenced(code.join('\n')));
       }
       code = [];
     };
@@ -110,6 +115,7 @@ class MarkdownWriter {
   private paragraph(p: Paragraph): string {
     const only = p.runs.length === 1 ? p.runs[0] : undefined;
     if (only && isMathRun(only) && only.display) return `$$\n${only.math}\n$$`;
+    if (only && isDiagramRun(only)) return fenced(only.diagram, only.lang);
     const heading = /^h(\d)$/.exec(p.style);
     const inline = this.inline(p.runs, true);
     if (heading) return `${'#'.repeat(Number(heading[1]))} ${inline.replace(/\n/g, ' ')}`;
@@ -177,6 +183,11 @@ class MarkdownWriter {
       out += pendingSpace;
       pendingSpace = '';
 
+      if (isDiagramRun(run)) {
+        // Only a diagram alone in its paragraph can be a fence; keep the source visible.
+        out += codeSpan(run.diagram.replace(/\n/g, ' '));
+        continue;
+      }
       if (isMathRun(run)) {
         out += run.display ? `$$${run.math}$$` : `$${run.math}$`;
         continue;

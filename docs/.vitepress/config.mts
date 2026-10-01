@@ -20,6 +20,7 @@ export default defineConfig({
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'Text documents', link: '/guide/documents' },
           { text: 'Equations', link: '/guide/equations' },
+          { text: 'Diagrams', link: '/guide/diagrams' },
           { text: 'LaTeX', link: '/guide/latex' },
           { text: 'Spreadsheets', link: '/guide/spreadsheets' },
           { text: 'Presentations', link: '/guide/presentations' },

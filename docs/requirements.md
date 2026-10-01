@@ -130,6 +130,19 @@ keyboard. Equations are stored as LaTeX in the document model.
 | MATH-006 | C | — | Equation support in presentations and spreadsheet cell comments. |
 | MATH-007 | W | — | Computer-algebra features (solving, plotting). |
 
+## 4d. Diagrams (DIAG)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| DIAG-001 | M | 0.0.14 | The system shall let the user insert a Mermaid diagram in a text document and edit its source in a dialog with a live preview and starter templates (flowchart, sequence, class, state, entity-relationship, Gantt, pie, mind map). |
+| DIAG-002 | M | 0.0.14 | The system shall render diagrams in the document view, in print and in exports without network access, loading the diagram engine only when a document contains or inserts a diagram; when the source is invalid, the system shall show the error and keep the source unchanged. |
+| DIAG-003 | M | 0.0.14 | The system shall render diagrams in Mermaid's strict security mode, as images, so that diagram source cannot run scripts or load remote content. |
+| DIAG-004 | M | 0.0.14 | When a document is saved as Markdown or MDZ, the system shall write each diagram as a fenced ```` ```mermaid ```` code block, and parse such blocks back into diagrams when reading. |
+| DIAG-005 | M | 0.0.14 | When a document is saved as DOCX or ODT, the system shall embed each diagram as a PNG picture whose title is `mermaid` and whose description holds the Mermaid source, and read such pictures back as editable diagrams. |
+| DIAG-006 | S | 0.0.14 | When a document is saved as LaTeX, the system shall include each diagram as a PNG graphic preceded by its Mermaid source in comments. |
+| DIAG-007 | S | 0.0.14 | When a diagram cannot be rendered while saving, the system shall write its source as text so that no content is lost. |
+| DIAG-008 | C | — | Other diagram languages (PlantUML, Graphviz) and freehand diagrams (draw.io). |
+
 ## 5. Spreadsheets (SHEET)
 
 | ID | Pri | Phase | Requirement |

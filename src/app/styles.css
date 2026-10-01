@@ -441,3 +441,21 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .properties-form small, .properties-form > span { grid-column: 2; color: var(--muted); font-size: 0.8rem; margin-top: -2px; }
 .properties-form > span { display: none; }
 @media (max-width: 480px) { .properties-form { grid-template-columns: 1fr; } .properties-form small { grid-column: 1; } }
+
+/* Diagrams (DIAG-001) */
+.doc-page span.diagram { display: block; margin: 6pt 0; text-align: center; cursor: pointer; border-radius: 4px; white-space: pre-wrap; }
+.doc-page span.diagram:hover { outline: 2px solid var(--sel); }
+.doc-page span.diagram img, .print-document span.diagram img { max-width: 100%; height: auto; }
+.doc-page span.diagram:not([data-rendered]), .doc-page span.diagram.diagram-error { text-align: left; font-family: ui-monospace, monospace; font-size: 0.9em; padding: 6px 8px; background: #f4f6f8; }
+.doc-page span.diagram.diagram-error { border-left: 3px solid var(--danger); }
+.diagram-dialog { width: min(960px, calc(100vw - 32px)); max-width: none; }
+.diagram-toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.diagram-panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.diagram-source { width: 100%; min-height: 260px; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.9rem; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
+.diagram-preview { min-height: 260px; max-height: 60vh; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+.diagram-preview img { max-width: 100%; height: auto; }
+.diagram-message { min-height: 1.2em; margin: 8px 0 0; color: var(--danger); white-space: pre-wrap; font-size: 0.85rem; }
+@media (max-width: 640px) {
+  .diagram-panes { grid-template-columns: 1fr; }
+  .diagram-source, .diagram-preview { min-height: 160px; }
+}

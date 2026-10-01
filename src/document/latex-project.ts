@@ -1,15 +1,15 @@
 /** LaTeX projects packed as ZIP archives (TEX-002, TEX-003). */
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { isSafeArchivePath } from './mdz-manifest';
-import { mediaTypeForName, type RichDocument } from './model';
+import { mediaTypeForName, type RichDocument, type WriteOptions } from './model';
 import { readLatex } from './latex-reader';
 import { writeLatex } from './latex-writer';
 
 const JUNK = /(^|\/)(__MACOSX|\.DS_Store|Thumbs\.db)(\/|$)/;
 const IMAGE_EXTENSIONS = ['', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'];
 
-export function writeLatexZip(doc: RichDocument): Uint8Array {
-  const { tex, images } = writeLatex(doc);
+export function writeLatexZip(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
+  const { tex, images } = writeLatex(doc, opts);
   const files: Record<string, Uint8Array> = { 'main.tex': strToU8(tex) };
   for (const [path, data] of images) files[path] = data;
   return zipSync(files);

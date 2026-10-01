@@ -7,6 +7,7 @@ import {
   extensionForType,
   groupBlocks,
   isImageRun,
+  isDiagramRun,
   isMathRun,
   nestLists,
   splitListSegments,
@@ -20,6 +21,7 @@ import {
   type WriteOptions,
 } from './model';
 import { MATHML_NS } from '../math/convert';
+import { diagramsAsPictures } from './diagram';
 import { manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from './odf';
 
 const PARA_STYLE: Record<string, string> = {
@@ -177,10 +179,11 @@ class OdtWriter {
     let atStart = true;
     for (const run of runs) {
       if (isImageRun(run)) {
-        out += this.image(run.image, run.alt, run.width, run.height);
+        out += this.image(run.image, run.alt, run.width, run.height, run.title);
         atStart = false;
         continue;
       }
+      if (isDiagramRun(run)) continue; // replaced by diagramsAsPictures
       if (isMathRun(run)) {
         out += this.formula(run.math, !!run.display);
         atStart = false;
@@ -197,7 +200,7 @@ class OdtWriter {
     return out;
   }
 
-  private image(key: string, alt: string | undefined, width?: number, height?: number): string {
+  private image(key: string, alt: string | undefined, width?: number, height?: number, title?: string): string {
     const res = this.doc.resources.get(key);
     if (!res) return '';
     let path = this.pictures.get(key);
@@ -212,6 +215,7 @@ class OdtWriter {
     return (
       `<draw:frame draw:style-name="fr1" draw:name="Image${n}" text:anchor-type="as-char" svg:width="${pxToIn(w)}" svg:height="${pxToIn(h)}" draw:z-index="0">` +
       `<draw:image xlink:href="${path}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad" draw:mime-type="${esc(res.mediaType)}"/>` +
+      (title ? `<svg:title>${esc(title)}</svg:title>` : '') +
       (alt ? `<svg:desc>${esc(alt)}</svg:desc>` : '') +
       '</draw:frame>'
     );
@@ -289,5 +293,5 @@ const STYLES_XML =
   '</office:document-styles>';
 
 export function writeOdt(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
-  return new OdtWriter(doc, opts).write();
+  return new OdtWriter(diagramsAsPictures(doc, opts.diagrams), opts).write();
 }

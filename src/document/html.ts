@@ -7,12 +7,14 @@ import {
   cleanFormat,
   groupBlocks,
   isImageRun,
+  isDiagramRun,
   isMathRun,
   isTextRun,
   nestLists,
   normalizeRuns,
   type Align,
   type Block,
+  type DiagramLang,
   type ListInfo,
   type ListNode,
   type Paragraph,
@@ -21,6 +23,7 @@ import {
   type TableCell,
   type TextFormat,
 } from './model';
+import { diagramLangOf } from './diagram';
 
 /** Accept http(s), mailto, tel, fragment and relative URLs only. */
 export function isSafeUrl(url: string): boolean {
@@ -86,6 +89,10 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
       el.append(mathElement(run.math, !!run.display, doc));
       continue;
     }
+    if (isDiagramRun(run)) {
+      el.append(diagramElement(run.diagram, run.lang, doc));
+      continue;
+    }
     if (isImageRun(run)) {
       const info = resolveImage(run.image);
       if (!info) continue;
@@ -125,6 +132,17 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
     el.append(node);
   }
   if (!el.hasChildNodes() || el.lastChild?.nodeName === 'BR') el.append(doc.createElement('br'));
+}
+
+/** Placeholder element for a diagram; editors upgrade it to a rendered picture (DIAG-001). */
+export function diagramElement(source: string, lang: DiagramLang, doc: Document): HTMLElement {
+  const span = doc.createElement('span');
+  span.className = 'diagram';
+  span.dataset.diagram = lang;
+  span.dataset.source = source;
+  span.contentEditable = 'false';
+  span.textContent = source;
+  return span;
 }
 
 /** Placeholder element for an equation; editors upgrade it to rendered math. */
@@ -264,6 +282,11 @@ export function domToBlocks(
       const run: Run = { math: el.dataset.latex };
       if (el.dataset.display === 'true') run.display = true;
       open(ctx).runs.push(run);
+      return;
+    }
+    if (el.dataset?.source !== undefined && el.classList.contains('diagram')) {
+      const lang = diagramLangOf(el.dataset.diagram);
+      if (lang) open(ctx).runs.push({ diagram: el.dataset.source, lang });
       return;
     }
     if (tag === 'img') {

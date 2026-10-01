@@ -24,6 +24,7 @@ body { font-family: Calibri, Carlito, 'Segoe UI', system-ui, sans-serif; font-si
 .print-document pre { white-space: pre-wrap; background: #f3f3f3; padding: 4px 8px; }
 .print-document blockquote { margin: 0 0 8pt; padding-left: 12px; border-left: 3px solid #bbb; font-style: italic; }
 .print-document .math.display { display: block; text-align: center; margin: 6pt 0; }
+.print-document span.diagram { display: block; text-align: center; margin: 6pt 0; break-inside: avoid; page-break-inside: avoid; }
 .print-sheet h2 { font-size: 12pt; margin: 0 0 6pt; }
 .print-sheet table { border-collapse: collapse; font-size: 9pt; margin-bottom: 12pt; }
 .print-sheet thead { display: table-header-group; }

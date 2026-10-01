@@ -5,6 +5,11 @@
 const INVALID_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g;
 
 /** Escape text for use in XML content or attribute values. */
+/** Escape for an attribute value, keeping line breaks and tabs (attribute normalisation would turn them into spaces). */
+export function escapeXmlAttr(text: string): string {
+  return escapeXml(text).replace(/\n/g, '&#10;').replace(/\r/g, '&#13;').replace(/\t/g, '&#9;');
+}
+
 export function escapeXml(text: string): string {
   return text
     .replace(INVALID_XML_CHARS, '')

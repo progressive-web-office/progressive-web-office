@@ -20,6 +20,7 @@ src/
               slideshow
   pdf/        pdf.js viewer, form/signature saving (pdf-lib), signature pad
   math/       MathLive loader, equation dialog, MathML/OMML/LaTeX converters
+  diagram/    Mermaid loader, SVG/PNG rendering, diagram dialog and templates
 schemas/      JSON Schemas (MDZ manifest)
 e2e/          Playwright end-to-end tests
 ```
@@ -126,3 +127,16 @@ converts MathML → OMML (Word) and OMML/MathML → LaTeX, so that the model sta
 LaTeX-based while each format gets its native representation. Rendered
 MathLive markup is sanitised before insertion (no links, scripts or event
 handlers).
+
+## Diagrams
+
+Diagrams are `DiagramRun`s holding Mermaid source. Mermaid is imported lazily
+(`src/diagram/mermaid.ts`) and configured in strict security mode without
+HTML labels, so its SVG has no `foreignObject`: the editor shows it as an
+`<img>` (a `data:` URL, isolated from the page) and exports rasterise it on a
+canvas. `writeDocumentAsync` renders each distinct source to PNG before
+writing DOCX, ODT or a LaTeX project; `src/document/diagram.ts` then replaces
+diagrams by pictures titled `mermaid` whose alternative text is the source
+(or by the source as text when rendering failed), and the DOCX/ODT readers
+turn such pictures back into diagrams. Markdown and MDZ keep ```` ```mermaid ````
+fences.

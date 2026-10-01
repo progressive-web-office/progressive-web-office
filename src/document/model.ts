@@ -31,6 +31,8 @@ export interface ImageRun {
   /** Original reference for images that could not be embedded (e.g. Markdown URL). */
   src?: string;
   alt?: string;
+  /** Picture title; a diagram language (e.g. `mermaid`) marks a rendered diagram whose `alt` is the source (DIAG-005). */
+  title?: string;
   /** Display size in CSS pixels, when known. */
   width?: number;
   height?: number;
@@ -43,7 +45,16 @@ export interface MathRun {
   display?: boolean;
 }
 
-export type Run = TextRun | ImageRun | MathRun;
+/** Diagram languages understood by the editor (DIAG-001). */
+export type DiagramLang = 'mermaid';
+
+/** A diagram, stored as source text and rendered on demand (DIAG-001). */
+export interface DiagramRun {
+  diagram: string;
+  lang: DiagramLang;
+}
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -141,6 +152,7 @@ export interface RichDocument {
 
 export const isImageRun = (run: Run): run is ImageRun => 'image' in run;
 export const isMathRun = (run: Run): run is MathRun => 'math' in run;
+export const isDiagramRun = (run: Run): run is DiagramRun => 'diagram' in run;
 export const isTextRun = (run: Run): run is TextRun => 'text' in run;
 
 export function emptyDocument(): RichDocument {
@@ -210,6 +222,29 @@ export function wordCount(doc: RichDocument): { words: number; characters: numbe
 export interface WriteOptions {
   /** LaTeX -> MathML conversions prepared asynchronously (see `prepareMath`). */
   mathml?: Map<string, string>;
+  /** Diagram source -> rendered picture, prepared asynchronously (DIAG-005). */
+  diagrams?: Map<string, RenderedDiagram>;
+}
+
+/** A diagram rasterised for formats that cannot render its source. */
+export interface RenderedDiagram {
+  png: Uint8Array;
+  /** Display size in CSS pixels. */
+  width: number;
+  height: number;
+}
+
+/** Every distinct diagram source used in the blocks. */
+export function collectDiagrams(blocks: Block[]): string[] {
+  const out = new Set<string>();
+  const visit = (bs: Block[]): void => {
+    for (const b of bs) {
+      if (b.type === 'paragraph') for (const r of b.runs) if ('diagram' in r) out.add(r.diagram);
+      if (b.type === 'table') for (const row of b.rows) for (const c of row) visit(c.blocks);
+    }
+  };
+  visit(blocks);
+  return [...out];
 }
 
 /** Every distinct LaTeX source used in the blocks. */

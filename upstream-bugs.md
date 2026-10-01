@@ -27,3 +27,15 @@ reproducibility.
   the matching legacy worker, which include a polyfill.
 - Status: expected behaviour of the modern build (it targets the newest
   browsers); revisit when the method ships in all supported browsers.
+
+## mermaid 12.0.0 — depends on vulnerable lodash-es 4.17.23
+
+- Packages: `mermaid@12.0.0` → `chevrotain@11.1.2` (and `@chevrotain/gast`,
+  `@chevrotain/cst-dts-gen`), `dagre-d3-es@7.0.14` → `lodash-es@4.17.23`.
+- Advisories: [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc)
+  (`_.template` code injection), [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh)
+  (prototype pollution in `_.unset` / `_.omit`).
+- Workaround: `package.json` `overrides` pins `lodash-es` to `^4.18.1`
+  (`npm audit` no longer reports it).
+- Environment: Node.js 22.22.0, npm 10.9.4.
+- Status: drop the override once mermaid / chevrotain depend on a fixed lodash-es.
