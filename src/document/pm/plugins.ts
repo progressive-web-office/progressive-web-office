@@ -10,6 +10,7 @@ import { gapCursor } from 'prosemirror-gapcursor';
 import { columnResizing, goToNextCell, tableEditing } from 'prosemirror-tables';
 import { findTypedMath } from '../../math/inline';
 import type { ParagraphStyle } from '../model';
+import { searchPlugin } from './search';
 import { backspace, enter, setAlign, setStyle, shiftListLevel, toggleList } from './commands';
 import { schema } from './schema';
 
@@ -49,6 +50,7 @@ export function editorInputRules(): Plugin {
 }
 
 export interface EditorActions {
+  find(replace: boolean): void;
   link(): void;
   math(): void;
   diagram(): void;
@@ -82,6 +84,8 @@ export function editorKeymap(actions: EditorActions): Plugin[] {
       'Mod-Alt-2': setStyle('h2'),
       'Mod-Alt-3': setStyle('h3'),
       'Mod-k': run(actions.link),
+      'Mod-f': run(() => actions.find(false)),
+      'Mod-h': run(() => actions.find(true)),
       'Mod-m': run(actions.math),
       'Mod-Shift-d': run(actions.diagram),
       Tab: chainCommands(goToNextCell(1), shiftListLevel(1)),
@@ -134,5 +138,5 @@ export function peersPlugin(): Plugin<PeerMarker[]> {
 }
 
 export function basePlugins(actions: EditorActions): Plugin[] {
-  return [editorInputRules(), ...editorKeymap(actions), history(), dropCursor(), gapCursor(), columnResizing(), tableEditing(), peersPlugin()];
+  return [editorInputRules(), ...editorKeymap(actions), history(), dropCursor(), gapCursor(), columnResizing(), tableEditing(), peersPlugin(), searchPlugin()];
 }

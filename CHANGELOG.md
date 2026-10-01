@@ -19,6 +19,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - "Share with another app…" in the send dialog opens the system share sheet.
 - Light / dark / system theme: a toolbar button cycles between following the
   device setting, light and dark; the choice is remembered.
+- Find and replace in text documents (🔍, Ctrl+F / Ctrl+H): highlighted
+  matches with a count, match case, whole words, regular expressions with
+  `$1` groups, replace one or all in a single undoable step.
 - About window (**?** in the toolbar, *About* on the start screen): version,
   git commit and build date, licence, installed / offline status, a QR code
   of the app address to open it on another device (click it to show it full

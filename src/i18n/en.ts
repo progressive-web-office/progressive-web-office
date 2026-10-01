@@ -563,6 +563,20 @@ export const en = {
   'qr.enlarge': 'Enlarge the QR code',
   'qr.enlargeTitle': 'Click to show the QR code full screen, easier to scan',
   'qr.fullScreen': 'QR code, full screen',
+  'find.title': 'Find and replace',
+  'find.find': 'Find',
+  'find.replaceWith': 'Replace with',
+  'find.replace': 'Replace',
+  'find.replaceAll': 'Replace all',
+  'find.previous': 'Previous match',
+  'find.next': 'Next match',
+  'find.matchCase': 'Match case',
+  'find.wholeWord': 'Whole words',
+  'find.regex': 'Regular expression',
+  'find.count': '{n} of {total}',
+  'find.none': 'No results',
+  'find.invalid': 'Invalid expression',
+  'find.replaced': '{n} replaced',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -26,6 +26,7 @@ import { currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, inse
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
 import { listCss } from './pm/list-css';
+import { FindBar } from './find-bar';
 import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-tables/style/tables.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
@@ -62,6 +63,7 @@ export class DocumentEditor implements EditorView {
   private readonly urls = new Map<string, string>();
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
   private runner: CodeRunner | undefined;
+  private readonly findBar: FindBar;
   /** CODE-004: the user agreed to run this document's code. */
   private trusted = false;
 
@@ -76,13 +78,14 @@ export class DocumentEditor implements EditorView {
       this.command(setStyle(this.styleSelect.value as ParagraphStyle));
       this.view.focus();
     });
-    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), h('div', { class: 'doc-scroll' }, this.page));
+    this.findBar = new FindBar(() => this.view);
+    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.page));
     this.view = new PmView(
       { mount: this.page },
       {
         state: EditorState.create({
           doc: blocksToPm(doc.blocks),
-          plugins: basePlugins({ link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
+          plugins: basePlugins({ find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
         }),
         nodeViews: nodeViews({
           resolve: (key) => this.resolve(key),
@@ -105,6 +108,7 @@ export class DocumentEditor implements EditorView {
     if (tr.docChanged && !tr.getMeta(REMOTE)) this.changed();
     else if (tr.selectionSet) this.statusSoon();
     this.updateToolbar();
+    if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
   }
 
   private command(cmd: Command): boolean {
@@ -386,6 +390,7 @@ export class DocumentEditor implements EditorView {
       align('right', t('common.alignRight'), '⇥', 'Ctrl+R'),
       align('justify', t('common.justify'), '☰', 'Ctrl+J'),
       h('span', { class: 'sep' }),
+      act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
       act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
       act(t('common.insertImage'), '🖼', () => void this.pickImage()),
       act(t('doc.insertTable'), '▦', () => this.command(insertTable()), t('doc.insertTableTitle')),

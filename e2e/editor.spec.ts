@@ -82,3 +82,29 @@ test('pastes formatted text from another application (DOC-009)', async ({ page }
   await expect(editor.locator('.list-item strong')).toHaveText('bold');
   await expect(editor.locator('script')).toHaveCount(0);
 });
+
+test('finds and replaces text (DOC-019)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Le chat et le chaton. Un CHAT.');
+  await page.keyboard.press('Control+f');
+  const bar = page.getByRole('search', { name: 'Find and replace' });
+  await bar.getByLabel('Find', { exact: true }).fill('chat');
+  await expect(bar.getByRole('status')).toHaveText('1 of 3');
+  await expect(editor.locator('.search-match')).toHaveCount(3);
+  await bar.getByLabel('Whole words').check();
+  await expect(bar.getByRole('status')).toHaveText('1 of 2');
+  await page.keyboard.press('Escape');
+  await expect(bar).toBeHidden();
+  await expect(editor.locator('.search-match')).toHaveCount(0);
+
+  await page.keyboard.press('Control+h');
+  await bar.getByLabel('Find', { exact: true }).fill('chat');
+  await bar.getByLabel('Replace with').fill('chien');
+  await bar.getByRole('button', { name: 'Replace all' }).click();
+  await expect(bar.getByRole('status')).toHaveText('2 replaced');
+  await expect(editor).toHaveText('Le chien et le chaton. Un chien.');
+  // One undo step.
+  await editor.click();
+  await page.keyboard.press('Control+z');
+  await expect(editor).toHaveText('Le chat et le chaton. Un CHAT.');
+});

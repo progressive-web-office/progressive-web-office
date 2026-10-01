@@ -30,6 +30,16 @@ and any ZIP archive of Markdown files.
 
 The status bar shows the word and character count.
 
+### Find and replace
+
+🔍 or <kbd>Ctrl</kbd>+<kbd>F</kbd> opens the find bar; <kbd>Ctrl</kbd>+<kbd>H</kbd>
+opens it with replacement. Every match is highlighted and counted;
+<kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd> go to the next / previous
+one. **Aa** matches case, **W** whole words only, **.\*** uses a regular
+expression (replacements can then use `$1`, `$2`… for the captured groups).
+*Replace all* is a single step that <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes.
+<kbd>Esc</kbd> closes the bar.
+
 ### Typing shortcuts
 
 At the start of a line, type:
