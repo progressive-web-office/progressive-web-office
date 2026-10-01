@@ -2,21 +2,13 @@
 import { t } from '../i18n';
 import { button, h } from './dom';
 import { qrImage } from './qr';
+import { BUILD, shortCommit } from './build-info';
 
-declare const __APP_VERSION__: string;
-declare const __GIT_COMMIT__: string;
-declare const __BUILD_DATE__: string;
-
-export const BUILD = {
-  version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0',
-  commit: typeof __GIT_COMMIT__ === 'string' && __GIT_COMMIT__ ? __GIT_COMMIT__ : 'unknown',
-  date: typeof __BUILD_DATE__ === 'string' ? __BUILD_DATE__ : new Date(0).toISOString(),
-};
+export { BUILD };
 
 export const SOURCE_URL = 'https://github.com/s-celles/progressive-web-office';
 const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 
-const shortCommit = (): string => (BUILD.commit === 'unknown' ? BUILD.commit : BUILD.commit.slice(0, 7));
 
 /** Whether the app runs installed (standalone window) rather than in a browser tab. */
 function installed(): boolean {

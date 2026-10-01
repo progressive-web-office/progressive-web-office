@@ -16,6 +16,7 @@ import { pickFile, readFileBytes, replaceExtension, saveFile } from '../storage/
 import type { AssistantPanel } from '../ai/panel';
 import type { GitAccount } from '../git/accounts';
 import type { GitRepo } from '../git/types';
+import { versionLabel } from './build-info';
 import { button, h } from './dom';
 import { applyTheme, loadTheme, nextTheme, saveTheme } from './theme';
 import { newView, openView, type EditorView, type ViewContext } from './views';
@@ -682,7 +683,7 @@ export class App {
       h(
         'section',
         { class: 'start' },
-        h('h1', {}, t('app.name')),
+        h('h1', {}, t('app.name'), ' ', h('span', { class: 'app-version-title' }, versionLabel())),
         h('p', { class: 'tagline' }, t('app.tagline')),
         h(
           'div',
@@ -776,6 +777,8 @@ export class App {
     const doc = this.current;
     const items: (Node | null)[] = [
       h('span', { class: 'brand', 'aria-hidden': 'true' }, 'PWO'),
+      // UI-013: version and build, like QRShare; opens the About window.
+      button(versionLabel(), () => void this.showAbout(), { className: 'app-version', title: t('about.openTitle') }),
     ];
     if (doc) {
       items.push(

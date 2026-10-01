@@ -23,7 +23,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   git commit and build date, licence, installed / offline status, a QR code
   of the app address to open it on another device, links to the
   documentation, source code, changelog, requirements and problem reports,
-  and *Copy details* for a bug report.
+  and *Copy details* for a bug report. The version and short git commit
+  (e.g. `v0.0.13 (6cae6fc)`) are also shown next to the name in the toolbar
+  and on the start screen, as in QRShare.
 - Real-time collaboration on text documents and spreadsheets (👥): an
   invitation link opens the same document for others; edits are merged per
   cell or paragraph, peer to peer (WebRTC, end-to-end encrypted, introduced

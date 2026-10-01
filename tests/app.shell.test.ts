@@ -108,7 +108,7 @@ describe('UI-007 / UI-008 interface language', () => {
     setLocale('fr');
     try {
       new App(root);
-      expect(root.querySelector('.start h1')?.textContent).toBe('Progressive Web Office');
+      expect(root.querySelector('.start h1')?.textContent).toContain('Progressive Web Office');
       expect(Array.from(root.querySelectorAll('.start button')).map((b) => b.textContent)).toContain('Nouveau document');
       const picker = root.querySelector<HTMLSelectElement>('select.language')!;
       picker.value = 'zh';

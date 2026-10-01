@@ -30,3 +30,15 @@ describe('UI-012 About window', () => {
     expect(report).toContain(navigator.userAgent);
   });
 });
+
+describe('UI-013 version in the interface', async () => {
+  const { App } = await import('../src/app/app');
+  it('shows the version and commit in the toolbar and on the start screen', async () => {
+    const { versionLabel } = await import('../src/app/build-info');
+    expect(versionLabel()).toMatch(new RegExp(`^v${pkg.version.replace(/\./g, '\\.')} \\(([0-9a-f]{7}|unknown)\\)$`));
+    const root = document.createElement('div');
+    new App(root);
+    expect(root.querySelector('button.app-version')?.textContent).toBe(versionLabel());
+    expect(root.querySelector('h1')?.textContent).toContain(versionLabel());
+  });
+});
