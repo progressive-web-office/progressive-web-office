@@ -261,6 +261,22 @@ export class App {
     }
   }
 
+  /** Save a copy through one of the view's save variants; the open document is unchanged (PDF-010). */
+  async saveCopy(id: string): Promise<void> {
+    const doc = this.current;
+    const variant = doc?.view.saveVariants?.().find((v) => v.id === id);
+    if (!doc || !variant) return;
+    try {
+      const bytes = await variant.save();
+      const dot = doc.name.lastIndexOf('.');
+      const stem = dot > 0 ? doc.name.slice(0, dot) : doc.name;
+      const name = `${stem}${variant.suffix}.${fileExtension(variant.format)}`;
+      if (await saveFile(bytes, name, variant.format)) this.showNotice(t('file.copySaved', { name }));
+    } catch (err) {
+      this.showError(t('error.save', { message: (err as Error).message }));
+    }
+  }
+
   /** Hand the current document to QRShare (SHARE-001, SHARE-002). */
   async sendToDevice(): Promise<void> {
     const doc = this.current;
@@ -545,11 +561,13 @@ export class App {
         { 'aria-label': t('file.saveAsFormat'), title: t('file.saveAsTitle') },
         h('option', { value: '' }, t('file.saveAs')),
         ...saveFormatsFor(doc.kind).map((f) => h('option', { value: f }, formatLabel(f))),
+        ...(doc.view.saveVariants?.() ?? []).map((v) => h('option', { value: `variant:${v.id}` }, v.label)),
       );
       select.addEventListener('change', () => {
-        const value = select.value as DocumentFormat | '';
+        const value = select.value;
         select.value = '';
-        if (value) void this.save(value);
+        if (value.startsWith('variant:')) void this.saveCopy(value.slice('variant:'.length));
+        else if (value) void this.save(value as DocumentFormat);
       });
       actions.append(select);
     }

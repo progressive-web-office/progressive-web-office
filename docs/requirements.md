@@ -192,7 +192,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | PDF-006 | C | — | Text search inside the PDF. |
 | PDF-008 | M | 0.0.4 | When a PDF containing AcroForm fields is opened, the system shall display editable controls for its text fields, checkboxes, radio groups and drop-down / list fields over the rendered pages. |
 | PDF-009 | M | 0.0.4 | When the user saves a PDF with filled fields, the system shall write the field values into the PDF (and regenerate their appearances) so that other PDF readers display them. |
-| PDF-010 | S | 0.0.4 | Where the user chooses "Flatten", the system shall make the filled fields non-editable in the saved PDF. |
+| PDF-010 | S | 0.0.4 | The system shall offer, next to the regular save that keeps form fields editable, a "Flattened PDF" save that writes a copy in which the filled fields are part of the page and can no longer be edited, without changing the open document. |
 | PDF-011 | M | 0.0.4 | The system shall let the user create a handwritten signature by drawing it (mouse, touch or stylus) or importing an image, and place, move and resize it on any page. |
 | PDF-012 | M | 0.0.4 | When the user saves a PDF with placed signatures, the system shall embed them as images at the chosen positions. |
 | PDF-013 | S | 0.0.4 | The system shall let the user add free text (e.g. a date or name) anywhere on a page. |

@@ -32,13 +32,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   offline in strict security mode. Stored as ```` ```mermaid ```` blocks in
   Markdown and MDZ, and as PNG pictures carrying their source in Word,
   OpenDocument and LaTeX projects, so they stay editable after a round trip.
+- PDF forms: **Save as… → Flattened PDF – fields locked** writes a copy
+  (`…-flattened.pdf`) whose answers can no longer be changed, while **Save**
+  keeps the fields editable for later changes.
 - MDZ manifest schema: optional `subject`, `description`, `keywords`,
   `language` and `license` fields.
-
-### Changed
-
-- Recent files show the date and time they were last opened, in the interface
-  language (previously only the date, in the browser's language).
 
 - Integration tests against a real QRShare build (`just e2e-qrshare`, and a
   dedicated CI job): the document sent to QRShare's transfer chooser is
@@ -47,6 +45,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- PDF forms: the little-noticed **Flatten** checkbox of the PDF toolbar is
+  replaced by the "Flattened PDF" entry of **Save as…**.
+- Recent files show the date and time they were last opened, in the interface
+  language (previously only the date, in the browser's language).
 - The project is now licensed under the GNU Affero General Public License
   v3.0 or later (previously MIT); the start screen links to the source code.
 - Clearer wording for saving the AI assistant's API key.

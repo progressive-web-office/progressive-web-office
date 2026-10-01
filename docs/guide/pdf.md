@@ -25,8 +25,15 @@ editable directly on the page: text fields, checkboxes, radio buttons,
 drop-down and list boxes. Saving writes the values into the PDF and
 regenerates their appearance, so that every PDF reader shows them.
 
-Tick **Flatten** before saving to make the filled fields permanent
-(non-editable) in the saved file.
+Two ways to save a filled form:
+
+- **Save** (or **Save as… → PDF document**) keeps the fields editable, so
+  you or someone else can change the answers later.
+- **Save as… → Flattened PDF – fields locked** writes a *copy* named
+  `…-flattened.pdf` in which the answers, signatures and added text become
+  part of the page: the form can no longer be changed. Send this version
+  when the form is final. The open document is not affected; you can keep
+  editing it and save it normally.
 
 ## Signing
 

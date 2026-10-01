@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PDFDocument, StandardFonts } from '@pdfme/pdf-lib';
-import { openApp, openFile } from './helpers';
+import { openApp, openFile, saveAs } from './helpers';
 
 async function samplePdf(): Promise<Buffer> {
   const doc = await PDFDocument.create();
@@ -52,6 +52,33 @@ test('fills form fields, adds text and saves a valid PDF (PDF-008, PDF-009, PDF-
   expect(doc.getForm().getTextField('full_name').getText()).toBe('Ada Lovelace');
   expect(doc.getForm().getCheckBox('accept').isChecked()).toBe(true);
   expect(doc.getPageCount()).toBe(3);
+});
+
+test('saves a flattened copy whose fields can no longer be edited (PDF-010)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'form.pdf', await samplePdf(), 'application/pdf');
+  await page.getByLabel('full_name').fill('Ada Lovelace');
+  await page.getByLabel('accept').check();
+
+  // The flattened PDF is a copy: the open document keeps its editable fields.
+  const flat = await saveAs(page, 'Flattened PDF – fields locked (.pdf)');
+  expect(flat.name).toBe('form-flattened.pdf');
+  const frozen = await PDFDocument.load(flat.data);
+  expect(frozen.getForm().getFields()).toHaveLength(0);
+  expect(frozen.getPageCount()).toBe(3);
+  await expect(page.locator('.doc-name')).toHaveText('form.pdf');
+  await expect(page.locator('.modified')).toBeVisible();
+  await expect(page.locator('.app-alert')).toContainText('form-flattened.pdf');
+
+  // Saving normally keeps the fields editable for later changes.
+  const editable = await PDFDocument.load(await download(page));
+  expect(editable.getForm().getTextField('full_name').getText()).toBe('Ada Lovelace');
+
+  // Reopened, the flattened copy shows no form controls.
+  await openFile(page, 'form-flattened.pdf', flat.data, 'application/pdf');
+  await expect(page.locator('.pdf-page').first().locator('canvas')).toBeVisible();
+  await expect(page.getByLabel('full_name')).toHaveCount(0);
+  expect(errors).toEqual([]);
 });
 
 test('draws a handwritten signature, places it and saves it into the PDF (PDF-011, PDF-012)', async ({ page }) => {

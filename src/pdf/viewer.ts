@@ -8,7 +8,7 @@ import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { button, h } from '../app/dom';
-import type { EditorView, ViewContext } from '../app/views';
+import type { EditorView, SaveVariant, ViewContext } from '../app/views';
 import { applyEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from './forms';
 import { captureSignature } from './signature-pad';
 
@@ -57,7 +57,6 @@ export class PdfViewer implements EditorView {
   private observer: IntersectionObserver | undefined;
   private values: Record<string, string | boolean | string[]> = {};
   private stamps: Stamp[] = [];
-  private flatten = false;
   private resizeObserver: ResizeObserver | undefined;
 
   constructor(
@@ -100,9 +99,24 @@ export class PdfViewer implements EditorView {
     return t('pdf.status', { n: this.current, total: this.doc.numPages, zoom: Math.round(this.scale * 100) }) + fields;
   }
 
+  /** Save with the form fields still editable, for later changes (PDF-009). */
   async save(): Promise<Uint8Array> {
-    if (!Object.keys(this.values).length && !this.stamps.length && !this.flatten) return this.bytes;
-    return applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: this.flatten });
+    if (!Object.keys(this.values).length && !this.stamps.length) return this.bytes;
+    return applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: false });
+  }
+
+  /** "Flattened PDF": a copy whose filled fields become part of the page (PDF-010). */
+  saveVariants(): SaveVariant[] {
+    if (this.info.readOnlyReason || !this.info.fields.length) return [];
+    return [
+      {
+        id: 'pdf-flattened',
+        label: t('pdf.saveFlattened'),
+        format: 'pdf',
+        suffix: t('pdf.flattenedSuffix'),
+        save: () => applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: true }),
+      },
+    ];
   }
 
   print(): void {
@@ -123,11 +137,6 @@ export class PdfViewer implements EditorView {
 
   private toolbar(): HTMLElement {
     const editable = !this.info.readOnlyReason;
-    const flatten = h('input', { type: 'checkbox', id: 'pdf-flatten' });
-    flatten.addEventListener('change', () => {
-      this.flatten = flatten.checked;
-      this.ctx.changed();
-    });
     return h(
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('pdf.label') },
@@ -145,7 +154,6 @@ export class PdfViewer implements EditorView {
             h('span', { class: 'sep' }),
             button(t('pdf.sign'), () => void this.addSignature(), { text: t('pdf.signText'), title: t('pdf.signTitle') }),
             button(t('pdf.addText'), () => this.addText(), { text: t('pdf.addTextText'), title: t('pdf.addTextTitle') }),
-            ...(this.info.fields.length ? [h('label', { class: 'check', for: 'pdf-flatten', title: t('pdf.flattenTitle') }, flatten, ` ${t('pdf.flatten')}`)] : []),
           ]
         : []),
     );

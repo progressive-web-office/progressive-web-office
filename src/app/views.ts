@@ -4,6 +4,16 @@ import type { PrintSettings } from '../print/settings';
 import { t } from '../i18n';
 import type { DocumentFormat, DocumentKind } from '../core/format';
 
+/** An extra "Save as" entry that writes a copy without changing the open document (e.g. a flattened PDF). */
+export interface SaveVariant {
+  id: string;
+  label: string;
+  format: DocumentFormat;
+  /** Appended to the file name, before the extension. */
+  suffix: string;
+  save(): Promise<Uint8Array>;
+}
+
 export interface EditorView {
   /** Root element mounted by the shell. */
   readonly element: HTMLElement;
@@ -18,6 +28,8 @@ export interface EditorView {
   print?(): void;
   /** Printable content for the print preview (PRINT-001). */
   printContent?(settings: PrintSettings): HTMLElement | Promise<HTMLElement>;
+  /** Extra "Save as" entries writing copies (PDF-010). */
+  saveVariants?(): SaveVariant[];
   /** Tools for AI agents working on this document (AI-001, AI-006). */
   agentTools?(): AgentTool[];
   destroy(): void;
