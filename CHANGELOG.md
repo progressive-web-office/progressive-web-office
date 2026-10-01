@@ -100,6 +100,16 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- New text editor engine (ProseMirror) instead of the browser's editing
+  commands: the document is edited as a structure through transactions, so
+  editing behaves the same in every browser, undo/redo is reliable, and
+  collaboration merges precisely. Typing `# `, `## `, `- `, `1. `, `> ` or
+  ` ``` ` at the start of a line creates a heading, list, quote or code
+  block; Tab / Shift+Tab indent list items or move between table cells;
+  Enter on an empty list item leaves the list; Shift+Enter inserts a line
+  break; Ctrl+Alt+1…3 apply heading styles. Pasted content from other
+  applications keeps headings, lists and formatting and drops the rest.
+
 - Open formats first: new documents, spreadsheets and presentations are
   created as OpenDocument files (`.odt`, `.ods`, `.odp`) instead of
   Microsoft Office ones, and *Save as* lists the open format first. "New

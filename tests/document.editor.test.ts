@@ -17,7 +17,7 @@ describe('DOC-003 document editor view', () => {
     document.body.append(editor.element);
     const page = editor.element.querySelector('[contenteditable="true"]')!;
     expect(page.querySelector('h1')?.textContent).toBe('Main title');
-    expect(page.querySelectorAll('img')).toHaveLength(1);
+    expect(page.querySelectorAll('img[data-resource]')).toHaveLength(1);
   });
 
   it.each(['docx', 'odt', 'mdz'] as const)('saves what is displayed (%s round-trip)', async (format) => {

@@ -1,6 +1,7 @@
 /** Print preview dialog (PRINT-001, PRINT-002, PRINT-007). */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
+import { listCss } from '../document/pm/list-css';
 import { contentWidthPx, loadPrintSettings, mmToPx, pageCss, pageSize, PAPER_SIZES, savePrintSettings, type PrintSettings } from './settings';
 
 export type PrintKind = 'document' | 'spreadsheet' | 'presentation';
@@ -88,7 +89,7 @@ export async function openPrintPreview(
       copyStyles(doc);
       const base = doc.createElement('style');
       base.className = 'base-style';
-      base.textContent = PRINT_CSS;
+      base.textContent = `${PRINT_CSS}\n${listCss('.print-document')}`;
       doc.head.append(base);
     }
     let pageStyle = doc.head.querySelector<HTMLStyleElement>('style.page-style');

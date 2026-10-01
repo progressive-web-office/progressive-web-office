@@ -83,6 +83,7 @@ spreadsheets (Excel `.xlsx`, OpenDocument `.ods`, `.csv`), presentations
 | DOC-015 | S | 0.0.2 | The system shall support hyperlinks (display, insert, preserve on save). |
 | DOC-016 | S | 0.0.2 | The system shall support block quotes, preformatted code blocks and inline code. |
 | DOC-017 | S | 0.0.14 | The system shall let the user view and edit the document properties (title, author, date, subject, description, keywords, language, licence) and shall read and write them in every format that supports them: OOXML core properties, ODF `meta.xml`, MDZ manifest, Markdown front matter and LaTeX (`\title`, `\author`, `\date`, hyperref PDF properties). |
+| DOC-018 | M | 0.0.14 | The text editor shall edit a structured document model through transactions (ProseMirror) rather than browser editing commands, with its own undo history, Markdown-style shortcuts (`# `, `- `, `1. `, `> `, ` ``` `), list indentation with Tab / Shift+Tab, and paste from other applications limited to the supported content; converting between the editor and the document model shall be lossless. |
 | DOC-018 | S | 0.0.14 | When a Markdown file starts with a YAML front matter, the system shall read the document properties from it and keep the keys it does not interpret unchanged on save; when saving Markdown with properties, it shall write them as front matter. |
 | DOC-014 | W | — | Track changes, comments, footnotes, headers/footers editing and mail merge. |
 

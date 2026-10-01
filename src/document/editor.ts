@@ -1,150 +1,149 @@
-/** WYSIWYG editor view for text documents (DOC-003..DOC-010, DOC-013, DOC-015). */
+/**
+ * WYSIWYG editor view for text documents (DOC-003..DOC-010, DOC-013, DOC-015,
+ * DOC-018), built on ProseMirror: a structured document with transactions,
+ * a reliable undo history and precise collaboration.
+ */
+import { Fragment, Slice, type Node as PmNode } from 'prosemirror-model';
+import { EditorState, type Command, type Transaction } from 'prosemirror-state';
+import { EditorView as PmView } from 'prosemirror-view';
+import { toggleMark } from 'prosemirror-commands';
+import { redo, undo } from 'prosemirror-history';
 import { applyDocumentParts, documentParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { documentTools, type AgentTool } from '../ai/tools';
-import { findTypedMath } from '../math/inline';
 import type { PrintSettings } from '../print/settings';
 import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import type { EditorView, ViewContext } from '../app/views';
-import { blocksToDom, codeCellElement, diagramElement, domToBlocks, isSafeUrl, mathElement, sanitizeHtml } from './html';
+import { domToBlocks, isSafeUrl, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, collectDiagrams, collectMath, isCodeCellRun, wordCount, type Block, type CodeCellRun, type RichDocument } from './model';
+import { addResource, wordCount, type Align, type Block, type ParagraphStyle, type RichDocument } from './model';
 import type { CodeRunner } from '../code/runner';
+import { blockToPm, blocksToPm, pmToBlocks } from './pm/convert';
+import { schema } from './pm/schema';
+import { currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, setAlign, setLink, setStyle, toggleList } from './pm/commands';
+import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
+import { cellHandle, nodeViews } from './pm/views';
+import { listCss } from './pm/list-css';
+import 'prosemirror-view/style/prosemirror.css';
+import 'prosemirror-tables/style/tables.css';
+import 'prosemirror-gapcursor/style/gapcursor.css';
 
-const STYLES: [string, MessageKey][] = [
-  ['p', 'doc.style.normal'],
+/** List styles, added once to the page. */
+function installListCss(): void {
+  if (document.getElementById('pwo-list-css')) return;
+  const style = document.createElement('style');
+  style.id = 'pwo-list-css';
+  style.textContent = listCss('.doc-page');
+  document.head.append(style);
+}
+
+const STYLES: [ParagraphStyle, MessageKey][] = [
+  ['normal', 'doc.style.normal'],
   ['h1', 'doc.style.h1'],
   ['h2', 'doc.style.h2'],
   ['h3', 'doc.style.h3'],
   ['h4', 'doc.style.h4'],
-  ['blockquote', 'doc.style.quote'],
-  ['pre', 'doc.style.code'],
+  ['quote', 'doc.style.quote'],
+  ['code', 'doc.style.code'],
 ];
 
-function exec(command: string, value?: string): void {
-  // execCommand is deprecated but remains the only cross-browser way to get
-  // native undo/redo-aware rich text editing in contenteditable.
-  document.execCommand(command, false, value);
-}
+/** Transactions coming from other participants: not "changes" of this user. */
+const REMOTE = 'pwo-remote';
 
 export class DocumentEditor implements EditorView {
   readonly element: HTMLElement;
   private readonly page: HTMLElement;
+  readonly view: PmView;
   private readonly styleSelect: HTMLSelectElement;
-  private readonly stateButtons: [string, HTMLButtonElement][] = [];
+  private readonly markButtons: [string, HTMLButtonElement][] = [];
+  private readonly stateButtons: [() => boolean, HTMLButtonElement][] = [];
   private readonly urls = new Map<string, string>();
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
-  private readonly onSelection = (): void => this.updateToolbar();
   private runner: CodeRunner | undefined;
   /** CODE-004: the user agreed to run this document's code. */
   private trusted = false;
-  /** Where the other participants are (COLLAB-003). */
-  private peers: PeerCursor[] = [];
 
   constructor(
     private readonly doc: RichDocument,
     private readonly ctx: ViewContext,
   ) {
-    this.page = h('div', {
-      class: 'doc-page',
-      contenteditable: 'true',
-      role: 'textbox',
-      'aria-multiline': 'true',
-      'aria-label': t('doc.label'),
-      spellcheck: 'true',
-    });
-    this.page.append(blocksToDom(doc.blocks, document, (key) => this.resolve(key)));
+    installListCss();
+    this.page = h('div', { class: 'doc-page' });
     this.styleSelect = h('select', { 'aria-label': t('doc.style'), title: t('doc.style') }, ...STYLES.map(([v, l]) => h('option', { value: v }, t(l))));
     this.styleSelect.addEventListener('change', () => {
-      this.page.focus();
-      exec('formatBlock', `<${this.styleSelect.value}>`);
-      this.changed();
+      this.command(setStyle(this.styleSelect.value as ParagraphStyle));
+      this.view.focus();
     });
     this.element = h('div', { class: 'doc-editor' }, this.toolbar(), h('div', { class: 'doc-scroll' }, this.page));
-    this.page.addEventListener('input', (e) => {
-      if ((e as InputEvent).data?.endsWith('$')) this.convertTypedMath();
-      this.changed();
-    });
-    this.page.addEventListener('paste', (e) => this.onPaste(e));
-    this.page.addEventListener('drop', (e) => this.onDrop(e));
-    this.page.addEventListener('keydown', (e) => this.onKey(e));
-    this.page.addEventListener('click', (e) => {
-      const math = (e.target as HTMLElement).closest<HTMLElement>('span.math');
-      if (math && this.page.contains(math)) void this.editMath(math);
-      const diagram = (e.target as HTMLElement).closest<HTMLElement>('span.diagram');
-      if (diagram && this.page.contains(diagram)) void this.editDiagram(diagram);
-      const cell = (e.target as HTMLElement).closest<HTMLElement>('.code-cell');
-      if (cell && this.page.contains(cell)) this.onCellClick(cell, e.target as HTMLElement);
-    });
-    document.addEventListener('selectionchange', this.onSelection);
-    if (collectMath(doc.blocks).length) void this.renderEquations();
-    if (collectDiagrams(doc.blocks).length) void this.renderDiagrams();
-    if (this.page.querySelector('.code-cell')) void this.decorateCells();
+    this.view = new PmView(
+      { mount: this.page },
+      {
+        state: EditorState.create({
+          doc: blocksToPm(doc.blocks),
+          plugins: basePlugins({ link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
+        }),
+        nodeViews: nodeViews({
+          resolve: (key) => this.resolve(key),
+          editMath: (pos, node) => void this.editMath(pos, node),
+          editDiagram: (pos, node) => void this.editDiagram(pos, node),
+          cellAction: (action, pos, node) => this.onCellAction(action, pos, node),
+        }),
+        attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
+        dispatchTransaction: (tr) => this.dispatch(tr),
+        handlePaste: (_view, event) => this.onPaste(event),
+        handleDrop: (_view, event) => this.onDrop(event as DragEvent),
+      },
+    );
+    this.updateToolbar();
+  }
+
+  private dispatch(tr: Transaction): void {
+    const state = this.view.state.apply(tr);
+    this.view.updateState(state);
+    if (tr.docChanged && !tr.getMeta(REMOTE)) this.changed();
+    else if (tr.selectionSet) this.statusSoon();
+    this.updateToolbar();
+  }
+
+  private command(cmd: Command): boolean {
+    return cmd(this.view.state, (tr) => this.view.dispatch(tr), this.view);
   }
 
   // --- code cells (CODE-001..CODE-005) ----------------------------------------
 
-  private async decorateCells(): Promise<void> {
-    const { decorateCells } = await import('../code/ui');
-    decorateCells(this.page);
-  }
-
-  private onCellClick(cell: HTMLElement, target: HTMLElement): void {
-    const action = target.closest<HTMLElement>('[data-action]')?.dataset.action;
-    if (action === 'run') void this.runCells([cell]);
-    else if (action === 'run-all') void this.runCells(Array.from(this.page.querySelectorAll<HTMLElement>('.code-cell')));
+  private onCellAction(action: string, pos: number, node: PmNode): void {
+    if (action === 'run') void this.runCells([pos]);
+    else if (action === 'run-all') void this.runCells(this.cellPositions());
     else if (action === 'stop') this.runner?.stop();
-    else if (action === 'edit' || target.closest('.code-cell-source')) void this.editCell(cell);
+    else if (action === 'edit') void this.editCell(pos, node);
   }
 
-  private cellRun(cell: HTMLElement): CodeCellRun | undefined {
-    const p = document.createElement('p');
-    p.append(cell.cloneNode(true));
-    const run = (domToBlocks(p, (img) => this.lookup(img))[0] as { runs?: unknown[] } | undefined)?.runs?.[0];
-    return run && isCodeCellRun(run as CodeCellRun) ? (run as CodeCellRun) : undefined;
+  private cellPositions(): number[] {
+    const out: number[] = [];
+    this.view.state.doc.descendants((n, pos) => {
+      if (n.type === schema.nodes.code_cell) out.push(pos);
+    });
+    return out;
   }
 
-  private replaceCell(cell: HTMLElement, run: CodeCellRun): HTMLElement {
-    const el = codeCellElement(run, document, (key) => this.resolve(key));
-    cell.replaceWith(el);
-    return el;
-  }
-
-  /** Insert a new cell on its own line after the caret's block, or edit an existing one (CODE-001). */
-  private async editCell(existing?: HTMLElement): Promise<void> {
-    const sel = document.getSelection();
-    let anchor: Node | null = !existing && sel?.rangeCount && this.page.contains(sel.anchorNode) ? sel.anchorNode : null;
-    while (anchor && anchor.parentNode !== this.page) anchor = anchor.parentNode;
-    const current = existing ? this.cellRun(existing) : undefined;
-    const { editCell, decorateCells } = await import('../code/ui');
+  /** Insert a new cell on its own line, or edit an existing one (CODE-001). */
+  private async editCell(pos?: number, node?: PmNode): Promise<void> {
+    const { editCell } = await import('../code/ui');
+    const current = node?.attrs as { cell: string; lang: 'python' | 'javascript'; output: unknown } | undefined;
     const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : undefined);
     if (!value) return;
     // Changing the code makes the previous output stale.
     const unchanged = current && current.cell === value.code && current.lang === value.lang;
-    const run: CodeCellRun = { cell: value.code, lang: value.lang, ...(unchanged && current.output ? { output: current.output } : {}) };
-    if (existing) {
-      this.replaceCell(existing, run);
-    } else {
-      const p = document.createElement('p');
-      p.append(codeCellElement(run, document, (key) => this.resolve(key)));
-      const block = anchor as HTMLElement | null;
-      if (block && block.nodeType === Node.ELEMENT_NODE && block.localName === 'p' && !block.textContent?.trim() && !block.querySelector('img, span.math, span.diagram, .code-cell')) block.replaceWith(p);
-      else if (block) block.after(p);
-      else this.page.append(p);
-      if (!p.nextSibling) {
-        const next = document.createElement('p');
-        next.append(document.createElement('br'));
-        p.after(next);
-      }
-    }
-    decorateCells(this.page);
-    this.changed();
+    const attrs = { cell: value.code, lang: value.lang, output: unchanged ? current.output : null };
+    if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, attrs));
+    else this.command(insertOnOwnLine(schema.nodes.code_cell!.create(attrs)));
+    this.view.focus();
   }
 
   /** Run cells in order in the sandbox and store their output in the document (CODE-002, CODE-005). */
-  private async runCells(cells: HTMLElement[]): Promise<void> {
+  private async runCells(positions: number[]): Promise<void> {
     const ui = await import('../code/ui');
     if (!this.trusted) {
       if (!(await ui.confirmRun(this.element))) return;
@@ -155,84 +154,51 @@ export class DocumentEditor implements EditorView {
       this.runner = new CodeRunner(this.element);
     }
     const runner = this.runner;
-    for (let cell of cells) {
-      const run = this.cellRun(cell);
-      if (!run || !cell.isConnected) continue;
+    // Positions move while cells run and the user types: follow the elements.
+    const handles = positions.map((pos) => cellHandle((this.view.nodeDOM(pos) as HTMLElement | null)?.querySelector('.code-cell') ?? null)).filter((x) => !!x);
+    for (const handle of handles) {
+      const pos = handle.getPos();
+      const node = pos === undefined ? null : this.view.state.doc.nodeAt(pos);
+      if (pos === undefined || !node || node.type !== schema.nodes.code_cell) continue;
+      const cell = handle.element;
       cell.classList.add('running');
       ui.setCellStatus(cell, t('code.queued'));
-      const result = await runner.run(run.lang, run.cell, (status) => {
+      const result = await runner.run(node.attrs.lang as 'python' | 'javascript', node.attrs.cell as string, (status) => {
         const text = status === 'loading-python' ? t('code.loadingPython') : status === 'running' ? t('code.running') : `${t('code.packages')} ${status.slice('packages:'.length)}`;
         ui.setCellStatus(cell, text);
       });
       const images = result.images.map((png) => addResource(this.doc, png, 'image/png'));
       const output = { text: result.text, ...(result.error ? { error: true } : {}), ...(images.length ? { images } : {}) };
-      if (!cell.isConnected) continue;
-      cell = this.replaceCell(cell, { ...run, output });
-      this.changed();
+      const now = handle.getPos();
+      const current = now === undefined ? null : this.view.state.doc.nodeAt(now);
+      if (now !== undefined && current?.type === schema.nodes.code_cell) {
+        this.view.dispatch(this.view.state.tr.setNodeMarkup(now, undefined, { ...current.attrs, output }));
+      }
       if (result.error) break; // like a notebook's "run all": stop at the first error
     }
-    ui.decorateCells(this.page);
   }
 
-  private async renderDiagrams(): Promise<void> {
-    const { renderDiagrams } = await import('../diagram/ui');
-    await renderDiagrams(this.page);
-  }
+  // --- diagrams, equations, properties ----------------------------------------
 
-  /** Insert a new diagram on its own line after the caret's block, or edit an existing one (DIAG-001). */
-  private async editDiagram(existing?: HTMLElement): Promise<void> {
-    const sel = document.getSelection();
-    let anchor: Node | null = !existing && sel?.rangeCount && this.page.contains(sel.anchorNode) ? sel.anchorNode : null;
-    while (anchor && anchor.parentNode !== this.page) anchor = anchor.parentNode;
+  /** Insert a new diagram on its own line, or edit an existing one (DIAG-001). */
+  private async editDiagram(pos?: number, node?: PmNode): Promise<void> {
     const { editDiagram } = await import('../diagram/ui');
-    const source = await editDiagram(this.element, existing?.dataset.source ?? '');
+    const source = await editDiagram(this.element, (node?.attrs.diagram as string | undefined) ?? '');
     if (source === null) return;
-    const el = diagramElement(source, 'mermaid', document);
-    if (existing) {
-      existing.replaceWith(el);
-    } else {
-      const p = document.createElement('p');
-      p.append(el);
-      const block = anchor as HTMLElement | null;
-      if (block && block.nodeType === Node.ELEMENT_NODE && block.localName === 'p' && !block.textContent?.trim() && !block.querySelector('img, span.math, span.diagram')) block.replaceWith(p);
-      else if (block) block.after(p);
-      else this.page.append(p);
-      if (!p.nextSibling) {
-        // Leave a line to keep typing after the diagram.
-        const next = document.createElement('p');
-        next.append(document.createElement('br'));
-        p.after(next);
-      }
-    }
-    this.changed();
-    await this.renderDiagrams();
+    if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...node!.attrs, diagram: source }));
+    else this.command(insertOnOwnLine(schema.nodes.diagram!.create({ diagram: source, lang: 'mermaid' })));
+    this.view.focus();
   }
 
-  private async renderEquations(): Promise<void> {
-    const { renderMath } = await import('../math/ui');
-    await renderMath(this.page);
-  }
-
-  /** TEX-005: turn a just-typed `$…$` into an equation. */
-  private convertTypedMath(): void {
-    const sel = document.getSelection();
-    const node = sel?.anchorNode;
-    if (!sel?.isCollapsed || !node || node.nodeType !== Node.TEXT_NODE || !this.page.contains(node)) return;
-    if (node.parentElement?.closest('code, pre, span.math')) return;
-    const offset = sel.anchorOffset;
-    const found = findTypedMath((node as Text).data.slice(0, offset));
-    if (!found) return;
-    const range = document.createRange();
-    range.setStart(node, found.start);
-    range.setEnd(node, offset);
-    range.deleteContents();
-    const el = mathElement(found.latex, found.display, document);
-    range.insertNode(el);
-    range.setStartAfter(el);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    void this.renderEquations();
+  /** Insert a new equation at the cursor, or edit an existing one (MATH-001). */
+  private async editMath(pos?: number, node?: PmNode): Promise<void> {
+    const { editEquation } = await import('../math/ui');
+    const value = await editEquation(this.element, node ? { latex: node.attrs.math as string, display: !!node.attrs.display } : undefined);
+    if (!value) return;
+    const attrs = { math: value.latex, display: value.display };
+    if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, attrs));
+    else this.command(insertInline(schema.nodes.math!.create(attrs)));
+    this.view.focus();
   }
 
   /** Document properties: title, author, keywords… (DOC-017). */
@@ -244,43 +210,12 @@ export class DocumentEditor implements EditorView {
     this.changed();
   }
 
-  /** Insert a new equation at the caret, or edit an existing one (MATH-001). */
-  private async editMath(existing?: HTMLElement): Promise<void> {
-    const sel = document.getSelection();
-    const range = !existing && sel?.rangeCount && this.page.contains(sel.anchorNode) ? sel.getRangeAt(0).cloneRange() : null;
-    const { editEquation } = await import('../math/ui');
-    const value = await editEquation(this.element, existing ? { latex: existing.dataset.latex ?? '', display: existing.dataset.display === 'true' } : undefined);
-    if (!value) return;
-    const el = mathElement(value.latex, value.display, document);
-    if (existing) {
-      existing.replaceWith(el);
-    } else if (range) {
-      range.deleteContents();
-      range.insertNode(el);
-      range.setStartAfter(el);
-      range.collapse(true);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    } else {
-      const p = document.createElement('p');
-      p.append(el);
-      this.page.append(p);
-    }
-    this.changed();
-    await this.renderEquations();
-  }
+  // --- EditorView ---------------------------------------------------------------
 
-  mounted(): void {
-    try {
-      document.execCommand('styleWithCSS', false, 'false');
-      document.execCommand('defaultParagraphSeparator', false, 'p');
-    } catch {
-      /* not supported (tests) */
-    }
-  }
+  mounted(): void {}
 
   focus(): void {
-    this.page.focus();
+    this.view.focus();
   }
 
   status(): string {
@@ -297,119 +232,66 @@ export class DocumentEditor implements EditorView {
     return documentTools({
       doc: this.doc,
       getBlocks: () => this.currentBlocks(),
-      setBlocks: (blocks) => {
-        this.renderBlocks(blocks);
-        this.changed();
-      },
+      setBlocks: (blocks) => this.replaceBlocks(blocks, false),
     });
+  }
+
+  /**
+   * Replace the content with `blocks`, touching only the blocks that differ so
+   * that the cursor and the undo history of untouched parts are kept.
+   */
+  private replaceBlocks(blocks: Block[], remote: boolean): void {
+    const next = blocksToPm(blocks);
+    const cur = this.view.state.doc;
+    let start = 0;
+    while (start < cur.childCount && start < next.childCount && cur.child(start).eq(next.child(start))) start++;
+    let endCur = cur.childCount;
+    let endNext = next.childCount;
+    while (endCur > start && endNext > start && cur.child(endCur - 1).eq(next.child(endNext - 1))) {
+      endCur--;
+      endNext--;
+    }
+    if (start === endCur && start === endNext) return;
+    const posOf = (doc: PmNode, index: number): number => {
+      let pos = 0;
+      for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
+      return pos;
+    };
+    const nodes: PmNode[] = [];
+    for (let i = start; i < endNext; i++) nodes.push(next.child(i));
+    const tr = this.view.state.tr.replaceWith(posOf(cur, start), posOf(cur, endCur), Fragment.from(nodes));
+    if (remote) tr.setMeta(REMOTE, true).setMeta('addToHistory', false);
+    this.view.dispatch(tr);
   }
 
   /** Real-time collaboration: properties, images and one shared part per block (COLLAB-002). */
   collab(): CollabAdapter {
     return {
       read: () => documentParts(this.doc, this.currentBlocks()),
-      write: (parts) => {
-        const caret = this.saveCaret();
-        this.renderBlocks(applyDocumentParts(this.doc, parts));
-        if (caret) this.restoreCaret(caret);
-        this.renderPeers();
-      },
-      cursor: () => {
-        const caret = this.saveCaret();
-        return caret ? { block: caret.index } : undefined;
-      },
-      showPeers: (peers) => {
-        this.peers = peers;
-        this.renderPeers();
+      write: (parts) => this.replaceBlocks(applyDocumentParts(this.doc, parts), true),
+      cursor: () => ({ block: this.view.state.selection.$from.index(0) }),
+      showPeers: (peers: PeerCursor[]) => {
+        const markers: PeerMarker[] = peers.flatMap((p) => {
+          const block = (p.cursor as { block?: number } | undefined)?.block;
+          return typeof block === 'number' ? [{ name: p.name, color: p.color, block }] : [];
+        });
+        this.view.dispatch(this.view.state.tr.setMeta(peersKey, markers).setMeta(REMOTE, true).setMeta('addToHistory', false));
       },
     };
   }
 
-  private renderBlocks(blocks: Block[]): void {
-    this.page.replaceChildren(blocksToDom(blocks, document, (key) => this.resolve(key)));
-    if (collectMath(blocks).length) void this.renderEquations();
-    if (collectDiagrams(blocks).length) void this.renderDiagrams();
-    if (this.page.querySelector('.code-cell')) void this.decorateCells();
-  }
-
-  private renderPeers(): void {
-    for (const el of Array.from(this.page.querySelectorAll<HTMLElement>(':scope > .peer-here'))) {
-      el.classList.remove('peer-here');
-      el.style.removeProperty('--peer');
-      delete el.dataset.peer;
-      if (!el.className) el.removeAttribute('class');
-    }
-    const children = Array.from(this.page.children) as HTMLElement[];
-    for (const peer of this.peers) {
-      const index = (peer.cursor as { block?: number } | undefined)?.block;
-      const el = typeof index === 'number' ? children[index] : undefined;
-      if (!el) continue;
-      el.classList.add('peer-here');
-      el.style.setProperty('--peer', peer.color);
-      el.dataset.peer = el.dataset.peer ? `${el.dataset.peer}, ${peer.name}` : peer.name;
-    }
-  }
-
-  /** The caret as (top-level element, text offset), if it is in the page. */
-  private saveCaret(): { index: number; offset: number; text: string; focused: boolean } | null {
-    const sel = document.getSelection();
-    if (!sel?.rangeCount || !sel.anchorNode || !this.page.contains(sel.anchorNode) || sel.anchorNode === this.page) return null;
-    let top: Node = sel.anchorNode;
-    while (top.parentNode && top.parentNode !== this.page) top = top.parentNode;
-    const index = Array.prototype.indexOf.call(this.page.childNodes, top);
-    const range = document.createRange();
-    range.setStart(top, 0);
-    range.setEnd(sel.anchorNode, sel.anchorOffset);
-    return { index, offset: range.toString().length, text: top.textContent ?? '', focused: document.activeElement === this.page };
-  }
-
-  /** Put the caret back in the same paragraph (found by its text when others moved it). */
-  private restoreCaret(caret: { index: number; offset: number; text: string; focused: boolean }): void {
-    if (!caret.focused) return;
-    const nodes = Array.from(this.page.childNodes);
-    if (!nodes.length) return;
-    let target = nodes[caret.index]?.textContent === caret.text ? caret.index : -1;
-    if (target < 0) {
-      let best = Infinity;
-      nodes.forEach((n, i) => {
-        if (n.textContent === caret.text && Math.abs(i - caret.index) < best) {
-          best = Math.abs(i - caret.index);
-          target = i;
-        }
-      });
-    }
-    if (target < 0) target = Math.min(caret.index, nodes.length - 1);
-    const top = nodes[target]!;
-    const walker = document.createTreeWalker(top, NodeFilter.SHOW_TEXT);
-    let left = caret.offset;
-    let node: Node | null;
-    let spot: [Node, number] = [top, 0];
-    while ((node = walker.nextNode())) {
-      const len = node.textContent?.length ?? 0;
-      spot = [node, Math.min(left, len)];
-      if (left <= len) break;
-      left -= len;
-    }
-    const sel = document.getSelection();
-    sel?.removeAllRanges();
-    const range = document.createRange();
-    range.setStart(spot[0], spot[1]);
-    range.collapse(true);
-    sel?.addRange(range);
-  }
-
   printContent(_settings?: PrintSettings): HTMLElement {
     const root = h('div', { class: 'print-document' });
-    for (const node of Array.from(this.page.childNodes)) root.append(node.cloneNode(true));
+    for (const node of Array.from(this.view.dom.childNodes)) root.append(node.cloneNode(true));
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');
-    for (const el of Array.from(root.querySelectorAll('.code-cell-bar'))) el.remove();
+    for (const el of Array.from(root.querySelectorAll('.code-cell-bar, .ProseMirror-trailingBreak, .ProseMirror-separator, .column-resize-handle'))) el.remove();
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('.peer-here'))) el.classList.remove('peer-here');
     return root;
   }
 
   destroy(): void {
     this.runner?.destroy();
-    document.removeEventListener('selectionchange', this.onSelection);
+    this.view.destroy();
     clearTimeout(this.statusTimer);
     if (typeof URL.revokeObjectURL === 'function') for (const url of this.urls.values()) if (url.startsWith('blob:')) URL.revokeObjectURL(url);
   }
@@ -417,11 +299,11 @@ export class DocumentEditor implements EditorView {
   // ---------------------------------------------------------------------------
 
   private currentBlocks(): Block[] {
-    const blocks = domToBlocks(this.page, (img) => this.lookup(img), { preserveWhitespace: true });
+    const blocks = pmToBlocks(this.view.state.doc);
     return blocks.length ? blocks : [{ type: 'paragraph', style: 'normal', runs: [] }];
   }
 
-  private resolve(key: string): { url: string } | undefined {
+  private resolve(key: string): ImageInfo | undefined {
     const res = this.doc.resources.get(key);
     if (!res) return undefined;
     let url = this.urls.get(key);
@@ -435,7 +317,7 @@ export class DocumentEditor implements EditorView {
     return { url };
   }
 
-  /** Map an <img> in the editor (or pasted content) to a resource key. */
+  /** Map a pasted <img> to a resource key. */
   private lookup(img: HTMLImageElement): string | undefined {
     const key = img.dataset.resource;
     if (key && this.doc.resources.has(key)) return key;
@@ -449,133 +331,96 @@ export class DocumentEditor implements EditorView {
 
   private changed(): void {
     this.ctx.changed();
-    clearTimeout(this.statusTimer);
-    this.statusTimer = setTimeout(() => this.ctx.statusChanged(), 300);
+    this.statusSoon();
   }
 
+  private statusSoon(): void {
+    clearTimeout(this.statusTimer);
+    this.statusTimer = setTimeout(() => this.ctx.statusChanged(), 150);
+  }
+
+  // --- toolbar ------------------------------------------------------------------
+
   private toolbar(): HTMLElement {
-    const toggle = (cmd: string, label: string, text: string, key: string): HTMLButtonElement => {
-      const b = button(
-        label,
-        () => {
-          exec(cmd);
-          this.changed();
-          this.updateToolbar();
-        },
-        { text, title: `${label} (${key})`, pressed: false, className: `fmt-${cmd}` },
-      );
-      this.stateButtons.push([cmd, b]);
-      return b;
-    };
-    const cmd = (label: string, text: string, command: string, value?: string): HTMLButtonElement =>
+    const act = (label: string, text: string, fn: () => void, title = label): HTMLButtonElement =>
       button(
         label,
         () => {
-          exec(command, value);
-          this.changed();
+          fn();
+          this.view.focus();
         },
-        { text, title: label },
+        { text, title },
       );
+    const mark = (name: string, label: string, text: string, shortcut: string): HTMLButtonElement => {
+      const b = act(label, text, () => this.command(toggleMark(schema.marks[name]!)), `${label} (${shortcut})`);
+      b.setAttribute('aria-pressed', 'false');
+      this.markButtons.push([name, b]);
+      return b;
+    };
+    const state = (label: string, text: string, cmd: Command, active: () => boolean, shortcut: string): HTMLButtonElement => {
+      const b = act(label, text, () => this.command(cmd), `${label} (${shortcut})`);
+      b.setAttribute('aria-pressed', 'false');
+      this.stateButtons.push([active, b]);
+      return b;
+    };
+    const align = (a: Align, label: string, text: string, shortcut: string): HTMLButtonElement => state(label, text, setAlign(a), () => currentAlign(this.view.state) === a, shortcut);
     return h(
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('doc.formatting') },
-      cmd(t('common.undo'), '↶', 'undo'),
-      cmd(t('common.redo'), '↷', 'redo'),
+      act(t('common.undo'), '↶', () => this.command(undo), `${t('common.undo')} (Ctrl+Z)`),
+      act(t('common.redo'), '↷', () => this.command(redo), `${t('common.redo')} (Ctrl+Y)`),
       h('span', { class: 'sep' }),
       this.styleSelect,
       h('span', { class: 'sep' }),
-      toggle('bold', t('common.bold'), 'B', 'Ctrl+B'),
-      toggle('italic', t('common.italic'), 'I', 'Ctrl+I'),
-      toggle('underline', t('common.underline'), 'U', 'Ctrl+U'),
-      toggle('strikeThrough', t('common.strike'), 'S', 'Ctrl+Shift+X'),
-      button(t('doc.inlineCode'), () => this.inlineCode(), { text: '</>', title: t('doc.inlineCode') }),
+      mark('bold', t('common.bold'), 'B', 'Ctrl+B'),
+      mark('italic', t('common.italic'), 'I', 'Ctrl+I'),
+      mark('underline', t('common.underline'), 'U', 'Ctrl+U'),
+      mark('strike', t('common.strike'), 'S', 'Ctrl+Shift+X'),
+      mark('code', t('doc.inlineCode'), '</>', 'Ctrl+`'),
       h('span', { class: 'sep' }),
-      toggle('insertUnorderedList', t('common.bullets'), '•≡', 'Ctrl+Shift+8'),
-      toggle('insertOrderedList', t('common.numbering'), '1≡', 'Ctrl+Shift+7'),
+      state(t('common.bullets'), '•≡', toggleList(false), () => inList(this.view.state, false), 'Ctrl+Shift+8'),
+      state(t('common.numbering'), '1≡', toggleList(true), () => inList(this.view.state, true), 'Ctrl+Shift+7'),
       h('span', { class: 'sep' }),
-      toggle('justifyLeft', t('common.alignLeft'), '⇤', 'Ctrl+L'),
-      toggle('justifyCenter', t('common.alignCenter'), '↔', 'Ctrl+E'),
-      toggle('justifyRight', t('common.alignRight'), '⇥', 'Ctrl+R'),
-      toggle('justifyFull', t('common.justify'), '☰', 'Ctrl+J'),
+      align('left', t('common.alignLeft'), '⇤', 'Ctrl+L'),
+      align('center', t('common.alignCenter'), '↔', 'Ctrl+E'),
+      align('right', t('common.alignRight'), '⇥', 'Ctrl+R'),
+      align('justify', t('common.justify'), '☰', 'Ctrl+J'),
       h('span', { class: 'sep' }),
-      button(t('doc.insertLink'), () => this.insertLink(), { text: '🔗', title: t('doc.insertLinkTitle') }),
-      button(t('common.insertImage'), () => void this.pickImage(), { text: '🖼', title: t('common.insertImage') }),
-      button(t('doc.insertTable'), () => this.insertTable(), { text: '▦', title: t('doc.insertTableTitle') }),
-      button(t('doc.insertEquation'), () => void this.editMath(), { text: '∑', title: t('doc.insertEquationTitle') }),
-      button(t('doc.insertCode'), () => void this.editCell(), { text: '{ }', title: t('doc.insertCodeTitle') }),
-      button(t('doc.insertDiagram'), () => void this.editDiagram(), { text: '⧉', title: t('doc.insertDiagramTitle') }),
-      button(t('meta.button'), () => void this.editProperties(), { text: 'ⓘ', title: t('meta.buttonTitle') }),
-      button(t('doc.insertRule'), () => {
-        exec('insertHorizontalRule');
-        this.changed();
-      }, { text: '―', title: t('doc.insertRule') }),
+      act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
+      act(t('common.insertImage'), '🖼', () => void this.pickImage()),
+      act(t('doc.insertTable'), '▦', () => this.command(insertTable()), t('doc.insertTableTitle')),
+      act(t('doc.insertEquation'), '∑', () => void this.editMath(), t('doc.insertEquationTitle')),
+      act(t('doc.insertCode'), '{ }', () => void this.editCell(), t('doc.insertCodeTitle')),
+      act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
+      act(t('meta.button'), 'ⓘ', () => void this.editProperties(), t('meta.buttonTitle')),
+      act(t('doc.insertRule'), '―', () => this.command(insertRule)),
     );
   }
 
   private updateToolbar(): void {
-    const sel = document.getSelection();
-    if (!sel?.anchorNode || !this.page.contains(sel.anchorNode)) return;
-    for (const [cmd, b] of this.stateButtons) {
-      let state = false;
-      try {
-        state = document.queryCommandState(cmd);
-      } catch {
-        /* ignore */
-      }
-      b.setAttribute('aria-pressed', String(state));
-    }
-    let node: Node | null = sel.anchorNode;
-    while (node && node !== this.page) {
-      if (node.nodeType === 1) {
-        const tag = (node as Element).localName;
-        const match = STYLES.find(([v]) => v === tag);
-        if (match) {
-          this.styleSelect.value = match[0];
-          return;
-        }
-      }
-      node = node.parentNode;
-    }
-    this.styleSelect.value = 'p';
-  }
-
-  private inlineCode(): void {
-    const text = document.getSelection()?.toString() ?? '';
-    if (!text) return;
-    const code = document.createElement('code');
-    code.textContent = text;
-    exec('insertHTML', code.outerHTML);
-    this.changed();
+    const state = this.view?.state;
+    if (!state) return;
+    for (const [name, b] of this.markButtons) b.setAttribute('aria-pressed', String(markActive(state, schema.marks[name]!)));
+    for (const [active, b] of this.stateButtons) b.setAttribute('aria-pressed', String(active()));
+    this.styleSelect.value = currentStyle(state);
   }
 
   private insertLink(): void {
-    const url = window.prompt(t('doc.linkPrompt'), 'https://');
-    if (!url || url === 'https://') return;
+    const current = linkAt(this.view.state)?.attrs.href as string | undefined;
+    const url = window.prompt(t('doc.linkPrompt'), current ?? 'https://');
+    if (url === null) return;
+    if (!url || url === 'https://') {
+      if (current) this.command(toggleMark(schema.marks.link!, { href: current }));
+      return;
+    }
     if (!isSafeUrl(url)) {
       window.alert(t('doc.linkRefused'));
       return;
     }
-    if (document.getSelection()?.isCollapsed) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.textContent = url;
-      exec('insertHTML', a.outerHTML);
-    } else {
-      exec('createLink', url);
-    }
-    this.changed();
+    this.command(setLink(url));
   }
 
-  private insertTable(): void {
-    const table = document.createElement('table');
-    const body = table.createTBody();
-    for (let r = 0; r < 3; r++) {
-      const row = body.insertRow();
-      for (let c = 0; c < 3; c++) row.insertCell().append(document.createElement('br'));
-    }
-    exec('insertHTML', `${table.outerHTML}<p><br></p>`);
-    this.changed();
-  }
+  // --- images, paste, drop -----------------------------------------------------
 
   private async pickImage(): Promise<void> {
     const input = document.createElement('input');
@@ -589,74 +434,54 @@ export class DocumentEditor implements EditorView {
     if (file) await this.insertImageFile(file);
   }
 
-  private async insertImageFile(file: File): Promise<void> {
+  private async insertImageFile(file: File, pos?: number): Promise<void> {
     if (!file.type.startsWith('image/')) return;
     const data = new Uint8Array(await file.arrayBuffer());
     const key = addResource(this.doc, data, file.type, file.name);
-    const info = this.resolve(key);
-    if (!info) return;
-    const img = document.createElement('img');
-    img.src = info.url;
-    img.alt = file.name.replace(/\.[^.]+$/, '');
-    img.dataset.resource = key;
-    this.page.focus();
-    exec('insertHTML', img.outerHTML);
-    this.changed();
+    const node = schema.nodes.image!.create({ image: key, alt: file.name.replace(/\.[^.]+$/, '') });
+    if (pos !== undefined) this.view.dispatch(this.view.state.tr.insert(pos, node));
+    else this.command(insertInline(node));
   }
 
-  private onPaste(e: ClipboardEvent): void {
+  private onPaste(e: ClipboardEvent): boolean {
     const data = e.clipboardData;
-    if (!data) return;
+    if (!data) return false;
     const images = Array.from(data.files).filter((f) => f.type.startsWith('image/'));
     if (images.length) {
-      e.preventDefault();
-      void Promise.all(images.map((f) => this.insertImageFile(f)));
-      return;
+      void (async () => {
+        for (const f of images) await this.insertImageFile(f);
+      })();
+      return true;
     }
     const html = data.getData('text/html');
-    e.preventDefault();
-    if (html) {
-      // Only the supported subset survives; pasted data: images become resources.
-      exec('insertHTML', sanitizeHtml(html, (img) => this.lookup(img)));
-    } else {
-      exec('insertText', data.getData('text/plain'));
+    // Content copied from this editor keeps its exact structure.
+    if (!html || html.includes('data-pm-slice')) return false;
+    // Other sources: only the supported subset survives; pasted data: images become resources.
+    const holder = document.createElement('div');
+    holder.innerHTML = sanitizeHtml(html, (img) => this.lookup(img));
+    const blocks = domToBlocks(holder, (img) => this.lookup(img));
+    if (!blocks.length) return false;
+    const nodes = blocks.map(blockToPm);
+    const { $from, empty } = this.view.state.selection;
+    if (empty && $from.parent.type === schema.nodes.paragraph && $from.parent.content.size === 0 && $from.depth > 0) {
+      // An empty line takes the pasted blocks as they are (headings stay headings).
+      const tr = this.view.state.tr.replaceWith($from.before(), $from.after(), Fragment.from(nodes));
+      this.view.dispatch(tr.scrollIntoView());
+      return true;
     }
-    this.changed();
+    const open = (n: PmNode | undefined): number => (n?.type === schema.nodes.paragraph ? 1 : 0);
+    const slice = new Slice(Fragment.from(nodes), open(nodes[0]), open(nodes[nodes.length - 1]));
+    this.view.dispatch(this.view.state.tr.replaceSelection(slice).scrollIntoView());
+    return true;
   }
 
-  private onDrop(e: DragEvent): void {
+  private onDrop(e: DragEvent): boolean {
     const files = Array.from(e.dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
-    if (!files.length) return;
-    e.preventDefault();
-    e.stopPropagation();
-    void Promise.all(files.map((f) => this.insertImageFile(f)));
-  }
-
-  private onKey(e: KeyboardEvent): void {
-    const mod = e.ctrlKey || e.metaKey;
-    if (e.key === 'Tab') {
-      const inList = (document.getSelection()?.anchorNode?.parentElement?.closest('li') ?? null) !== null;
-      if (inList) {
-        e.preventDefault();
-        exec(e.shiftKey ? 'outdent' : 'indent');
-        this.changed();
-      }
-    } else if (mod && e.shiftKey && e.key.toLowerCase() === 'd') {
-      e.preventDefault();
-      void this.editDiagram();
-    } else if (mod && e.key.toLowerCase() === 'm') {
-      e.preventDefault();
-      void this.editMath();
-    } else if (mod && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      this.insertLink();
-    } else if (mod && e.key.toLowerCase() === 'y') {
-      e.preventDefault();
-      exec('redo');
-    } else if (mod && e.shiftKey && e.key.toLowerCase() === 'x') {
-      e.preventDefault();
-      exec('strikeThrough');
-      this.changed();
-    }
+    if (!files.length) return false;
+    const pos = this.view.posAtCoords({ left: e.clientX, top: e.clientY })?.pos;
+    void (async () => {
+      for (const f of files) await this.insertImageFile(f, pos);
+    })();
+    return true;
   }
 }

@@ -13,12 +13,13 @@ and any ZIP archive of Markdown files.
 | Action | Toolbar | Shortcut |
 |--------|---------|----------|
 | Undo / redo | ↶ ↷ | <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> (or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>) |
-| Paragraph style | *Normal, Heading 1–4, Quote, Code block* | |
+| Paragraph style | *Normal, Heading 1–4, Quote, Code block* | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>0</kbd>…<kbd>3</kbd> (normal, heading 1–3) |
 | Bold / italic / underline | **B** *I* U | <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
 | Strikethrough | S | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> |
-| Inline code | `</>` | |
-| Bulleted / numbered list | •≡ 1≡ | <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> to indent / outdent |
-| Alignment | ⇤ ↔ ⇥ ☰ | |
+| Inline code | `</>` | <kbd>Ctrl</kbd>+<kbd>`</kbd> |
+| Bulleted / numbered list | •≡ 1≡ | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>8</kbd> / <kbd>7</kbd>; <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> to indent / outdent |
+| Alignment | ⇤ ↔ ⇥ ☰ | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>E</kbd> / <kbd>R</kbd> / <kbd>J</kbd> |
+| Line break in the same paragraph | | <kbd>Shift</kbd>+<kbd>Enter</kbd> |
 | Link | 🔗 | <kbd>Ctrl</kbd>+<kbd>K</kbd> |
 | Image | 🖼 (or paste / drop an image) | |
 | Table | ▦ (3×3) | |
@@ -28,6 +29,24 @@ and any ZIP archive of Markdown files.
 | Code cell | { } (see [Code cells](./code.md)) | |
 
 The status bar shows the word and character count.
+
+### Typing shortcuts
+
+At the start of a line, type:
+
+| You type | You get |
+|----------|---------|
+| `# ` … `###### ` | Heading 1 … 6 |
+| `- `, `* ` or `+ ` | Bulleted list |
+| `1. ` | Numbered list |
+| `> ` | Quote |
+| ` ``` ` | Code block (<kbd>Enter</kbd> adds a line; <kbd>Enter</kbd> on an empty last line leaves it) |
+| `$x^2$` anywhere | An equation |
+
+<kbd>Enter</kbd> on an empty list item leaves the list, and
+<kbd>Backspace</kbd> at the start of a list item outdents it, then turns it
+back into a normal paragraph. In a table, <kbd>Tab</kbd> and
+<kbd>Shift</kbd>+<kbd>Tab</kbd> move between cells.
 
 ## Pasting
 

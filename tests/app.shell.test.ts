@@ -76,9 +76,9 @@ describe('FILE-011 autosaved drafts', () => {
     };
     const app = new App(root, { drafts, autosaveMs: 5 });
     await app.openFile(new File(['# Draft\n'], 'draft.md'));
-    root.querySelector('.doc-page')!.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 40));
-    expect(stored?.name).toBe('draft.md');
+    // Type in the heading (the editor reads DOM changes like a browser's input).
+    root.querySelector('.doc-page h1')!.firstChild!.textContent += '!';
+    await vi.waitFor(() => expect(stored?.name).toBe('draft.md'));
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     app.close();
     // closing deliberately discards the draft

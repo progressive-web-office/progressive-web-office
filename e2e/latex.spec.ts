@@ -18,7 +18,7 @@ test('opens a .tex file and exports it back to LaTeX (TEX-001, TEX-003)', async 
   await openFile(page, 'paper.tex', TEX);
   await expect(page.locator('.doc-page h1')).toHaveText('Intro');
   await expect(page.locator('.doc-page span.math')).toHaveAttribute('data-latex', 'E=mc^2');
-  await expect(page.locator('.doc-page li')).toHaveText('one');
+  await expect(page.locator('.doc-page .list-item')).toHaveText('one');
   const tex = await saveAs(page, 'LaTeX (.tex)');
   expect(tex.name).toBe('paper.tex');
   const text = tex.data.toString('utf8');

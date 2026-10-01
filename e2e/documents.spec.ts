@@ -23,7 +23,7 @@ test('opens a Markdown file and converts it to DOCX and ODT (FILE-006)', async (
   const errors = await openApp(page);
   await openFile(page, 'notes.md', '# Notes\n\n- one\n- two\n\n| a | b |\n|---|---|\n| 1 | 2 |\n');
   await expect(page.locator('.doc-page h1')).toHaveText('Notes');
-  await expect(page.locator('.doc-page li')).toHaveCount(2);
+  await expect(page.locator('.doc-page .list-item')).toHaveCount(2);
   const docx = await saveAs(page, 'Word document (.docx)');
   expect(docx.name).toBe('notes.docx');
   expect(docx.data.subarray(0, 2).toString()).toBe('PK');

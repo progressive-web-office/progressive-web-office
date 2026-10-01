@@ -199,9 +199,15 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 .doc-page h4, .doc-page h5, .doc-page h6 { font-size: 12pt; }
 .doc-page p { margin: 0 0 8pt; }
 .doc-page blockquote { margin: 0 0 8pt; padding-left: 16px; border-left: 4px solid #c7d0dc; color: #404a57; font-style: italic; }
+.doc-page blockquote + blockquote { margin-top: -8pt; padding-top: 4pt; }
+.doc-page pre + pre { padding-top: 0; }
 .doc-page blockquote p { margin: 0; }
 .doc-page pre, .doc-page code { font-family: ui-monospace, 'Liberation Mono', Consolas, monospace; font-size: 10pt; background: #f2f4f7; }
-.doc-page pre { margin: 0; padding: 2px 8px; white-space: pre-wrap; }
+.doc-page pre { margin: 0 0 8pt; padding: 2px 8px; white-space: pre-wrap; }
+.doc-page pre:has(+ pre) { margin-bottom: 0; }
+.doc-page .pm-atom.pm-display, .doc-page .pm-atom.pm-diagram, .doc-page .pm-atom.pm-code_cell { display: block; }
+.doc-page .pm-atom.ProseMirror-selectednode { outline: 2px solid var(--accent); border-radius: 4px; }
+
 .doc-page code { padding: 0 3px; border-radius: 3px; }
 .doc-page table { border-collapse: collapse; width: 100%; margin: 0 0 8pt; }
 .doc-page td, .doc-page th { border: 1px solid #8a94a3; padding: 4px 6px; vertical-align: top; }
