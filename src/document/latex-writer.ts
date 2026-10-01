@@ -7,6 +7,7 @@ import {
   isDiagramRun,
   isImageRun,
   isMathRun,
+  isFootnoteRun,
   nestLists,
   splitListSegments,
   type Block,
@@ -161,6 +162,11 @@ class LatexWriter {
         continue;
       }
       if (isDiagramRun(run) || isCodeCellRun(run)) continue; // replaced by diagramsAsPictures / cellsAsBlocks
+      if (isFootnoteRun(run)) {
+        // DOC-022; a blank line inside \footnote starts a new paragraph of the note.
+        out += `\\footnote{${this.inline(run.footnote.filter((r) => !isImageRun(r) && !isFootnoteRun(r))).replace(/\\\\\n\\\\\n/g, '\n\n')}}`;
+        continue;
+      }
       let text = run.text
         .split('\n')
         .map((part) => escapeLatex(part).replace(/\t/g, '\\quad '))

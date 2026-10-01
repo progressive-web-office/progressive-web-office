@@ -601,4 +601,12 @@ export const zh: Record<MessageKey, string> = {
   'fmt.automatic': '自动颜色',
   'fmt.clear': '清除格式',
   'doc.pageBreak': '分页符',
+  'note.insert': '插入脚注',
+  'note.edit': '编辑脚注',
+  'note.insertButton': '插入',
+  'note.text': '脚注文本',
+  'note.hint': '可使用 **粗体**、*斜体*、[链接](https://…) 和 $公式$；空行开始新段落。按 Ctrl+Enter 确认。空脚注将被删除。',
+  'note.button': '脚注',
+  'note.notes': '注释',
+  'note.ref': '脚注 {n}',
 };

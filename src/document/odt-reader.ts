@@ -288,7 +288,18 @@ class OdtReader {
             this.readInline(c, this.textFormat(attr(c, 'style-name'), f), out, pre);
             break;
           }
-          case 'note':
+          case 'note': {
+            // DOC-022: footnotes (and endnotes, read as footnotes).
+            const body = child(c, 'note-body');
+            const runs: Run[] = [];
+            for (const p of body ? children(body).filter((e) => e.localName === 'p' || e.localName === 'h') : []) {
+              if (runs.length) runs.push({ text: '\n\n' });
+              this.readInline(p, this.textFormat(null, {}), runs, false);
+            }
+            const note = normalizeRuns(runs);
+            if (note.length) out.push({ footnote: note });
+            break;
+          }
           case 'annotation':
           case 'bookmark':
           case 'bookmark-start':

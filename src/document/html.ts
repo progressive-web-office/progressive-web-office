@@ -10,6 +10,7 @@ import {
   isCodeCellRun,
   isDiagramRun,
   isMathRun,
+  isFootnoteRun,
   isTextRun,
   nestLists,
   normalizeRuns,
@@ -111,8 +112,48 @@ function paragraphToDom(p: Paragraph, tag: string, doc: Document, resolveImage: 
   return el;
 }
 
+/** Runs as DOM nodes (text formatting, links, equations), e.g. to list footnotes. */
+export function markdownInline(runs: Run[], doc: Document = document): Node[] {
+  const holder = doc.createElement('span');
+  appendRuns(holder, runs, doc, () => undefined);
+  if (holder.lastChild?.nodeName === 'BR') holder.lastChild.remove();
+  return Array.from(holder.childNodes);
+}
+
+/** A footnote reference: its content travels as JSON (DOC-022). */
+export function footnoteElement(runs: Run[], doc: Document): HTMLElement {
+  const span = doc.createElement('span');
+  span.className = 'footnote';
+  span.dataset.footnote = JSON.stringify(runs);
+  span.contentEditable = 'false';
+  span.title = runs.map((r) => ('text' in r ? r.text : 'math' in r ? `$${r.math}$` : '')).join('');
+  return span;
+}
+
+/** Footnote runs read back from an element made by {@link footnoteElement}. */
+export function footnoteFromDom(el: HTMLElement): Run[] | undefined {
+  try {
+    const runs = JSON.parse(el.dataset.footnote ?? '') as unknown;
+    if (!Array.isArray(runs)) return undefined;
+    // Only text and equations: nothing that could smuggle markup or resources in.
+    return normalizeRuns(
+      runs.flatMap((r: Record<string, unknown>): Run[] => {
+        if (typeof r?.text === 'string') return [{ text: r.text, ...cleanFormat(r as TextFormat) }];
+        if (typeof r?.math === 'string') return [{ math: r.math, ...(r.display === true ? { display: true } : {}) }];
+        return [];
+      }),
+    ).map((r) => ('text' in r && r.link && !isSafeUrl(r.link) ? { ...r, link: undefined } : r));
+  } catch {
+    return undefined;
+  }
+}
+
 function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (key: string) => ImageInfo | undefined): void {
   for (const run of runs) {
+    if (isFootnoteRun(run)) {
+      el.append(footnoteElement(run.footnote, doc));
+      continue;
+    }
     if (isMathRun(run)) {
       el.append(mathElement(run.math, !!run.display, doc));
       continue;
@@ -364,6 +405,11 @@ export function domToBlocks(
 
     if (tag === 'br') {
       open(ctx).runs.push({ text: '\n', ...cleanFormat(fmt) });
+      return;
+    }
+    if (el.dataset?.footnote !== undefined && el.classList.contains('footnote')) {
+      const note = footnoteFromDom(el);
+      if (note) open(ctx).runs.push({ footnote: note });
       return;
     }
     if (el.dataset?.latex !== undefined && el.classList.contains('math')) {

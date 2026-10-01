@@ -59,6 +59,8 @@ function runsToInline(runs: Run[]): PmNode[] {
       out.push(schema.nodes.math!.create({ math: run.math, display: !!run.display }));
     } else if ('diagram' in run) {
       out.push(schema.nodes.diagram!.create({ diagram: run.diagram, lang: run.lang }));
+    } else if ('footnote' in run) {
+      out.push(schema.nodes.footnote!.create({ runs: run.footnote }));
     } else {
       out.push(schema.nodes.code_cell!.create({ cell: run.cell, lang: run.lang, output: run.output ?? null }));
     }
@@ -122,6 +124,9 @@ function inlineToRuns(node: PmNode): Run[] {
         break;
       case 'diagram':
         runs.push({ diagram: a.diagram as string, lang: a.lang as 'mermaid' });
+        break;
+      case 'footnote':
+        runs.push({ footnote: a.runs as Run[] });
         break;
       case 'code_cell':
         runs.push({ cell: a.cell as string, lang: a.lang as 'python', ...(a.output ? { output: a.output as NonNullable<Extract<Run, { cell: string }>['output']> } : {}) });

@@ -24,6 +24,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   (Ctrl+] / Ctrl+[), line spacing, and a paragraph spacing dialog (left and
   first-line indents, space before and after). Kept in DOCX and ODT, and
   read from them as direct formatting only.
+- Footnotes in text documents (¹, Ctrl+Alt+F): numbered automatically,
+  listed under the page and printed at the end, edited in simple Markdown
+  (formatting, links, equations, paragraphs). Kept in DOCX, ODT, Markdown
+  (`[^1]`, and `^[…]` on import) and LaTeX (`\footnote`); LaTeX footnotes
+  used to be imported as text in brackets.
 - Page breaks in text documents (⤓, Ctrl+Enter), shown as a labelled
   dashed line and starting a new page when printing; kept in DOCX (also
   read when inside a paragraph or set as "page break before"), ODT,

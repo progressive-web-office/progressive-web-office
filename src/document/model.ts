@@ -76,7 +76,13 @@ export interface CodeCellRun {
   output?: CellOutput;
 }
 
-export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun;
+/** A footnote, numbered automatically where it is referenced (DOC-022). */
+export interface FootnoteRun {
+  /** The note's content (text and equations; several paragraphs separated by `\n\n`). */
+  footnote: Run[];
+}
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -198,6 +204,26 @@ export const isMathRun = (run: Run): run is MathRun => 'math' in run;
 export const isCodeCellRun = (run: Run): run is CodeCellRun => 'cell' in run;
 export const isDiagramRun = (run: Run): run is DiagramRun => 'diagram' in run;
 export const isTextRun = (run: Run): run is TextRun => 'text' in run;
+export const isFootnoteRun = (run: Run): run is FootnoteRun => 'footnote' in run;
+
+/** Runs split at blank lines (`\n\n`) into paragraphs (footnotes hold several). */
+export function splitParagraphs(runs: Run[]): Run[][] {
+  const out: Run[][] = [[]];
+  for (const run of runs) {
+    if (!('text' in run) || !run.text.includes('\n\n')) {
+      out[out.length - 1]!.push(run);
+      continue;
+    }
+    run.text.split(/\n\n+/).forEach((part, i) => {
+      if (i > 0) out.push([]);
+      if (part) out[out.length - 1]!.push({ ...run, text: part });
+    });
+  }
+  return out;
+}
+
+/** Plain text of runs (footnotes and atoms left out). */
+export const runsText = (runs: Run[]): string => runs.map((r) => ('text' in r ? r.text : '')).join('');
 
 export function emptyDocument(): RichDocument {
   return { blocks: [paragraph('')], resources: new Map(), meta: {} };
@@ -283,7 +309,11 @@ export function collectDiagrams(blocks: Block[]): string[] {
   const out = new Set<string>();
   const visit = (bs: Block[]): void => {
     for (const b of bs) {
-      if (b.type === 'paragraph') for (const r of b.runs) if ('diagram' in r) out.add(r.diagram);
+      if (b.type === 'paragraph') for (const r of b.runs) {
+        if ('diagram' in r) out.add(r.diagram);
+        // Footnotes hold equations too (DOC-022).
+        if ('footnote' in r) for (const n of r.footnote) if ('diagram' in n) out.add(n.diagram);
+      }
       if (b.type === 'table') for (const row of b.rows) for (const c of row) visit(c.blocks);
     }
   };
@@ -296,7 +326,11 @@ export function collectMath(blocks: Block[]): string[] {
   const out = new Set<string>();
   const visit = (bs: Block[]): void => {
     for (const b of bs) {
-      if (b.type === 'paragraph') for (const r of b.runs) if ('math' in r) out.add(r.math);
+      if (b.type === 'paragraph') for (const r of b.runs) {
+        if ('math' in r) out.add(r.math);
+        // Footnotes hold equations too (DOC-022).
+        if ('footnote' in r) for (const n of r.footnote) if ('math' in n) out.add(n.math);
+      }
       if (b.type === 'table') for (const row of b.rows) for (const c of row) visit(c.blocks);
     }
   };

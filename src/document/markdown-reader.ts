@@ -4,6 +4,7 @@
  * `<br>` which map to underline and line breaks.
  */
 import { parseFrontMatter } from './frontmatter';
+import footnotePlugin from 'markdown-it-footnote';
 import MarkdownItCallable, { type MarkdownIt, type StateBlock, type StateInline, type Token } from 'markdown-it';
 import {
   addResource,
@@ -102,7 +103,7 @@ function mathBlock(state: StateBlock, startLine: number, endLine: number, silent
 let parser: MarkdownIt | undefined;
 function getParser(): MarkdownIt {
   if (!parser) {
-    parser = new MarkdownItCallable('commonmark', { html: true }).enable(['table', 'strikethrough']);
+    parser = new MarkdownItCallable('commonmark', { html: true }).enable(['table', 'strikethrough']).use(footnotePlugin);
     parser.inline.ruler.after('escape', 'math_inline', mathInline);
     parser.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   }
@@ -142,7 +143,30 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   const text = front.body;
   doc.meta = { ...front.meta };
   if (front.extra) doc.extras = { ...doc.extras, frontMatter: front.extra };
-  const tokens = getParser().parse(text, {});
+  const env: { footnotes?: { list?: { tokens?: Token[] }[] } } = {};
+  const tokens = getParser().parse(text, env);
+  // DOC-022: footnote contents, gathered before the text that refers to them.
+  const notes = new Map<number, Run[]>();
+  const noteRuns = (id: number): Run[] => notes.get(id) ?? [];
+  let noteId = -1;
+  for (const tok of tokens) {
+    if (tok.type === 'footnote_open') {
+      noteId = (tok.meta as { id: number }).id;
+      notes.set(noteId, []);
+    } else if (tok.type === 'footnote_close') {
+      noteId = -1;
+    } else if (noteId >= 0 && tok.type === 'inline') {
+      const runs = notes.get(noteId)!;
+      if (runs.length) runs.push({ text: '\n\n' });
+      runs.push(...inlineRuns(tok.children ?? [], doc, opts, noteRuns));
+    }
+  }
+  env.footnotes?.list?.forEach((item, id) => {
+    // Inline notes: ^[text].
+    if (item?.tokens && !notes.has(id)) notes.set(id, inlineRuns(item.tokens, doc, opts, noteRuns));
+  });
+  for (const [id, runs] of notes) notes.set(id, normalizeRuns(runs));
+  let inNotes = false;
   const blocks: Block[] = [];
   const lists: boolean[] = [];
   let quoteDepth = 0;
@@ -162,6 +186,11 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   };
 
   for (const tok of tokens) {
+    if (tok.type === 'footnote_block_open') inNotes = true;
+    if (inNotes) {
+      if (tok.type === 'footnote_block_close') inNotes = false;
+      continue;
+    }
     switch (tok.type) {
       case 'heading_open':
         heading = tok.tag as ParagraphStyle;
@@ -186,7 +215,7 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         quoteDepth--;
         break;
       case 'inline': {
-        const runs = normalizeRuns(inlineRuns(tok.children ?? [], doc, opts));
+        const runs = normalizeRuns(inlineRuns(tok.children ?? [], doc, opts, noteRuns));
         // CODE-006: figures produced by the previous cell.
         const target = !heading && !row ? lastCell(blocks) : undefined;
         const figures = runs.filter((r) => !(isTextRun(r) && !r.text.trim()));
@@ -277,7 +306,7 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   return doc;
 }
 
-function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOptions): Run[] {
+function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOptions, notes: (id: number) => Run[] = () => []): Run[] {
   const runs: Run[] = [];
   const fmt: TextFormat = {};
   const text = (t: string, extra: TextFormat = {}): void => {
@@ -290,6 +319,9 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         break;
       case 'softbreak':
         text(' ');
+        break;
+      case 'footnote_ref':
+        runs.push({ footnote: notes((tok.meta as { id: number }).id) });
         break;
       case 'hardbreak':
         text('\n');

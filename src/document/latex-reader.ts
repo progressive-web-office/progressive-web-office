@@ -375,11 +375,12 @@ class Builder {
   }
 
   /** Runs of an argument (used for headings, cells, titles). */
-  inlineRuns(src: string, fmt: TextFormat = {}): Run[] {
+  /** Runs of a LaTeX fragment; its paragraphs are joined with `paragraphSep`. */
+  inlineRuns(src: string, fmt: TextFormat = {}, paragraphSep?: string): Run[] {
     const sub = new Builder(this.doc, this.opts);
     sub.walk(parse(src), fmt, { style: 'normal', listDepth: 0, ordered: false, inList: false });
     sub.flush();
-    return sub.blocks.flatMap((b) => (b.type === 'paragraph' ? b.runs : []));
+    return sub.blocks.flatMap((b, i): Run[] => (b.type === 'paragraph' ? [...(i > 0 && paragraphSep ? [{ text: paragraphSep }] : []), ...b.runs] : []));
   }
 
   plain(src: string): string {
@@ -491,10 +492,12 @@ class Builder {
         const url = (args[0] ?? '').replace(/\\([%#&_~])/g, '$1');
         return void this.text(url, { ...fmt, link: url, code: true }, ctx);
       }
-      case 'footnote':
-        this.text(' (', fmt, ctx);
-        arg(0);
-        return void this.text(')', fmt, ctx);
+      case 'footnote': {
+        // DOC-022: a real footnote; blank lines inside separate its paragraphs.
+        const note = normalizeRuns(this.inlineRuns(args[0] ?? '', {}, '\n\n'));
+        if (note.length) this.open(ctx).runs.push({ footnote: note });
+        return;
+      }
       case 'caption':
         this.flush();
         arg(0, { ...fmt, italic: true });

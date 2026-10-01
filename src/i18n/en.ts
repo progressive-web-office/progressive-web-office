@@ -599,6 +599,14 @@ export const en = {
   'fmt.automatic': 'Automatic colour',
   'fmt.clear': 'Clear formatting',
   'doc.pageBreak': 'Page break',
+  'note.insert': 'Insert a footnote',
+  'note.edit': 'Edit the footnote',
+  'note.insertButton': 'Insert',
+  'note.text': 'Footnote text',
+  'note.hint': '**bold**, *italic*, [link](https://…) and $equations$ work here; a blank line starts a new paragraph. Ctrl+Enter to validate. An empty note is removed.',
+  'note.button': 'Footnote',
+  'note.notes': 'Notes',
+  'note.ref': 'Footnote {n}',
 } as const;
 
 export type MessageKey = keyof typeof en;

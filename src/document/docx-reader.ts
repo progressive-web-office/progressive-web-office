@@ -43,6 +43,33 @@ class DocxReader {
     this.readNumbering();
   }
 
+  private footnoteXml: Map<string, Element> | undefined;
+
+  /** The content of a footnote (DOC-022), paragraphs separated by a blank line. */
+  private footnote(id: string | null): Run[] | undefined {
+    if (!this.footnoteXml) {
+      this.footnoteXml = new Map();
+      const target = [...this.rels.values()].find((r) => r.type.endsWith('/footnotes'))?.target ?? 'word/footnotes.xml';
+      const text = readZipText(this.zip, target);
+      if (text) for (const fn of descendants(parseXml(text), 'footnote')) this.footnoteXml.set(attr(fn, 'id') ?? '', fn);
+    }
+    const fn = id === null ? undefined : this.footnoteXml.get(id);
+    if (!fn) return undefined;
+    const runs: Run[] = [];
+    children(fn, 'p').forEach((p, i) => {
+      if (i > 0) runs.push({ text: '\n\n' });
+      this.readInline(p, {}, runs);
+    });
+    const out = normalizeRuns(runs);
+    // The number Word puts at the start is followed by a space.
+    const first = out[0];
+    if (first && 'text' in first) {
+      first.text = first.text.replace(/^\s+/, '');
+      if (!first.text) out.shift();
+    }
+    return out;
+  }
+
   private readStyles(): void {
     const text = readZipText(this.zip, 'word/styles.xml');
     if (!text) return;
@@ -297,6 +324,11 @@ class DocxReader {
         case 'noBreakHyphen':
           out.push({ text: '‑', ...fmt });
           break;
+        case 'footnoteReference': {
+          const note = this.footnote(attr(el, 'id'));
+          if (note) out.push({ footnote: note });
+          break;
+        }
         case 'drawing':
           this.readDrawing(el, out);
           break;

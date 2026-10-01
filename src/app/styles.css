@@ -667,3 +667,15 @@ button.qr-zoom img { display: block; margin: 0; }
 .doc-page hr.page-break::after { content: attr(data-label); position: absolute; left: 50%; top: -0.75em; transform: translateX(-50%); padding: 0 8px; background: #fff; color: #6b7686; font-size: 8pt; letter-spacing: 0.05em; text-transform: uppercase; }
 .doc-page hr.page-break.ProseMirror-selectednode { border-top-color: var(--accent); }
 @media print { .doc-page hr.page-break { break-after: page; visibility: hidden; margin: 0; } }
+
+/* Footnotes (DOC-022) */
+.doc-page .pm-footnote { cursor: pointer; color: var(--accent); padding: 0 1px; }
+.doc-page .pm-footnote:hover { background: var(--sel); border-radius: 2px; }
+.doc-notes { max-width: 816px; margin: 0 auto 24px; padding: 12px 80px 16px; box-sizing: border-box; background: #fff; color: #1c2430; font-size: 9pt; border-top: 1px solid #c7d0dc; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.doc-notes[hidden] { display: none; }
+.doc-notes ol { margin: 0; padding-left: 1.6em; }
+.doc-notes li { cursor: pointer; margin: 2px 0; }
+.doc-notes li:hover { background: #f1f4f8; }
+.print-notes { margin-top: 16pt; padding-top: 6pt; border-top: 1px solid #999; font-size: 9pt; }
+.print-notes ol { margin: 0; padding-left: 1.6em; }
+@media print { .doc-notes { display: none; } }

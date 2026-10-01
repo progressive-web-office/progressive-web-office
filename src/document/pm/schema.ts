@@ -12,7 +12,7 @@
 import { Schema, type DOMOutputSpec, type Mark, type Node as PmNode } from 'prosemirror-model';
 import { tableNodes } from 'prosemirror-tables';
 import { LAYOUT_KEYS, type Align, type CellOutput, type ParagraphStyle } from '../model';
-import { cssFontFamily } from '../html';
+import { cssFontFamily, footnoteFromDom } from '../html';
 import { t } from '../../i18n';
 
 const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code'];
@@ -129,6 +129,14 @@ export const schema = new Schema({
       attrs: { diagram: { default: '' }, lang: { default: 'mermaid' } },
       parseDOM: [{ tag: 'span.diagram', getAttrs: (d: HTMLElement) => ({ diagram: d.dataset.source ?? '', lang: d.dataset.diagram ?? 'mermaid' }) }],
       toDOM: (n) => ['span', { class: 'diagram', 'data-diagram': n.attrs.lang, 'data-source': n.attrs.diagram }, n.attrs.diagram],
+    },
+    footnote: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { runs: { default: [] } },
+      parseDOM: [{ tag: 'span.footnote[data-footnote]', getAttrs: (d: HTMLElement) => ({ runs: footnoteFromDom(d) ?? [] }) }],
+      toDOM: (n) => ['span', { class: 'footnote', 'data-footnote': JSON.stringify(n.attrs.runs) }],
     },
     code_cell: {
       inline: true,

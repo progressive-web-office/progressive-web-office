@@ -14,11 +14,11 @@ import type { PrintSettings } from '../print/settings';
 import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import type { EditorView, ViewContext } from '../app/views';
-import { domToBlocks, isSafeUrl, sanitizeHtml, type ImageInfo } from './html';
+import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, wordCount, type Align, type Block, type ParagraphStyle, type RichDocument } from './model';
+import { addResource, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmToBlocks } from './pm/convert';
 import { schema } from './pm/schema';
@@ -72,6 +72,8 @@ export class DocumentEditor implements EditorView {
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
   private runner: CodeRunner | undefined;
   private readonly findBar: FindBar;
+  /** The footnotes, listed under the page (DOC-022). */
+  private readonly notes = h('aside', { class: 'doc-notes', 'aria-label': t('note.notes') });
   /** CODE-004: the user agreed to run this document's code. */
   private trusted = false;
 
@@ -105,17 +107,18 @@ export class DocumentEditor implements EditorView {
       this.refocus();
     });
     this.findBar = new FindBar(() => this.view);
-    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.page));
+    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.page, this.notes));
     this.view = new PmView(
       { mount: this.page },
       {
         state: EditorState.create({
           doc: blocksToPm(doc.blocks),
-          plugins: basePlugins({ find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
+          plugins: basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
         }),
         nodeViews: nodeViews({
           resolve: (key) => this.resolve(key),
           editMath: (pos, node) => void this.editMath(pos, node),
+          editFootnote: (pos, node) => void this.editNote(pos, node),
           editDiagram: (pos, node) => void this.editDiagram(pos, node),
           cellAction: (action, pos, node) => this.onCellAction(action, pos, node),
         }),
@@ -126,6 +129,40 @@ export class DocumentEditor implements EditorView {
       },
     );
     this.updateToolbar();
+    this.renderNotes();
+  }
+
+  /** Footnotes in reading order, under the page; clicking one edits it. */
+  private renderNotes(): void {
+    const items: HTMLElement[] = [];
+    this.view.state.doc.descendants((node, pos) => {
+      if (node.type !== schema.nodes.footnote) return true;
+      const n = items.length + 1;
+      const li = h('li', { value: String(n) });
+      li.append(...markdownInline(node.attrs.runs as Run[]));
+      li.addEventListener('click', () => void this.editNote(pos, node));
+      items.push(li);
+      return false;
+    });
+    this.notes.hidden = !items.length;
+    this.notes.replaceChildren(...(items.length ? [h('h2', { class: 'sr-only' }, t('note.notes')), h('ol', {}, ...items)] : []));
+    if (this.notes.querySelector('span.math')) void import('../math/ui').then(({ renderMath }) => renderMath(this.notes));
+  }
+
+  /** Insert a footnote at the cursor, or edit one; an emptied note is removed (DOC-022). */
+  private async editNote(pos?: number, node?: PmNode): Promise<void> {
+    const { editFootnote } = await import('./footnote-dialog');
+    const runs = await editFootnote(this.element, node?.attrs.runs as Run[] | undefined);
+    if (!runs) return;
+    if (pos !== undefined) {
+      const tr = this.view.state.tr;
+      if (runs.length) tr.setNodeMarkup(pos, undefined, { runs });
+      else tr.delete(pos, pos + 1);
+      this.view.dispatch(tr);
+    } else if (runs.length) {
+      this.command(insertInline(schema.nodes.footnote!.create({ runs })));
+    }
+    this.refocus();
   }
 
   private dispatch(tr: Transaction): void {
@@ -135,6 +172,7 @@ export class DocumentEditor implements EditorView {
     else if (tr.selectionSet) this.statusSoon();
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
+    if (tr.docChanged) this.renderNotes();
   }
 
   /** Give the focus back to the document, without touching the selection when it already has it. */
@@ -321,6 +359,12 @@ export class DocumentEditor implements EditorView {
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');
     for (const el of Array.from(root.querySelectorAll('.code-cell-bar, .ProseMirror-trailingBreak, .ProseMirror-separator, .column-resize-handle'))) el.remove();
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('.peer-here'))) el.classList.remove('peer-here');
+    // Footnotes are printed as notes at the end of the document (DOC-022).
+    if (!this.notes.hidden) {
+      const notes = this.notes.cloneNode(true) as HTMLElement;
+      notes.className = 'print-notes';
+      root.append(notes);
+    }
     return root;
   }
 
@@ -442,6 +486,7 @@ export class DocumentEditor implements EditorView {
       act(t('para.button'), '¶', () => void this.editParagraph()),
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
+      act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
       act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
       act(t('common.insertImage'), '🖼', () => void this.pickImage()),
       act(t('doc.insertTable'), '▦', () => this.command(insertTable()), t('doc.insertTableTitle')),

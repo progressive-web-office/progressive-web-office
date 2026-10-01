@@ -8,6 +8,8 @@ import {
   isCodeCellRun,
   isDiagramRun,
   isMathRun,
+  isFootnoteRun,
+  splitParagraphs,
   isTextRun,
   nestLists,
   splitListSegments,
@@ -69,6 +71,9 @@ function codeSpan(text: string): string {
 }
 
 class MarkdownWriter {
+  /** Footnote definitions, written after the text (DOC-022). */
+  private readonly notes: string[] = [];
+
   constructor(
     private readonly doc: RichDocument,
     private readonly opts: MarkdownWriteOptions,
@@ -112,6 +117,8 @@ class MarkdownWriter {
     }
     flushQuote();
     flushCode();
+    // Notes may hold notes' text only, so their definitions are complete now.
+    parts.push(...this.notes);
     return parts.filter((p) => p !== '').join('\n\n') + '\n';
   }
 
@@ -208,6 +215,19 @@ class MarkdownWriter {
       }
       if (isMathRun(run)) {
         out += run.display ? `$$${run.math}$$` : `$${run.math}$`;
+        continue;
+      }
+      if (isFootnoteRun(run)) {
+        const n = this.notes.length + 1;
+        this.notes.push('');
+        const body = splitParagraphs(run.footnote.filter((r) => !isFootnoteRun(r)))
+          .map((part, i) => {
+            const para = this.inline(part, false);
+            return i === 0 ? para : para.split('\n').map((l) => `    ${l}`).join('\n');
+          })
+          .join('\n\n');
+        this.notes[n - 1] = `[^${n}]: ${body}`;
+        out += `[^${n}]`;
         continue;
       }
       if (isImageRun(run)) {

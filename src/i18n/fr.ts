@@ -601,4 +601,12 @@ export const fr: Record<MessageKey, string> = {
   'fmt.automatic': 'Couleur automatique',
   'fmt.clear': 'Effacer la mise en forme',
   'doc.pageBreak': 'Saut de page',
+  'note.insert': 'Insérer une note de bas de page',
+  'note.edit': 'Modifier la note de bas de page',
+  'note.insertButton': 'Insérer',
+  'note.text': 'Texte de la note',
+  'note.hint': '**gras**, *italique*, [lien](https://…) et $équations$ sont possibles ; une ligne vide commence un nouveau paragraphe. Ctrl+Entrée pour valider. Une note vide est supprimée.',
+  'note.button': 'Note de bas de page',
+  'note.notes': 'Notes',
+  'note.ref': 'Note {n}',
 };

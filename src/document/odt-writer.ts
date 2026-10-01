@@ -10,6 +10,8 @@ import {
   isCodeCellRun,
   isDiagramRun,
   isMathRun,
+  isFootnoteRun,
+  splitParagraphs,
   nestLists,
   splitListSegments,
   type Block,
@@ -37,6 +39,7 @@ class OdtWriter {
   private autoStyles = new Map<string, string>();
   private readonly paraNames = new Map<string, string>();
   private readonly textNames = new Map<string, string>();
+  private noteCount = 0;
   private listStyles: string[] = [];
   private pictures = new Map<string, string>();
   private tableCount = 0;
@@ -207,6 +210,16 @@ class OdtWriter {
         atStart = false;
         continue;
       }
+      if (isFootnoteRun(run)) {
+        // DOC-022: LibreOffice numbers the notes; the citation is a fallback.
+        const n = ++this.noteCount;
+        const body = splitParagraphs(run.footnote.filter((r) => !isFootnoteRun(r)))
+          .map((part) => `<text:p text:style-name="Footnote">${this.runs(part)}</text:p>`)
+          .join('');
+        out += `<text:note text:id="ftn${n}" text:note-class="footnote"><text:note-citation>${n}</text:note-citation><text:note-body>${body}</text:note-body></text:note>`;
+        atStart = false;
+        continue;
+      }
       let xml = odfText(run.text, atStart);
       atStart = run.text.endsWith('\n');
       const style = this.textStyle(run);
@@ -301,6 +314,7 @@ const STYLES_XML =
   '<style:style style:name="Quotations" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-left="0.3937in" fo:margin-right="0.3937in"/><style:text-properties fo:font-style="italic"/></style:style>' +
   '<style:style style:name="Preformatted_20_Text" style:display-name="Preformatted Text" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-bottom="0in"/><style:text-properties style:font-name="Liberation Mono" fo:font-size="10pt"/></style:style>' +
   '<style:style style:name="Horizontal_20_Line" style:display-name="Horizontal Line" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:border-bottom="0.0138in double #808080" fo:padding="0in"/><style:text-properties fo:font-size="6pt"/></style:style>' +
+  '<style:style style:name="Footnote" style:family="paragraph" style:parent-style-name="Standard" style:class="extra"><style:paragraph-properties fo:margin-left="0.2in" fo:text-indent="-0.2in" fo:margin-bottom="0in"/><style:text-properties fo:font-size="9pt"/></style:style>' +
   '<style:style style:name="Source_20_Text" style:display-name="Source Text" style:family="text"><style:text-properties style:font-name="Liberation Mono"/></style:style>' +
   '<style:style style:name="Graphics" style:family="graphic"><style:graphic-properties text:anchor-type="as-char" style:vertical-pos="top" style:vertical-rel="baseline"/></style:style>' +
   '</office:styles>' +

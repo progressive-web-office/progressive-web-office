@@ -51,6 +51,7 @@ export function editorInputRules(): Plugin {
 }
 
 export interface EditorActions {
+  footnote(): void;
   find(replace: boolean): void;
   link(): void;
   math(): void;
@@ -90,6 +91,7 @@ export function editorKeymap(actions: EditorActions): Plugin[] {
       'Mod-]': changeIndent(1),
       'Mod-[': changeIndent(-1),
       'Mod-f': run(() => actions.find(false)),
+      'Mod-Alt-f': run(actions.footnote),
       'Mod-h': run(() => actions.find(true)),
       'Mod-m': run(actions.math),
       'Mod-Shift-d': run(actions.diagram),

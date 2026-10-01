@@ -6,10 +6,11 @@
 import type { Node as PmNode } from 'prosemirror-model';
 import type { EditorView, NodeView, NodeViewConstructor } from 'prosemirror-view';
 import { codeCellElement, diagramElement, mathElement, type ImageInfo } from '../html';
-import type { CodeCellRun } from '../model';
+import type { CodeCellRun, Run } from '../model';
 
 export interface ViewHooks {
   resolve(key: string): ImageInfo | undefined;
+  editFootnote(pos: number, node: PmNode): void;
   editMath(pos: number, node: PmNode): void;
   editDiagram(pos: number, node: PmNode): void;
   /** A code cell button or its source was clicked. */
@@ -94,6 +95,19 @@ class DiagramView extends AtomView {
   }
 }
 
+/** A footnote reference: a superscript number (CSS counter); the text shows on hover (DOC-022). */
+class FootnoteView extends AtomView {
+  protected override render(): void {
+    const runs = this.node.attrs.runs as Run[];
+    this.dom.title = runs.map((r) => ('text' in r ? r.text : 'math' in r ? `$${r.math}$` : '')).join('');
+    this.dom.setAttribute('role', 'doc-noteref');
+    this.dom.onclick = () => {
+      const pos = this.getPos();
+      if (pos !== undefined) this.hooks.editFootnote(pos, this.node);
+    };
+  }
+}
+
 class CodeCellView extends AtomView {
   protected override render(): void {
     const a = this.node.attrs;
@@ -151,6 +165,7 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     math: (node, view, getPos) => new MathView(node, view, getPos, hooks),
     diagram: (node, view, getPos) => new DiagramView(node, view, getPos, hooks),
     code_cell: (node, view, getPos) => new CodeCellView(node, view, getPos, hooks),
+    footnote: (node, view, getPos) => new FootnoteView(node, view, getPos, hooks),
     image: (node) => new ImageView(node, hooks),
   };
 }

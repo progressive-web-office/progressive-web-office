@@ -31,6 +31,7 @@ and any ZIP archive of Markdown files.
 | Table | ▦ (3×3) | |
 | Horizontal rule | ― | |
 | Page break | ⤓ | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> |
+| Footnote | ¹ | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
 | Diagram | ⧉ (see [Diagrams](./diagrams.md)) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> |
 | Code cell | { } (see [Code cells](./code.md)) | |
@@ -42,6 +43,18 @@ Fonts that are not installed on the device are shown with a similar one
 where the font exists. Formatting that comes from a paragraph style (for
 example the size of a heading) is not copied onto the text, so changing the
 style in Word or LibreOffice still changes it.
+
+### Footnotes
+
+¹ (or <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>) adds a footnote at the
+cursor. Notes are numbered automatically in reading order and listed under
+the page; when printing they come at the end of the document. Write a note
+with simple Markdown: `**bold**`, `*italic*`, `[link](https://…)`,
+`$equation$`; a blank line starts a second paragraph. Click a note's number
+(or its line under the page) to change it; emptying it removes it.
+
+Footnotes are kept in Word (`.docx`) and OpenDocument (`.odt`) files, in
+Markdown (`[^1]` with the notes at the end) and in LaTeX (`\footnote{…}`).
 
 ### Find and replace
 

@@ -160,3 +160,28 @@ test('inserts page breaks (DOC-021)', async ({ page }) => {
   const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
   expect(md).toBe('Page one\n\n\\newpage\n\nPage two\n');
 });
+
+test('adds, numbers and edits footnotes (DOC-022)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Claim');
+  await page.keyboard.press('Control+Alt+f');
+  const dialog = page.getByRole('dialog', { name: 'Insert a footnote' });
+  await dialog.getByLabel('Footnote text').fill('A *source*.');
+  await dialog.getByRole('button', { name: 'Insert' }).click();
+  await page.keyboard.type(' and another');
+  await page.getByRole('button', { name: 'Footnote', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Insert a footnote' }).getByLabel('Footnote text').fill('Second note');
+  await page.getByRole('dialog', { name: 'Insert a footnote' }).getByRole('button', { name: 'Insert' }).click();
+  const notes = page.getByRole('complementary', { name: 'Notes' });
+  await expect(notes.locator('li')).toHaveText(['A source.', 'Second note']);
+  await expect(notes.locator('li em')).toHaveText('source');
+  // Edit the first note from its reference.
+  await editor.locator('.pm-footnote').first().click();
+  const edit = page.getByRole('dialog', { name: 'Edit the footnote' });
+  await expect(edit.getByLabel('Footnote text')).toHaveValue('A *source*.');
+  await edit.getByLabel('Footnote text').fill('A better source.');
+  await edit.getByRole('button', { name: 'OK' }).click();
+  await expect(notes.locator('li').first()).toHaveText('A better source.');
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
+  expect(md).toBe('Claim[^1] and another[^2]\n\n[^1]: A better source.\n\n[^2]: Second note\n');
+});

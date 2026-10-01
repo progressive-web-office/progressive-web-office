@@ -9,6 +9,8 @@ import {
   isCodeCellRun,
   isDiagramRun,
   isImageRun,
+  isFootnoteRun,
+  splitParagraphs,
   isMathRun,
   type Block,
   type ImageRun,
@@ -45,6 +47,8 @@ class DocxWriter {
   private abstractNums: string[] = [];
   private nums: string[] = [];
   private drawingId = 1;
+  /** Footnote bodies (DOC-022); a note's id is its index + 1. */
+  private footnotes: string[] = [];
   private ridCounter = 1;
 
   constructor(
@@ -60,6 +64,7 @@ class DocxWriter {
     this.rels.push({ id: this.nextRid(), type: REL.styles, target: 'styles.xml' });
     this.rels.push({ id: this.nextRid(), type: REL.numbering, target: 'numbering.xml' });
     const body = this.blocks(this.doc.blocks);
+    if (this.footnotes.length) this.rels.push({ id: this.nextRid(), type: REL.footnotes, target: 'footnotes.xml' });
     const documentXml =
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<w:document xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}">` +
@@ -77,6 +82,7 @@ class DocxWriter {
       { path: 'word/numbering.xml', data: this.numberingXml() },
       { path: 'word/_rels/document.xml.rels', data: this.relsXml() },
     ];
+    if (this.footnotes.length) entries.push({ path: 'word/footnotes.xml', data: this.footnotesXml() });
     for (const [key, m] of this.media) {
       const res = this.doc.resources.get(key);
       if (res) entries.push({ path: `word/${m.path}`, data: res.data });
@@ -97,6 +103,7 @@ class DocxWriter {
       '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
       '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
+      (this.footnotes.length ? '<Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>' : '') +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
       '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
       '</Types>'
@@ -176,7 +183,38 @@ class DocxWriter {
     return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${p.runs.map((r) => this.run(r)).join('')}</w:p>`;
   }
 
+  private footnotesXml(): string {
+    return (
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+      `<w:footnotes xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}">` +
+      '<w:footnote w:type="separator" w:id="-1"><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:separator/></w:r></w:p></w:footnote>' +
+      '<w:footnote w:type="continuationSeparator" w:id="0"><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:continuationSeparator/></w:r></w:p></w:footnote>' +
+      this.footnotes.join('') +
+      '</w:footnotes>'
+    );
+  }
+
+  /** A footnote reference; the note's paragraphs go to footnotes.xml (DOC-022). */
+  private footnote(runs: Run[]): string {
+    const id = this.footnotes.length + 1;
+    this.footnotes.push(''); // reserve the id: notes may hold other runs
+    const paragraphs = splitParagraphs(runs).map(
+      (part, i) =>
+        '<w:p><w:pPr><w:pStyle w:val="FootnoteText"/></w:pPr>' +
+        (i === 0 ? '<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteRef/></w:r><w:r><w:t xml:space="preserve"> </w:t></w:r>' : '') +
+        // Notes have no relationships of their own here: no pictures, links as text.
+        part
+          .filter((r) => !isImageRun(r) && !isFootnoteRun(r))
+          .map((r) => this.run('text' in r && r.link && !r.link.startsWith('#') ? { ...r, link: undefined } : r))
+          .join('') +
+        '</w:p>',
+    );
+    this.footnotes[id - 1] = `<w:footnote w:id="${id}">${paragraphs.join('')}</w:footnote>`;
+    return `<w:r><w:rPr><w:rStyle w:val="FootnoteReference"/></w:rPr><w:footnoteReference w:id="${id}"/></w:r>`;
+  }
+
   private run(run: Run): string {
+    if (isFootnoteRun(run)) return this.footnote(run.footnote);
     if (isImageRun(run)) return this.image(run);
     if (isDiagramRun(run) || isCodeCellRun(run)) return ''; // replaced by diagramsAsPictures / cellsAsBlocks
     if (isMathRun(run)) {
@@ -279,6 +317,7 @@ const ROOT_RELS =
 
 const twips = (pt: number): number => Math.round(pt * 20);
 
+
 /** Direct paragraph spacing (DOC-020): w:spacing then w:ind, as the schema orders them. */
 export function layoutPPr(p: ParagraphLayout): string {
   let out = '';
@@ -328,6 +367,8 @@ const STYLES_XML =
   '<w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>' +
   '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>' +
   '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="FootnoteText"><w:name w:val="footnote text"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>' +
+  '<w:style w:type="character" w:styleId="FootnoteReference"><w:name w:val="footnote reference"/><w:rPr><w:vertAlign w:val="superscript"/></w:rPr></w:style>' +
   '</w:styles>';
 
 export function writeDocx(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
