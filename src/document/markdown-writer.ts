@@ -104,6 +104,9 @@ class MarkdownWriter {
         }
       } else if (group.type === 'table') {
         parts.push(this.table(group.rows));
+      } else if (group.type === 'toc') {
+        // GitLab, Typora, MkDocs and others render a table of contents here (DOC-023).
+        parts.push('[[_TOC_]]');
       } else if (group.type === 'rule') {
         // \newpage is understood by Pandoc and most Markdown-to-PDF tools (DOC-021).
         parts.push(group.page ? '\\newpage' : '---');

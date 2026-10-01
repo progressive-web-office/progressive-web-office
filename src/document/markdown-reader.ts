@@ -14,6 +14,7 @@ import {
   isImageRun,
   isTextRun,
   normalizeRuns,
+  runsText,
   type Block,
   type CodeCellRun,
   type CodeLang,
@@ -298,7 +299,13 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   const PAGE = /^(?:\\newpage|\\pagebreak|\\clearpage|<div[^>]*page-break-(?:after|before)\s*:\s*always[^>]*>\s*<\/div>)$/;
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i]!;
-    if (b.type === 'paragraph' && b.style === 'normal' && !b.list && b.runs.length === 1 && 'text' in b.runs[0]! && PAGE.test(b.runs[0].text.trim())) blocks[i] = { type: 'rule', page: true };
+    if (b.type === 'paragraph' && b.style === 'normal' && !b.list && b.runs.length && b.runs.every((r) => 'text' in r)) {
+      // `[[_TOC_]]` reads as "[[" + italic "TOC" + "]]": look at the text only.
+      const text = runsText(b.runs).trim();
+      if (b.runs.length === 1 && PAGE.test(text)) blocks[i] = { type: 'rule', page: true };
+      // DOC-023: GitLab's [[_TOC_]], Typora's / MkDocs' [TOC].
+      else if (/^(?:\[\[_?TOC_?\]\]|\[TOC\]|\[toc\])$/.test(text)) blocks[i] = { type: 'toc' };
+    }
   }
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');

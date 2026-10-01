@@ -161,6 +161,14 @@ class DocxReader {
           out.push(this.readTable(el));
           break;
         case 'sdt': {
+          // DOC-023: a table of contents is regenerated from the headings.
+          const gallery = descendants(child(el, 'sdtPr') ?? el, 'docPartGallery')[0];
+          if (gallery && /table of contents/i.test(attr(gallery, 'val') ?? '')) {
+            const instr = descendants(el, 'instrText').map((i) => i.textContent ?? '').join('');
+            const m = /\\o\s+"\d+-(\d+)"/.exec(instr);
+            out.push(m && m[1] !== '3' ? { type: 'toc', levels: Number(m[1]) } : { type: 'toc' });
+            break;
+          }
           const content = child(el, 'sdtContent');
           if (content) out.push(...this.readBlocks(content));
           break;

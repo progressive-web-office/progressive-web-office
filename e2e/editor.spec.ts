@@ -185,3 +185,27 @@ test('adds, numbers and edits footnotes (DOC-022)', async ({ page }) => {
   const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
   expect(md).toBe('Claim[^1] and another[^2]\n\n[^1]: A better source.\n\n[^2]: Second note\n');
 });
+
+test('table of contents follows the headings (DOC-023)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('# Introduction');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Some text');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('## Method');
+  await page.keyboard.press('Control+Home');
+  await page.getByRole('button', { name: 'Table of contents' }).click();
+  const toc = editor.getByRole('navigation', { name: 'Contents' });
+  await expect(toc.locator('li')).toHaveText(['Introduction', 'Method']);
+  // It updates as headings are added.
+  await editor.locator('p', { hasText: 'Some text' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('# Results');
+  await expect(toc.locator('li')).toHaveText(['Introduction', 'Results', 'Method']); // in document order
+  await expect(toc.locator('li.toc-2')).toHaveText('Method');
+  // Entries jump to their heading.
+  await toc.getByRole('link', { name: 'Method' }).click();
+  await page.keyboard.type('!');
+  await expect(editor.locator('h2')).toHaveText('!Method');
+});

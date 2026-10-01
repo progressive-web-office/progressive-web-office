@@ -32,6 +32,7 @@ and any ZIP archive of Markdown files.
 | Horizontal rule | ― | |
 | Page break | ⤓ | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> |
 | Footnote | ¹ | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> |
+| Table of contents | § | |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
 | Diagram | ⧉ (see [Diagrams](./diagrams.md)) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> |
 | Code cell | { } (see [Code cells](./code.md)) | |
@@ -55,6 +56,16 @@ with simple Markdown: `**bold**`, `*italic*`, `[link](https://…)`,
 
 Footnotes are kept in Word (`.docx`) and OpenDocument (`.odt`) files, in
 Markdown (`[^1]` with the notes at the end) and in LaTeX (`\footnote{…}`).
+
+### Table of contents
+
+§ inserts a table of contents before the current paragraph. It lists the
+headings (Heading 1 to 3) and updates as you write; click an entry to go to
+its heading. In Word and LibreOffice it is a real table of contents: Word
+recomputes it, with page numbers, when the file is opened (it may ask to
+update the fields), and LibreOffice updates it with *Tools › Update*. In
+Markdown it is written `[[_TOC_]]` (shown as a table of contents by GitLab,
+Typora and others) and in LaTeX `\tableofcontents`.
 
 ### Find and replace
 

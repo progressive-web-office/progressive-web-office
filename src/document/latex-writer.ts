@@ -102,6 +102,8 @@ class LatexWriter {
         for (const seg of splitListSegments(group.items)) for (const list of nestLists(seg)) out.push(this.list(list, ''));
       } else if (group.type === 'table') {
         out.push(this.table(group.rows));
+      } else if (group.type === 'toc') {
+        out.push('\\tableofcontents');
       } else if (group.type === 'rule') {
         out.push(group.page ? '\\newpage' : '\\noindent\\rule{\\linewidth}{0.4pt}');
       } else if (group.style === 'quote') {

@@ -288,3 +288,12 @@ export const clearFormatting: Command = (state, dispatch) => {
   dispatch(tr.scrollIntoView());
   return true;
 };
+
+/** Insert a table of contents before the current block (DOC-023). */
+export const insertToc: Command = (state, dispatch) => {
+  if (!dispatch) return true;
+  const $from = state.selection.$from;
+  const pos = $from.depth > 0 ? $from.before(1) : 0;
+  dispatch(state.tr.insert(pos, schema.nodes.toc!.create()).scrollIntoView());
+  return true;
+};

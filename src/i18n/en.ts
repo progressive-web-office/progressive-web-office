@@ -607,6 +607,10 @@ export const en = {
   'note.button': 'Footnote',
   'note.notes': 'Notes',
   'note.ref': 'Footnote {n}',
+  'toc.title': 'Contents',
+  'toc.button': 'Table of contents',
+  'toc.insertTitle': 'Insert a table of contents (from the headings)',
+  'toc.empty': 'The table of contents lists the headings (Heading 1 to 3). Add headings to fill it.',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -2,6 +2,7 @@
 import { escapeXml as esc, escapeXmlAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
+import { t } from '../i18n';
 import {
   extensionForType,
   groupBlocks,
@@ -11,6 +12,7 @@ import {
   isImageRun,
   isFootnoteRun,
   splitParagraphs,
+  tocEntries,
   isMathRun,
   type Block,
   type ImageRun,
@@ -163,6 +165,8 @@ class DocxWriter {
         out += this.paragraph(group);
       } else if (group.type === 'table') {
         out += this.table(group.rows);
+      } else if (group.type === 'toc') {
+        out += this.toc(group.levels ?? 3);
       } else if (group.page) {
         out += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
       } else {
@@ -170,6 +174,31 @@ class DocxWriter {
       }
     }
     return out;
+  }
+
+  /**
+   * A table of contents (DOC-023): Word's TOC field, marked dirty so that Word
+   * recomputes it (with page numbers) when the document is opened; the current
+   * headings are its provisional result.
+   */
+  private toc(levels: number): string {
+    const entries = tocEntries(this.doc.blocks, levels);
+    const begin =
+      '<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>' +
+      `<w:r><w:instrText xml:space="preserve"> TOC \\o "1-${levels}" \\h \\z \\u </w:instrText></w:r>` +
+      '<w:r><w:fldChar w:fldCharType="separate"/></w:r>';
+    const end = '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+    let body = `<w:p><w:pPr><w:pStyle w:val="TOCHeading"/></w:pPr><w:r><w:t xml:space="preserve">${esc(t('toc.title'))}</w:t></w:r></w:p>`;
+    if (!entries.length) {
+      body += `<w:p><w:pPr><w:pStyle w:val="TOC1"/></w:pPr>${begin}${end}</w:p>`;
+    } else {
+      entries.forEach((e, i) => {
+        body +=
+          `<w:p><w:pPr><w:pStyle w:val="TOC${e.level}"/></w:pPr>${i === 0 ? begin : ''}` +
+          `<w:r><w:t xml:space="preserve">${esc(e.text)}</w:t></w:r>${i === entries.length - 1 ? end : ''}</w:p>`;
+      });
+    }
+    return `<w:sdt><w:sdtPr><w:docPartObj><w:docPartGallery w:val="Table of Contents"/><w:docPartUnique/></w:docPartObj></w:sdtPr><w:sdtContent>${body}</w:sdtContent></w:sdt>`;
   }
 
   private paragraph(p: Paragraph, numId?: string): string {
@@ -367,6 +396,8 @@ const STYLES_XML =
   '<w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/>' +
   '<w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>' +
   '<w:insideH w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="TOCHeading"><w:name w:val="TOC Heading"/><w:basedOn w:val="Heading1"/><w:next w:val="Normal"/><w:pPr><w:outlineLvl w:val="9"/></w:pPr></w:style>' +
+  [1, 2, 3, 4, 5, 6].map((n) => `<w:style w:type="paragraph" w:styleId="TOC${n}"><w:name w:val="toc ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:spacing w:after="100"/><w:ind w:left="${(n - 1) * 220}"/></w:pPr></w:style>`).join('') +
   '<w:style w:type="paragraph" w:styleId="FootnoteText"><w:name w:val="footnote text"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>' +
   '<w:style w:type="character" w:styleId="FootnoteReference"><w:name w:val="footnote reference"/><w:rPr><w:vertAlign w:val="superscript"/></w:rPr></w:style>' +
   '</w:styles>';

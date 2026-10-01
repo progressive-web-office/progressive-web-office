@@ -42,7 +42,7 @@ const SYMBOLS: Record<string, string> = {
 
 /** Commands ignored on import (layout only). */
 const IGNORED = new Set([
-  'maketitle', 'tableofcontents', 'noindent', 'indent', 'centering', 'raggedright', 'raggedleft', 'hfill', 'vfill', 'smallskip', 'medskip',
+  'maketitle', 'noindent', 'indent', 'centering', 'raggedright', 'raggedleft', 'hfill', 'vfill', 'smallskip', 'medskip',
   'bigskip', 'newpage', 'clearpage', 'pagebreak', 'nopagebreak', 'label', 'vspace', 'hspace', 'protect', 'relax', 'small', 'large', 'Large',
   'LARGE', 'huge', 'Huge', 'normalsize', 'footnotesize', 'scriptsize', 'tiny', 'selectfont', 'color', 'hline', 'toprule', 'midrule',
   'bottomrule', 'phantom', 'nonumber', 'notag', 'documentclass', 'usepackage', 'thispagestyle', 'pagestyle',
@@ -437,6 +437,11 @@ class Builder {
       // DOC-021: page breaks between paragraphs.
       this.flush();
       if (this.blocks.length) this.blocks.push({ type: 'rule', page: true });
+      return;
+    }
+    if (name === 'tableofcontents') {
+      this.flush();
+      this.blocks.push({ type: 'toc' });
       return;
     }
     if (name === 'hrule' || (name === 'rule' && /\\(?:line|text)width/.test(args[0] ?? ''))) {

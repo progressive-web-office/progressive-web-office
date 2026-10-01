@@ -609,4 +609,8 @@ export const fr: Record<MessageKey, string> = {
   'note.button': 'Note de bas de page',
   'note.notes': 'Notes',
   'note.ref': 'Note {n}',
+  'toc.title': 'Table des matières',
+  'toc.button': 'Table des matières',
+  'toc.insertTitle': 'Insérer une table des matières (à partir des titres)',
+  'toc.empty': 'La table des matières liste les titres (Titre 1 à 3). Ajoutez des titres pour la remplir.',
 };

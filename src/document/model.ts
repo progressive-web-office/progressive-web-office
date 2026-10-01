@@ -132,7 +132,14 @@ export interface Rule {
 
 export const PAGE_BREAK: Rule = { type: 'rule', page: true };
 
-export type Block = Paragraph | Table | Rule;
+/** A table of contents, generated from the headings (DOC-023). */
+export interface Toc {
+  type: 'toc';
+  /** Deepest heading level listed (default 3). */
+  levels?: number;
+}
+
+export type Block = Paragraph | Table | Rule | Toc;
 
 export interface Resource {
   data: Uint8Array;
@@ -482,4 +489,27 @@ export function mediaTypeForName(name: string): string {
   if (ext === 'pdf') return 'application/pdf';
   if (ext === 'md' || ext === 'markdown') return 'text/markdown';
   return 'application/octet-stream';
+}
+
+// --- table of contents (DOC-023) ------------------------------------------------
+
+export interface TocEntry {
+  /** 1 for Heading 1… */
+  level: number;
+  text: string;
+  /** Index of the heading in the blocks. */
+  index: number;
+}
+
+/** The headings listed by a table of contents, in document order. */
+export function tocEntries(blocks: Block[], levels = 3): TocEntry[] {
+  const out: TocEntry[] = [];
+  blocks.forEach((b, index) => {
+    const m = b.type === 'paragraph' ? /^h(\d)$/.exec(b.style) : null;
+    if (!m || b.type !== 'paragraph') return;
+    const level = Number(m[1]);
+    const text = runsText(b.runs).replace(/\s+/g, ' ').trim();
+    if (level <= levels && text) out.push({ level, text, index });
+  });
+  return out;
 }

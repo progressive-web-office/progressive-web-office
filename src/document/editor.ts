@@ -4,7 +4,7 @@
  * a reliable undo history and precise collaboration.
  */
 import { Fragment, Slice, type Node as PmNode } from 'prosemirror-model';
-import { EditorState, type Command, type Transaction } from 'prosemirror-state';
+import { EditorState, TextSelection, type Command, type Transaction } from 'prosemirror-state';
 import { EditorView as PmView } from 'prosemirror-view';
 import { toggleMark } from 'prosemirror-commands';
 import { redo, undo } from 'prosemirror-history';
@@ -22,7 +22,7 @@ import { addResource, wordCount, type Run, type Align, type Block, type Paragrap
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmToBlocks } from './pm/convert';
 import { schema } from './pm/schema';
-import { changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
+import { insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
@@ -72,6 +72,7 @@ export class DocumentEditor implements EditorView {
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
   private runner: CodeRunner | undefined;
   private readonly findBar: FindBar;
+  private readonly tocViews = new Set<{ refresh(): void }>();
   /** The footnotes, listed under the page (DOC-022). */
   private readonly notes = h('aside', { class: 'doc-notes', 'aria-label': t('note.notes') });
   /** CODE-004: the user agreed to run this document's code. */
@@ -119,6 +120,12 @@ export class DocumentEditor implements EditorView {
           resolve: (key) => this.resolve(key),
           editMath: (pos, node) => void this.editMath(pos, node),
           editFootnote: (pos, node) => void this.editNote(pos, node),
+          tocViews: this.tocViews,
+          tocEntries: (levels) => this.headings(levels),
+          gotoHeading: (pos) => {
+            this.view.dispatch(this.view.state.tr.setSelection(TextSelection.near(this.view.state.doc.resolve(pos + 1))).scrollIntoView());
+            this.view.focus();
+          },
           editDiagram: (pos, node) => void this.editDiagram(pos, node),
           cellAction: (action, pos, node) => this.onCellAction(action, pos, node),
         }),
@@ -130,6 +137,18 @@ export class DocumentEditor implements EditorView {
     );
     this.updateToolbar();
     this.renderNotes();
+    for (const toc of this.tocViews) toc.refresh();
+  }
+
+  /** Top-level headings up to `levels`, with their positions (DOC-023). */
+  private headings(levels: number): { level: number; text: string; pos: number }[] {
+    const out: { level: number; text: string; pos: number }[] = [];
+    this.view?.state.doc.forEach((node, pos) => {
+      const m = node.type === schema.nodes.paragraph ? /^h(\d)$/.exec(node.attrs.style as string) : null;
+      const text = node.textContent.replace(/\s+/g, ' ').trim();
+      if (m && Number(m[1]) <= levels && text) out.push({ level: Number(m[1]), text, pos });
+    });
+    return out;
   }
 
   /** Footnotes in reading order, under the page; clicking one edits it. */
@@ -172,7 +191,10 @@ export class DocumentEditor implements EditorView {
     else if (tr.selectionSet) this.statusSoon();
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
-    if (tr.docChanged) this.renderNotes();
+    if (tr.docChanged) {
+      this.renderNotes();
+      for (const toc of this.tocViews) toc.refresh();
+    }
   }
 
   /** Give the focus back to the document, without touching the selection when it already has it. */
@@ -494,6 +516,7 @@ export class DocumentEditor implements EditorView {
       act(t('doc.insertCode'), '{ }', () => void this.editCell(), t('doc.insertCodeTitle')),
       act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
       act(t('meta.button'), 'ⓘ', () => void this.editProperties(), t('meta.buttonTitle')),
+      act(t('toc.button'), '§', () => this.command(insertToc), t('toc.insertTitle')),
       act(t('doc.insertRule'), '―', () => this.command(insertRule())),
       act(t('doc.pageBreak'), '⤓', () => this.command(insertRule(true)), `${t('doc.pageBreak')} (Ctrl+Enter)`),
     );

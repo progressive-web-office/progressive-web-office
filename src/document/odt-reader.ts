@@ -196,9 +196,15 @@ class OdtReader {
             }
             break;
           }
+          case 'table-of-content': {
+            // DOC-023: regenerated from the headings.
+            const source = child(el, 'table-of-content-source');
+            const levels = Number(source ? attr(source, 'outline-level') : 3) || 3;
+            out.push(levels === 3 ? { type: 'toc' } : { type: 'toc', levels });
+            break;
+          }
           case 'section':
           case 'index-body':
-          case 'table-of-content':
           case 'illustration-index':
           case 'table-index':
           case 'alphabetical-index':

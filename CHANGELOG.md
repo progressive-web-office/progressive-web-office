@@ -24,6 +24,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   (Ctrl+] / Ctrl+[), line spacing, and a paragraph spacing dialog (left and
   first-line indents, space before and after). Kept in DOCX and ODT, and
   read from them as direct formatting only.
+- Table of contents in text documents (§): generated from the headings,
+  updated as you type, entries jump to their heading. Written as Word's TOC
+  field (recomputed with page numbers when Word opens the file), an ODF
+  table of contents, `[[_TOC_]]` in Markdown and `\tableofcontents` in
+  LaTeX, and read back from all of them.
 - Footnotes in text documents (¹, Ctrl+Alt+F): numbered automatically,
   listed under the page and printed at the end, edited in simple Markdown
   (formatting, links, equations, paragraphs). Kept in DOCX, ODT, Markdown

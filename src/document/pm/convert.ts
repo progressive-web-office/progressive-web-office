@@ -89,6 +89,7 @@ function tableToPm(t: Table): PmNode {
 export function blockToPm(b: Block): PmNode {
   if (b.type === 'paragraph') return paragraphToPm(b);
   if (b.type === 'table') return tableToPm(b);
+  if (b.type === 'toc') return schema.nodes.toc!.create({ levels: b.levels ?? 3 });
   return schema.nodes.horizontal_rule!.create({ page: !!b.page });
 }
 
@@ -162,6 +163,7 @@ function pmToBlock(node: PmNode): Block {
     });
     return { type: 'table', rows };
   }
+  if (node.type.name === 'toc') return node.attrs.levels === 3 ? { type: 'toc' } : { type: 'toc', levels: node.attrs.levels as number };
   if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : { type: 'rule' };
   return pmToParagraph(node);
 }

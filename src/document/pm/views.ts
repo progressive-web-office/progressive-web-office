@@ -7,8 +7,14 @@ import type { Node as PmNode } from 'prosemirror-model';
 import type { EditorView, NodeView, NodeViewConstructor } from 'prosemirror-view';
 import { codeCellElement, diagramElement, mathElement, type ImageInfo } from '../html';
 import type { CodeCellRun, Run } from '../model';
+import { t } from '../../i18n';
 
 export interface ViewHooks {
+  /** Headings listed by a table of contents, with their positions (DOC-023). */
+  tocEntries(levels: number): { level: number; text: string; pos: number }[];
+  gotoHeading(pos: number): void;
+  /** Table of contents views, refreshed after every change. */
+  tocViews: Set<{ refresh(): void }>;
   resolve(key: string): ImageInfo | undefined;
   editFootnote(pos: number, node: PmNode): void;
   editMath(pos: number, node: PmNode): void;
@@ -95,6 +101,71 @@ class DiagramView extends AtomView {
   }
 }
 
+/** A table of contents, regenerated from the headings as you type (DOC-023). */
+class TocView implements NodeView {
+  dom: HTMLElement;
+  constructor(
+    private node: PmNode,
+    private readonly hooks: ViewHooks,
+  ) {
+    this.dom = document.createElement('nav');
+    this.dom.className = 'toc';
+    this.dom.contentEditable = 'false';
+    this.dom.setAttribute('aria-label', t('toc.title'));
+    hooks.tocViews.add(this);
+    this.refresh();
+  }
+
+  refresh(): void {
+    const levels = this.node.attrs.levels as number;
+    const entries = this.hooks.tocEntries(levels);
+    const title = document.createElement('p');
+    title.className = 'toc-title';
+    title.textContent = t('toc.title');
+    const list = document.createElement('ol');
+    for (const e of entries) {
+      const li = document.createElement('li');
+      li.className = `toc-${e.level}`;
+      const a = document.createElement('a');
+      a.href = '#';
+      a.textContent = e.text;
+      a.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        this.hooks.gotoHeading(e.pos);
+      });
+      li.append(a);
+      list.append(li);
+    }
+    const children: Node[] = [title, list];
+    if (!entries.length) {
+      const hint = document.createElement('p');
+      hint.className = 'toc-empty';
+      hint.textContent = t('toc.empty');
+      children.push(hint);
+    }
+    this.dom.replaceChildren(...children);
+  }
+
+  update(node: PmNode): boolean {
+    if (node.type !== this.node.type) return false;
+    this.node = node;
+    this.refresh();
+    return true;
+  }
+
+  stopEvent(e: Event): boolean {
+    return e.type === 'click' && !!(e.target as HTMLElement).closest('a');
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+
+  destroy(): void {
+    this.hooks.tocViews.delete(this);
+  }
+}
+
 /** A footnote reference: a superscript number (CSS counter); the text shows on hover (DOC-022). */
 class FootnoteView extends AtomView {
   protected override render(): void {
@@ -166,6 +237,7 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     diagram: (node, view, getPos) => new DiagramView(node, view, getPos, hooks),
     code_cell: (node, view, getPos) => new CodeCellView(node, view, getPos, hooks),
     footnote: (node, view, getPos) => new FootnoteView(node, view, getPos, hooks),
+    toc: (node) => new TocView(node, hooks),
     image: (node) => new ImageView(node, hooks),
   };
 }

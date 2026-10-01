@@ -14,6 +14,7 @@ import {
   isTextRun,
   nestLists,
   normalizeRuns,
+  tocEntries,
   MONO_FONT,
   type Align,
   type Block,
@@ -30,6 +31,7 @@ import {
   type TextFormat,
 } from './model';
 import { diagramLangOf } from './diagram';
+import { t } from '../i18n';
 
 /** Accept http(s), mailto, tel, fragment and relative URLs only. */
 export function isSafeUrl(url: string): boolean {
@@ -61,6 +63,8 @@ export function blocksToDom(
       for (const list of nestLists(group.items)) frag.append(listToDom(list, doc, resolveImage));
     } else if (group.type === 'table') {
       frag.append(tableToDom(group.rows, doc, resolveImage));
+    } else if (group.type === 'toc') {
+      frag.append(tocElement(blocks, group.levels ?? 3, doc));
     } else if (group.type === 'rule') {
       const hr = doc.createElement('hr');
       if (group.page) {
@@ -85,6 +89,26 @@ function tagFor(style: ParagraphStyle): string {
   if (style === 'normal' || style === 'quote') return 'p';
   if (style === 'code') return 'pre';
   return style;
+}
+
+/** A table of contents as a navigation list of the headings (DOC-023). */
+export function tocElement(blocks: Block[], levels: number, doc: Document): HTMLElement {
+  const nav = doc.createElement('nav');
+  nav.className = 'toc';
+  nav.dataset.levels = String(levels);
+  const title = doc.createElement('p');
+  title.className = 'toc-title';
+  title.textContent = t('toc.title');
+  const list = doc.createElement('ol');
+  for (const e of tocEntries(blocks, levels)) {
+    const li = doc.createElement('li');
+    li.className = `toc-${e.level}`;
+    li.dataset.index = String(e.index);
+    li.textContent = e.text;
+    list.append(li);
+  }
+  nav.append(title, list);
+  return nav;
 }
 
 /** A CSS font-family value for a font name, with a generic fallback. */
@@ -405,6 +429,12 @@ export function domToBlocks(
 
     if (tag === 'br') {
       open(ctx).runs.push({ text: '\n', ...cleanFormat(fmt) });
+      return;
+    }
+    if (tag === 'nav' && el.classList.contains('toc')) {
+      flush();
+      const levels = Number(el.dataset.levels) || 3;
+      blocks.push(levels === 3 ? { type: 'toc' } : { type: 'toc', levels });
       return;
     }
     if (el.dataset?.footnote !== undefined && el.classList.contains('footnote')) {

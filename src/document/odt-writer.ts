@@ -3,6 +3,7 @@ import { escapeXml as esc, escapeXmlAttr as escAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
 import { MIME_TYPES } from '../core/format';
+import { t } from '../i18n';
 import {
   extensionForType,
   groupBlocks,
@@ -12,6 +13,7 @@ import {
   isMathRun,
   isFootnoteRun,
   splitParagraphs,
+  tocEntries,
   nestLists,
   splitListSegments,
   type Block,
@@ -40,6 +42,7 @@ class OdtWriter {
   private readonly paraNames = new Map<string, string>();
   private readonly textNames = new Map<string, string>();
   private noteCount = 0;
+  private tocCount = 0;
   private listStyles: string[] = [];
   private pictures = new Map<string, string>();
   private tableCount = 0;
@@ -139,6 +142,8 @@ class OdtWriter {
         out += this.paragraph(group);
       } else if (group.type === 'table') {
         out += this.table(group.rows);
+      } else if (group.type === 'toc') {
+        out += this.toc(group.levels ?? 3);
       } else {
         if (group.page) {
           this.autoStyles.set('PageBreak', '<style:style style:name="PageBreak" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-after="page"/></style:style>');
@@ -149,6 +154,21 @@ class OdtWriter {
       }
     }
     return out;
+  }
+
+  /** A table of contents that LibreOffice updates (Tools > Update) (DOC-023). */
+  private toc(levels: number): string {
+    const n = ++this.tocCount;
+    const entries = tocEntries(this.doc.blocks, levels)
+      .map((e) => `<text:p text:style-name="Contents_20_${e.level}">${esc(e.text)}</text:p>`)
+      .join('');
+    const templates = Array.from({ length: levels }, (_, i) => `<text:table-of-content-entry-template text:outline-level="${i + 1}" text:style-name="Contents_20_${i + 1}"><text:index-entry-link-start/><text:index-entry-chapter/><text:index-entry-text/><text:index-entry-tab-stop style:type="right" style:leader-char="."/><text:index-entry-page-number/><text:index-entry-link-end/></text:table-of-content-entry-template>`).join('');
+    return (
+      `<text:table-of-content text:protected="true" text:name="Table of Contents${n}">` +
+      `<text:table-of-content-source text:outline-level="${levels}" text:use-index-marks="false"><text:index-title-template text:style-name="Contents_20_Heading">${esc(t('toc.title'))}</text:index-title-template>${templates}</text:table-of-content-source>` +
+      `<text:index-body><text:index-title text:name="Table of Contents${n}_Head"><text:p text:style-name="Contents_20_Heading">${esc(t('toc.title'))}</text:p></text:index-title>${entries}</text:index-body>` +
+      '</text:table-of-content>'
+    );
   }
 
   private listStyle(items: Paragraph[]): string {
@@ -314,6 +334,13 @@ const STYLES_XML =
   '<style:style style:name="Quotations" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-left="0.3937in" fo:margin-right="0.3937in"/><style:text-properties fo:font-style="italic"/></style:style>' +
   '<style:style style:name="Preformatted_20_Text" style:display-name="Preformatted Text" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-bottom="0in"/><style:text-properties style:font-name="Liberation Mono" fo:font-size="10pt"/></style:style>' +
   '<style:style style:name="Horizontal_20_Line" style:display-name="Horizontal Line" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:border-bottom="0.0138in double #808080" fo:padding="0in"/><style:text-properties fo:font-size="6pt"/></style:style>' +
+  '<style:style style:name="Contents_20_Heading" style:display-name="Contents Heading" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-top="0.17in" fo:margin-bottom="0.08in"/><style:text-properties fo:font-size="16pt" fo:font-weight="bold"/></style:style>' +
+  '<style:style style:name="Contents_20_1" style:display-name="Contents 1" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="0.0in" fo:margin-bottom="0.04in"/></style:style>' +
+  '<style:style style:name="Contents_20_2" style:display-name="Contents 2" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="0.2in" fo:margin-bottom="0.04in"/></style:style>' +
+  '<style:style style:name="Contents_20_3" style:display-name="Contents 3" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="0.4in" fo:margin-bottom="0.04in"/></style:style>' +
+  '<style:style style:name="Contents_20_4" style:display-name="Contents 4" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="0.6in" fo:margin-bottom="0.04in"/></style:style>' +
+  '<style:style style:name="Contents_20_5" style:display-name="Contents 5" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="0.8in" fo:margin-bottom="0.04in"/></style:style>' +
+  '<style:style style:name="Contents_20_6" style:display-name="Contents 6" style:family="paragraph" style:parent-style-name="Standard" style:class="index"><style:paragraph-properties fo:margin-left="1.0in" fo:margin-bottom="0.04in"/></style:style>' +
   '<style:style style:name="Footnote" style:family="paragraph" style:parent-style-name="Standard" style:class="extra"><style:paragraph-properties fo:margin-left="0.2in" fo:text-indent="-0.2in" fo:margin-bottom="0in"/><style:text-properties fo:font-size="9pt"/></style:style>' +
   '<style:style style:name="Source_20_Text" style:display-name="Source Text" style:family="text"><style:text-properties style:font-name="Liberation Mono"/></style:style>' +
   '<style:style style:name="Graphics" style:family="graphic"><style:graphic-properties text:anchor-type="as-char" style:vertical-pos="top" style:vertical-rel="baseline"/></style:style>' +

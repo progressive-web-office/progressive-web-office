@@ -609,4 +609,8 @@ export const zh: Record<MessageKey, string> = {
   'note.button': '脚注',
   'note.notes': '注释',
   'note.ref': '脚注 {n}',
+  'toc.title': '目录',
+  'toc.button': '目录',
+  'toc.insertTitle': '插入目录（根据标题生成）',
+  'toc.empty': '目录列出标题（标题 1 至 3）。添加标题即可填充目录。',
 };
