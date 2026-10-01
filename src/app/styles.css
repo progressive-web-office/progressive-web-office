@@ -502,3 +502,5 @@ iframe.code-sandbox { display: none; }
 .share-link { flex: 1; min-width: 0; font-family: ui-monospace, monospace; font-size: 0.8rem; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); }
 .ai-setup [hidden] { display: none; }
 .ai-setup label.git-row { display: flex; gap: 6px; align-items: flex-start; }
+.card.cloud { border-left-color: #0082c9; }
+.dav-dialog { width: min(640px, calc(100vw - 32px)); max-width: none; }

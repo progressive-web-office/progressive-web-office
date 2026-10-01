@@ -44,6 +44,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   Markdown and MDZ, and as code and pictures in Word, OpenDocument and LaTeX.
   The Python runtime is served by the application and, like the packages
   (downloaded from the Pyodide CDN on first use), kept for offline use.
+- **Nextcloud / WebDAV** (start screen, and **☁** to save any document): open
+  and save files on Nextcloud, ownCloud or any WebDAV server. Saving never
+  overwrites a file changed by someone else meanwhile: a copy is offered
+  instead. Accounts (app password) stay in this browser; the guide explains the
+  CORS setup of the server.
 - **Choice of AI provider** for the assistant (⚙): Anthropic (Claude), OpenAI,
   Mistral AI, Albert (API de l’État), a local Ollama server, or any server
   offering the OpenAI chat completions API (LM Studio, vLLM, OpenRouter…).

@@ -36,6 +36,15 @@ interface OpenDocument {
   source?: RepoSource;
   /** Opened from a Grist document: Save sends the changes back (GRIST-003). */
   grist?: GristSource;
+  /** Opened from or saved to Nextcloud / WebDAV: Save writes it back (DAV-003). */
+  dav?: CloudSource;
+}
+
+interface CloudSource {
+  account: import('../webdav/ui').DavAccount;
+  path: string;
+  /** Version that was read or last written, to detect concurrent changes. */
+  etag?: string;
 }
 
 interface GristSource {
@@ -141,6 +150,81 @@ export class App {
       if ((err as Error).name !== 'MdzCancelled') this.showError(t('error.open', { name, message: (err as Error).message }));
       return null;
     }
+  }
+
+  /** Open a file from Nextcloud / WebDAV (DAV-002). */
+  async openFromCloud(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    const { browseCloud } = await import('../webdav/ui');
+    const file = await browseCloud(this.root, 'open');
+    if (!file) return;
+    await this.withBusy(async () => {
+      if (!(await this.openBytes(basename(file.path), file.bytes))) return;
+      if (this.current) this.current.dav = { account: file.account, path: file.path, ...(file.etag ? { etag: file.etag } : {}) };
+      this.renderHeader();
+    });
+  }
+
+  /**
+   * Save to Nextcloud / WebDAV (DAV-003): back to where the document came from,
+   * or to a chosen place. Never overwrites a newer version silently (DAV-004).
+   */
+  async saveToCloud(choose = false): Promise<void> {
+    const doc = this.current;
+    if (!doc?.view.save) return;
+    const { browseCloud, davClient, davErrorMessage } = await import('../webdav/ui');
+    let target = choose ? undefined : doc.dav;
+    let format = doc.format;
+    if (!target) {
+      const chosen = await browseCloud(this.root, 'save', doc.name);
+      if (!chosen) return;
+      const formats = saveFormatsFor(doc.kind);
+      const ext = chosen.path.slice(chosen.path.lastIndexOf('.') + 1).toLowerCase();
+      const match = formats.find((f) => fileExtension(f) === ext);
+      if (!match) {
+        this.showError(t('git.badExtension', { list: formats.map((f) => `.${fileExtension(f)}`).join(', ') }));
+        return;
+      }
+      format = match;
+      target = { account: chosen.account, path: chosen.path };
+    }
+    const location = target;
+    await this.withBusy(async () => {
+      const client = davClient(location.account);
+      const bytes = await doc.view.save!(format);
+      let path = location.path;
+      let result: { etag?: string };
+      try {
+        try {
+          result = await client.write(path, bytes, location.etag);
+        } catch (err) {
+          if (!(err instanceof Error && 'conflict' in err && (err as { conflict: boolean }).conflict)) throw err;
+          // DAV-004: the file changed (or exists) on the server.
+          const overwrite = t('dav.conflictOverwrite');
+          const copy = t('dav.conflictCopy');
+          const answer = await this.choose(t('dav.conflictTitle'), t(location.etag ? 'dav.conflictChanged' : 'dav.conflictExists', { path }), [copy, overwrite], copy, t('common.continue'));
+          if (!answer) return;
+          if (answer === copy) {
+            const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+            const dot = path.lastIndexOf('.');
+            path = dot > path.lastIndexOf('/') ? `${path.slice(0, dot)}-copy-${stamp}${path.slice(dot)}` : `${path}-copy-${stamp}`;
+            result = await client.write(path, bytes);
+          } else {
+            result = await client.write(path, bytes, undefined, true);
+          }
+        }
+      } catch (err) {
+        this.showError(davErrorMessage(err));
+        return;
+      }
+      doc.dav = { account: location.account, path, ...(result.etag ? { etag: result.etag } : {}) };
+      doc.name = basename(path);
+      doc.format = format;
+      this.dirty = false;
+      this.discardDraft();
+      this.renderHeader();
+      this.showNotice(t('dav.saved', { path }));
+    });
   }
 
   /** Open a Grist document as a workbook, one sheet per table (GRIST-002). */
@@ -312,6 +396,7 @@ export class App {
     if (!doc?.view.save) return;
     if (!format && doc.source) return this.commitToRepository();
     if (!format && doc.grist) return this.saveToGrist();
+    if (!format && doc.dav) return this.saveToCloud();
     const target = format ?? doc.format;
     try {
       const bytes = await doc.view.save(target);
@@ -537,6 +622,7 @@ export class App {
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open' }),
           button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', title: t('git.openTitle') }),
           button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', title: t('share.receiveTitle') }),
+          button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', title: t('dav.openCardTitle') }),
           button(t('grist.open'), () => void this.openFromGrist(), { className: 'card grist', title: t('grist.openTitle') }),
         ),
         h('p', { class: 'hint' }, t('start.tip')),
@@ -623,6 +709,7 @@ export class App {
         h('span', { class: 'doc-name', title: doc.source ? `${t('git.source', { repo: doc.source.repo.name, branch: doc.source.branch })} — ${doc.source.path}` : formatLabel(doc.format) }, doc.name),
         doc.source ? h('span', { class: 'doc-source' }, `${doc.source.repo.name} · ${doc.source.branch}`) : null,
         doc.grist ? h('span', { class: 'doc-source' }, `Grist · ${new URL(doc.grist.account.serverUrl).host}`) : null,
+        doc.dav ? h('span', { class: 'doc-source', title: doc.dav.path }, `☁ ${new URL(doc.dav.account.url).host}`) : null,
         this.dirty ? h('span', { class: 'modified', title: t('file.unsaved'), 'aria-label': t('file.unsaved') }, '●') : null,
       );
     }
@@ -632,7 +719,8 @@ export class App {
       button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }),
     );
     if (doc?.view.save) {
-      actions.append(button(t('file.save'), () => void this.save(), { title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
+      actions.append(button(t('file.save'), () => void this.save(), { title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : doc.dav ? t('dav.saveBackTitle', { path: doc.dav.path }) : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
+      if (!doc.source && !doc.grist) actions.append(button(t('dav.saveToCloud'), () => void this.saveToCloud(true), { title: t('dav.saveToCloudTitle'), text: '☁', className: 'icon' }));
       if (!doc.source && !doc.grist) actions.append(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
       const select = h(
         'select',

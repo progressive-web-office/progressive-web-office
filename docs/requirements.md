@@ -325,6 +325,17 @@ integration is ever needed.
 | GRIST-005 | M | 0.0.14 | If the Grist server cannot be reached or refuses a request, the system shall say whether the address/HTTPS/CORS setup or the API key is the likely cause, and link to the server setup guide. |
 | GRIST-006 | C | — | Python code cells reading Grist tables; writing documents of the text editor to Grist. |
 
+## 9h. Cloud storage: Nextcloud and WebDAV (DAV)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| DAV-001 | M | 0.0.14 | The system shall let the user add cloud accounts — a Nextcloud / ownCloud server address with user name and app password, or the full address of any WebDAV server — check them when added, store them only in this browser, and forget them. |
+| DAV-002 | M | 0.0.14 | The system shall let the user browse the folders of a cloud account and open any supported file. |
+| DAV-003 | M | 0.0.14 | When a document opened from the cloud is saved, the system shall write it back to the same file; the user shall also be able to save any open document to a chosen cloud folder and file name, the extension choosing the format. |
+| DAV-004 | M | 0.0.14 | The system shall never overwrite a file that changed on the server since it was read, nor an existing file when saving a new one (conditional requests with ETags); it shall offer to save a copy next to it (default) or to replace the file. |
+| DAV-005 | M | 0.0.14 | If the server cannot be reached or refuses the credentials, the system shall say whether the address/HTTPS/CORS setup or the credentials are the likely cause, and link to the server setup guide. |
+| DAV-006 | C | — | Nextcloud login flow (no app password to copy), sharing links, and a recent-files list per account. |
+
 ## 10. Out of scope (Won't, this time)
 
 - Real-time collaboration and cloud storage.

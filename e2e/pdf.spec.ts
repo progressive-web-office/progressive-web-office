@@ -18,7 +18,7 @@ async function samplePdf(): Promise<Buffer> {
 
 async function download(page: import('@playwright/test').Page): Promise<Buffer> {
   const d = page.waitForEvent('download');
-  await page.locator('.header-actions').getByRole('button', { name: 'Save' }).click();
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
   const stream = await (await d).createReadStream();
   const chunks: Buffer[] = [];
   for await (const c of stream) chunks.push(c as Buffer);

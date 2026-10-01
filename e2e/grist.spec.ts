@@ -77,7 +77,7 @@ test('opens a Grist document as a spreadsheet and sends the changes back (GRIST-
   await page.keyboard.press('Tab');
   await page.keyboard.type('18');
   await page.keyboard.press('Enter');
-  await page.locator('.header-actions').getByRole('button', { name: 'Save' }).click();
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.locator('.app-alert')).toContainText('2 row(s) updated in Grist “Notes 2nde”');
   expect(grist.requests).toEqual([
     { method: 'PATCH', path: '/docs/abc/tables/Eleves/records', body: { records: [{ id: 2, fields: { Grade: 12 } }] } },
