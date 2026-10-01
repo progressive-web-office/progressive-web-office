@@ -1,6 +1,7 @@
 /** Service worker registration, update prompt (PLT-005) and file handling (PLT-006). */
 import { t } from '../i18n';
 import type { App } from './app';
+import type { WindowLike } from '../share/handoff';
 
 interface LaunchParams {
   files: { getFile(): Promise<File> }[];
@@ -20,6 +21,7 @@ export function installPwa(app: App): void {
     });
   }
   void openSharedFile(app);
+  void openHandedOffFile(app);
   const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue;
   queue?.setConsumer(async (params) => {
     const handle = params.files[0];
@@ -42,6 +44,22 @@ async function openSharedFile(app: App): Promise<void> {
   const name = decodeURIComponent(res.headers.get('x-file-name') ?? 'shared');
   const blob = await res.blob();
   await app.openFile(new File([blob], name, { type: blob.type }));
+}
+
+/**
+ * Opened by QRShare's "Open in …" button (SHARE-008): announce readiness to the
+ * opener and open the file it hands over, from the configured QRShare only.
+ */
+async function openHandedOffFile(app: App): Promise<void> {
+  const params = new URLSearchParams(location.search);
+  if (params.get('handoff') !== 'qrshare') return;
+  params.delete('handoff');
+  const query = params.toString();
+  history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);
+  if (!window.opener) return;
+  const [{ receiveFromOpener }, { loadShareSettings, qrshareOrigin }] = await Promise.all([import('../share/handoff'), import('../share/qrshare')]);
+  const received = await receiveFromOpener(window as unknown as WindowLike, [qrshareOrigin(loadShareSettings().url)], 60_000);
+  if (received) await app.openFile(received.file);
 }
 
 function showUpdateBanner(reload: () => void): void {

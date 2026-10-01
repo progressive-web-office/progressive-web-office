@@ -10,6 +10,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Documents that are not small text are handed to QRShare inside the browser
+  (QRShare app handoff protocol), without a download; QRShare can hand received
+  files back to Progressive Web Office, which accepts them only from the
+  configured QRShare. Older QRShare versions get the download fallback.
+- "Share with another app…" in the send dialog opens the system share sheet.
+
 - Integration tests against a real QRShare build (`just e2e-qrshare`, and a
   dedicated CI job): the document sent to QRShare's transfer chooser is
   checked byte for byte, encoded as a static QR code and decoded back; the

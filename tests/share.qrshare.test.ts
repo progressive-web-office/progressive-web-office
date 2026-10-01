@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_QRSHARE_URL,
+  handoffSendUrl,
   loadShareSettings,
   planSend,
   prepareTransferUrl,
@@ -18,23 +19,26 @@ describe('SHARE-002/SHARE-005 QRShare URLs', () => {
     expect(receiveUrl('https://example.org/qr/#/about', 'prefer-airgap')).toBe('https://example.org/qr/#/receive/qr?policy=prefer-airgap');
     expect(prepareTransferUrl('https://example.org/qr/')).toBe('https://example.org/qr/#/create/url');
   });
+
+  it('builds the handoff and receive-with-return routes (SHARE-007, SHARE-008)', () => {
+    expect(handoffSendUrl('https://example.org/qr/', 'any')).toBe('https://example.org/qr/#/send?handoff=1&policy=any');
+    expect(receiveUrl('https://example.org/qr/', 'airgap', 'https://pwo.example/app/?handoff=qrshare')).toBe(
+      'https://example.org/qr/#/receive/qr?policy=airgap&return=https%3A%2F%2Fpwo.example%2Fapp%2F%3Fhandoff%3Dqrshare',
+    );
+  });
 });
 
 describe('SHARE-001/SHARE-002 choosing how to send', () => {
   const file = (text: string, name = 'a.md') => new File([text], name);
 
   it('sends small text documents through the URL route', async () => {
-    expect(await planSend(file('# Hi'), 'md', { canShareFiles: true })).toEqual({ kind: 'url', text: '# Hi' });
-    expect(await planSend(file('a,b\n1,2'), 'csv', { canShareFiles: false })).toEqual({ kind: 'url', text: 'a,b\n1,2' });
+    expect(await planSend(file('# Hi'), 'md')).toEqual({ kind: 'url', text: '# Hi' });
+    expect(await planSend(file('a,b\n1,2'), 'csv')).toEqual({ kind: 'url', text: 'a,b\n1,2' });
   });
 
-  it('uses the Web Share API for binary or large files when available', async () => {
-    expect(await planSend(file('PK..', 'a.docx'), 'docx', { canShareFiles: true })).toEqual({ kind: 'share' });
-    expect(await planSend(file('x'.repeat(20_000)), 'md', { canShareFiles: true })).toEqual({ kind: 'share' });
-  });
-
-  it('falls back to a download and the "prepare a transfer" screen', async () => {
-    expect(await planSend(file('PK..', 'a.xlsx'), 'xlsx', { canShareFiles: false })).toEqual({ kind: 'download' });
+  it('hands binary or large files over with postMessage (SHARE-007)', async () => {
+    expect(await planSend(file('PK..', 'a.docx'), 'docx')).toEqual({ kind: 'handoff' });
+    expect(await planSend(file('x'.repeat(20_000)), 'md')).toEqual({ kind: 'handoff' });
   });
 });
 

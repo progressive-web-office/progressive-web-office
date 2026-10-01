@@ -56,8 +56,19 @@ export function sendTextUrl(url: string, text: string, policy: SendPolicy): stri
   return `${base(url)}#/send?${new URLSearchParams({ data: text, policy }).toString()}`;
 }
 
-export function receiveUrl(url: string, policy: SendPolicy): string {
-  return `${base(url)}#/receive/qr?policy=${policy}`;
+/** QRShare's receive screen; `returnUrl` lets QRShare hand the received file back (SHARE-008). */
+export function receiveUrl(url: string, policy: SendPolicy, returnUrl?: string): string {
+  return `${base(url)}#/receive/qr?policy=${policy}${returnUrl ? `&return=${encodeURIComponent(returnUrl)}` : ''}`;
+}
+
+/** QRShare's transfer chooser waiting for a file handed over with postMessage (SHARE-007). */
+export function handoffSendUrl(url: string, policy: SendPolicy): string {
+  return `${base(url)}#/send?handoff=1&policy=${policy}`;
+}
+
+/** Origin of the configured QRShare, the only one allowed to hand files back. */
+export function qrshareOrigin(url: string): string {
+  return new URL(url).origin;
 }
 
 /** QRShare's "Prepare a transfer" screen, where local files are selected. */
@@ -65,14 +76,17 @@ export function prepareTransferUrl(url: string): string {
   return `${base(url)}#/create/url`;
 }
 
-export type SendPlan = { kind: 'url'; text: string } | { kind: 'share' } | { kind: 'download' };
+export type SendPlan = { kind: 'url'; text: string } | { kind: 'handoff' };
 
-/** Decide how to hand a file to QRShare. */
-export async function planSend(file: File, format: DocumentFormat, env: { canShareFiles: boolean }): Promise<SendPlan> {
+/**
+ * Decide how to hand a document to QRShare: small text through the URL route
+ * (SHARE-002), any other file through the postMessage handoff (SHARE-007).
+ */
+export async function planSend(file: File, format: DocumentFormat): Promise<SendPlan> {
   if (TEXT_FORMATS.includes(format) && file.size <= MAX_URL_TEXT_BYTES) {
     return { kind: 'url', text: new TextDecoder().decode(new Uint8Array(await file.arrayBuffer())) };
   }
-  return env.canShareFiles ? { kind: 'share' } : { kind: 'download' };
+  return { kind: 'handoff' };
 }
 
 export function canShareFiles(file: File): boolean {

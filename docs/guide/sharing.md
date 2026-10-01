@@ -21,11 +21,15 @@ with a direct peer-to-peer connection when you allow it.
 3. Click **Send**. Depending on the document and the browser:
    - a small text document (Markdown, CSV, LaTeX) opens directly in QRShare,
      ready to send;
-   - otherwise the system **share sheet** opens (phones, tablets, Windows,
-     macOS, ChromeOS): pick QRShare — or any other app;
-   - where the Web Share API is not available (for example desktop Linux), the
-     file is downloaded and QRShare opens its *Prepare a transfer* screen, where
-     you select it.
+   - any other document is **handed to QRShare inside the browser** — no
+     download, no upload: QRShare opens with *Received from …* and the file
+     ready to send;
+   - with an older QRShare that does not support this, the file is downloaded
+     and QRShare opens its *Prepare a transfer* screen, where you select it.
+
+   **Share with another app…** (phones, tablets, Windows, macOS, ChromeOS)
+   opens the system share sheet instead, to send the file to QRShare or any
+   other app.
 
 The policy is remembered. Under **Advanced** you can point to another QRShare
 installation (for example a self-hosted copy on your network).
@@ -33,12 +37,14 @@ installation (for example a self-hosted copy on your network).
 ## Receive on this device
 
 On the start screen, click **Receive from another device…**: QRShare opens its
-receive screen. Once the file is received:
+receive screen. Once the file is received, click **Open in
+s-celles.github.io** (the address of Progressive Web Office) in QRShare: the
+file opens directly in a new Progressive Web Office window. Only files coming
+from the QRShare address set in *Advanced* are accepted.
 
-- if Progressive Web Office is **installed**, share the file from QRShare and
-  choose **Progressive Web Office** — it opens directly;
-- otherwise download it from QRShare and open it here (or drop it on the
-  window).
+You can also download the file from QRShare and open it here (or drop it on
+the window), or — with the app installed — share it from QRShare to
+Progressive Web Office.
 
 ## Share target
 

@@ -1,9 +1,24 @@
 import { expect, test } from '@playwright/test';
 import { openApp, openFile } from './helpers';
 
+/**
+ * Stand-in for QRShare (never reach the real one during these tests). With
+ * `#/send?handoff=1` it plays the receiving side of the handoff protocol and
+ * shows what it got in its title.
+ */
+const FAKE_QRSHARE = `<!doctype html><title>QRShare</title><script>
+if (location.hash.includes('handoff=1') && window.opener) {
+  addEventListener('message', (e) => {
+    if (e.source !== window.opener || !e.data || e.data.type !== 'qrshare-handoff' || e.data.action !== 'file') return;
+    document.title = 'got ' + e.data.name + ' ' + e.data.data.byteLength + ' from ' + e.origin;
+    e.source.postMessage({ type: 'qrshare-handoff', version: 1, action: 'received' }, e.origin);
+  });
+  window.opener.postMessage({ type: 'qrshare-handoff', version: 1, action: 'ready' }, '*');
+}
+</script>`;
+
 test.beforeEach(async ({ context }) => {
-  // Never reach the real QRShare during tests.
-  await context.route('https://s-celles.github.io/**', (route) => route.fulfill({ contentType: 'text/html', body: '<title>QRShare</title>' }));
+  await context.route('https://s-celles.github.io/**', (route) => route.fulfill({ contentType: 'text/html', body: FAKE_QRSHARE }));
 });
 
 test('sends a small text document to QRShare with the chosen policy (SHARE-002, SHARE-004)', async ({ page, context }) => {
@@ -26,22 +41,86 @@ test('sends a small text document to QRShare with the chosen policy (SHARE-002, 
   await page.getByRole('button', { name: 'Close' }).click();
   const receive = context.waitForEvent('page');
   await page.getByRole('button', { name: 'Receive from another device…' }).click();
-  expect((await receive).url()).toBe('https://s-celles.github.io/QRShare/#/receive/qr?policy=airgap');
+  const receiveUrl = new URL((await receive).url());
+  expect(receiveUrl.origin + receiveUrl.pathname).toBe('https://s-celles.github.io/QRShare/');
+  const receiveParams = new URLSearchParams(receiveUrl.hash.replace(/^#\/receive\/qr\?/, ''));
+  expect(receiveParams.get('policy')).toBe('airgap');
+  // SHARE-008: QRShare is told where to hand the received file back.
+  expect(receiveParams.get('return')).toBe(new URL('./?handoff=qrshare', page.url()).href);
   expect(errors).toEqual([]);
 });
 
-test('binary documents are downloaded and QRShare opens its transfer screen (SHARE-001)', async ({ page, context }) => {
+test('binary documents are handed to QRShare without a download (SHARE-007)', async ({ page, context }) => {
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'New spreadsheet' }).click();
   await page.getByRole('button', { name: 'Send to another device…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Send to another device' });
-  // Desktop Chromium on Linux has no Web Share API: download fallback.
-  await expect(dialog.getByRole('note')).toContainText('downloaded');
-  const download = page.waitForEvent('download');
+  await expect(dialog.getByRole('note')).toHaveText('The document will open in QRShare, ready to send.');
+  let downloaded = false;
+  page.on('download', () => (downloaded = true));
   const popup = context.waitForEvent('page');
   await dialog.getByRole('button', { name: 'Send', exact: true }).click();
+  const qrshare = await popup;
+  expect(qrshare.url()).toBe('https://s-celles.github.io/QRShare/#/send?handoff=1&policy=prefer-airgap');
+  // The stand-in QRShare received the workbook from PWO's origin.
+  await expect(qrshare).toHaveTitle(new RegExp(`^got Untitled spreadsheet\\.xlsx \\d+ from ${new URL(page.url()).origin}$`));
+  expect(downloaded).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('falls back to a download and "Prepare a transfer" when QRShare does not answer (SHARE-001)', async ({ page, context }) => {
+  test.setTimeout(60_000);
+  // An older QRShare that does not speak the handoff protocol.
+  await context.route('https://s-celles.github.io/**', (route) => route.fulfill({ contentType: 'text/html', body: '<title>QRShare</title>' }));
+  await openApp(page);
+  await page.getByRole('button', { name: 'New spreadsheet' }).click();
+  await page.getByRole('button', { name: 'Send to another device…' }).click();
+  const download = page.waitForEvent('download', { timeout: 30_000 });
+  const popup = context.waitForEvent('page');
+  await page.getByRole('dialog', { name: 'Send to another device' }).getByRole('button', { name: 'Send', exact: true }).click();
+  const qrshare = await popup;
   expect((await download).suggestedFilename()).toMatch(/\.xlsx$/);
-  expect((await popup).url()).toBe('https://s-celles.github.io/QRShare/#/create/url');
+  await expect(qrshare).toHaveURL('https://s-celles.github.io/QRShare/#/create/url');
+  await expect(page.getByRole('alert')).toContainText('QRShare did not answer');
+});
+
+test('opens a file handed back by QRShare, and only from QRShare (SHARE-008)', async ({ page, context }) => {
+  const errors = await openApp(page);
+  const pwo = new URL('./?handoff=qrshare', page.url()).href;
+  // Play QRShare's "Open in …" button from its origin.
+  const handBack = async (origin: string): Promise<string> => {
+    const qrshare = await context.newPage();
+    await context.route(`${origin}/**`, (route) => route.fulfill({ contentType: 'text/html', body: '<title>sender</title>' }));
+    await qrshare.goto(`${origin}/QRShare/`);
+    const popup = context.waitForEvent('page');
+    const result = qrshare.evaluate(async (url) => {
+      const win = window.open(url, '_blank')!;
+      const origin = new URL(url).origin;
+      return new Promise<string>((resolve) => {
+        setTimeout(() => resolve('timeout'), 8000);
+        addEventListener('message', (e) => {
+          if (e.source !== win || e.origin !== origin || e.data?.type !== 'qrshare-handoff') return;
+          if (e.data.action === 'ready') {
+            const data = new TextEncoder().encode('# Received\n\nFrom QRShare.\n').buffer;
+            win.postMessage({ type: 'qrshare-handoff', version: 1, action: 'file', name: 'received.md', mimeType: 'text/markdown', data }, origin, [data]);
+          } else if (e.data.action === 'received') {
+            resolve('sent');
+          }
+        });
+      });
+    }, pwo);
+    const opened = await popup;
+    const outcome = await result;
+    if (outcome === 'sent') {
+      await expect(opened.locator('.doc-page h1')).toHaveText('Received');
+      await expect(opened.locator('.doc-name')).toHaveText('received.md');
+      expect(new URL(opened.url()).search).toBe('');
+    }
+    return outcome;
+  };
+  expect(await handBack('https://s-celles.github.io')).toBe('sent');
+  // Any other origin is ignored.
+  expect(await handBack('https://evil.example')).toBe('timeout');
   expect(errors).toEqual([]);
 });
 

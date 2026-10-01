@@ -268,7 +268,7 @@ export class App {
       const bytes = await doc.view.save(doc.format);
       const file = new File([bytes as BlobPart], replaceExtension(doc.name, fileExtension(doc.format)), { type: MIME_TYPES[doc.format] });
       const { openSendDialog } = await import('../share/ui');
-      await openSendDialog(this.root, file, doc.format);
+      await openSendDialog(this.root, file, doc.format, (message) => this.showNotice(message));
     } catch (err) {
       this.showError(t('error.save', { message: (err as Error).message }));
     }
@@ -278,7 +278,10 @@ export class App {
   async receiveFromDevice(): Promise<void> {
     const { loadShareSettings, receiveUrl } = await import('../share/qrshare');
     const settings = loadShareSettings();
-    window.open(receiveUrl(settings.url, settings.policy), '_blank', 'noopener');
+    // QRShare hands the received file back to this address (SHARE-008, see pwa.ts).
+    const back = new URL(location.pathname, location.origin);
+    back.searchParams.set('handoff', 'qrshare');
+    window.open(receiveUrl(settings.url, settings.policy, back.href), '_blank', 'noopener');
   }
 
   /** Show or hide the AI assistant panel (AI-001). */
