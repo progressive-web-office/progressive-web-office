@@ -32,7 +32,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   colour — and where each person works; shared named versions with author and
   date can be restored for everyone; every participant keeps the document and
   history on their device, so a reload rejoins the session. The engine is the
-  `@scelles/collab` package shared with QRShare.
+  `@scelles/collab` package shared with QRShare. The invitation can be sent
+  as a QR code (also full screen, for a projector), copied, through the
+  system share sheet, by email, or with QRShare (QR code, nearby devices,
+  offline transfer).
 
 - Document properties (ⓘ in the text editor): title, author, date, subject,
   description, keywords, language and licence, read and written in Word and

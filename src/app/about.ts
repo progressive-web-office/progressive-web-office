@@ -1,8 +1,7 @@
 /** About window: version, build, QR code of the app, documentation and source links (UI-012). */
-import { generate } from 'lean-qr';
-import { toSvgDataURL } from 'lean-qr/extras/svg';
 import { t } from '../i18n';
 import { button, h } from './dom';
+import { qrImage } from './qr';
 
 declare const __APP_VERSION__: string;
 declare const __GIT_COMMIT__: string;
@@ -45,13 +44,7 @@ const link = (href: string, text: string): HTMLAnchorElement => h('a', { href, t
 
 /** The content of the About window for the app published at `appUrl`. */
 export function aboutContent(appUrl: string): HTMLElement {
-  const qr = h('img', {
-    class: 'about-qr',
-    src: toSvgDataURL(generate(appUrl), { on: 'black', off: 'white', padX: 2, padY: 2 }),
-    alt: t('about.qrAlt', { url: appUrl }),
-    width: '160',
-    height: '160',
-  });
+  const qr = qrImage(appUrl, t('about.qrAlt', { url: appUrl }), 160, 'about-qr');
   const date = new Date(BUILD.date);
   const commit = BUILD.commit === 'unknown' ? h('span', {}, shortCommit()) : link(`${SOURCE_URL}/commit/${BUILD.commit}`, shortCommit());
   commit.classList.add('mono');

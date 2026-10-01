@@ -11,8 +11,19 @@ where they are working, and anyone can save and restore versions.
 ## Starting a session
 
 1. Open or create a document, then click **👥** (*Collaborate*) in the toolbar.
-2. Copy the **invitation link** and send it to the people you want to work
-   with (email, chat, QR code…).
+2. Send the invitation to the people you want to work with. The invitation
+   window offers several ways:
+   - the **QR code**: scan it with a phone or tablet camera;
+   - **Show full screen**: a large QR code to scan from across a room, for
+     example on a classroom projector;
+   - **Copy the link**, to paste it in a message, a chat or a course page;
+   - **Share…**: the system share sheet (messages, mail, AirDrop, Nearby
+     Share…), on devices that have one;
+   - **Email**: a ready-to-send email with the link;
+   - **Send with QRShare**: opens the link in
+     [QRShare](https://s-celles.github.io/QRShare/), which can show it as a
+     QR code, send it to devices nearby on the same network, or transfer it
+     without any network.
 
 A bar appears above the document with the people in the session, an
 **Invite** button to show the link again, **Versions**, and **Leave**.

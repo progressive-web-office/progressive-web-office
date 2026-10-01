@@ -70,7 +70,7 @@ button, select, input {
   font: inherit;
   color: inherit;
 }
-button, select {
+button, select, a.button-like {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -78,7 +78,8 @@ button, select {
   min-height: 32px;
   cursor: pointer;
 }
-button:hover, select:hover { border-color: var(--accent); }
+a.button-like { display: inline-flex; align-items: center; box-sizing: border-box; color: var(--text); text-decoration: none; }
+button:hover, select:hover, a.button-like:hover { border-color: var(--accent); }
 button[aria-pressed='true'] { background: var(--sel); border-color: var(--accent); }
 button:disabled { opacity: 0.5; cursor: default; }
 
@@ -550,7 +551,18 @@ iframe.code-sandbox { display: none; }
 }
 .collab-person::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--person); }
 button.collab-person { cursor: pointer; }
-.collab-dialog { max-width: 36rem; }
+.collab-dialog { max-width: 40rem; }
+.collab-invite { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.collab-qr-figure { margin: 0; text-align: center; flex: none; width: 200px; }
+.collab-qr { display: block; background: #fff; border-radius: 4px; image-rendering: pixelated; }
+.collab-invite-side { flex: 1 1 14rem; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.collab-ways { display: flex; flex-wrap: wrap; gap: 6px; }
+.collab-warning { margin-top: 12px; }
+.collab-privacy summary { cursor: pointer; color: var(--accent); }
+.collab-qr-full { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0; box-sizing: border-box; background: #fff; color: #000; }
+.collab-qr-full[open] { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.collab-qr-big { width: min(80vw, 75vh); height: auto; image-rendering: pixelated; }
+.collab-qr-full-url { font-family: ui-monospace, monospace; font-size: 0.9rem; word-break: break-all; text-align: center; max-width: 90vw; margin: 0; }
 .collab-link { width: 100%; font-family: monospace; }
 .collab-versions { list-style: none; margin: 8px 0 0; padding: 0; max-height: 50vh; overflow: auto; }
 .collab-versions li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }

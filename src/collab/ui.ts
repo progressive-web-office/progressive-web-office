@@ -5,6 +5,7 @@
  */
 import { CollabSession, colorOf, createIdentity, loadIdentity, saveIdentity, type CollabRoom, type Participant, type VersionEntry } from '@scelles/collab';
 import { button, h } from '../app/dom';
+import { qrImage } from '../app/qr';
 import { t } from '../i18n';
 import { CollabBinding } from './binding';
 import { collabHash, collabUrl, type CollabLink } from './link';
@@ -171,18 +172,83 @@ export class Collaboration {
     this.session.setIdentity(identity);
   }
 
-  /** Show the invitation link. */
+  /** Show the invitation: QR code, link, and ways to send it (COLLAB-001). */
   async invite(): Promise<void> {
-    const field = h('input', { type: 'text', value: this.url, readonly: true, 'aria-label': t('collab.link'), class: 'collab-link' });
-    const copied = h('span', { class: 'hint', role: 'status' });
-    const copy = button(t('collab.copy'), () => {
-      field.select();
-      void navigator.clipboard?.writeText(this.url).then(
-        () => (copied.textContent = t('collab.copied')),
-        () => (copied.textContent = ''),
-      );
-    }, { className: 'primary' });
-    await this.dialog(t('collab.inviteTitle'), [h('p', {}, t('collab.inviteHelp')), field, h('div', { class: 'grist-row' }, copy, copied), h('p', { class: 'hint' }, t('collab.privacy'))], () => true, t('common.close'), false);
+    const url = this.url;
+    const status = h('span', { class: 'hint', role: 'status', 'aria-live': 'polite' });
+    const say = (text: string): void => {
+      status.textContent = text;
+    };
+    const field = h('input', { type: 'text', value: url, readonly: true, 'aria-label': t('collab.link'), class: 'collab-link' });
+    field.addEventListener('focus', () => field.select());
+    const qr = qrImage(url, t('collab.qrAlt'), 200, 'collab-qr');
+    const subject = t('collab.mailSubject');
+    const body = t('collab.mailBody', { url });
+    const ways: HTMLElement[] = [
+      button(t('collab.copy'), () => {
+        field.select();
+        void navigator.clipboard?.writeText(url).then(
+          () => say(t('collab.copied')),
+          () => say(t('collab.copyManually')),
+        );
+      }, { className: 'primary', title: t('collab.copyTitle') }),
+    ];
+    if (typeof navigator.share === 'function') {
+      ways.push(button(t('collab.shareSheet'), () => void navigator.share({ title: subject, text: t('collab.shareText'), url }).catch(() => undefined), { title: t('collab.shareSheetTitle') }));
+    }
+    ways.push(
+      h('a', { class: 'button-like', href: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, title: t('collab.emailTitle') }, t('collab.email')),
+      button(t('collab.qrshare'), () => void this.sendWithQrShare(url), { title: t('collab.qrshareTitle') }),
+      button(t('collab.bigQr'), () => this.showBigQr(url), { title: t('collab.bigQrTitle') }),
+    );
+    await this.dialog(
+      t('collab.inviteTitle'),
+      [
+        h('p', {}, t('collab.inviteHelp')),
+        h(
+          'div',
+          { class: 'collab-invite' },
+          h('figure', { class: 'collab-qr-figure' }, qr, h('figcaption', { class: 'hint' }, t('collab.qrCaption'))),
+          h('div', { class: 'collab-invite-side' }, field, h('div', { class: 'collab-ways' }, ...ways), status),
+        ),
+        h('p', { class: 'hint collab-warning' }, '⚠ ', t('collab.anyoneWithLink')),
+        h('details', { class: 'collab-privacy' }, h('summary', {}, t('collab.privacyTitle')), h('p', { class: 'hint' }, t('collab.privacy'))),
+      ],
+      () => true,
+      t('common.close'),
+      false,
+    );
+  }
+
+  /** Hand the link to QRShare: animated/static QR, nearby devices, air-gapped transfer. */
+  private async sendWithQrShare(url: string): Promise<void> {
+    const { loadShareSettings, sendTextUrl } = await import('../share/qrshare');
+    const settings = loadShareSettings();
+    window.open(sendTextUrl(settings.url, url, settings.policy), '_blank', 'noopener');
+  }
+
+  /** The QR code full screen, to scan from across a room (projector, classroom). */
+  private showBigQr(url: string): void {
+    const overlay = h('dialog', { class: 'collab-qr-full', 'aria-label': t('collab.bigQr') });
+    const close = (): void => {
+      overlay.close();
+      overlay.remove();
+    };
+    overlay.append(
+      qrImage(url, t('collab.qrAlt'), 640, 'collab-qr-big'),
+      h('p', { class: 'collab-qr-full-url' }, url),
+      button(t('common.close'), close, { className: 'primary' }),
+    );
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      close();
+    });
+    this.host.dialogHost.append(overlay);
+    if (typeof overlay.showModal === 'function') overlay.showModal();
+    else overlay.setAttribute('open', '');
   }
 
   private showVersions(): void {

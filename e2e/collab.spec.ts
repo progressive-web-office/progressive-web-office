@@ -110,3 +110,34 @@ test('writes a text document together (COLLAB-002)', async ({ context }) => {
   await expect(bobPage.locator('p').first()).toHaveText('Hello from Alice!');
   await expect(bobPage.locator('p').nth(1)).toHaveText('And Bob');
 });
+
+test('offers several ways to send the invitation (COLLAB-001)', async ({ context, page }) => {
+  await localTransport(page);
+  await openApp(page);
+  await page.getByRole('button', { name: 'New spreadsheet' }).click();
+  await page.getByRole('button', { name: 'Collaborate' }).click();
+  const invite = page.getByRole('dialog', { name: 'Invite people' });
+  const url = await invite.getByLabel('Invitation link').inputValue();
+  await expect(invite.getByRole('img', { name: 'QR code of the invitation link' })).toBeVisible();
+  const mail = await invite.getByRole('link', { name: 'Email' }).getAttribute('href');
+  expect(decodeURIComponent(mail!)).toContain(url);
+  await expect(invite.getByText('Anyone with the link can edit')).toBeVisible();
+
+  // QRShare receives the link as text to transfer.
+  await context.route('https://s-celles.github.io/QRShare/**', (route) => route.fulfill({ contentType: 'text/html', body: '<title>QRShare</title>' }));
+  const popup = context.waitForEvent('page');
+  await invite.getByRole('button', { name: 'Send with QRShare' }).click();
+  const qrshare = await popup;
+  expect(qrshare.url()).toContain('https://s-celles.github.io/QRShare/#/send?');
+  expect(new URLSearchParams(qrshare.url().split('#/send?')[1]).get('data')).toBe(url);
+  await qrshare.close();
+
+  // Full screen, for a projector.
+  await invite.getByRole('button', { name: 'Show full screen' }).click();
+  const big = page.getByRole('dialog', { name: 'Show full screen' });
+  await expect(big.getByRole('img', { name: 'QR code of the invitation link' })).toBeVisible();
+  await expect(big).toContainText(url);
+  await page.keyboard.press('Escape');
+  await expect(big).toBeHidden();
+  await expect(invite).toBeVisible();
+});
