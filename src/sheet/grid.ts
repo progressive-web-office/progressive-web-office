@@ -11,6 +11,7 @@ import { cellInput, getCell, isError, setInput, usedSize, type Chart, type Workb
 import { chartData, parseRange, renderChartSvg } from './chart';
 import { formatValue } from './number-format';
 import { fillWithMath, typesetMath } from '../math/inline';
+import { partsWorkbook, workbookParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { addSheet, clearRange, copyRange, deleteCells, deleteSheet, insertCells, pasteText, renameSheet, type Range } from './ops';
 
 const ROW_H = 24;
@@ -47,6 +48,8 @@ export class SheetEditor implements EditorView {
   private undoStack: { si: number; wb: Workbook }[] = [];
   private redoStack: { si: number; wb: Workbook }[] = [];
   private dragging = false;
+  /** Where the other participants are (COLLAB-003). */
+  private peers: PeerCursor[] = [];
 
   private readonly nameBox = h('span', { class: 'name-box', 'aria-label': t('sheet.selectedCell'), role: 'status' });
   private readonly formulaInput = h('input', { class: 'formula-input', type: 'text', 'aria-label': t('sheet.cellContent'), spellcheck: 'false', autocomplete: 'off' });
@@ -108,6 +111,44 @@ export class SheetEditor implements EditorView {
   save(format: Parameters<NonNullable<EditorView['save']>>[0]): Uint8Array {
     this.commitEdit();
     return writeWorkbook(this.wb, (format as SheetFormat) ?? this.sourceFormat, this.si);
+  }
+
+  /** Real-time collaboration: one shared part per cell and per sheet (COLLAB-002). */
+  collab(): CollabAdapter {
+    return {
+      read: () => workbookParts(this.wb),
+      write: (parts) => {
+        this.wb.sheets = partsWorkbook(parts).sheets;
+        this.si = Math.min(this.si, this.wb.sheets.length - 1);
+        // Undoing would bring back a state that overwrites the others' edits.
+        this.undoStack = [];
+        this.redoStack = [];
+        this.calc.invalidate();
+        this.renderAll();
+      },
+      cursor: () => ({ si: this.si, row: this.focusCell.row, col: this.focusCell.col }),
+      showPeers: (peers) => {
+        this.peers = peers;
+        this.renderPeers();
+      },
+    };
+  }
+
+  private renderPeers(): void {
+    for (const td of Array.from(this.table.querySelectorAll<HTMLElement>('td.peer'))) {
+      td.classList.remove('peer');
+      td.style.removeProperty('--peer');
+      delete td.dataset.peer;
+    }
+    for (const peer of this.peers) {
+      const c = peer.cursor as { si?: number; row?: number; col?: number } | undefined;
+      if (!c || c.si !== this.si || typeof c.row !== 'number' || typeof c.col !== 'number') continue;
+      const td = this.td(c.row, c.col);
+      if (!td) continue;
+      td.classList.add('peer');
+      td.style.setProperty('--peer', peer.color);
+      td.dataset.peer = td.dataset.peer ? `${td.dataset.peer}, ${peer.name}` : peer.name;
+    }
   }
 
   agentTools(): AgentTool[] {
@@ -275,6 +316,7 @@ export class SheetEditor implements EditorView {
     const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
     if (document.activeElement !== this.formulaInput) this.formulaInput.value = cellInput(cell);
     this.formatSelect.value = FORMATS().some(([v]) => v === (cell?.numFmt ?? '')) ? (cell?.numFmt ?? '') : '';
+    this.renderPeers();
     this.ctx.statusChanged();
   }
 

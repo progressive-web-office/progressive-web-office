@@ -30,6 +30,8 @@ export interface EditorView {
   printContent?(settings: PrintSettings): HTMLElement | Promise<HTMLElement>;
   /** Extra "Save as" entries writing copies (PDF-010). */
   saveVariants?(): SaveVariant[];
+  /** Real-time collaboration on this document (COLLAB-002). */
+  collab?(): import('../collab/parts').CollabAdapter;
   /** Tools for AI agents working on this document (AI-001, AI-006). */
   agentTools?(): AgentTool[];
   destroy(): void;

@@ -522,3 +522,71 @@ iframe.code-sandbox { display: none; }
 .print-chart { margin: 12pt 0; break-inside: avoid; page-break-inside: avoid; }
 .print-chart svg { max-width: 100%; height: auto; }
 .chart-dialog .chart-form label.git-row { display: flex; gap: 6px; align-items: center; }
+
+/* Real-time collaboration (COLLAB-001..COLLAB-006) */
+.collab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 4px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+.collab-bar.waiting .collab-state { font-style: italic; }
+.collab-state { color: var(--muted); }
+.collab-people { display: flex; flex-wrap: wrap; gap: 4px; list-style: none; margin: 0 auto 0 0; padding: 0; }
+.collab-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border: 1px solid var(--person);
+  border-radius: 999px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 0.8125rem;
+}
+.collab-person::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--person); }
+button.collab-person { cursor: pointer; }
+.collab-dialog { max-width: 36rem; }
+.collab-link { width: 100%; font-family: monospace; }
+.collab-versions { list-style: none; margin: 8px 0 0; padding: 0; max-height: 50vh; overflow: auto; }
+.collab-versions li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.collab-version-label { font-weight: 600; }
+.collab-versions .hint { margin-right: auto; }
+td.peer { box-shadow: inset 0 0 0 2px var(--peer); position: relative; overflow: visible; }
+td.peer::after {
+  content: attr(data-peer);
+  position: absolute;
+  left: -2px;
+  bottom: 100%;
+  padding: 0 4px;
+  background: var(--peer);
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.doc-page > .peer-here { box-shadow: -6px 0 0 -3px var(--peer); position: relative; }
+.doc-page > .peer-here::after {
+  content: attr(data-peer);
+  position: absolute;
+  right: 100%;
+  top: 0;
+  margin-right: 10px;
+  padding: 0 4px;
+  background: var(--peer);
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+@media print {
+  .collab-bar { display: none; }
+}

@@ -19,6 +19,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - "Share with another app…" in the send dialog opens the system share sheet.
 - Light / dark / system theme: a toolbar button cycles between following the
   device setting, light and dark; the choice is remembered.
+- Real-time collaboration on text documents and spreadsheets (👥): an
+  invitation link opens the same document for others; edits are merged per
+  cell or paragraph, peer to peer (WebRTC, end-to-end encrypted, introduced
+  through public Nostr relays), with no server storing the document. The bar
+  shows who is here — compound names like *Swift Crimson Falcon* in a matching
+  colour — and where each person works; shared named versions with author and
+  date can be restored for everyone; every participant keeps the document and
+  history on their device, so a reload rejoins the session. The engine is the
+  `@scelles/collab` package shared with QRShare.
 
 - Document properties (ⓘ in the text editor): title, author, date, subject,
   description, keywords, language and licence, read and written in Word and

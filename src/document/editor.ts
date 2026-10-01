@@ -1,4 +1,5 @@
 /** WYSIWYG editor view for text documents (DOC-003..DOC-010, DOC-013, DOC-015). */
+import { applyDocumentParts, documentParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { documentTools, type AgentTool } from '../ai/tools';
 import { findTypedMath } from '../math/inline';
 import type { PrintSettings } from '../print/settings';
@@ -39,6 +40,8 @@ export class DocumentEditor implements EditorView {
   private runner: CodeRunner | undefined;
   /** CODE-004: the user agreed to run this document's code. */
   private trusted = false;
+  /** Where the other participants are (COLLAB-003). */
+  private peers: PeerCursor[] = [];
 
   constructor(
     private readonly doc: RichDocument,
@@ -295,13 +298,104 @@ export class DocumentEditor implements EditorView {
       doc: this.doc,
       getBlocks: () => this.currentBlocks(),
       setBlocks: (blocks) => {
-        this.page.replaceChildren(blocksToDom(blocks, document, (key) => this.resolve(key)));
-        if (collectMath(blocks).length) void this.renderEquations();
-        if (collectDiagrams(blocks).length) void this.renderDiagrams();
-        if (this.page.querySelector('.code-cell')) void this.decorateCells();
+        this.renderBlocks(blocks);
         this.changed();
       },
     });
+  }
+
+  /** Real-time collaboration: properties, images and one shared part per block (COLLAB-002). */
+  collab(): CollabAdapter {
+    return {
+      read: () => documentParts(this.doc, this.currentBlocks()),
+      write: (parts) => {
+        const caret = this.saveCaret();
+        this.renderBlocks(applyDocumentParts(this.doc, parts));
+        if (caret) this.restoreCaret(caret);
+        this.renderPeers();
+      },
+      cursor: () => {
+        const caret = this.saveCaret();
+        return caret ? { block: caret.index } : undefined;
+      },
+      showPeers: (peers) => {
+        this.peers = peers;
+        this.renderPeers();
+      },
+    };
+  }
+
+  private renderBlocks(blocks: Block[]): void {
+    this.page.replaceChildren(blocksToDom(blocks, document, (key) => this.resolve(key)));
+    if (collectMath(blocks).length) void this.renderEquations();
+    if (collectDiagrams(blocks).length) void this.renderDiagrams();
+    if (this.page.querySelector('.code-cell')) void this.decorateCells();
+  }
+
+  private renderPeers(): void {
+    for (const el of Array.from(this.page.querySelectorAll<HTMLElement>(':scope > .peer-here'))) {
+      el.classList.remove('peer-here');
+      el.style.removeProperty('--peer');
+      delete el.dataset.peer;
+      if (!el.className) el.removeAttribute('class');
+    }
+    const children = Array.from(this.page.children) as HTMLElement[];
+    for (const peer of this.peers) {
+      const index = (peer.cursor as { block?: number } | undefined)?.block;
+      const el = typeof index === 'number' ? children[index] : undefined;
+      if (!el) continue;
+      el.classList.add('peer-here');
+      el.style.setProperty('--peer', peer.color);
+      el.dataset.peer = el.dataset.peer ? `${el.dataset.peer}, ${peer.name}` : peer.name;
+    }
+  }
+
+  /** The caret as (top-level element, text offset), if it is in the page. */
+  private saveCaret(): { index: number; offset: number; text: string; focused: boolean } | null {
+    const sel = document.getSelection();
+    if (!sel?.rangeCount || !sel.anchorNode || !this.page.contains(sel.anchorNode) || sel.anchorNode === this.page) return null;
+    let top: Node = sel.anchorNode;
+    while (top.parentNode && top.parentNode !== this.page) top = top.parentNode;
+    const index = Array.prototype.indexOf.call(this.page.childNodes, top);
+    const range = document.createRange();
+    range.setStart(top, 0);
+    range.setEnd(sel.anchorNode, sel.anchorOffset);
+    return { index, offset: range.toString().length, text: top.textContent ?? '', focused: document.activeElement === this.page };
+  }
+
+  /** Put the caret back in the same paragraph (found by its text when others moved it). */
+  private restoreCaret(caret: { index: number; offset: number; text: string; focused: boolean }): void {
+    if (!caret.focused) return;
+    const nodes = Array.from(this.page.childNodes);
+    if (!nodes.length) return;
+    let target = nodes[caret.index]?.textContent === caret.text ? caret.index : -1;
+    if (target < 0) {
+      let best = Infinity;
+      nodes.forEach((n, i) => {
+        if (n.textContent === caret.text && Math.abs(i - caret.index) < best) {
+          best = Math.abs(i - caret.index);
+          target = i;
+        }
+      });
+    }
+    if (target < 0) target = Math.min(caret.index, nodes.length - 1);
+    const top = nodes[target]!;
+    const walker = document.createTreeWalker(top, NodeFilter.SHOW_TEXT);
+    let left = caret.offset;
+    let node: Node | null;
+    let spot: [Node, number] = [top, 0];
+    while ((node = walker.nextNode())) {
+      const len = node.textContent?.length ?? 0;
+      spot = [node, Math.min(left, len)];
+      if (left <= len) break;
+      left -= len;
+    }
+    const sel = document.getSelection();
+    sel?.removeAllRanges();
+    const range = document.createRange();
+    range.setStart(spot[0], spot[1]);
+    range.collapse(true);
+    sel?.addRange(range);
   }
 
   printContent(_settings?: PrintSettings): HTMLElement {
@@ -309,6 +403,7 @@ export class DocumentEditor implements EditorView {
     for (const node of Array.from(this.page.childNodes)) root.append(node.cloneNode(true));
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');
     for (const el of Array.from(root.querySelectorAll('.code-cell-bar'))) el.remove();
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>('.peer-here'))) el.classList.remove('peer-here');
     return root;
   }
 

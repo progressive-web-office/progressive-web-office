@@ -19,7 +19,8 @@ const CSP = [
   "font-src 'self' data: blob:",
   // https: for git hosting APIs (GitHub, GitLab, self-hosted) and the AI provider.
   // Local AI servers (Ollama, LM Studio) run over plain HTTP on the user's machine (AI-007).
-  "connect-src 'self' data: blob: https: http://localhost:* http://127.0.0.1:*",
+  // wss: for the Nostr relays that introduce collaborating browsers (COLLAB-001).
+  "connect-src 'self' data: blob: https: wss: http://localhost:* http://127.0.0.1:*",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'",

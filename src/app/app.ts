@@ -91,6 +91,8 @@ export class App {
   private autosaveTimer: ReturnType<typeof setInterval> | undefined;
   private assistant: AssistantPanel | null = null;
   private unregisterAgentTools: (() => void) | null = null;
+  /** Real-time collaboration session on the open document (COLLAB-001). */
+  private collab: import('../collab/ui').Collaboration | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -553,6 +555,7 @@ export class App {
 
   close(): void {
     if (!this.confirmDiscard()) return;
+    this.leaveCollaboration();
     this.current?.view.destroy();
     this.current = null;
     this.assistant?.reset();
@@ -573,19 +576,90 @@ export class App {
   private viewContext(): ViewContext {
     return {
       changed: () => {
-        if (!this.dirty) {
-          this.dirty = true;
-          this.renderHeader();
-        }
-        this.renderStatus();
-        this.scheduleAutosave();
+        this.markChanged();
+        this.collab?.changed();
       },
-      statusChanged: () => this.renderStatus(),
+      statusChanged: () => {
+        this.renderStatus();
+        this.collab?.cursorMoved();
+      },
       choose: (title, message, options, preselected) => this.choose(title, message, options, preselected),
     };
   }
 
+  private markChanged(): void {
+    if (!this.dirty) {
+      this.dirty = true;
+      this.renderHeader();
+    }
+    this.renderStatus();
+    this.scheduleAutosave();
+  }
+
+  // --- real-time collaboration (COLLAB-001..COLLAB-006) ------------------------
+
+  /** Start a session on the open document and show the invitation. */
+  async startCollaboration(): Promise<void> {
+    const doc = this.current;
+    if (!doc?.view.collab || (doc.kind !== 'document' && doc.kind !== 'spreadsheet') || this.collab) return;
+    const { newCollabLink } = await import('../collab/link');
+    const collab = await this.runCollaboration(newCollabLink(doc.kind), true);
+    if (collab) void collab.invite();
+  }
+
+  /** Join the session of an invitation link (opens an empty document that fills from the others). */
+  async joinCollaboration(link: import('../collab/link').CollabLink): Promise<void> {
+    if (this.collab?.link.room === link.room) return;
+    if (this.current && !(await this.confirmDialog(t('collab.title'), t('collab.joinConfirm', { kind: t(KIND_KEY[link.kind]) }), t('common.continue')))) {
+      history.replaceState(null, '', this.collab ? this.collab.hash : `${location.pathname}${location.search}`);
+      return;
+    }
+    this.leaveCollaboration();
+    this.dirty = false;
+    const view = await newView(link.kind, this.viewContext());
+    const format = DEFAULT_FORMAT[link.kind];
+    this.setDocument({ name: replaceExtension(t('file.untitled', { kind: t(KIND_KEY[link.kind]) }), fileExtension(format)), format, kind: link.kind, view });
+    await this.runCollaboration(link, false);
+  }
+
+  private async runCollaboration(link: import('../collab/link').CollabLink, initiator: boolean): Promise<import('../collab/ui').Collaboration | null> {
+    const doc = this.current;
+    const adapter = doc?.view.collab?.();
+    if (!doc || !adapter) return null;
+    try {
+      const { Collaboration } = await import('../collab/ui');
+      const collab = await Collaboration.start(link, adapter, initiator, {
+        dialogHost: this.root,
+        onRemote: () => this.markChanged(),
+        onLeave: () => this.leaveCollaboration(),
+        confirm: (title, message, ok) => this.confirmDialog(title, message, ok),
+      });
+      if (this.current !== doc) {
+        collab.destroy();
+        return null;
+      }
+      this.collab = collab;
+      // Keep the invitation in the address: a reload rejoins the session.
+      history.replaceState(null, '', `${location.pathname}${location.search}${collab.hash}`);
+      this.root.insertBefore(collab.bar, this.main);
+      this.renderHeader();
+      return collab;
+    } catch (err) {
+      this.showError(t('collab.failed', { message: (err as Error).message }));
+      return null;
+    }
+  }
+
+  leaveCollaboration(): void {
+    if (!this.collab) return;
+    this.collab.destroy();
+    this.collab = null;
+    if (location.hash.startsWith('#collab=')) history.replaceState(null, '', `${location.pathname}${location.search}`);
+    this.renderHeader();
+  }
+
   private setDocument(doc: OpenDocument, keepConversation = false): void {
+    this.leaveCollaboration();
     this.current?.view.destroy();
     this.current = doc;
     if (!keepConversation) this.assistant?.reset();
@@ -739,6 +813,9 @@ export class App {
     }
     if (doc?.view.agentTools) actions.append(button(t('ai.open'), () => this.toggleAssistant(), { title: t('ai.openTitle'), text: '✨', className: 'icon', pressed: this.root.classList.contains('with-ai') }));
     if (doc?.view.save) actions.append(button(t('share.send'), () => void this.sendToDevice(), { title: t('share.sendTitle'), text: '📲', className: 'icon' }));
+    if (doc?.view.collab && (doc.kind === 'document' || doc.kind === 'spreadsheet')) {
+      actions.append(button(t('collab.start'), () => (this.collab ? this.leaveCollaboration() : void this.startCollaboration()), { title: this.collab ? t('collab.leaveTitle') : t('collab.startTitle'), text: '👥', className: 'icon', pressed: !!this.collab }));
+    }
     actions.append(this.themeButton());
     if (doc) {
       actions.append(

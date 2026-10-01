@@ -27,12 +27,14 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "@pdfme/pdf-lib": "^6.2.2",
+    "@scelles/collab": "github:s-celles/QRShare#collab-dist-v0.1.0",
     "fflate": "^0.8.3",
     "markdown-it": "^15.0.2",
     "mathlive": "^0.111.0",
     "mermaid": "^12.0.0",
     "pdfjs-dist": "^6.3.289",
-    "pyodide": "^314.0.7"
+    "pyodide": "^314.0.7",
+    "trystero": "^0.22.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -46,7 +48,8 @@
     "vite-plugin-pwa": "^1.3.0",
     "vitepress": "^1.6.4",
     "vitest": "^5.0.3",
-    "workbox-window": "^7.4.1"
+    "workbox-window": "^7.4.1",
+    "yjs": "^13.6.33"
   },
   "overrides": {
     "lodash-es": "^4.18.1"

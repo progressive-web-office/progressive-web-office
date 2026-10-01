@@ -340,7 +340,19 @@ integration is ever needed.
 | DAV-005 | M | 0.0.14 | If the server cannot be reached or refuses the credentials, the system shall say whether the address/HTTPS/CORS setup or the credentials are the likely cause, and link to the server setup guide. |
 | DAV-006 | C | — | Nextcloud login flow (no app password to copy), sharing links, and a recent-files list per account. |
 
+## 9i. Real-time collaboration (COLLAB)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| COLLAB-001 | M | 0.0.14 | The system shall let the user start a real-time session on an open text document or spreadsheet and invite others with a link carrying a random room name and secret; opening the link shall join the session. The document shall travel directly between browsers (WebRTC, end-to-end encrypted), public Nostr relays only introducing the browsers to each other, with no server storing the document. |
+| COLLAB-002 | M | 0.0.14 | While in a session, the system shall share every edit with the other participants within a second; concurrent edits of different cells or paragraphs shall all be kept, and every participant shall converge to the same content. A participant who joins late or comes back online shall receive what they missed. |
+| COLLAB-003 | M | 0.0.14 | The system shall show who is in the session — each participant with a friendly compound name (e.g. "Swift Crimson Falcon") and a matching colour, which the user can change — and where each one is working (selected cell, current paragraph). |
+| COLLAB-004 | M | 0.0.14 | The system shall let any participant save named versions, shared with everyone and kept with their author and date, and restore one for everyone as a new edit, after saving the current state as a version. |
+| COLLAB-005 | M | 0.0.14 | Each participant shall keep the session's document and version history on their device (IndexedDB), so that reloading the page rejoins the session with them, even when nobody else is online. |
+| COLLAB-006 | M | 0.0.14 | The collaboration protocol, history and presence shall come from the `@scelles/collab` package, shared with QRShare (no duplicated implementation). |
+| COLLAB-007 | S | — | Collaboration on presentations, comments and suggested changes (track changes), and a character-level text merge with remote carets. |
+
 ## 10. Out of scope (Won't, this time)
 
-- Real-time collaboration and cloud storage.
+- A collaboration server, user accounts, or storage of documents on a server we operate.
 - Legacy binary formats (`.doc`, `.xls`).

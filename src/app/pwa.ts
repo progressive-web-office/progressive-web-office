@@ -34,6 +34,14 @@ export function installPwa(app: App): void {
 
 /** Rebuild a document carried in the URL fragment (SHARE-010). */
 async function openLinkedDocument(app: App): Promise<void> {
+  if (location.hash.startsWith('#collab=')) {
+    // COLLAB-001: an invitation to a real-time session.
+    const { decodeCollabLink } = await import('../collab/link');
+    const link = decodeCollabLink(location.hash);
+    if (link) await app.joinCollaboration(link);
+    else app.notifyError(t('share.linkInvalid'));
+    return;
+  }
   if (!location.hash.startsWith('#doc=')) return;
   const { decodeDocumentLink } = await import('../share/link');
   const linked = decodeDocumentLink(location.hash);

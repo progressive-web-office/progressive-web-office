@@ -34,6 +34,7 @@ export default defineConfig({
           { text: 'Git repositories', link: '/guide/git' },
           { text: 'Nextcloud / WebDAV', link: '/guide/cloud' },
           { text: 'Grist', link: '/guide/grist' },
+          { text: 'Real-time collaboration', link: '/guide/collaboration' },
           { text: 'Sending to another device', link: '/guide/sharing' },
           { text: 'AI assistant', link: '/guide/assistant' },
         ],
