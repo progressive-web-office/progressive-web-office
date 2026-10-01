@@ -22,11 +22,28 @@ export function installPwa(app: App): void {
   }
   void openSharedFile(app);
   void openHandedOffFile(app);
+  void openLinkedDocument(app);
+  // A document link pasted in the address bar of an open tab only changes the fragment.
+  addEventListener('hashchange', () => void openLinkedDocument(app));
   const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue;
   queue?.setConsumer(async (params) => {
     const handle = params.files[0];
     if (handle) await app.openFile(await handle.getFile());
   });
+}
+
+/** Rebuild a document carried in the URL fragment (SHARE-010). */
+async function openLinkedDocument(app: App): Promise<void> {
+  if (!location.hash.startsWith('#doc=')) return;
+  const { decodeDocumentLink } = await import('../share/link');
+  const linked = decodeDocumentLink(location.hash);
+  // The document stays open; drop it from the address so that a reload does not reopen it.
+  history.replaceState(null, '', `${location.pathname}${location.search}`);
+  if (!linked) {
+    app.notifyError(t('share.linkInvalid'));
+    return;
+  }
+  await app.openFile(new File([linked.bytes as BlobPart], linked.name));
 }
 
 /** Pick up a file received through the Web Share Target (SHARE-003, see public/share-target.js). */

@@ -44,6 +44,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   Markdown and MDZ, and as code and pictures in Word, OpenDocument and LaTeX.
   The Python runtime is served by the application and, like the packages
   (downloaded from the Pyodide CDN on first use), kept for offline use.
+- **Links containing a document** (📲 → *Copy link*): a short document is
+  compressed into the address itself (after the `#`, never sent to a server);
+  opening the link rebuilds the document. Text documents travel as Markdown.
 - **Open from Grist** (start screen): open a document of a (self-hosted)
   Grist server as a workbook, one sheet per table; **Save** sends the changed
   cells, new rows and, after confirmation, deleted rows back to Grist, then

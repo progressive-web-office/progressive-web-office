@@ -296,6 +296,8 @@ integration is ever needed.
 | SHARE-005 | S | 0.0.12 | When the user chooses "Receive from another device", the system shall open QRShare's receive screen. |
 | SHARE-007 | S | 0.0.14 | When a document that is not small text is sent to another device, the system shall hand the file to QRShare in the browser (app handoff protocol v1, `postMessage`, posted only to the configured QRShare origin) without downloading it; if QRShare does not answer, then the system shall fall back to a download and QRShare's "Prepare a transfer" screen. |
 | SHARE-008 | S | 0.0.14 | When the user receives from another device, the system shall give QRShare a return address so that a received file can be opened directly in Progressive Web Office, accepting files only from the configured QRShare origin. |
+| SHARE-009 | S | 0.0.14 | The system shall build a link that contains the open document itself (text documents as Markdown, other documents in their format, compressed and base64url-encoded in the URL fragment), let the user copy it, and warn when it is long enough to be cut by some apps. |
+| SHARE-010 | S | 0.0.14 | When the application is opened with such a link, the system shall rebuild and open the document — the fragment is never sent to a server — remove the fragment from the address, and report a damaged link. |
 | SHARE-006 | C | — | Native, embedded implementation of the QRShare frame protocol (licences are compatible: both AGPL-3.0-or-later). |
 
 ## 9f. AI assistant and agent integration (AI)

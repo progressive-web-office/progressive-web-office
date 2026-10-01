@@ -105,6 +105,11 @@ export class App {
     this.showStart();
   }
 
+  /** Show an error coming from outside the shell (e.g. a damaged document link). */
+  notifyError(message: string): void {
+    this.showError(message);
+  }
+
   /** Open a user-provided file (picker, drop, file handler, recent list). */
   async openFile(file: File): Promise<void> {
     if (file.size > MAX_FILE_SIZE) {
@@ -346,8 +351,10 @@ export class App {
     try {
       const bytes = await doc.view.save(doc.format);
       const file = new File([bytes as BlobPart], replaceExtension(doc.name, fileExtension(doc.format)), { type: MIME_TYPES[doc.format] });
+      // Links carry text documents as Markdown, much shorter than DOCX (SHARE-009).
+      const linkFile = doc.kind === 'document' && doc.format !== 'md' ? new File([(await doc.view.save('md')) as BlobPart], replaceExtension(doc.name, 'md'), { type: MIME_TYPES.md }) : file;
       const { openSendDialog } = await import('../share/ui');
-      await openSendDialog(this.root, file, doc.format, (message) => this.showNotice(message));
+      await openSendDialog(this.root, file, doc.format, (message) => this.showNotice(message), linkFile);
     } catch (err) {
       this.showError(t('error.save', { message: (err as Error).message }));
     }

@@ -3,6 +3,7 @@ import { button, h } from '../app/dom';
 import type { DocumentFormat } from '../core/format';
 import { t } from '../i18n';
 import { sendFileToWindow, type WindowLike } from './handoff';
+import { encodeDocumentLink, LINK_MAX_LENGTH, LINK_WARN_LENGTH } from './link';
 import { canShareFiles, handoffSendUrl, loadShareSettings, planSend, probeHandoff, prepareTransferUrl, qrshareOrigin, saveShareSettings, SEND_POLICIES, sendTextUrl, type SendPolicy } from './qrshare';
 
 /** How long to wait for QRShare to announce it is ready before falling back. */
@@ -21,8 +22,17 @@ function download(file: File): void {
  * Resolves to true when the document was handed to QRShare (or the share
  * sheet). `notify` reports the outcome of an asynchronous handoff.
  */
-export async function openSendDialog(host: HTMLElement, file: File, format: DocumentFormat, notify: (message: string) => void = () => undefined): Promise<boolean> {
+export async function openSendDialog(
+  host: HTMLElement,
+  file: File,
+  format: DocumentFormat,
+  notify: (message: string) => void = () => undefined,
+  /** The document as carried by a link (e.g. Markdown for a text document); defaults to `file`. */
+  linkFile: File = file,
+): Promise<boolean> {
   const plan = await planSend(file, format);
+  // SHARE-009: prepared up front so that the copy runs within the click.
+  const link = encodeDocumentLink(location.origin + location.pathname, linkFile.name, new Uint8Array(await linkFile.arrayBuffer()));
   const settings = loadShareSettings();
   return new Promise((resolve) => {
     const dialog = h('dialog', { class: 'dialog share-dialog', 'aria-labelledby': 'share-title' });
@@ -87,6 +97,31 @@ export async function openSendDialog(host: HTMLElement, file: File, format: Docu
       );
     }
     actions.append(button(t('share.sendButton'), send, { className: 'primary' }));
+    const kb = Math.max(1, Math.round(link.length / 1024));
+    const linkField = h('input', { type: 'text', readonly: true, class: 'share-link', value: link, 'aria-label': t('share.link'), spellcheck: 'false' });
+    linkField.addEventListener('focus', () => linkField.select());
+    const linkSection =
+      link.length > LINK_MAX_LENGTH
+        ? h('p', { class: 'hint' }, t('share.linkTooLong'))
+        : h(
+            'div',
+            { class: 'share-link-section' },
+            h('p', {}, t('share.linkIntro', { size: `${kb} KB` })),
+            h(
+              'div',
+              { class: 'git-row' },
+              linkField,
+              button(t('share.copyLink'), () => {
+                linkField.select();
+                void navigator.clipboard
+                  ?.writeText(link)
+                  .then(() => notify(link.length > LINK_WARN_LENGTH ? t('share.linkCopiedLong') : t('share.linkCopied')))
+                  .catch(() => notify(t('share.linkCopyFailed')));
+                finish(true);
+              }),
+            ),
+            link.length > LINK_WARN_LENGTH ? h('p', { class: 'hint' }, t('share.linkLong')) : null,
+          );
     dialog.append(
       h('h2', { id: 'share-title' }, t('share.dialogTitle')),
       h('p', {}, t('share.intro')),
@@ -95,6 +130,7 @@ export async function openSendDialog(host: HTMLElement, file: File, format: Docu
       h('details', {}, h('summary', {}, t('share.advanced')), h('label', { class: 'git-row' }, t('share.url'), ' ', url)),
       h('p', { class: 'hint', role: 'note' }, t('share.planUrl')),
       actions,
+      linkSection,
     );
     dialog.addEventListener('cancel', (e) => {
       e.preventDefault();

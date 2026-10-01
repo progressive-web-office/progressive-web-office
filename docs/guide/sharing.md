@@ -34,6 +34,28 @@ with a direct peer-to-peer connection when you allow it.
 The policy is remembered. Under **Advanced** you can point to another QRShare
 installation (for example a self-hosted copy on your network).
 
+## Share a link containing the document
+
+For a short document, the simplest is a **link that contains the document
+itself**. In the **📲** dialog, under *Or share a link that contains the
+document itself*, click **Copy link** and paste it in a message, an e-mail or
+a chat. Whoever opens the link gets a copy of the document in Progressive Web
+Office, ready to edit and save.
+
+- The document is compressed and placed after the `#` of the address
+  (`…/progressive-web-office/#doc=v1.…`). Browsers never send that part to
+  the server: **the document is not stored anywhere** but in the link.
+- Text documents travel as Markdown (much shorter than Word); spreadsheets,
+  presentations and PDF files in their own format.
+- The dialog shows the size of the link. Above about 8 KB some messaging apps
+  or mail clients may cut it — send the file (or use QRShare) instead. Very
+  large documents cannot be put in a link at all.
+- Anyone who has the link can read the document: share it as you would share
+  the file.
+
+Opening a damaged (cut) link shows an error; the address is cleaned up once
+the document is open, so reloading the page does not reopen it.
+
 ## Receive on this device
 
 On the start screen, click **Receive from another device…**: QRShare opens its
