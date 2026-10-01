@@ -16,6 +16,7 @@ import type { AssistantPanel } from '../ai/panel';
 import type { GitAccount } from '../git/accounts';
 import type { GitRepo } from '../git/types';
 import { button, h } from './dom';
+import { applyTheme, loadTheme, nextTheme, saveTheme } from './theme';
 import { newView, openView, type EditorView, type ViewContext } from './views';
 
 /** Where a document opened from a git repository lives (GIT-003). */
@@ -554,6 +555,7 @@ export class App {
     }
     if (doc?.view.agentTools) actions.append(button(t('ai.open'), () => this.toggleAssistant(), { title: t('ai.openTitle'), text: '✨', className: 'icon', pressed: this.root.classList.contains('with-ai') }));
     if (doc?.view.save) actions.append(button(t('share.send'), () => void this.sendToDevice(), { title: t('share.sendTitle'), text: '📲', className: 'icon' }));
+    actions.append(this.themeButton());
     if (doc) {
       actions.append(
         button(t('file.print'), () => void this.print(), { title: t('file.printTitle') }),
@@ -561,6 +563,23 @@ export class App {
       );
     }
     this.header.replaceChildren(...items.filter((n): n is Node => n !== null), actions);
+  }
+
+  /** Cycles System → Light → Dark (UI-011). */
+  private themeButton(): HTMLButtonElement {
+    const theme = loadTheme();
+    const icons = { system: '◐', light: '☀', dark: '☾' } as const;
+    return button(
+      t('theme.label', { mode: t(`theme.${theme}`) }),
+      () => {
+        const next = nextTheme(loadTheme());
+        saveTheme(next);
+        applyTheme(next);
+        this.renderHeader();
+        this.header.querySelector<HTMLButtonElement>('.theme-toggle')?.focus();
+      },
+      { text: icons[theme], className: 'icon theme-toggle' },
+    );
   }
 
   private renderStatus(): void {

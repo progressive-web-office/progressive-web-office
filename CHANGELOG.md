@@ -15,6 +15,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   files back to Progressive Web Office, which accepts them only from the
   configured QRShare. Older QRShare versions get the download fallback.
 - "Share with another app…" in the send dialog opens the system share sheet.
+- Light / dark / system theme: a toolbar button cycles between following the
+  device setting, light and dark; the choice is remembered.
 
 - Integration tests against a real QRShare build (`just e2e-qrshare`, and a
   dedicated CI job): the document sent to QRShare's transfer chooser is

@@ -199,6 +199,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-008 | M | 0.0.8 | When the application starts, the system shall select the interface language from the browser preferences (fallback English) and let the user change it; the choice shall persist. |
 | UI-009 | M | 0.0.8 | Every user-visible string shall come from a translation catalog; a test shall fail if a key is missing in any language. |
 | UI-010 | S | 0.0.8 | The system shall set the `lang` attribute of the document to the selected language. |
+| UI-011 | S | 0.0.14 | The system shall let the user choose a light, dark or system theme (following the operating system preference by default); the choice shall persist and apply to native controls. Document pages and slides shall stay light, as on paper. |
 
 ## 9. Quality (QA)
 

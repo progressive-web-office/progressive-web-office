@@ -319,4 +319,8 @@ export const fr: Record<MessageKey, string> = {
   'common.allow': 'Autoriser',
   'common.close': 'Fermer',
   'app.source': 'Code source (GNU AGPL-3.0)',
+  'theme.label': 'Thème : {mode}',
+  'theme.system': 'Système',
+  'theme.light': 'Clair',
+  'theme.dark': 'Sombre',
 };

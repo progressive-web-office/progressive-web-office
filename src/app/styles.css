@@ -14,13 +14,17 @@
   --sel: rgba(31, 95, 191, 0.15);
   --radius: 8px;
   --header-h: 48px;
+  color-scheme: light dark;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
   color: var(--text);
   background: var(--bg);
 }
 
+/* Theme (UI-011): the system preference applies unless data-theme forces one. */
+:root[data-theme='light'] { color-scheme: light; }
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #14181f;
     --surface: #1d232c;
     --text: #e6eaf0;
@@ -33,7 +37,24 @@
     --pres: #f0995a;
     --danger: #ff8a80;
     --sel: rgba(110, 162, 245, 0.25);
+    color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #14181f;
+  --surface: #1d232c;
+  --text: #e6eaf0;
+  --muted: #9aa5b5;
+  --border: #333c49;
+  --accent: #6ea2f5;
+  --accent-contrast: #0b1220;
+  --doc: #6ea2f5;
+  --sheet: #5cc27f;
+  --pres: #f0995a;
+  --danger: #ff8a80;
+  --sel: rgba(110, 162, 245, 0.25);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }

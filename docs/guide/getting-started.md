@@ -38,6 +38,13 @@ The interface is available in **English**, **French** (Français) and
 preferences on the first visit; change it with the 🌐 language selector on the
 start screen — the choice is remembered in this browser.
 
+## Light and dark theme
+
+The theme button in the toolbar cycles between **◐ System** (default: follows
+the light or dark setting of your device), **☀ Light** and **☾ Dark**. The
+choice is remembered on this device. Document pages and slides keep a white
+background in every theme, as on paper.
+
 ## Recent files and recovered drafts
 
 Files you open are added to **Recent files** on the start screen (up to 12,
