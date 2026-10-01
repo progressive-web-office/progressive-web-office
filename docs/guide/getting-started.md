@@ -10,7 +10,12 @@ to a server.
 
 ## Opening the app
 
-Serve the built application (`just build` then deploy the `dist/` folder to any
+The app is published at
+**[s-celles.github.io/progressive-web-office](https://s-celles.github.io/progressive-web-office/)**
+(the **Open the app** link at the top of this documentation); its start
+screen links back here.
+
+To host your own copy, serve the built application (`just build` then deploy the `dist/` folder to any
 static web server) or run it locally with `just dev` and open the printed URL.
 
 ## Installing

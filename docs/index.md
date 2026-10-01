@@ -8,6 +8,10 @@ hero:
   tagline: Documents, spreadsheets, presentations and PDF — nothing leaves your device.
   actions:
     - theme: brand
+      text: Open the app
+      link: https://s-celles.github.io/progressive-web-office/
+      target: _self
+    - theme: alt
       text: Get started
       link: /guide/getting-started
     - theme: alt

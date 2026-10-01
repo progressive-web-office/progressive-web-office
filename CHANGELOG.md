@@ -35,6 +35,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - PDF forms: **Save as… → Flattened PDF – fields locked** writes a copy
   (`…-flattened.pdf`) whose answers can no longer be changed, while **Save**
   keeps the fields editable for later changes.
+- The start screen links to the documentation, and the documentation has an
+  **Open the app** link (navigation bar and home page).
 - MDZ manifest schema: optional `subject`, `description`, `keywords`,
   `language` and `license` fields.
 

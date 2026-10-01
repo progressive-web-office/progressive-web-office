@@ -471,7 +471,14 @@ export class App {
         ),
         h('p', { class: 'hint' }, t('start.tip')),
         this.languagePicker(),
-        h('p', { class: 'source-link' }, h('a', { href: SOURCE_URL, target: '_blank', rel: 'noopener' }, t('app.source'))),
+        h(
+          'p',
+          { class: 'source-link' },
+          // The documentation is published next to the app, under docs/ (see pages.yml).
+          h('a', { href: new URL('docs/', document.baseURI).href, target: '_blank', rel: 'noopener' }, t('app.docs')),
+          ' · ',
+          h('a', { href: SOURCE_URL, target: '_blank', rel: 'noopener' }, t('app.source')),
+        ),
         recent,
       ),
     );

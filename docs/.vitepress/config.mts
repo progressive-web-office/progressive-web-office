@@ -1,5 +1,8 @@
 import { defineConfig } from 'vitepress';
 
+// The app is published one level above the documentation (see pages.yml).
+const APP_URL = process.env.DOCS_URL ? process.env.DOCS_URL.replace(/\/docs\/?$/, '/') : 'https://s-celles.github.io/progressive-web-office/';
+
 export default defineConfig({
   title: 'Progressive Web Office (PWO)',
   description: 'A simple office suite that runs entirely in your browser.',
@@ -12,6 +15,7 @@ export default defineConfig({
       { text: 'Formats', link: '/formats/' },
       { text: 'Requirements', link: '/requirements' },
       { text: 'Development', link: '/development' },
+      { text: 'Open the app', link: APP_URL, target: '_self' },
     ],
     sidebar: [
       {

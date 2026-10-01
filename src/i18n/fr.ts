@@ -342,6 +342,7 @@ export const fr: Record<MessageKey, string> = {
   'ai.webmcpMessage': 'Autoriser l’agent à exécuter « {tool} » avec {input} ?',
   'common.allow': 'Autoriser',
   'common.close': 'Fermer',
+  'app.docs': 'Documentation',
   'app.source': 'Code source (GNU AGPL-3.0)',
   'theme.label': 'Thème : {mode}',
   'theme.system': 'Système',

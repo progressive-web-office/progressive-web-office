@@ -340,6 +340,7 @@ export const en = {
   'ai.webmcpMessage': 'Allow the agent to run “{tool}” with {input}?',
   'common.allow': 'Allow',
   'common.close': 'Close',
+  'app.docs': 'Documentation',
   'app.source': 'Source code (GNU AGPL-3.0)',
   'theme.label': 'Theme: {mode}',
   'theme.system': 'System',
