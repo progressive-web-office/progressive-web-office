@@ -45,14 +45,14 @@ test('the assistant edits a spreadsheet with tools, with consent and undo (AI-00
   await page.getByRole('button', { name: 'New spreadsheet' }).click();
   await page.getByRole('button', { name: 'AI assistant' }).click();
   const panel = page.getByRole('complementary', { name: 'Assistant' });
-  await expect(panel).toContainText('Anthropic · claude-opus-5-5');
-  await panel.getByLabel('Anthropic API key').fill('sk-ant-test');
+  await expect(panel).toContainText('Anthropic (Claude) · claude-opus-5-5');
+  await panel.getByLabel('API key', { exact: true }).fill('sk-ant-test');
   await panel.getByRole('button', { name: 'Save', exact: true }).click();
   await panel.getByLabel('Message to the assistant').fill('Put 2 and 3 in A1:A2 and their sum in A3');
   await panel.getByRole('button', { name: 'Send', exact: true }).click();
 
   const consent = page.getByRole('dialog', { name: 'Send this document to the AI provider?' });
-  await expect(consent).toContainText('Anthropic (model claude-opus-5-5)');
+  await expect(consent).toContainText('Anthropic (Claude) (model claude-opus-5-5)');
   await consent.getByRole('button', { name: 'Continue' }).click();
 
   await expect(panel.locator('.ai-msg.assistant').last()).toHaveText('Done: A3 = 5.');
@@ -73,6 +73,45 @@ test('the assistant edits a spreadsheet with tools, with consent and undo (AI-00
   await expect(page.locator('td[data-r="2"][data-c="0"]')).toHaveText('');
   // The key was not remembered (AI-004).
   expect(await page.evaluate(() => localStorage.getItem('pwo.ai'))).not.toContain('sk-ant');
+  expect(errors).toEqual([]);
+});
+
+test('the assistant works with a local OpenAI-compatible model (Ollama) (AI-007)', async ({ page }) => {
+  const errors = await openApp(page);
+  const bodies: Record<string, unknown>[] = [];
+  const chunk = (delta: Record<string, unknown>, finish: string | null = null) => `data: ${JSON.stringify({ choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`;
+  const turns = [
+    chunk({ content: 'OK.' }) +
+      chunk({ tool_calls: [{ index: 0, id: 'call_1', type: 'function', function: { name: 'set_cells', arguments: JSON.stringify({ cells: [{ ref: 'B2', value: '42' }] }) } }] }) +
+      chunk({}, 'tool_calls') +
+      'data: [DONE]\n\n',
+    chunk({ content: ' B2 = 42.' }) + chunk({}, 'stop') + 'data: [DONE]\n\n',
+  ];
+  await page.route('http://localhost:11434/v1/chat/completions', async (route: Route) => {
+    bodies.push(JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>);
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', headers: { 'Access-Control-Allow-Origin': '*' }, body: turns.shift()! });
+  });
+
+  await page.getByRole('button', { name: 'New spreadsheet' }).click();
+  await page.getByRole('button', { name: 'AI assistant' }).click();
+  const panel = page.getByRole('complementary', { name: 'Assistant' });
+  await panel.getByLabel('Provider').selectOption('ollama');
+  await expect(panel.getByLabel('API address')).toHaveValue('http://localhost:11434/v1');
+  await expect(panel.getByLabel('Effort')).toBeHidden();
+  await panel.getByLabel('Model').fill('qwen3');
+  await panel.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(panel.locator('.ai-info')).toHaveText('Ollama (local) · qwen3');
+  await panel.getByLabel('Message to the assistant').fill('Put 42 in B2');
+  await panel.getByRole('button', { name: 'Send', exact: true }).click();
+  const consent = page.getByRole('dialog', { name: 'Send this document to the AI provider?' });
+  await expect(consent).toContainText('Ollama (local) — localhost:11434 (model qwen3)');
+  await consent.getByRole('button', { name: 'Continue' }).click();
+
+  await expect(panel.locator('.ai-msg.assistant').last()).toHaveText(' B2 = 42.');
+  await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveText('42');
+  expect(bodies).toHaveLength(2);
+  expect(bodies[0]).toMatchObject({ model: 'qwen3', stream: true });
+  expect((bodies[1]!.messages as { role: string }[]).map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'tool']);
   expect(errors).toEqual([]);
 });
 

@@ -2,8 +2,9 @@
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
 import { button, h } from '../app/dom';
 import { getLocale, t } from '../i18n';
-import { createStreamFactory, PROVIDER, runAgent, systemPrompt, type Effort } from './agent';
-import { EFFORTS, forgetApiKey, giveConsent, hasConsent, loadAiSettings, saveAiSettings } from './settings';
+import { createStreamFactory, runAgent, systemPrompt, type Effort } from './agent';
+import { PROVIDERS, providerById, type ProviderId } from './providers';
+import { activeProfile, EFFORTS, forgetApiKey, giveConsent, hasConsent, loadAiSettings, saveAiSettings, type AiSettings } from './settings';
 import type { AgentTool } from './tools';
 
 export interface AssistantContext {
@@ -34,7 +35,9 @@ export class AssistantPanel {
   private readonly stopButton: HTMLButtonElement;
   private readonly setup: HTMLElement;
   private readonly info: HTMLElement;
-  private history: BetaMessageParam[] = [];
+  /** Conversation in the format of the provider that produced it. */
+  private history: unknown[] = [];
+  private historyProvider: ProviderId | undefined;
   private controller: AbortController | null = null;
 
   constructor(private readonly host: AssistantHost) {
@@ -67,7 +70,7 @@ export class AssistantPanel {
       h('div', { class: 'ai-input' }, this.input, h('div', { class: 'dialog-actions' }, this.stopButton, this.sendButton)),
     );
     this.refreshInfo();
-    this.setup.hidden = !!loadAiSettings().apiKey;
+    this.setup.hidden = ready(loadAiSettings());
   }
 
   /** New document: start a new conversation. */
@@ -83,7 +86,7 @@ export class AssistantPanel {
 
   private refreshInfo(): void {
     const s = loadAiSettings();
-    this.info.textContent = t('ai.info', { provider: PROVIDER, model: s.model });
+    this.info.textContent = t('ai.info', { provider: providerById(s.provider).label, model: activeProfile(s).model || '—' });
   }
 
   private toggleSetup(): void {
@@ -92,35 +95,75 @@ export class AssistantPanel {
   }
 
   private buildSetup(): HTMLElement {
-    const s = loadAiSettings();
-    const key = h('input', { type: 'password', value: s.apiKey, autocomplete: 'off', spellcheck: 'false', 'aria-label': t('ai.apiKey') });
-    const remember = h('input', { type: 'checkbox', checked: s.remember });
-    const model = h('input', { type: 'text', value: s.model, spellcheck: 'false', 'aria-label': t('ai.model') });
-    const effort = h('select', { 'aria-label': t('ai.effort') }, ...EFFORTS.map((e) => h('option', { value: e, selected: e === s.effort }, t(`ai.effort.${e}`))));
+    let settings = loadAiSettings();
+    const provider = h('select', { 'aria-label': t('ai.provider') }, ...PROVIDERS.map((p) => h('option', { value: p.id, selected: p.id === settings.provider }, p.label)));
+    const key = h('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', 'aria-label': t('ai.apiKey') });
+    const keyHelp = h('p', { class: 'hint' });
+    const remember = h('input', { type: 'checkbox', checked: settings.remember });
+    const baseUrl = h('input', { type: 'url', spellcheck: 'false', 'aria-label': t('ai.baseUrl') });
+    const model = h('input', { type: 'text', spellcheck: 'false', 'aria-label': t('ai.model') });
+    const effort = h('select', { 'aria-label': t('ai.effort') }, ...EFFORTS.map((e) => h('option', { value: e, selected: e === settings.effort }, t(`ai.effort.${e}`))));
+    const keyRow = h('label', {}, t('ai.apiKey'), key);
+    const urlRow = h('label', {}, t('ai.baseUrl'), baseUrl);
+    const effortRow = h('label', {}, t('ai.effort'), effort);
+    // Show the profile of the selected provider; edits are kept per provider.
+    const show = (): void => {
+      const p = providerById(provider.value);
+      const profile = settings.profiles[p.id];
+      key.value = profile.apiKey;
+      key.placeholder = p.needsKey ? '' : t('ai.keyOptional');
+      keyHelp.textContent = t(p.keyHelp);
+      baseUrl.value = profile.baseUrl;
+      urlRow.hidden = !p.editableUrl;
+      model.value = profile.model;
+      model.placeholder = p.modelHint;
+      effortRow.hidden = p.kind !== 'anthropic';
+    };
+    const keep = (): void => {
+      const id = providerById(provider.value).id;
+      settings.profiles[id] = { apiKey: key.value, model: model.value, baseUrl: baseUrl.value };
+    };
+    let shown = provider.value;
+    provider.addEventListener('change', () => {
+      const next = provider.value;
+      provider.value = shown;
+      keep();
+      provider.value = next;
+      shown = next;
+      show();
+    });
+    show();
     const form = h(
       'form',
       { class: 'ai-setup' },
-      h('label', {}, t('ai.apiKey'), key),
-      h('p', { class: 'hint' }, t('ai.keyHelp')),
+      h('label', {}, t('ai.provider'), provider),
+      keyRow,
+      keyHelp,
       h('label', { class: 'git-row' }, remember, ' ', t('ai.remember')),
+      urlRow,
       h('label', {}, t('ai.model'), model),
-      h('label', {}, t('ai.effort'), effort),
+      effortRow,
       h(
         'div',
         { class: 'dialog-actions' },
         button(t('ai.forget'), () => {
           forgetApiKey();
-          key.value = '';
+          settings = loadAiSettings();
           remember.checked = false;
+          show();
         }),
         h('button', { type: 'submit', class: 'primary' }, t('ai.saveSettings')),
       ),
     );
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      saveAiSettings({ apiKey: key.value, remember: remember.checked, model: model.value, effort: effort.value as Effort });
+      keep();
+      settings = { ...settings, provider: providerById(provider.value).id, remember: remember.checked, effort: effort.value as Effort };
+      saveAiSettings(settings);
+      settings = loadAiSettings();
+      show();
       this.refreshInfo();
-      if (loadAiSettings().apiKey) {
+      if (ready(settings)) {
         form.hidden = true;
         this.input.focus();
       }
@@ -139,7 +182,9 @@ export class AssistantPanel {
     const prompt = this.input.value.trim();
     if (!prompt || this.controller) return;
     const settings = loadAiSettings();
-    if (!settings.apiKey) {
+    const provider = providerById(settings.provider);
+    const profile = activeProfile(settings);
+    if (!ready(settings)) {
       this.setup.hidden = false;
       this.focus();
       return;
@@ -150,9 +195,15 @@ export class AssistantPanel {
       return;
     }
     // AI-002: explicit consent before any content leaves the device.
-    if (!hasConsent()) {
-      if (!(await this.host.confirm(t('ai.consentTitle'), t('ai.consentMessage', { provider: PROVIDER, model: settings.model })))) return;
-      giveConsent();
+    if (!hasConsent(settings)) {
+      const where = provider.editableUrl ? `${provider.label} — ${hostOf(profile.baseUrl)}` : provider.label;
+      if (!(await this.host.confirm(t('ai.consentTitle'), t('ai.consentMessage', { provider: where, model: profile.model })))) return;
+      giveConsent(settings);
+    }
+    // Each provider has its own conversation format: start afresh after a switch.
+    if (this.historyProvider !== provider.id) {
+      this.history = [];
+      this.historyProvider = provider.id;
     }
     this.input.value = '';
     this.entry('user', prompt);
@@ -163,26 +214,29 @@ export class AssistantPanel {
     this.stopButton.hidden = false;
     let answer: HTMLElement | null = null;
     try {
-      const stream = await createStreamFactory(settings.apiKey);
-      const result = await runAgent({
-        stream,
-        model: settings.model,
-        effort: settings.effort,
+      const common = {
         system: systemPrompt(ctx.kind, ctx.name, getLocale()),
         tools: ctx.tools,
-        history: this.history,
         prompt,
         signal: controller.signal,
-        onText: (delta) => {
+        onText: (delta: string) => {
           answer ??= this.entry('assistant');
           answer.textContent += delta;
           this.log.scrollTop = this.log.scrollHeight;
         },
-        onAction: (action) => {
+        onAction: (action: { name: string; input: unknown; ok: boolean; result: string }) => {
           answer = null;
           this.entry('action', `${action.ok ? '✓' : '✗'} ${action.name} ${summarize(action.input)} — ${action.result.split('\n')[0]}`);
         },
-      });
+      };
+      let result: { history: unknown[]; changed: boolean; stop: string };
+      if (provider.kind === 'anthropic') {
+        const stream = await createStreamFactory(profile.apiKey);
+        result = await runAgent({ ...common, stream, model: profile.model, effort: settings.effort, history: this.history as BetaMessageParam[] });
+      } else {
+        const { runOpenAiAgent } = await import('./openai-agent');
+        result = await runOpenAiAgent({ ...common, baseUrl: profile.baseUrl, apiKey: profile.apiKey, model: profile.model, history: this.history });
+      }
       this.history = result.history;
       const notes: Record<string, string> = { refusal: t('ai.refusal'), max_tokens: t('ai.truncated'), turn_limit: t('ai.turnLimit'), aborted: t('ai.stopped') };
       if (notes[result.stop]) this.entry('note', notes[result.stop]);
@@ -206,6 +260,11 @@ export class AssistantPanel {
   }
 
   private async describeError(err: unknown): Promise<string> {
+    const { OpenAiError } = await import('./openai-agent');
+    if (err instanceof OpenAiError) {
+      const byStatus: Record<number, string> = { 0: t('ai.error.unreachable'), 401: t('ai.error.auth'), 403: t('ai.error.permission'), 404: t('ai.error.model'), 429: t('ai.error.rateLimit') };
+      return byStatus[err.status] ?? t('ai.error.api', { message: err.message });
+    }
     const { default: Anthropic } = await import('@anthropic-ai/sdk');
     if (err instanceof Anthropic.AuthenticationError) return t('ai.error.auth');
     if (err instanceof Anthropic.PermissionDeniedError) return t('ai.error.permission');
@@ -214,5 +273,20 @@ export class AssistantPanel {
     if (err instanceof Anthropic.APIConnectionError) return t('ai.error.network');
     if (err instanceof Anthropic.APIError) return t('ai.error.api', { message: err.message });
     return t('ai.error.api', { message: (err as Error).message });
+  }
+}
+
+/** Enough settings to talk to the selected provider. */
+function ready(settings: AiSettings): boolean {
+  const provider = providerById(settings.provider);
+  const profile = activeProfile(settings);
+  return !!profile.model && !!profile.baseUrl && (!provider.needsKey || !!profile.apiKey);
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
   }
 }

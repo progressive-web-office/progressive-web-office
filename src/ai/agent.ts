@@ -4,11 +4,9 @@
  * the user actually talks to the assistant.
  */
 import type { BetaContentBlock, BetaMessage, BetaMessageParam, BetaTool, BetaToolResultBlockParam, BetaToolUseBlock, MessageCreateParamsStreaming } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { validateInput, type AgentTool } from './tools';
+import { callTool, type AgentTool } from './tools';
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
-export const DEFAULT_MODEL = 'claude-opus-5-5';
-export const PROVIDER = 'Anthropic';
 
 export type StreamParams = Omit<MessageCreateParamsStreaming, 'stream'>;
 
@@ -116,33 +114,10 @@ export async function runAgent(opts: RunOptions): Promise<RunResult> {
 
     const results: BetaToolResultBlockParam[] = [];
     for (const call of calls) {
-      const tool = byName.get(call.name);
-      const fail = (text: string): void => {
-        results.push({ type: 'tool_result', tool_use_id: call.id, is_error: true, content: text });
-        opts.onAction({ name: call.name, input: call.input, ok: false, result: text });
-      };
-      if (!tool) {
-        fail(`Unknown tool ${call.name}.`);
-        continue;
-      }
-      const problem = validateInput(tool.input_schema, call.input);
-      if (problem) {
-        fail(`Invalid input: ${problem}. Input received: ${JSON.stringify(call.input)}`);
-        continue;
-      }
-      const input = call.input as Record<string, unknown>;
-      if (tool.mutates && opts.confirm && !(await opts.confirm(tool, input))) {
-        fail('The user declined this change.');
-        continue;
-      }
-      try {
-        const text = await tool.run(input);
-        if (tool.mutates) changed = true;
-        results.push({ type: 'tool_result', tool_use_id: call.id, content: text });
-        opts.onAction({ name: call.name, input, ok: true, result: text });
-      } catch (err) {
-        fail((err as Error).message);
-      }
+      const outcome = await callTool(byName, call.name, call.input, opts.confirm);
+      if (outcome.mutated) changed = true;
+      results.push({ type: 'tool_result', tool_use_id: call.id, content: outcome.content, ...(outcome.ok ? {} : { is_error: true }) });
+      opts.onAction({ name: call.name, input: call.input, ok: outcome.ok, result: outcome.content });
     }
     // All results of one assistant turn go back in a single user message.
     history.push({ role: 'user', content: results });

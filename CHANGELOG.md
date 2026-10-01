@@ -44,6 +44,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   Markdown and MDZ, and as code and pictures in Word, OpenDocument and LaTeX.
   The Python runtime is served by the application and, like the packages
   (downloaded from the Pyodide CDN on first use), kept for offline use.
+- **Choice of AI provider** for the assistant (⚙): Anthropic (Claude), OpenAI,
+  Mistral AI, Albert (API de l’État), a local Ollama server, or any server
+  offering the OpenAI chat completions API (LM Studio, vLLM, OpenRouter…).
+  Each provider keeps its own key, model and address; all get the same
+  document tools, confirmations and undo. Local servers on `localhost` are
+  allowed over HTTP.
 - **Links containing a document** (📲 → *Copy link*): a short document is
   compressed into the address itself (after the `#`, never sent to a server);
   opening the link rebuilds the document. Text documents travel as Markdown.

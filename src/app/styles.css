@@ -500,3 +500,5 @@ iframe.code-sandbox { display: none; }
 .grist-status { min-height: 1.2em; color: var(--muted); }
 .share-link-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
 .share-link { flex: 1; min-width: 0; font-family: ui-monospace, monospace; font-size: 0.8rem; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); }
+.ai-setup [hidden] { display: none; }
+.ai-setup label.git-row { display: flex; gap: 6px; align-items: flex-start; }

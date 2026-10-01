@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registerWebMcpTools } from '../src/ai/webmcp';
 import type { AgentTool } from '../src/ai/tools';
-import { forgetApiKey, giveConsent, hasConsent, loadAiSettings, resetAiSettingsForTests, saveAiSettings } from '../src/ai/settings';
+import { activeProfile, forgetApiKey, giveConsent, hasConsent, loadAiSettings, resetAiSettingsForTests, saveAiSettings } from '../src/ai/settings';
 
 type Registered = { name: string; annotations?: { readOnlyHint?: boolean }; execute(i: unknown): Promise<{ content: { text: string }[]; isError?: boolean }> };
 
@@ -53,22 +53,46 @@ describe('AI-002/AI-004 settings', () => {
     resetAiSettingsForTests();
   });
 
-  it('keeps the key in memory only unless remembered', () => {
-    saveAiSettings({ apiKey: 'sk-ant-1', remember: false, model: '', effort: 'high' });
-    expect(loadAiSettings()).toEqual({ apiKey: 'sk-ant-1', remember: false, model: 'claude-opus-5-5', effort: 'high' });
+  it('keeps the keys in memory only unless remembered', () => {
+    const s = loadAiSettings();
+    expect(s.provider).toBe('anthropic');
+    expect(activeProfile(s)).toEqual({ apiKey: '', model: 'claude-opus-5-5', baseUrl: 'https://api.anthropic.com' });
+    s.profiles.anthropic.apiKey = 'sk-ant-1';
+    s.effort = 'high';
+    saveAiSettings(s);
+    expect(activeProfile().apiKey).toBe('sk-ant-1');
     expect(localStorage.getItem('pwo.ai')).not.toContain('sk-ant');
-    saveAiSettings({ apiKey: 'sk-ant-2', remember: true, model: 'claude-sonnet-5-5', effort: 'low' });
+    saveAiSettings({ ...loadAiSettings(), remember: true });
     resetAiSettingsForTests();
-    expect(loadAiSettings().apiKey).toBe('sk-ant-2');
+    expect(activeProfile().apiKey).toBe('sk-ant-1');
     forgetApiKey();
     resetAiSettingsForTests();
-    expect(loadAiSettings().apiKey).toBe('');
+    expect(activeProfile().apiKey).toBe('');
     expect(localStorage.getItem('pwo.ai')).not.toContain('sk-ant');
   });
 
-  it('asks consent once per session', () => {
+  it('AI-007 keeps one profile per provider and migrates the old settings', () => {
+    localStorage.setItem('pwo.ai', JSON.stringify({ apiKey: 'sk-old', remember: true, model: 'claude-sonnet-5-5', effort: 'low' }));
+    const s = loadAiSettings();
+    expect(activeProfile(s)).toEqual({ apiKey: 'sk-old', model: 'claude-sonnet-5-5', baseUrl: 'https://api.anthropic.com' });
+    s.provider = 'ollama';
+    s.profiles.ollama.model = 'qwen3';
+    s.profiles.ollama.baseUrl = 'http://192.168.1.10:11434/v1/';
+    s.profiles.mistral.baseUrl = 'https://evil.example/v1'; // fixed address: ignored
+    saveAiSettings(s);
+    resetAiSettingsForTests();
+    const back = loadAiSettings();
+    expect(back.provider).toBe('ollama');
+    expect(activeProfile(back)).toEqual({ apiKey: '', model: 'qwen3', baseUrl: 'http://192.168.1.10:11434/v1' });
+    expect(back.profiles.mistral.baseUrl).toBe('https://api.mistral.ai/v1');
+    expect(back.profiles.anthropic.apiKey).toBe('sk-old');
+  });
+
+  it('asks consent once per session and again for another provider or model', () => {
     expect(hasConsent()).toBe(false);
     giveConsent();
     expect(hasConsent()).toBe(true);
+    saveAiSettings({ ...loadAiSettings(), provider: 'mistral' });
+    expect(hasConsent()).toBe(false);
   });
 });

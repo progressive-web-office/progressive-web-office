@@ -304,13 +304,15 @@ integration is ever needed.
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
-| AI-001 | M | 0.0.13 | Where the user has configured an Anthropic API key, the system shall provide an assistant panel that can read and modify the open document through tools (documents, spreadsheets, presentations). |
+| AI-001 | M | 0.0.13 | Where the user has configured an AI provider, the system shall provide an assistant panel that can read and modify the open document through tools (documents, spreadsheets, presentations). |
 | AI-002 | M | 0.0.13 | The system shall ask for explicit consent before sending any document content to the AI provider, and display which provider and model are used. |
 | AI-003 | M | 0.0.13 | Every change made by the assistant shall be undoable and visible (the assistant reports each tool action). |
 | AI-004 | M | 0.0.13 | The API key shall be stored only in this browser and only if the user chooses so; it shall never be sent anywhere but to the provider API. |
 | AI-005 | S | 0.0.13 | The assistant shall be able to write LaTeX equations, spreadsheet formulas and slide content. |
 | AI-006 | S | 0.0.13 | Where the browser exposes an agent tool API (WebMCP `navigator.modelContext`), the system shall register the same document tools so that external AI agents can drive the application, with user confirmation for modifications. |
-| AI-007 | C | — | Local / self-hosted models. |
+| AI-007 | M | 0.0.14 | The system shall let the user choose the AI provider of the assistant — Anthropic (Claude), OpenAI, Mistral AI, Albert (French State), a local Ollama server, or any server offering the OpenAI chat completions API — with its own key, model and (for local and custom servers) API address, kept per provider; local servers on `localhost` shall be reachable over HTTP. |
+| AI-008 | M | 0.0.14 | The system shall give every provider the same document tools, confirmations and undo, ask consent again when the provider, address or model changes, and start a new conversation when the provider changes. |
+| AI-009 | C | — | Several assistants in one conversation (e.g. one model drafts, another reviews). |
 
 ## 9g. Grist (GRIST)
 

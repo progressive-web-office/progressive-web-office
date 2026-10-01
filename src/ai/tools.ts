@@ -397,3 +397,31 @@ export function beforeMutation(tools: AgentTool[], before: () => void): AgentToo
       : tool,
   );
 }
+
+export interface ToolOutcome {
+  ok: boolean;
+  /** Result text, or the error explained to the model. */
+  content: string;
+  /** A mutating tool ran successfully. */
+  mutated: boolean;
+}
+
+/** Validate, confirm (for mutating tools) and run one tool call; shared by every provider. */
+export async function callTool(
+  tools: Map<string, AgentTool>,
+  name: string,
+  input: unknown,
+  confirm?: (tool: AgentTool, input: Record<string, unknown>) => Promise<boolean>,
+): Promise<ToolOutcome> {
+  const tool = tools.get(name);
+  if (!tool) return { ok: false, content: `Unknown tool ${name}.`, mutated: false };
+  const problem = validateInput(tool.input_schema, input);
+  if (problem) return { ok: false, content: `Invalid input: ${problem}. Input received: ${JSON.stringify(input)}`, mutated: false };
+  const args = input as Record<string, unknown>;
+  if (tool.mutates && confirm && !(await confirm(tool, args))) return { ok: false, content: 'The user declined this change.', mutated: false };
+  try {
+    return { ok: true, content: await tool.run(args), mutated: !!tool.mutates };
+  } catch (err) {
+    return { ok: false, content: (err as Error).message, mutated: false };
+  }
+}
