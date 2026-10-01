@@ -44,6 +44,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   Markdown and MDZ, and as code and pictures in Word, OpenDocument and LaTeX.
   The Python runtime is served by the application and, like the packages
   (downloaded from the Pyodide CDN on first use), kept for offline use.
+- **Open from Grist** (start screen): open a document of a (self-hosted)
+  Grist server as a workbook, one sheet per table; **Save** sends the changed
+  cells, new rows and, after confirmation, deleted rows back to Grist, then
+  reloads the document. Accounts (server address and API key) stay in this
+  browser. The guide explains the CORS setup of the server.
 - The start screen links to the documentation, and the documentation has an
   **Open the app** link (navigation bar and home page).
 - MDZ manifest schema: optional `subject`, `description`, `keywords`,

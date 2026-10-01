@@ -19,5 +19,5 @@ changelog.
 | 10 | 0.0.11 | Git repositories: GitHub and GitLab browse, open, commit | ✅ |
 | 11 | 0.0.12 | Device-to-device exchange with QRShare (Web Share, share target) | ✅ |
 | 12 | 0.0.13 | AI assistant (Claude) with document tools; WebMCP tools for external agents | ✅ |
-| 13 | 0.0.14 | QRShare app handoff (send and receive files between the two apps in the browser); light/dark/system theme; document properties and Markdown front matter; Mermaid diagrams; sandboxed Python/JavaScript code cells | ⏳ |
+| 13 | 0.0.14 | QRShare app handoff (send and receive files between the two apps in the browser); light/dark/system theme; document properties and Markdown front matter; Mermaid diagrams; sandboxed Python/JavaScript code cells; Grist connector | ⏳ |
 | — | later | Text search in PDF, cell formatting, i18n (French), TextBundle import, upstream MDZ collaboration | 💡 |

@@ -310,6 +310,17 @@ integration is ever needed.
 | AI-006 | S | 0.0.13 | Where the browser exposes an agent tool API (WebMCP `navigator.modelContext`), the system shall register the same document tools so that external AI agents can drive the application, with user confirmation for modifications. |
 | AI-007 | C | — | Local / self-hosted models. |
 
+## 9g. Grist (GRIST)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| GRIST-001 | M | 0.0.14 | The system shall let the user add Grist accounts (server address and API key), check them when added, store them only in this browser, and forget them. |
+| GRIST-002 | M | 0.0.14 | The system shall let the user browse the team sites and documents of a Grist account and open a document as a workbook: one sheet per table, the column labels in the first row, the record ids in the first column, formula columns with their computed values and dates as dates. |
+| GRIST-003 | M | 0.0.14 | When the user saves a workbook opened from Grist, the system shall send only the changes: changed cells of editable columns, new rows (without an id), and — after confirmation — deleted rows; it shall then reload the document so that new rows get their ids and formulas their values. |
+| GRIST-004 | M | 0.0.14 | The system shall not write formula columns, the id column, or columns of complex types (references, lists, attachments), which are shown as text. |
+| GRIST-005 | M | 0.0.14 | If the Grist server cannot be reached or refuses a request, the system shall say whether the address/HTTPS/CORS setup or the API key is the likely cause, and link to the server setup guide. |
+| GRIST-006 | C | — | Python code cells reading Grist tables; writing documents of the text editor to Grist. |
+
 ## 10. Out of scope (Won't, this time)
 
 - Real-time collaboration and cloud storage.

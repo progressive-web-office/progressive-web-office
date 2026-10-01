@@ -484,3 +484,17 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .code-source { display: block; width: 100%; min-height: 240px; margin: 8px 0; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.9rem; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); tab-size: 4; }
 .code-lang-label { display: inline-flex; gap: 8px; align-items: center; }
 iframe.code-sandbox { display: none; }
+
+/* Grist (GRIST-001) */
+.card.grist { border-left-color: #16b378; }
+.grist-dialog { width: min(640px, calc(100vw - 32px)); max-width: none; }
+.grist-form { display: grid; gap: 10px; }
+.grist-form label { display: grid; gap: 4px; font-weight: 600; }
+.grist-form input { padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-weight: normal; }
+.grist-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.grist-row select { flex: 1; min-width: 0; }
+.grist-docs { list-style: none; margin: 8px 0; padding: 0; max-height: 50vh; overflow: auto; display: grid; gap: 4px; }
+.grist-docs li { display: flex; gap: 8px; align-items: center; }
+.grist-docs button { flex: 1; text-align: left; }
+.grist-workspace { color: var(--muted); font-size: 0.85rem; }
+.grist-status { min-height: 1.2em; color: var(--muted); }

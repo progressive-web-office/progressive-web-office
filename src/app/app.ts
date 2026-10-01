@@ -34,6 +34,14 @@ interface OpenDocument {
   kind: DocumentKind;
   view: EditorView;
   source?: RepoSource;
+  /** Opened from a Grist document: Save sends the changes back (GRIST-003). */
+  grist?: GristSource;
+}
+
+interface GristSource {
+  account: import('../grist/ui').GristAccount;
+  doc: import('../grist/client').GristDoc;
+  snapshot: import('../grist/workbook').GristSnapshot;
 }
 
 const DEFAULT_FORMAT: Record<Exclude<DocumentKind, 'pdf'>, DocumentFormat> = {
@@ -128,6 +136,59 @@ export class App {
       if ((err as Error).name !== 'MdzCancelled') this.showError(t('error.open', { name, message: (err as Error).message }));
       return null;
     }
+  }
+
+  /** Open a Grist document as a workbook, one sheet per table (GRIST-002). */
+  async openFromGrist(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    const { pickGristDocument, gristClient, gristErrorMessage } = await import('../grist/ui');
+    const choice = await pickGristDocument(this.root);
+    if (!choice) return;
+    await this.withBusy(async () => {
+      try {
+        const snapshot = await gristClient(choice.account).readDocument(choice.doc.id);
+        await this.showGristDocument({ ...choice, snapshot });
+      } catch (err) {
+        this.showError(gristErrorMessage(err));
+      }
+    });
+  }
+
+  private async showGristDocument(source: GristSource): Promise<void> {
+    const [{ gristToWorkbook }, { writeWorkbook }] = await Promise.all([import('../grist/workbook'), import('../sheet/io')]);
+    const bytes = writeWorkbook(gristToWorkbook(source.snapshot), 'xlsx');
+    if (!(await this.openBytes(`${source.doc.name}.xlsx`, bytes))) return;
+    if (this.current) this.current.grist = source;
+    this.dirty = false;
+    this.renderHeader();
+  }
+
+  /** Send the changes of the open workbook to its Grist document (GRIST-003). */
+  async saveToGrist(): Promise<void> {
+    const doc = this.current;
+    if (!doc?.grist || !doc.view.save) return;
+    const source = doc.grist;
+    const [{ gristChanges }, { readWorkbook }, { gristClient, gristErrorMessage }] = await Promise.all([import('../grist/workbook'), import('../sheet/io'), import('../grist/ui')]);
+    const changes = gristChanges(source.snapshot, readWorkbook('xlsx', await doc.view.save('xlsx')));
+    if (!changes.length) {
+      this.showNotice(t('grist.noChanges'));
+      return;
+    }
+    const removed = changes.reduce((n, c) => n + c.remove.length, 0);
+    if (removed && !window.confirm(t('grist.removeConfirm', { n: removed }))) return;
+    await this.withBusy(async () => {
+      try {
+        const client = gristClient(source.account);
+        await client.apply(source.snapshot.docId, changes);
+        // Reload: new rows get their ids, formulas their new values.
+        const snapshot = await client.readDocument(source.snapshot.docId);
+        await this.showGristDocument({ ...source, snapshot });
+        const rows = changes.reduce((n, c) => n + c.update.length + c.add.length + c.remove.length, 0);
+        this.showNotice(t('grist.saved', { n: rows, name: source.doc.name }));
+      } catch (err) {
+        this.showError(gristErrorMessage(err));
+      }
+    });
   }
 
   /** Open a file from a GitHub/GitLab repository (GIT-002). */
@@ -245,6 +306,7 @@ export class App {
     const doc = this.current;
     if (!doc?.view.save) return;
     if (!format && doc.source) return this.commitToRepository();
+    if (!format && doc.grist) return this.saveToGrist();
     const target = format ?? doc.format;
     try {
       const bytes = await doc.view.save(target);
@@ -468,6 +530,7 @@ export class App {
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open' }),
           button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', title: t('git.openTitle') }),
           button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', title: t('share.receiveTitle') }),
+          button(t('grist.open'), () => void this.openFromGrist(), { className: 'card grist', title: t('grist.openTitle') }),
         ),
         h('p', { class: 'hint' }, t('start.tip')),
         this.languagePicker(),
@@ -552,6 +615,7 @@ export class App {
       items.push(
         h('span', { class: 'doc-name', title: doc.source ? `${t('git.source', { repo: doc.source.repo.name, branch: doc.source.branch })} — ${doc.source.path}` : formatLabel(doc.format) }, doc.name),
         doc.source ? h('span', { class: 'doc-source' }, `${doc.source.repo.name} · ${doc.source.branch}`) : null,
+        doc.grist ? h('span', { class: 'doc-source' }, `Grist · ${new URL(doc.grist.account.serverUrl).host}`) : null,
         this.dirty ? h('span', { class: 'modified', title: t('file.unsaved'), 'aria-label': t('file.unsaved') }, '●') : null,
       );
     }
@@ -561,8 +625,8 @@ export class App {
       button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }),
     );
     if (doc?.view.save) {
-      actions.append(button(t('file.save'), () => void this.save(), { title: doc.source ? t('git.commitTitle') : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
-      if (!doc.source) actions.append(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
+      actions.append(button(t('file.save'), () => void this.save(), { title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
+      if (!doc.source && !doc.grist) actions.append(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
       const select = h(
         'select',
         { 'aria-label': t('file.saveAsFormat'), title: t('file.saveAsTitle') },

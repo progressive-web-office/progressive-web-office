@@ -32,6 +32,7 @@ export default defineConfig({
           { text: 'PDF', link: '/guide/pdf' },
           { text: 'Printing', link: '/guide/printing' },
           { text: 'Git repositories', link: '/guide/git' },
+          { text: 'Grist', link: '/guide/grist' },
           { text: 'Sending to another device', link: '/guide/sharing' },
           { text: 'AI assistant', link: '/guide/assistant' },
         ],
