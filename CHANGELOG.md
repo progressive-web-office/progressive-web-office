@@ -24,6 +24,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   (Ctrl+] / Ctrl+[), line spacing, and a paragraph spacing dialog (left and
   first-line indents, space before and after). Kept in DOCX and ODT, and
   read from them as direct formatting only.
+- Page breaks in text documents (⤓, Ctrl+Enter), shown as a labelled
+  dashed line and starting a new page when printing; kept in DOCX (also
+  read when inside a paragraph or set as "page break before"), ODT,
+  Markdown (`\newpage`) and LaTeX. LaTeX import also reads full-width
+  `\rule` lines as horizontal rules.
 - Find and replace in text documents (🔍, Ctrl+F / Ctrl+H): highlighted
   matches with a count, match case, whole words, regular expressions with
   `$1` groups, replace one or all in a single undoable step.

@@ -102,7 +102,7 @@ class LatexWriter {
       } else if (group.type === 'table') {
         out.push(this.table(group.rows));
       } else if (group.type === 'rule') {
-        out.push('\\noindent\\rule{\\linewidth}{0.4pt}');
+        out.push(group.page ? '\\newpage' : '\\noindent\\rule{\\linewidth}{0.4pt}');
       } else if (group.style === 'quote') {
         quote.push(this.inline(group.runs));
       } else {

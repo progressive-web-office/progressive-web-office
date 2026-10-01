@@ -661,3 +661,9 @@ button.qr-zoom img { display: block; margin: 0; }
 .para-dialog fieldset { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 12px; padding: 8px 12px; }
 .para-row { display: grid; grid-template-columns: 10rem 7rem auto; align-items: center; gap: 8px; margin: 4px 0; }
 .para-row input, .para-row select { min-height: 30px; }
+
+/* Page breaks (DOC-021) */
+.doc-page hr.page-break { position: relative; border: 0; border-top: 2px dashed #9aa5b5; margin: 18pt -24px; overflow: visible; }
+.doc-page hr.page-break::after { content: attr(data-label); position: absolute; left: 50%; top: -0.75em; transform: translateX(-50%); padding: 0 8px; background: #fff; color: #6b7686; font-size: 8pt; letter-spacing: 0.05em; text-transform: uppercase; }
+.doc-page hr.page-break.ProseMirror-selectednode { border-top-color: var(--accent); }
+@media print { .doc-page hr.page-break { break-after: page; visibility: hidden; margin: 0; } }

@@ -449,7 +449,8 @@ export class DocumentEditor implements EditorView {
       act(t('doc.insertCode'), '{ }', () => void this.editCell(), t('doc.insertCodeTitle')),
       act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
       act(t('meta.button'), 'ⓘ', () => void this.editProperties(), t('meta.buttonTitle')),
-      act(t('doc.insertRule'), '―', () => this.command(insertRule)),
+      act(t('doc.insertRule'), '―', () => this.command(insertRule())),
+      act(t('doc.pageBreak'), '⤓', () => this.command(insertRule(true)), `${t('doc.pageBreak')} (Ctrl+Enter)`),
     );
   }
 

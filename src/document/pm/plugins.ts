@@ -12,7 +12,7 @@ import { columnResizing, goToNextCell, tableEditing } from 'prosemirror-tables';
 import { findTypedMath } from '../../math/inline';
 import type { ParagraphStyle } from '../model';
 import { searchPlugin } from './search';
-import { backspace, changeIndent, clearFormatting, enter, setAlign, setStyle, shiftListLevel, toggleList } from './commands';
+import { backspace, insertRule, changeIndent, clearFormatting, enter, setAlign, setStyle, shiftListLevel, toggleList } from './commands';
 import { schema } from './schema';
 
 /** Paragraph style rule: `# ` → heading, `> ` → quote, `- ` → list… */
@@ -86,6 +86,7 @@ export function editorKeymap(actions: EditorActions): Plugin[] {
       'Mod-Alt-3': setStyle('h3'),
       'Mod-k': run(actions.link),
       'Mod-Space': clearFormatting,
+      'Mod-Enter': insertRule(true),
       'Mod-]': changeIndent(1),
       'Mod-[': changeIndent(-1),
       'Mod-f': run(() => actions.find(false)),

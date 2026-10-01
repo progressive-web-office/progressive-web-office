@@ -265,6 +265,12 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         break;
     }
   }
+  // DOC-021: `\newpage` / `\pagebreak` alone on a line, or an HTML page-break div.
+  const PAGE = /^(?:\\newpage|\\pagebreak|\\clearpage|<div[^>]*page-break-(?:after|before)\s*:\s*always[^>]*>\s*<\/div>)$/;
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]!;
+    if (b.type === 'paragraph' && b.style === 'normal' && !b.list && b.runs.length === 1 && 'text' in b.runs[0]! && PAGE.test(b.runs[0].text.trim())) blocks[i] = { type: 'rule', page: true };
+  }
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   if (firstHeading && !doc.meta.title) doc.meta.title = firstHeading.runs.map((r) => ('text' in r ? r.text : '')).join('');

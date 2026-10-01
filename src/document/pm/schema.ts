@@ -13,6 +13,7 @@ import { Schema, type DOMOutputSpec, type Mark, type Node as PmNode } from 'pros
 import { tableNodes } from 'prosemirror-tables';
 import { LAYOUT_KEYS, type Align, type CellOutput, type ParagraphStyle } from '../model';
 import { cssFontFamily } from '../html';
+import { t } from '../../i18n';
 
 const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code'];
 const ALIGNS: Align[] = ['left', 'center', 'right', 'justify'];
@@ -88,7 +89,12 @@ export const schema = new Schema({
       ],
       toDOM: paragraphDom,
     },
-    horizontal_rule: { group: 'block', parseDOM: [{ tag: 'hr' }], toDOM: () => ['hr'] },
+    horizontal_rule: {
+      group: 'block',
+      attrs: { page: { default: false } },
+      parseDOM: [{ tag: 'hr', getAttrs: (d: HTMLElement) => ({ page: d.classList.contains('page-break') }) }],
+      toDOM: (n) => (n.attrs.page ? ['hr', { class: 'page-break', 'data-label': t('doc.pageBreak') }] : ['hr']),
+    },
     ...tableNodes({ tableGroup: 'block', cellContent: 'paragraph+', cellAttributes: {} }),
     text: { group: 'inline' },
     hard_break: { inline: true, group: 'inline', selectable: false, parseDOM: [{ tag: 'br' }], toDOM: () => ['br'] },

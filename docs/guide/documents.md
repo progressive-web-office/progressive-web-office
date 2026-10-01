@@ -30,6 +30,7 @@ and any ZIP archive of Markdown files.
 | Image | 🖼 (or paste / drop an image) | |
 | Table | ▦ (3×3) | |
 | Horizontal rule | ― | |
+| Page break | ⤓ | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
 | Diagram | ⧉ (see [Diagrams](./diagrams.md)) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> |
 | Code cell | { } (see [Code cells](./code.md)) | |

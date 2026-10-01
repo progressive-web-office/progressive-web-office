@@ -598,6 +598,7 @@ export const en = {
   'fmt.noHighlight': 'No highlight',
   'fmt.automatic': 'Automatic colour',
   'fmt.clear': 'Clear formatting',
+  'doc.pageBreak': 'Page break',
 } as const;
 
 export type MessageKey = keyof typeof en;

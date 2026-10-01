@@ -149,3 +149,14 @@ test('character formatting and paragraph spacing reach the file (DOC-020)', asyn
   await page.getByRole('button', { name: 'Clear formatting' }).click();
   await expect(editor.locator('span[data-font], [data-size], mark')).toHaveCount(0);
 });
+
+test('inserts page breaks (DOC-021)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Page one');
+  await page.keyboard.press('Control+Enter');
+  await page.keyboard.type('Page two');
+  await expect(editor.locator('hr.page-break')).toHaveAttribute('data-label', 'Page break');
+  await expect(editor.locator('p')).toHaveText(['Page one', 'Page two']);
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
+  expect(md).toBe('Page one\n\n\\newpage\n\nPage two\n');
+});

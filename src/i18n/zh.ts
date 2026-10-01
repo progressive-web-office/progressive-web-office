@@ -600,4 +600,5 @@ export const zh: Record<MessageKey, string> = {
   'fmt.noHighlight': '无突出显示',
   'fmt.automatic': '自动颜色',
   'fmt.clear': '清除格式',
+  'doc.pageBreak': '分页符',
 };

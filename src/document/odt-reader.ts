@@ -7,6 +7,7 @@ import {
   emptyDocument,
   mediaTypeForName,
   normalizeRuns,
+  PAGE_BREAK,
   type Align,
   type Block,
   type Paragraph,
@@ -30,6 +31,9 @@ interface OdfStyle {
   align?: Align;
   /** Direct paragraph spacing, from automatic styles only (DOC-020). */
   layout?: ParagraphLayout;
+  /** fo:break-before / fo:break-after="page" (DOC-021). */
+  pageBefore?: boolean;
+  pageAfter?: boolean;
 }
 
 /** `12pt`, `0.5in`, `1cm`… in points. */
@@ -106,6 +110,8 @@ class OdtReader {
       else if (ta === 'end' || ta === 'right') style.align = 'right';
       else if (ta === 'justify') style.align = 'justify';
       else if (ta === 'start' || ta === 'left') style.align = 'left';
+      if (pp && attr(pp, 'break-before') === 'page') style.pageBefore = true;
+      if (pp && attr(pp, 'break-after') === 'page') style.pageAfter = true;
       if (pp && style.automatic) {
         const layout: ParagraphLayout = {};
         const left = lengthPt(attr(pp, 'margin-left'));
@@ -171,7 +177,14 @@ class OdtReader {
           case 'p':
           case 'h': {
             const b = this.readParagraph(el, depth > 0 ? { ordered: this.isOrdered(listStyle, depth), level: depth - 1 } : undefined);
-            out.push(b);
+            // Page breaks set on the paragraph's style (DOC-021).
+            const chain = this.chain('paragraph', attr(el, 'style-name'));
+            const before = chain.some((s) => s.pageBefore);
+            const after = chain.some((s) => s.pageAfter);
+            const empty = b.type === 'paragraph' && !b.runs.length;
+            if (before && out.length) out.push({ ...PAGE_BREAK });
+            if (!(empty && (before || after))) out.push(b);
+            if (after) out.push({ ...PAGE_BREAK });
             break;
           }
           case 'list': {

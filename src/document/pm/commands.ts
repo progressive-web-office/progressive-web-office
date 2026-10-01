@@ -209,11 +209,11 @@ export const insertTable =
     return true;
   };
 
-export const insertRule: Command = (state, dispatch) => {
+export const insertRule = (page = false): Command => (state, dispatch) => {
   if (!dispatch) return true;
   const $from = state.selection.$from;
   const pos = $from.depth > 0 ? $from.after(1) : state.doc.content.size;
-  const tr = state.tr.insert(pos, Fragment.from([schema.nodes.horizontal_rule!.create(), schema.nodes.paragraph!.create()]));
+  const tr = state.tr.insert(pos, Fragment.from([schema.nodes.horizontal_rule!.create({ page }), schema.nodes.paragraph!.create()]));
   tr.setSelection(TextSelection.near(tr.doc.resolve(pos + 2)));
   dispatch(tr.scrollIntoView());
   return true;

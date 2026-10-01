@@ -61,7 +61,12 @@ export function blocksToDom(
     } else if (group.type === 'table') {
       frag.append(tableToDom(group.rows, doc, resolveImage));
     } else if (group.type === 'rule') {
-      frag.append(doc.createElement('hr'));
+      const hr = doc.createElement('hr');
+      if (group.page) {
+        hr.className = 'page-break';
+        hr.style.breakAfter = 'page';
+      }
+      frag.append(hr);
     } else if (isQuote) {
       if (!quote) {
         quote = doc.createElement('blockquote');
@@ -400,7 +405,8 @@ export function domToBlocks(
     // Block-level element.
     if (tag === 'hr') {
       flush();
-      blocks.push({ type: 'rule' });
+      const page = el.classList.contains('page-break') || /page/.test(`${el.style.breakAfter} ${el.style.pageBreakAfter}`);
+      blocks.push(page ? { type: 'rule', page: true } : { type: 'rule' });
       return;
     }
     if (tag === 'table') {

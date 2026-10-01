@@ -156,6 +156,8 @@ class DocxWriter {
         out += this.paragraph(group);
       } else if (group.type === 'table') {
         out += this.table(group.rows);
+      } else if (group.page) {
+        out += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
       } else {
         out += '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="auto"/></w:pBdr></w:pPr></w:p>';
       }

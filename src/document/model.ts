@@ -120,7 +120,11 @@ export interface Table {
 
 export interface Rule {
   type: 'rule';
+  /** A page break rather than a horizontal line (DOC-021). */
+  page?: boolean;
 }
+
+export const PAGE_BREAK: Rule = { type: 'rule', page: true };
 
 export type Block = Paragraph | Table | Rule;
 

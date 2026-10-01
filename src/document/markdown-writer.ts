@@ -100,7 +100,8 @@ class MarkdownWriter {
       } else if (group.type === 'table') {
         parts.push(this.table(group.rows));
       } else if (group.type === 'rule') {
-        parts.push('---');
+        // \newpage is understood by Pandoc and most Markdown-to-PDF tools (DOC-021).
+        parts.push(group.page ? '\\newpage' : '---');
       } else if (isQuote) {
         quote.push(this.inline(group.runs, true));
       } else if (isCode) {

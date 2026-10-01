@@ -137,7 +137,12 @@ class OdtWriter {
       } else if (group.type === 'table') {
         out += this.table(group.rows);
       } else {
-        out += '<text:p text:style-name="Horizontal_20_Line"/>';
+        if (group.page) {
+          this.autoStyles.set('PageBreak', '<style:style style:name="PageBreak" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-after="page"/></style:style>');
+          out += '<text:p text:style-name="PageBreak"/>';
+        } else {
+          out += '<text:p text:style-name="Horizontal_20_Line"/>';
+        }
       }
     }
     return out;

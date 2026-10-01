@@ -87,7 +87,7 @@ function tableToPm(t: Table): PmNode {
 export function blockToPm(b: Block): PmNode {
   if (b.type === 'paragraph') return paragraphToPm(b);
   if (b.type === 'table') return tableToPm(b);
-  return schema.nodes.horizontal_rule!.create();
+  return schema.nodes.horizontal_rule!.create({ page: !!b.page });
 }
 
 /** The ProseMirror document for model blocks. */
@@ -157,7 +157,7 @@ function pmToBlock(node: PmNode): Block {
     });
     return { type: 'table', rows };
   }
-  if (node.type.name === 'horizontal_rule') return { type: 'rule' };
+  if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : { type: 'rule' };
   return pmToParagraph(node);
 }
 

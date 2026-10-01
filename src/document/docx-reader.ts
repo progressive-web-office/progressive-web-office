@@ -6,6 +6,7 @@ import {
   cleanFormat,
   emptyDocument,
   normalizeRuns,
+  PAGE_BREAK,
   type Align,
   type Block,
   type ListInfo,
@@ -127,7 +128,7 @@ class DocxReader {
     for (const el of children(container)) {
       switch (el.localName) {
         case 'p':
-          out.push(this.readParagraph(el));
+          out.push(...withPageBreaks(this.readParagraph(el), el));
           break;
         case 'tbl':
           out.push(this.readTable(el));
@@ -290,7 +291,8 @@ class DocxReader {
           break;
         case 'br':
         case 'cr':
-          out.push({ text: '\n', ...fmt });
+          // A page break is marked with a form feed; the paragraph is split there.
+          out.push({ text: attr(el, 'type') === 'page' ? '\f' : '\n', ...fmt });
           break;
         case 'noBreakHyphen':
           out.push({ text: '‑', ...fmt });
@@ -354,6 +356,39 @@ class DocxReader {
     }
     return { type: 'table', rows };
   }
+}
+
+/**
+ * Split a paragraph at its page breaks (`\f`, from `<w:br w:type="page"/>`) and
+ * honour `w:pageBreakBefore` (DOC-021).
+ */
+function withPageBreaks(block: Block, p: Element): Block[] {
+  const pPr = child(p, 'pPr');
+  const before = pPr && child(pPr, 'pageBreakBefore') && onOff(child(pPr, 'pageBreakBefore')) !== false ? [PAGE_BREAK] : [];
+  if (block.type !== 'paragraph' || !block.runs.some((r) => 'text' in r && r.text.includes('\f'))) return [...before, block];
+  const out: Block[] = [...before];
+  let runs: Run[] = [];
+  const emit = (): void => {
+    const normalized = normalizeRuns(runs);
+    if (normalized.length || out.length === 0) out.push({ ...block, runs: normalized });
+    runs = [];
+  };
+  for (const run of block.runs) {
+    if (!('text' in run) || !run.text.includes('\f')) {
+      runs.push(run);
+      continue;
+    }
+    run.text.split('\f').forEach((part, i) => {
+      if (i > 0) {
+        emit();
+        out.push({ ...PAGE_BREAK });
+      }
+      if (part) runs.push({ ...run, text: part });
+    });
+  }
+  emit();
+  // A paragraph holding only a page break is just the break.
+  return out.filter((b, i) => !(b.type === 'paragraph' && !b.runs.length && (out[i - 1]?.type === 'rule' || out[i + 1]?.type === 'rule')));
 }
 
 /** Word's highlight colour names. */

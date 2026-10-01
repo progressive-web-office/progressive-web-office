@@ -432,6 +432,18 @@ class Builder {
   private command(node: Extract<Node, { k: 'cmd' }>, fmt: TextFormat, ctx: Ctx): { fmt?: TextFormat; ctx?: Ctx } | void {
     const { name, args } = node;
     const arg = (i: number, f: TextFormat = fmt): void => this.walk(parse(args[i] ?? ''), f, ctx);
+    if (name === 'newpage' || name === 'clearpage' || name === 'pagebreak') {
+      // DOC-021: page breaks between paragraphs.
+      this.flush();
+      if (this.blocks.length) this.blocks.push({ type: 'rule', page: true });
+      return;
+    }
+    if (name === 'hrule' || (name === 'rule' && /\\(?:line|text)width/.test(args[0] ?? ''))) {
+      // A full-width rule is a horizontal line.
+      this.flush();
+      this.blocks.push({ type: 'rule' });
+      return;
+    }
     if (HEADING_LEVEL[name]) {
       this.flush();
       const runs = normalizeRuns(this.inlineRuns(args[0] ?? '').map((r) => ('text' in r ? { ...r, text: r.text.replace(/\n/g, ' ') } : r)));

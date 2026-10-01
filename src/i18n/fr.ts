@@ -600,4 +600,5 @@ export const fr: Record<MessageKey, string> = {
   'fmt.noHighlight': 'Pas de surlignage',
   'fmt.automatic': 'Couleur automatique',
   'fmt.clear': 'Effacer la mise en forme',
+  'doc.pageBreak': 'Saut de page',
 };
