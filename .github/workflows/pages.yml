@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+# Publishes the application at https://<owner>.github.io/<repo>/
+# and the documentation at https://<owner>.github.io/<repo>/docs/
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build application
+        run: npm run build
+      - name: Build documentation (+ llms.txt)
+        env:
+          DOCS_BASE: /${{ github.event.repository.name }}/docs/
+          DOCS_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/docs
+        run: npm run docs:build
+      - name: Assemble site
+        run: |
+          cp -r docs/.vitepress/dist dist/docs
+          touch dist/.nojekyll
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

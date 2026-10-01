@@ -1,0 +1,94 @@
+/** Editor views: one per document kind, loaded lazily to keep startup fast. */
+import type { AgentTool } from '../ai/tools';
+import type { PrintSettings } from '../print/settings';
+import { t } from '../i18n';
+import type { DocumentFormat, DocumentKind } from '../core/format';
+
+export interface EditorView {
+  /** Root element mounted by the shell. */
+  readonly element: HTMLElement;
+  /** Serialise the current content (undefined for read-only views). */
+  save?(format: DocumentFormat): Uint8Array | Promise<Uint8Array>;
+  /** Short status text (word count, selection...). */
+  status?(): string;
+  /** Called by the shell once the element is in the DOM. */
+  mounted?(): void;
+  focus?(): void;
+  /** Optional print hook (default: window.print()). */
+  print?(): void;
+  /** Printable content for the print preview (PRINT-001). */
+  printContent?(settings: PrintSettings): HTMLElement | Promise<HTMLElement>;
+  /** Tools for AI agents working on this document (AI-001, AI-006). */
+  agentTools?(): AgentTool[];
+  destroy(): void;
+}
+
+export interface ViewContext {
+  /** Notify the shell that content changed (sets the modified flag). */
+  changed(): void;
+  /** Ask the shell to refresh the status bar. */
+  statusChanged(): void;
+  /** Ask the user to pick one option; resolves to null when cancelled. */
+  choose(title: string, message: string, options: string[], preselected: string): Promise<string | null>;
+}
+
+/** Create a view for existing file bytes. */
+export async function openView(
+  format: DocumentFormat,
+  bytes: Uint8Array,
+  ctx: ViewContext,
+  fileName = 'document',
+): Promise<EditorView> {
+  switch (format) {
+    case 'docx':
+    case 'odt':
+    case 'md':
+    case 'mdz':
+    case 'tex':
+    case 'texzip': {
+      const [{ DocumentEditor }, { readDocument }] = await Promise.all([import('../document/editor'), import('../document/io')]);
+      const doc = await readDocument(format, bytes, {
+        chooseEntry: (candidates, preselected) =>
+          ctx.choose(t('mdz.chooseTitle'), t('mdz.chooseMessage'), candidates, preselected),
+      });
+      return new DocumentEditor(doc, ctx);
+    }
+    case 'xlsx':
+    case 'ods':
+    case 'csv': {
+      const [{ SheetEditor }, { readWorkbook }] = await Promise.all([import('../sheet/grid'), import('../sheet/io')]);
+      return new SheetEditor(readWorkbook(format, bytes, fileName), ctx, format);
+    }
+    case 'pptx':
+    case 'odp': {
+      const [{ SlideEditor }, { readPresentation }] = await Promise.all([import('../slides/editor'), import('../slides/io')]);
+      return new SlideEditor(readPresentation(format, bytes), ctx, format);
+    }
+    case 'pdf': {
+      const { createPdfViewer } = await import('../pdf/viewer');
+      return createPdfViewer(bytes, ctx);
+    }
+    default:
+      throw new Error(`Editing ${format} files is not available yet.`);
+  }
+}
+
+/** Create a view for a new, empty document of the given kind. */
+export async function newView(kind: DocumentKind, ctx: ViewContext): Promise<EditorView> {
+  switch (kind) {
+    case 'document': {
+      const [{ DocumentEditor }, { emptyDocument }] = await Promise.all([import('../document/editor'), import('../document/model')]);
+      return new DocumentEditor(emptyDocument(), ctx);
+    }
+    case 'spreadsheet': {
+      const [{ SheetEditor }, { newWorkbook }] = await Promise.all([import('../sheet/grid'), import('../sheet/model')]);
+      return new SheetEditor(newWorkbook(), ctx, 'xlsx');
+    }
+    case 'presentation': {
+      const [{ SlideEditor }, { emptyPresentation }] = await Promise.all([import('../slides/editor'), import('../slides/model')]);
+      return new SlideEditor(emptyPresentation(), ctx, 'pptx');
+    }
+    default:
+      throw new Error(`Creating a ${kind} is not available yet.`);
+  }
+}

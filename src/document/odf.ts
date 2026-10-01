@@ -1,0 +1,121 @@
+/** Shared OpenDocument helpers: namespaces, lengths, manifest and meta. */
+import { escapeXml as esc, parseXml } from '../core/xml';
+import { readZipText, type ZipEntries } from '../core/zip';
+
+export const ODF_NS = {
+  office: 'urn:oasis:names:tc:opendocument:xmlns:office:1.0',
+  style: 'urn:oasis:names:tc:opendocument:xmlns:style:1.0',
+  text: 'urn:oasis:names:tc:opendocument:xmlns:text:1.0',
+  table: 'urn:oasis:names:tc:opendocument:xmlns:table:1.0',
+  draw: 'urn:oasis:names:tc:opendocument:xmlns:drawing:1.0',
+  fo: 'urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0',
+  xlink: 'http://www.w3.org/1999/xlink',
+  dc: 'http://purl.org/dc/elements/1.1/',
+  meta: 'urn:oasis:names:tc:opendocument:xmlns:meta:1.0',
+  number: 'urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0',
+  presentation: 'urn:oasis:names:tc:opendocument:xmlns:presentation:1.0',
+  svg: 'urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0',
+  of: 'urn:oasis:names:tc:opendocument:xmlns:of:1.2',
+  manifest: 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0',
+  loext: 'urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0',
+};
+
+/** All namespace declarations, for root elements. */
+export const ODF_XMLNS = Object.entries(ODF_NS)
+  .filter(([k]) => k !== 'manifest')
+  .map(([k, v]) => `xmlns:${k}="${v}"`)
+  .join(' ');
+
+/** Convert an ODF length (`2.54cm`, `1in`, `12pt`...) to CSS pixels. */
+export function lengthToPx(value: string | null | undefined): number | undefined {
+  if (!value) return undefined;
+  const m = /^(-?[\d.]+)\s*(cm|mm|in|pt|pc|px)?$/.exec(value.trim());
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  switch (m[2]) {
+    case 'cm':
+      return (n * 96) / 2.54;
+    case 'mm':
+      return (n * 96) / 25.4;
+    case 'in':
+      return n * 96;
+    case 'pt':
+      return (n * 96) / 72;
+    case 'pc':
+      return n * 16;
+    default:
+      return n;
+  }
+}
+
+/** Pixels to an ODF length in inches. */
+export const pxToIn = (px: number): string => `${(px / 96).toFixed(4)}in`;
+
+export function manifestXml(mimetype: string, files: { path: string; mediaType: string }[]): string {
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    `<manifest:manifest xmlns:manifest="${ODF_NS.manifest}" manifest:version="1.3">` +
+    `<manifest:file-entry manifest:full-path="/" manifest:version="1.3" manifest:media-type="${mimetype}"/>` +
+    files.map((f) => `<manifest:file-entry manifest:full-path="${esc(f.path)}" manifest:media-type="${esc(f.mediaType)}"/>`).join('') +
+    '</manifest:manifest>'
+  );
+}
+
+export function metaXml(meta: { title?: string; author?: string }): string {
+  const now = new Date().toISOString().replace(/\.\d+Z$/, '');
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    `<office:document-meta ${ODF_XMLNS} office:version="1.3"><office:meta>` +
+    '<meta:generator>ProgressiveWebOffice</meta:generator>' +
+    (meta.title ? `<dc:title>${esc(meta.title)}</dc:title>` : '') +
+    (meta.author ? `<meta:initial-creator>${esc(meta.author)}</meta:initial-creator><dc:creator>${esc(meta.author)}</dc:creator>` : '') +
+    `<meta:creation-date>${now}</meta:creation-date><dc:date>${now}</dc:date>` +
+    '</office:meta></office:document-meta>'
+  );
+}
+
+export function readOdfMeta(zip: ZipEntries): { title?: string; author?: string; date?: string } {
+  const text = readZipText(zip, 'meta.xml');
+  if (!text) return {};
+  const doc = parseXml(text);
+  const get = (ns: string, name: string): string | undefined => doc.getElementsByTagNameNS(ns, name)[0]?.textContent?.trim() || undefined;
+  const out: { title?: string; author?: string; date?: string } = {};
+  const title = get(ODF_NS.dc, 'title');
+  const author = get(ODF_NS.meta, 'initial-creator') ?? get(ODF_NS.dc, 'creator');
+  const date = get(ODF_NS.meta, 'creation-date');
+  if (title) out.title = title;
+  if (author) out.author = author;
+  if (date) out.date = date;
+  return out;
+}
+
+/** Encode text for ODF content: spaces runs, tabs and line breaks. */
+export function odfText(text: string, atStart: boolean): string {
+  let out = '';
+  let i = 0;
+  let prevSpace = atStart;
+  while (i < text.length) {
+    const ch = text[i]!;
+    if (ch === '\t') {
+      out += '<text:tab/>';
+      prevSpace = false;
+    } else if (ch === '\n') {
+      out += '<text:line-break/>';
+      prevSpace = true;
+    } else if (ch === ' ') {
+      let n = 0;
+      while (text[i + n] === ' ') n++;
+      if (prevSpace) out += n === 1 ? '<text:s/>' : `<text:s text:c="${n}"/>`;
+      else out += ' ' + (n > 1 ? (n === 2 ? '<text:s/>' : `<text:s text:c="${n - 1}"/>`) : '');
+      i += n;
+      prevSpace = false;
+      continue;
+    } else {
+      out += esc(ch);
+      prevSpace = false;
+    }
+    i++;
+  }
+  // A trailing space would be dropped by consumers that trim paragraphs.
+  return out.replace(/ $/, '<text:s/>');
+}

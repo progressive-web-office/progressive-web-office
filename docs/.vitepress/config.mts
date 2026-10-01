@@ -1,0 +1,52 @@
+import { defineConfig } from 'vitepress';
+
+export default defineConfig({
+  title: 'Progressive Web Office (PWO)',
+  description: 'A simple office suite that runs entirely in your browser.',
+  base: process.env.DOCS_BASE ?? '/',
+  cleanUrls: true,
+  lastUpdated: false,
+  themeConfig: {
+    nav: [
+      { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Formats', link: '/formats/' },
+      { text: 'Requirements', link: '/requirements' },
+      { text: 'Development', link: '/development' },
+    ],
+    sidebar: [
+      {
+        text: 'User guide',
+        items: [
+          { text: 'Getting started', link: '/guide/getting-started' },
+          { text: 'Text documents', link: '/guide/documents' },
+          { text: 'Equations', link: '/guide/equations' },
+          { text: 'LaTeX', link: '/guide/latex' },
+          { text: 'Spreadsheets', link: '/guide/spreadsheets' },
+          { text: 'Presentations', link: '/guide/presentations' },
+          { text: 'PDF', link: '/guide/pdf' },
+          { text: 'Printing', link: '/guide/printing' },
+          { text: 'Git repositories', link: '/guide/git' },
+          { text: 'Sending to another device', link: '/guide/sharing' },
+          { text: 'AI assistant', link: '/guide/assistant' },
+        ],
+      },
+      {
+        text: 'Formats',
+        items: [
+          { text: 'Supported formats', link: '/formats/' },
+          { text: 'MDZ packages', link: '/formats/mdz' },
+        ],
+      },
+      {
+        text: 'Project',
+        items: [
+          { text: 'Requirements', link: '/requirements' },
+          { text: 'Development', link: '/development' },
+          { text: 'Architecture', link: '/architecture' },
+        ],
+      },
+    ],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/s-celles/progressive-web-office' }],
+    search: { provider: 'local' },
+  },
+});

@@ -1,0 +1,293 @@
+/** OpenDocument Text (.odt) writer (DOC-007). */
+import { escapeXml as esc } from '../core/xml';
+import { writeZip, type ZipEntryInput } from '../core/zip';
+import { imageSize } from '../core/image-size';
+import { MIME_TYPES } from '../core/format';
+import {
+  extensionForType,
+  groupBlocks,
+  isImageRun,
+  isMathRun,
+  nestLists,
+  splitListSegments,
+  type Block,
+  type ListNode,
+  type Paragraph,
+  type RichDocument,
+  type Run,
+  type TableCell,
+  type TextRun,
+  type WriteOptions,
+} from './model';
+import { MATHML_NS } from '../math/convert';
+import { manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from './odf';
+
+const PARA_STYLE: Record<string, string> = {
+  normal: 'Standard',
+  quote: 'Quotations',
+  code: 'Preformatted_20_Text',
+};
+
+class OdtWriter {
+  private autoStyles = new Map<string, string>();
+  private listStyles: string[] = [];
+  private pictures = new Map<string, string>();
+  private tableCount = 0;
+  private frameCount = 0;
+  private formulas: { dir: string; xml: string }[] = [];
+
+  constructor(
+    private readonly doc: RichDocument,
+    private readonly opts: WriteOptions = {},
+  ) {}
+
+  write(): Uint8Array {
+    const body = this.blocks(this.doc.blocks);
+    const content =
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      `<office:document-content ${ODF_XMLNS} office:version="1.3">` +
+      `<office:automatic-styles>${[...this.autoStyles.values()].join('')}${this.listStyles.join('')}` +
+      '<style:style style:name="fr1" style:family="graphic" style:parent-style-name="Graphics"/>' +
+      '<style:style style:name="frMath" style:family="graphic"><style:graphic-properties style:vertical-pos="middle" style:vertical-rel="text" draw:ole-draw-aspect="1"/></style:style>' +
+      TABLE_STYLES +
+      '</office:automatic-styles>' +
+      `<office:body><office:text>${body}</office:text></office:body></office:document-content>`;
+
+    const files: ZipEntryInput[] = [];
+    const manifest: { path: string; mediaType: string }[] = [
+      { path: 'content.xml', mediaType: 'text/xml' },
+      { path: 'styles.xml', mediaType: 'text/xml' },
+      { path: 'meta.xml', mediaType: 'text/xml' },
+    ];
+    for (const f of this.formulas) {
+      files.push({ path: `${f.dir}/content.xml`, data: f.xml });
+      manifest.push({ path: `${f.dir}/`, mediaType: 'application/vnd.oasis.opendocument.formula' }, { path: `${f.dir}/content.xml`, mediaType: 'text/xml' });
+    }
+    for (const [key, path] of this.pictures) {
+      const res = this.doc.resources.get(key)!;
+      files.push({ path, data: res.data, store: true });
+      manifest.push({ path, mediaType: res.mediaType });
+    }
+    return writeZip([
+      { path: 'mimetype', data: MIME_TYPES.odt, store: true },
+      { path: 'META-INF/manifest.xml', data: manifestXml(MIME_TYPES.odt, manifest) },
+      { path: 'content.xml', data: content },
+      { path: 'styles.xml', data: STYLES_XML },
+      { path: 'meta.xml', data: metaXml(this.doc.meta) },
+      ...files,
+    ]);
+  }
+
+  /** Automatic paragraph style for alignment on top of a common style. */
+  private paraStyle(common: string, align?: string): string {
+    if (!align || align === 'left') return common;
+    const name = `P_${common}_${align}`;
+    if (!this.autoStyles.has(name)) {
+      const fo = align === 'right' ? 'end' : align;
+      this.autoStyles.set(
+        name,
+        `<style:style style:name="${name}" style:family="paragraph" style:parent-style-name="${common}"><style:paragraph-properties fo:text-align="${fo}"/></style:style>`,
+      );
+    }
+    return name;
+  }
+
+  private textStyle(run: TextRun): string | undefined {
+    const flags = `${run.bold ? 'b' : ''}${run.italic ? 'i' : ''}${run.underline ? 'u' : ''}${run.strike ? 's' : ''}`;
+    if (!flags) return undefined;
+    const name = `T_${flags}`;
+    if (!this.autoStyles.has(name)) {
+      this.autoStyles.set(
+        name,
+        `<style:style style:name="${name}" style:family="text"><style:text-properties` +
+          (run.bold ? ' fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"' : '') +
+          (run.italic ? ' fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic"' : '') +
+          (run.underline ? ' style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"' : '') +
+          (run.strike ? ' style:text-line-through-style="solid" style:text-line-through-type="single"' : '') +
+          '/></style:style>',
+      );
+    }
+    return name;
+  }
+
+  private blocks(blocks: Block[]): string {
+    let out = '';
+    for (const group of groupBlocks(blocks)) {
+      if (group.type === 'list') {
+        for (const segment of splitListSegments(group.items)) {
+          for (const list of nestLists(segment)) out += this.list(list, this.listStyle(segment), true);
+        }
+      } else if (group.type === 'paragraph') {
+        out += this.paragraph(group);
+      } else if (group.type === 'table') {
+        out += this.table(group.rows);
+      } else {
+        out += '<text:p text:style-name="Horizontal_20_Line"/>';
+      }
+    }
+    return out;
+  }
+
+  private listStyle(items: Paragraph[]): string {
+    const ordered: boolean[] = [];
+    for (const p of items) {
+      const lvl = Math.min(9, p.list?.level ?? 0);
+      if (ordered[lvl] === undefined) ordered[lvl] = !!p.list?.ordered;
+    }
+    const name = `L${this.listStyles.length + 1}`;
+    let levels = '';
+    for (let i = 0; i < 10; i++) {
+      const isOrdered = ordered[i] ?? false;
+      const props =
+        '<style:list-level-properties text:list-level-position-and-space-mode="label-alignment">' +
+        `<style:list-level-label-alignment text:label-followed-by="listtab" fo:text-indent="-0.25in" fo:margin-left="${((i + 1) * 0.5).toFixed(2)}in"/>` +
+        '</style:list-level-properties>';
+      levels += isOrdered
+        ? `<text:list-level-style-number text:level="${i + 1}" style:num-suffix="." style:num-format="1">${props}</text:list-level-style-number>`
+        : `<text:list-level-style-bullet text:level="${i + 1}" text:bullet-char="${['•', '◦', '▪'][i % 3]}">${props}</text:list-level-style-bullet>`;
+    }
+    this.listStyles.push(`<text:list-style style:name="${name}">${levels}</text:list-style>`);
+    return name;
+  }
+
+  private list(list: ListNode, styleName: string, top: boolean): string {
+    let out = top ? `<text:list text:style-name="${styleName}">` : '<text:list>';
+    for (const item of list.items) {
+      out += '<text:list-item>';
+      if (item.paragraph) out += this.paragraph(item.paragraph);
+      for (const c of item.children) out += this.list(c, styleName, false);
+      out += '</text:list-item>';
+    }
+    return `${out}</text:list>`;
+  }
+
+  private paragraph(p: Paragraph): string {
+    const runs = this.runs(p.runs);
+    const heading = /^h(\d)$/.exec(p.style);
+    if (heading) {
+      const style = this.paraStyle(`Heading_20_${heading[1]}`, p.align);
+      return `<text:h text:style-name="${style}" text:outline-level="${heading[1]}">${runs}</text:h>`;
+    }
+    const style = this.paraStyle(PARA_STYLE[p.style] ?? 'Standard', p.align);
+    return `<text:p text:style-name="${style}">${runs}</text:p>`;
+  }
+
+  private runs(runs: Run[]): string {
+    let out = '';
+    let atStart = true;
+    for (const run of runs) {
+      if (isImageRun(run)) {
+        out += this.image(run.image, run.alt, run.width, run.height);
+        atStart = false;
+        continue;
+      }
+      if (isMathRun(run)) {
+        out += this.formula(run.math, !!run.display);
+        atStart = false;
+        continue;
+      }
+      let xml = odfText(run.text, atStart);
+      atStart = run.text.endsWith('\n');
+      const style = this.textStyle(run);
+      if (style) xml = `<text:span text:style-name="${style}">${xml}</text:span>`;
+      if (run.code) xml = `<text:span text:style-name="Source_20_Text">${xml}</text:span>`;
+      if (run.link) xml = `<text:a xlink:type="simple" xlink:href="${esc(run.link)}">${xml}</text:a>`;
+      out += xml;
+    }
+    return out;
+  }
+
+  private image(key: string, alt: string | undefined, width?: number, height?: number): string {
+    const res = this.doc.resources.get(key);
+    if (!res) return '';
+    let path = this.pictures.get(key);
+    if (!path) {
+      path = `Pictures/${key}.${extensionForType(res.mediaType)}`;
+      this.pictures.set(key, path);
+    }
+    const natural = imageSize(res.data) ?? { width: 300, height: 200 };
+    const w = width ?? natural.width;
+    const h = height ?? (width ? (natural.height * width) / natural.width : natural.height);
+    const n = ++this.frameCount;
+    return (
+      `<draw:frame draw:style-name="fr1" draw:name="Image${n}" text:anchor-type="as-char" svg:width="${pxToIn(w)}" svg:height="${pxToIn(h)}" draw:z-index="0">` +
+      `<draw:image xlink:href="${path}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad" draw:mime-type="${esc(res.mediaType)}"/>` +
+      (alt ? `<svg:desc>${esc(alt)}</svg:desc>` : '') +
+      '</draw:frame>'
+    );
+  }
+
+  /** Embed an equation as a MathML formula object (MATH-004). */
+  private formula(latex: string, display: boolean): string {
+    const mathml = this.opts.mathml?.get(latex);
+    if (!mathml) return odfText(display ? `$$${latex}$$` : `$${latex}$`, false);
+    const dir = `Formula${this.formulas.length + 1}`;
+    this.formulas.push({
+      dir,
+      xml:
+        '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        `<math xmlns="${MATHML_NS}" display="${display ? 'block' : 'inline'}"><semantics><mrow>${mathml}</mrow>` +
+        `<annotation encoding="application/x-tex">${esc(latex)}</annotation></semantics></math>`,
+    });
+    return (
+      `<draw:frame draw:style-name="frMath" draw:name="${dir}" text:anchor-type="as-char" draw:z-index="0">` +
+      `<draw:object xlink:href="./${dir}" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"/>` +
+      `<svg:desc>${esc(latex)}</svg:desc></draw:frame>`
+    );
+  }
+
+  private table(rows: TableCell[][]): string {
+    const cols = Math.max(1, ...rows.map((r) => r.length));
+    const name = `Table${++this.tableCount}`;
+    let out = `<table:table table:name="${name}" table:style-name="Table"><table:table-column table:style-name="TableColumn" table:number-columns-repeated="${cols}"/>`;
+    for (const row of rows) {
+      out += '<table:table-row>';
+      for (let c = 0; c < cols; c++) {
+        const paras = row[c]?.blocks ?? [];
+        const inner = paras.map((p) => this.paragraph(p)).join('') || '<text:p text:style-name="Standard"/>';
+        out += `<table:table-cell table:style-name="TableCell" office:value-type="string">${inner}</table:table-cell>`;
+      }
+      out += '</table:table-row>';
+    }
+    return `${out}</table:table>`;
+  }
+}
+
+const TABLE_STYLES =
+  '<style:style style:name="Table" style:family="table"><style:table-properties style:width="6.5in" table:align="margins"/></style:style>' +
+  '<style:style style:name="TableColumn" style:family="table-column"/>' +
+  '<style:style style:name="TableCell" style:family="table-cell"><style:table-cell-properties fo:padding="0.04in" fo:border="0.5pt solid #000000"/></style:style>';
+
+const heading = (n: number, size: string): string =>
+  `<style:style style:name="Heading_20_${n}" style:display-name="Heading ${n}" style:family="paragraph" style:parent-style-name="Heading" style:next-style-name="Standard" style:default-outline-level="${n}" style:class="text">` +
+  `<style:text-properties fo:font-size="${size}" fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/></style:style>`;
+
+const STYLES_XML =
+  '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  `<office:document-styles ${ODF_XMLNS} office:version="1.3">` +
+  '<office:font-face-decls><style:font-face style:name="Liberation Mono" svg:font-family="\'Liberation Mono\'" style:font-family-generic="modern" style:font-pitch="fixed"/></office:font-face-decls>' +
+  '<office:styles>' +
+  '<style:default-style style:family="paragraph"><style:paragraph-properties fo:margin-bottom="0.0835in"/><style:text-properties fo:font-size="11pt"/></style:default-style>' +
+  '<style:style style:name="Standard" style:family="paragraph" style:class="text"/>' +
+  '<style:style style:name="Heading" style:family="paragraph" style:parent-style-name="Standard" style:next-style-name="Standard" style:class="text"><style:paragraph-properties fo:margin-top="0.1665in" fo:margin-bottom="0.0835in" fo:keep-with-next="always"/></style:style>' +
+  heading(1, '20pt') +
+  heading(2, '16pt') +
+  heading(3, '14pt') +
+  heading(4, '12pt') +
+  heading(5, '11pt') +
+  heading(6, '11pt') +
+  '<style:style style:name="Quotations" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-left="0.3937in" fo:margin-right="0.3937in"/><style:text-properties fo:font-style="italic"/></style:style>' +
+  '<style:style style:name="Preformatted_20_Text" style:display-name="Preformatted Text" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-bottom="0in"/><style:text-properties style:font-name="Liberation Mono" fo:font-size="10pt"/></style:style>' +
+  '<style:style style:name="Horizontal_20_Line" style:display-name="Horizontal Line" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:border-bottom="0.0138in double #808080" fo:padding="0in"/><style:text-properties fo:font-size="6pt"/></style:style>' +
+  '<style:style style:name="Source_20_Text" style:display-name="Source Text" style:family="text"><style:text-properties style:font-name="Liberation Mono"/></style:style>' +
+  '<style:style style:name="Graphics" style:family="graphic"><style:graphic-properties text:anchor-type="as-char" style:vertical-pos="top" style:vertical-rel="baseline"/></style:style>' +
+  '</office:styles>' +
+  '<office:automatic-styles>' +
+  '<style:page-layout style:name="pm1"><style:page-layout-properties fo:page-width="8.2681in" fo:page-height="11.6929in" fo:margin-top="0.7874in" fo:margin-bottom="0.7874in" fo:margin-left="0.7874in" fo:margin-right="0.7874in"/></style:page-layout>' +
+  '</office:automatic-styles>' +
+  '<office:master-styles><style:master-page style:name="Standard" style:page-layout-name="pm1"/></office:master-styles>' +
+  '</office:document-styles>';
+
+export function writeOdt(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
+  return new OdtWriter(doc, opts).write();
+}

@@ -1,0 +1,44 @@
+# Allow-list ("gitallow") pattern: ignore everything, then re-include
+# explicitly what is tracked. New top-level paths must be added here.
+*
+!*/
+
+# Root files
+!/.gitignore
+!/.editorconfig
+!/README.md
+!/CHANGELOG.md
+!/ROADMAP.md
+!/SECURITY.md
+!/CODE_OF_CONDUCT.md
+!/CONTRIBUTING.md
+!/LICENSE.md
+!/upstream-bugs.md
+!/justfile
+!/package.json
+!/package-lock.json
+!/tsconfig.json
+!/vite.config.ts
+!/vitest.config.ts
+!/playwright.config.ts
+!/index.html
+
+# Source trees
+!/src/**
+!/tests/**
+!/e2e/**
+!/public/**
+!/scripts/**
+!/schemas/**
+!/docs/**
+!/.github/**
+
+# Never tracked, even inside allowed trees
+node_modules/
+dist/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+test-results/
+playwright-report/
+coverage/
+.DS_Store
