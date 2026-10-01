@@ -6,6 +6,7 @@ import {
   extensionForType,
   groupBlocks,
   splitListSegments,
+  isCodeCellRun,
   isDiagramRun,
   isImageRun,
   isMathRun,
@@ -18,6 +19,7 @@ import {
   type WriteOptions,
 } from './model';
 import { mathmlToOmml, OMML_NS } from '../math/convert';
+import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { APP_XML, coreXml, EMU_PER_PX, NS, REL } from './ooxml';
 
@@ -172,7 +174,7 @@ class DocxWriter {
 
   private run(run: Run): string {
     if (isImageRun(run)) return this.image(run);
-    if (isDiagramRun(run)) return ''; // replaced by diagramsAsPictures
+    if (isDiagramRun(run) || isCodeCellRun(run)) return ''; // replaced by diagramsAsPictures / cellsAsBlocks
     if (isMathRun(run)) {
       const mathml = this.opts.mathml?.get(run.math);
       if (!mathml) return `<w:r><w:t xml:space="preserve">${esc(run.display ? `$$${run.math}$$` : `$${run.math}$`)}</w:t></w:r>`;
@@ -303,6 +305,6 @@ const STYLES_XML =
   '</w:styles>';
 
 export function writeDocx(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
-  return new DocxWriter(diagramsAsPictures(doc, opts.diagrams), opts).write();
+  return new DocxWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)), opts).write();
 }
 

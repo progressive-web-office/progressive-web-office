@@ -25,6 +25,7 @@ and any ZIP archive of Markdown files.
 | Horizontal rule | ― | |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
 | Diagram | ⧉ (see [Diagrams](./diagrams.md)) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> |
+| Code cell | { } (see [Code cells](./code.md)) | |
 
 The status bar shows the word and character count.
 

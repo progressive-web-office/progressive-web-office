@@ -5,11 +5,12 @@ import type { PrintSettings } from '../print/settings';
 import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import type { EditorView, ViewContext } from '../app/views';
-import { blocksToDom, diagramElement, domToBlocks, isSafeUrl, mathElement, sanitizeHtml } from './html';
+import { blocksToDom, codeCellElement, diagramElement, domToBlocks, isSafeUrl, mathElement, sanitizeHtml } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, collectDiagrams, collectMath, wordCount, type Block, type RichDocument } from './model';
+import { addResource, collectDiagrams, collectMath, isCodeCellRun, wordCount, type Block, type CodeCellRun, type RichDocument } from './model';
+import type { CodeRunner } from '../code/runner';
 
 const STYLES: [string, MessageKey][] = [
   ['p', 'doc.style.normal'],
@@ -35,6 +36,9 @@ export class DocumentEditor implements EditorView {
   private readonly urls = new Map<string, string>();
   private statusTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly onSelection = (): void => this.updateToolbar();
+  private runner: CodeRunner | undefined;
+  /** CODE-004: the user agreed to run this document's code. */
+  private trusted = false;
 
   constructor(
     private readonly doc: RichDocument,
@@ -68,10 +72,103 @@ export class DocumentEditor implements EditorView {
       if (math && this.page.contains(math)) void this.editMath(math);
       const diagram = (e.target as HTMLElement).closest<HTMLElement>('span.diagram');
       if (diagram && this.page.contains(diagram)) void this.editDiagram(diagram);
+      const cell = (e.target as HTMLElement).closest<HTMLElement>('.code-cell');
+      if (cell && this.page.contains(cell)) this.onCellClick(cell, e.target as HTMLElement);
     });
     document.addEventListener('selectionchange', this.onSelection);
     if (collectMath(doc.blocks).length) void this.renderEquations();
     if (collectDiagrams(doc.blocks).length) void this.renderDiagrams();
+    if (this.page.querySelector('.code-cell')) void this.decorateCells();
+  }
+
+  // --- code cells (CODE-001..CODE-005) ----------------------------------------
+
+  private async decorateCells(): Promise<void> {
+    const { decorateCells } = await import('../code/ui');
+    decorateCells(this.page);
+  }
+
+  private onCellClick(cell: HTMLElement, target: HTMLElement): void {
+    const action = target.closest<HTMLElement>('[data-action]')?.dataset.action;
+    if (action === 'run') void this.runCells([cell]);
+    else if (action === 'run-all') void this.runCells(Array.from(this.page.querySelectorAll<HTMLElement>('.code-cell')));
+    else if (action === 'stop') this.runner?.stop();
+    else if (action === 'edit' || target.closest('.code-cell-source')) void this.editCell(cell);
+  }
+
+  private cellRun(cell: HTMLElement): CodeCellRun | undefined {
+    const p = document.createElement('p');
+    p.append(cell.cloneNode(true));
+    const run = (domToBlocks(p, (img) => this.lookup(img))[0] as { runs?: unknown[] } | undefined)?.runs?.[0];
+    return run && isCodeCellRun(run as CodeCellRun) ? (run as CodeCellRun) : undefined;
+  }
+
+  private replaceCell(cell: HTMLElement, run: CodeCellRun): HTMLElement {
+    const el = codeCellElement(run, document, (key) => this.resolve(key));
+    cell.replaceWith(el);
+    return el;
+  }
+
+  /** Insert a new cell on its own line after the caret's block, or edit an existing one (CODE-001). */
+  private async editCell(existing?: HTMLElement): Promise<void> {
+    const sel = document.getSelection();
+    let anchor: Node | null = !existing && sel?.rangeCount && this.page.contains(sel.anchorNode) ? sel.anchorNode : null;
+    while (anchor && anchor.parentNode !== this.page) anchor = anchor.parentNode;
+    const current = existing ? this.cellRun(existing) : undefined;
+    const { editCell, decorateCells } = await import('../code/ui');
+    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : undefined);
+    if (!value) return;
+    // Changing the code makes the previous output stale.
+    const unchanged = current && current.cell === value.code && current.lang === value.lang;
+    const run: CodeCellRun = { cell: value.code, lang: value.lang, ...(unchanged && current.output ? { output: current.output } : {}) };
+    if (existing) {
+      this.replaceCell(existing, run);
+    } else {
+      const p = document.createElement('p');
+      p.append(codeCellElement(run, document, (key) => this.resolve(key)));
+      const block = anchor as HTMLElement | null;
+      if (block && block.nodeType === Node.ELEMENT_NODE && block.localName === 'p' && !block.textContent?.trim() && !block.querySelector('img, span.math, span.diagram, .code-cell')) block.replaceWith(p);
+      else if (block) block.after(p);
+      else this.page.append(p);
+      if (!p.nextSibling) {
+        const next = document.createElement('p');
+        next.append(document.createElement('br'));
+        p.after(next);
+      }
+    }
+    decorateCells(this.page);
+    this.changed();
+  }
+
+  /** Run cells in order in the sandbox and store their output in the document (CODE-002, CODE-005). */
+  private async runCells(cells: HTMLElement[]): Promise<void> {
+    const ui = await import('../code/ui');
+    if (!this.trusted) {
+      if (!(await ui.confirmRun(this.element))) return;
+      this.trusted = true;
+    }
+    if (!this.runner) {
+      const { CodeRunner } = await import('../code/runner');
+      this.runner = new CodeRunner(this.element);
+    }
+    const runner = this.runner;
+    for (let cell of cells) {
+      const run = this.cellRun(cell);
+      if (!run || !cell.isConnected) continue;
+      cell.classList.add('running');
+      ui.setCellStatus(cell, t('code.queued'));
+      const result = await runner.run(run.lang, run.cell, (status) => {
+        const text = status === 'loading-python' ? t('code.loadingPython') : status === 'running' ? t('code.running') : `${t('code.packages')} ${status.slice('packages:'.length)}`;
+        ui.setCellStatus(cell, text);
+      });
+      const images = result.images.map((png) => addResource(this.doc, png, 'image/png'));
+      const output = { text: result.text, ...(result.error ? { error: true } : {}), ...(images.length ? { images } : {}) };
+      if (!cell.isConnected) continue;
+      cell = this.replaceCell(cell, { ...run, output });
+      this.changed();
+      if (result.error) break; // like a notebook's "run all": stop at the first error
+    }
+    ui.decorateCells(this.page);
   }
 
   private async renderDiagrams(): Promise<void> {
@@ -201,6 +298,7 @@ export class DocumentEditor implements EditorView {
         this.page.replaceChildren(blocksToDom(blocks, document, (key) => this.resolve(key)));
         if (collectMath(blocks).length) void this.renderEquations();
         if (collectDiagrams(blocks).length) void this.renderDiagrams();
+        if (this.page.querySelector('.code-cell')) void this.decorateCells();
         this.changed();
       },
     });
@@ -210,10 +308,12 @@ export class DocumentEditor implements EditorView {
     const root = h('div', { class: 'print-document' });
     for (const node of Array.from(this.page.childNodes)) root.append(node.cloneNode(true));
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');
+    for (const el of Array.from(root.querySelectorAll('.code-cell-bar'))) el.remove();
     return root;
   }
 
   destroy(): void {
+    this.runner?.destroy();
     document.removeEventListener('selectionchange', this.onSelection);
     clearTimeout(this.statusTimer);
     if (typeof URL.revokeObjectURL === 'function') for (const url of this.urls.values()) if (url.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -307,6 +407,7 @@ export class DocumentEditor implements EditorView {
       button(t('common.insertImage'), () => void this.pickImage(), { text: '🖼', title: t('common.insertImage') }),
       button(t('doc.insertTable'), () => this.insertTable(), { text: '▦', title: t('doc.insertTableTitle') }),
       button(t('doc.insertEquation'), () => void this.editMath(), { text: '∑', title: t('doc.insertEquationTitle') }),
+      button(t('doc.insertCode'), () => void this.editCell(), { text: '{ }', title: t('doc.insertCodeTitle') }),
       button(t('doc.insertDiagram'), () => void this.editDiagram(), { text: '⧉', title: t('doc.insertDiagramTitle') }),
       button(t('meta.button'), () => void this.editProperties(), { text: 'ⓘ', title: t('meta.buttonTitle') }),
       button(t('doc.insertRule'), () => {

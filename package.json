@@ -31,7 +31,8 @@
     "markdown-it": "^15.0.2",
     "mathlive": "^0.111.0",
     "mermaid": "^12.0.0",
-    "pdfjs-dist": "^6.3.289"
+    "pdfjs-dist": "^6.3.289",
+    "pyodide": "^314.0.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

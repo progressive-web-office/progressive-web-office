@@ -143,6 +143,21 @@ keyboard. Equations are stored as LaTeX in the document model.
 | DIAG-007 | S | 0.0.14 | When a diagram cannot be rendered while saving, the system shall write its source as text so that no content is lost. |
 | DIAG-008 | C | — | Other diagram languages (PlantUML, Graphviz) and freehand diagrams (draw.io). |
 
+## 4e. Code cells (CODE)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| CODE-001 | M | 0.0.14 | The system shall let the user insert Python or JavaScript code cells in a text document and edit their code. |
+| CODE-002 | M | 0.0.14 | When the user asks to run a cell (or all cells), the system shall run it with Python (Pyodide, served by the application and cached for offline use after its first use) or JavaScript; Python cells of a document shall share one interpreter. |
+| CODE-003 | M | 0.0.14 | The system shall run code only in an isolated sandbox (opaque-origin iframe and worker) that has no network access and no access to the application's page, storage, keys or other documents, and shall let the user stop a running cell at any time. |
+| CODE-004 | M | 0.0.14 | Before the first run in an open document, the system shall explain what running the code implies and ask for confirmation; code shall never run when a document is opened. |
+| CODE-005 | M | 0.0.14 | The system shall keep the last output of each cell (printed text, errors, matplotlib figures) in the document and display it without running the code again; changing the code shall clear the stale output. |
+| CODE-006 | M | 0.0.14 | When a document is saved as Markdown or MDZ, the system shall write each cell as a fenced block with the `{run}` attribute (e.g. ```` ```python {run} ````), followed by its output as a ```` ```text {output} ```` block and its figures as images titled `output`, and read them back. |
+| CODE-007 | S | 0.0.14 | When a document is saved as DOCX, ODT or LaTeX, the system shall write each cell as its code followed by its last output (text and pictures). |
+| CODE-008 | S | 0.0.14 | Where Python code imports packages that are not in the standard library (numpy, matplotlib…), the system shall download them from the Pyodide CDN on first use, verify them against the hashes of the bundled lock file, and cache them for offline use. |
+| CODE-009 | C | — | Other languages (R, Julia…), interactive widgets, and sharing data between cells and the document's tables. |
+| CODE-010 | W | — | Running code automatically when a document is opened. |
+
 ## 5. Spreadsheets (SHEET)
 
 | ID | Pri | Phase | Requirement |

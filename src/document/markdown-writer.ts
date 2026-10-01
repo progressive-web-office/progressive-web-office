@@ -5,6 +5,7 @@ import {
   groupBlocks,
   paragraphText,
   isImageRun,
+  isCodeCellRun,
   isDiagramRun,
   isMathRun,
   isTextRun,
@@ -17,6 +18,7 @@ import {
   type Run,
   type TableCell,
   type TextRun,
+  type CodeCellRun,
 } from './model';
 
 export interface MarkdownWriteOptions {
@@ -116,10 +118,25 @@ class MarkdownWriter {
     const only = p.runs.length === 1 ? p.runs[0] : undefined;
     if (only && isMathRun(only) && only.display) return `$$\n${only.math}\n$$`;
     if (only && isDiagramRun(only)) return fenced(only.diagram, only.lang);
+    if (only && isCodeCellRun(only)) return this.cell(only);
     const heading = /^h(\d)$/.exec(p.style);
     const inline = this.inline(p.runs, true);
     if (heading) return `${'#'.repeat(Number(heading[1]))} ${inline.replace(/\n/g, ' ')}`;
     return inline || '<br>';
+  }
+
+  /** CODE-006: the cell as a `{run}` fence, then its last output and figures. */
+  private cell(run: CodeCellRun): string {
+    const parts = [fenced(run.cell, `${run.lang} {run}`)];
+    const text = run.output?.text.replace(/\n$/, '');
+    if (text) parts.push(fenced(text, `text {output${run.output?.error ? ' error' : ''}}`));
+    const images = (run.output?.images ?? []).filter((key) => this.doc.resources.has(key));
+    if (images.length) parts.push(images.map((key) => `![Output](${this.imageUrl(key).replace(/[()\s]/g, encodeURIComponent)} "output")`).join(' '));
+    return parts.join('\n\n');
+  }
+
+  private imageUrl(key: string): string {
+    return this.opts.imageUrl ? this.opts.imageUrl(key) : this.dataUri(key);
   }
 
   private list(list: ListNode, indent: string): string {
@@ -183,9 +200,9 @@ class MarkdownWriter {
       out += pendingSpace;
       pendingSpace = '';
 
-      if (isDiagramRun(run)) {
-        // Only a diagram alone in its paragraph can be a fence; keep the source visible.
-        out += codeSpan(run.diagram.replace(/\n/g, ' '));
+      if (isDiagramRun(run) || isCodeCellRun(run)) {
+        // Only a diagram or cell alone in its paragraph can be a fence; keep the source visible.
+        out += codeSpan((isDiagramRun(run) ? run.diagram : run.cell).replace(/\n/g, ' '));
         continue;
       }
       if (isMathRun(run)) {

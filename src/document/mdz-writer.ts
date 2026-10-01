@@ -3,12 +3,16 @@ import { writeZip, type ZipEntryInput } from '../core/zip';
 import { writeMarkdown } from './markdown-writer';
 import { assetCategory, MDZ_VERSION, type MdzAsset, type MdzManifest } from './mdz-manifest';
 import type { MdzExtras } from './mdz-reader';
-import { cleanMeta, extensionForType, isImageRun, mediaTypeForName, paragraphText, type Block, type RichDocument } from './model';
+import { cleanMeta, extensionForType, isCodeCellRun, isImageRun, mediaTypeForName, paragraphText, type Block, type RichDocument } from './model';
 
 function* imageRuns(blocks: Block[]): Generator<{ image: string; alt?: string }> {
   for (const b of blocks) {
     if (b.type === 'paragraph') {
-      for (const r of b.runs) if (isImageRun(r) && r.image) yield r;
+      for (const r of b.runs) {
+        if (isImageRun(r) && r.image) yield r;
+        // CODE-006: figures produced by code cells.
+        if (isCodeCellRun(r)) for (const image of r.output?.images ?? []) yield { image, alt: 'Output' };
+      }
     } else if (b.type === 'table') {
       for (const row of b.rows) for (const cell of row) yield* imageRuns(cell.blocks);
     }

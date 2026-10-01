@@ -459,3 +459,28 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
   .diagram-panes { grid-template-columns: 1fr; }
   .diagram-source, .diagram-preview { min-height: 160px; }
 }
+
+/* Code cells (CODE-001) */
+.doc-page .code-cell { display: block; margin: 6pt 0; border: 1px solid #d6dce5; border-radius: 6px; background: #f6f8fa; font-family: ui-monospace, 'Liberation Mono', Consolas, monospace; font-size: 0.9em; overflow: hidden; }
+.doc-page .code-cell.running { border-color: #1f5fbf; }
+.code-cell-bar { display: flex; align-items: center; gap: 4px; padding: 2px 6px; background: #eaeef3; border-bottom: 1px solid #d6dce5; font-family: system-ui, sans-serif; font-size: 0.8rem; user-select: none; }
+.code-cell-lang { flex: 1; color: #5a6577; font-weight: 600; }
+.code-cell-bar button { min-width: 28px; padding: 1px 6px; border: 1px solid transparent; border-radius: 4px; background: none; color: #1c2430; cursor: pointer; }
+.code-cell-bar button:hover, .code-cell-bar button:focus-visible { border-color: #b8c2d0; background: #fff; }
+.code-cell-bar .code-cell-stop { display: none; }
+.code-cell.running .code-cell-stop { display: inline-block; color: #b3261e; }
+.code-cell-source { display: block; padding: 6px 10px; white-space: pre-wrap; cursor: text; color: #1c2430; }
+.code-cell-output { display: block; padding: 6px 10px; border-top: 1px dashed #d6dce5; background: #fff; white-space: pre-wrap; color: #1c2430; }
+.code-cell-output:empty { display: none; }
+.code-cell-output.error { color: #b3261e; background: #fdf3f2; }
+.code-cell-output.pending { color: #5a6577; font-style: italic; }
+.code-cell-figures { display: block; padding: 6px 10px; background: #fff; text-align: center; }
+.code-cell-figures img { max-width: 100%; height: auto; }
+.print-document .code-cell { display: block; margin: 6pt 0; border: 1px solid #bbb; break-inside: avoid; font-family: 'Liberation Mono', Consolas, monospace; font-size: 9.5pt; }
+.print-document .code-cell-source, .print-document .code-cell-output, .print-document .code-cell-figures { display: block; padding: 4px 8px; white-space: pre-wrap; }
+.print-document .code-cell-source { background: #f3f3f3; }
+.print-document .code-cell-figures img { max-width: 100%; height: auto; }
+.code-dialog { width: min(820px, calc(100vw - 32px)); max-width: none; }
+.code-source { display: block; width: 100%; min-height: 240px; margin: 8px 0; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.9rem; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); tab-size: 4; }
+.code-lang-label { display: inline-flex; gap: 8px; align-items: center; }
+iframe.code-sandbox { display: none; }

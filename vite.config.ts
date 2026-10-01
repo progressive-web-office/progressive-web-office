@@ -1,12 +1,18 @@
+import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { SANDBOX_BOOTSTRAP } from './src/code/sandbox-html.ts';
+
+/** Hash of the code sandbox bootstrap, the only inline script the policy allows (CODE-003). */
+const SANDBOX_HASH = `'sha256-${createHash('sha256').update(SANDBOX_BOOTSTRAP).digest('base64')}'`;
 
 /** Content-Security-Policy injected in production builds only (PLT-008). */
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval'",
+  // blob: and the bootstrap hash are for the code sandbox, whose own policy is stricter (CODE-003).
+  `script-src 'self' 'wasm-unsafe-eval' blob: ${SANDBOX_HASH}`,
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
@@ -54,6 +60,27 @@ const pdfjsAssets = (): Plugin => ({
   },
 });
 
+/**
+ * Serve (dev) and emit (build) the Python runtime under `pyodide/` (CODE-002).
+ * It is cached by the service worker on first use rather than precached.
+ */
+const PYODIDE_FILES = ['pyodide.mjs', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'];
+const pyodideRoot = resolve(import.meta.dirname, 'node_modules/pyodide');
+const pyodideAssets = (): Plugin => ({
+  name: 'pyodide-assets',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const m = /^\/pyodide\/([^/?]+)/.exec(req.url ?? '');
+      if (!m || !PYODIDE_FILES.includes(m[1]!)) return next();
+      if (m[1]!.endsWith('.wasm')) res.setHeader('Content-Type', 'application/wasm');
+      createReadStream(join(pyodideRoot, m[1]!)).pipe(res);
+    });
+  },
+  generateBundle() {
+    for (const name of PYODIDE_FILES) this.emitFile({ type: 'asset', fileName: `pyodide/${name}`, source: readFileSync(join(pyodideRoot, name)) });
+  },
+});
+
 const fileTypes = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
   'application/vnd.oasis.opendocument.text': ['.odt'],
@@ -75,6 +102,7 @@ export default defineConfig({
   plugins: [
     csp(),
     pdfjsAssets(),
+    pyodideAssets(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
@@ -112,6 +140,20 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,wasm,bcmap,pfb,ttf}'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // The Python runtime (~13 MB) is cached on first use instead (CODE-002).
+        globIgnores: ['pyodide/**'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.includes('/pyodide/') && url.origin === self.location.origin,
+            handler: 'CacheFirst',
+            options: { cacheName: 'pyodide-runtime', expiration: { maxEntries: 16 } },
+          },
+          {
+            urlPattern: ({ url }) => url.href.startsWith('https://cdn.jsdelivr.net/pyodide/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'pyodide-packages', expiration: { maxEntries: 200 }, cacheableResponse: { statuses: [200] } },
+          },
+        ],
         navigateFallback: 'index.html',
         // The documentation is published under /docs/ on the same origin.
         navigateFallbackDenylist: [/\/docs(\/|$)/],

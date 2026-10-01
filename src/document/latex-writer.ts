@@ -3,6 +3,7 @@ import {
   cleanMeta,
   extensionForType,
   groupBlocks,
+  isCodeCellRun,
   isDiagramRun,
   isImageRun,
   isMathRun,
@@ -17,6 +18,7 @@ import {
   type TableCell,
   type WriteOptions,
 } from './model';
+import { cellsAsBlocks } from './code-cells';
 import { diagramLangOf, diagramsAsPictures } from './diagram';
 
 const SPECIAL: Record<string, string> = {
@@ -158,7 +160,7 @@ class LatexWriter {
         out += this.image(run.image, run.width, run.src);
         continue;
       }
-      if (isDiagramRun(run)) continue; // replaced by diagramsAsPictures
+      if (isDiagramRun(run) || isCodeCellRun(run)) continue; // replaced by diagramsAsPictures / cellsAsBlocks
       let text = run.text
         .split('\n')
         .map((part) => escapeLatex(part).replace(/\t/g, '\\quad '))
@@ -205,7 +207,7 @@ function pdfMetadata(meta: DocumentMeta): string[] {
 }
 
 export function writeLatex(doc: RichDocument, opts: WriteOptions = {}): LatexOutput {
-  const writer = new LatexWriter(diagramsAsPictures(doc, opts.diagrams));
+  const writer = new LatexWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)));
   const tex = writer.write();
   return { tex, images: writer.images };
 }

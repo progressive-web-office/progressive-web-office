@@ -7,6 +7,7 @@ import {
   extensionForType,
   groupBlocks,
   isImageRun,
+  isCodeCellRun,
   isDiagramRun,
   isMathRun,
   nestLists,
@@ -21,6 +22,7 @@ import {
   type WriteOptions,
 } from './model';
 import { MATHML_NS } from '../math/convert';
+import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from './odf';
 
@@ -183,7 +185,7 @@ class OdtWriter {
         atStart = false;
         continue;
       }
-      if (isDiagramRun(run)) continue; // replaced by diagramsAsPictures
+      if (isDiagramRun(run) || isCodeCellRun(run)) continue; // replaced by diagramsAsPictures / cellsAsBlocks
       if (isMathRun(run)) {
         out += this.formula(run.math, !!run.display);
         atStart = false;
@@ -293,5 +295,5 @@ const STYLES_XML =
   '</office:document-styles>';
 
 export function writeOdt(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
-  return new OdtWriter(diagramsAsPictures(doc, opts.diagrams), opts).write();
+  return new OdtWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)), opts).write();
 }

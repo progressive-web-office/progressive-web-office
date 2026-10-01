@@ -9,8 +9,14 @@ import {
   addResource,
   cleanFormat,
   emptyDocument,
+  isCodeCellRun,
+  isImageRun,
+  isTextRun,
   normalizeRuns,
   type Block,
+  type CodeCellRun,
+  type CodeLang,
+  type ImageRun,
   type Paragraph,
   type ParagraphStyle,
   type RichDocument,
@@ -103,6 +109,21 @@ function getParser(): MarkdownIt {
   return parser;
 }
 
+const CELL_LANGS: Record<string, CodeLang> = { python: 'python', py: 'python', javascript: 'javascript', js: 'javascript' };
+
+/** `python {run}` -> language and attribute flags. */
+function parseFenceInfo(info: string): { lang: string; flags: string[] } {
+  const m = /^\s*([\w+-]*)\s*(?:\{([^}]*)\})?/.exec(info);
+  return { lang: (m?.[1] ?? '').toLowerCase(), flags: (m?.[2] ?? '').trim().split(/\s+/).map((f) => f.replace(/^\./, '')).filter(Boolean) };
+}
+
+/** The code cell ending the block list, if any. */
+function lastCell(blocks: Block[]): CodeCellRun | undefined {
+  const last = blocks[blocks.length - 1];
+  const run = last?.type === 'paragraph' && last.runs.length === 1 ? last.runs[0] : undefined;
+  return run && isCodeCellRun(run) ? run : undefined;
+}
+
 export function decodeDataUri(uri: string): ResolvedImage | undefined {
   const m = /^data:([\w/+.-]+)?(;base64)?,(.*)$/s.exec(uri);
   if (!m) return undefined;
@@ -165,8 +186,17 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         quoteDepth--;
         break;
       case 'inline': {
+        const runs = normalizeRuns(inlineRuns(tok.children ?? [], doc, opts));
+        // CODE-006: figures produced by the previous cell.
+        const target = !heading && !row ? lastCell(blocks) : undefined;
+        const figures = runs.filter((r) => !(isTextRun(r) && !r.text.trim()));
+        if (target && figures.length && figures.every((r) => isImageRun(r) && r.title === 'output' && r.image)) {
+          target.output ??= { text: '' };
+          target.output.images = [...(target.output.images ?? []), ...figures.map((r) => (r as ImageRun).image)];
+          break;
+        }
         const p = newParagraph(heading ?? 'normal');
-        p.runs = normalizeRuns(inlineRuns(tok.children ?? [], doc, opts));
+        p.runs = runs;
         push(p);
         break;
       }
@@ -178,6 +208,22 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
       }
       case 'fence':
       case 'code_block': {
+        const info = tok.type === 'fence' ? parseFenceInfo(tok.info) : undefined;
+        const content = tok.content.replace(/\n$/, '');
+        // CODE-006: executable cells and the output that follows them.
+        const lang = info?.flags.includes('run') ? CELL_LANGS[info.lang] : undefined;
+        if (lang) {
+          const p = newParagraph();
+          p.runs = [{ cell: content, lang }];
+          push(p);
+          break;
+        }
+        const target = info?.flags.includes('output') && !row ? lastCell(blocks) : undefined;
+        if (target && !target.output) {
+          target.output = { text: content ? `${content}\n` : '' };
+          if (info!.flags.includes('error')) target.output.error = true;
+          break;
+        }
         if (tok.type === 'fence' && tok.info.trim().split(/\s+/)[0]?.toLowerCase() === 'mermaid') {
           const p = newParagraph();
           p.runs = [{ diagram: tok.content.replace(/\n$/, ''), lang: 'mermaid' }];
@@ -280,6 +326,8 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         const resolved = src.startsWith('data:') ? decodeDataUri(src) : opts.resolveImage?.(src);
         const run: Run = { image: resolved ? addResource(doc, resolved.data, resolved.mediaType, resolved.name) : '' };
         if (alt) run.alt = alt;
+        const title = tok.attrGet('title');
+        if (title) run.title = String(title);
         if (!resolved) run.src = src;
         runs.push(run);
         break;

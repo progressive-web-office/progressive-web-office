@@ -7,6 +7,7 @@ import {
   cleanFormat,
   groupBlocks,
   isImageRun,
+  isCodeCellRun,
   isDiagramRun,
   isMathRun,
   isTextRun,
@@ -14,6 +15,8 @@ import {
   normalizeRuns,
   type Align,
   type Block,
+  type CodeCellRun,
+  type CodeLang,
   type DiagramLang,
   type ListInfo,
   type ListNode,
@@ -93,6 +96,10 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
       el.append(diagramElement(run.diagram, run.lang, doc));
       continue;
     }
+    if (isCodeCellRun(run)) {
+      el.append(codeCellElement(run, doc, resolveImage));
+      continue;
+    }
     if (isImageRun(run)) {
       const info = resolveImage(run.image);
       if (!info) continue;
@@ -132,6 +139,60 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
     el.append(node);
   }
   if (!el.hasChildNodes() || el.lastChild?.nodeName === 'BR') el.append(doc.createElement('br'));
+}
+
+/**
+ * A code cell: its source and its last output (CODE-001, CODE-005). The
+ * editor adds the Run / Edit controls; the document content is read back from
+ * the source, output and figure elements.
+ */
+export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (key: string) => ImageInfo | undefined): HTMLElement {
+  const cell = doc.createElement('span');
+  cell.className = 'code-cell';
+  cell.dataset.lang = run.lang;
+  cell.contentEditable = 'false';
+  const source = doc.createElement('span');
+  source.className = 'code-cell-source';
+  source.textContent = run.cell;
+  cell.append(source);
+  if (run.output) {
+    const output = doc.createElement('span');
+    output.className = run.output.error ? 'code-cell-output error' : 'code-cell-output';
+    output.textContent = run.output.text;
+    cell.append(output);
+    const figures = doc.createElement('span');
+    figures.className = 'code-cell-figures';
+    for (const key of run.output.images ?? []) {
+      const info = resolveImage(key);
+      if (!info) continue;
+      const img = doc.createElement('img');
+      img.src = info.url;
+      img.alt = 'Output';
+      img.dataset.resource = key;
+      figures.append(img);
+    }
+    if (figures.childElementCount) cell.append(figures);
+  }
+  return cell;
+}
+
+const CODE_LANGS: readonly CodeLang[] = ['python', 'javascript'];
+
+function codeCellFromDom(el: HTMLElement, lookupImage: (img: HTMLImageElement) => string | undefined): CodeCellRun | undefined {
+  const lang = CODE_LANGS.find((l) => l === el.dataset.lang);
+  if (!lang) return undefined;
+  const run: CodeCellRun = { cell: el.querySelector('.code-cell-source')?.textContent ?? '', lang };
+  // A run in progress shows its status there: not part of the document.
+  const output = el.querySelector<HTMLElement>('.code-cell-output:not(.pending)');
+  if (output) {
+    run.output = { text: output.textContent ?? '' };
+    if (output.classList.contains('error')) run.output.error = true;
+    const images = Array.from(el.querySelectorAll<HTMLImageElement>('.code-cell-figures img'))
+      .map(lookupImage)
+      .filter((k): k is string => !!k);
+    if (images.length) run.output.images = images;
+  }
+  return run;
 }
 
 /** Placeholder element for a diagram; editors upgrade it to a rendered picture (DIAG-001). */
@@ -282,6 +343,11 @@ export function domToBlocks(
       const run: Run = { math: el.dataset.latex };
       if (el.dataset.display === 'true') run.display = true;
       open(ctx).runs.push(run);
+      return;
+    }
+    if (el.classList.contains('code-cell')) {
+      const run = codeCellFromDom(el, lookupImage);
+      if (run) open(ctx).runs.push(run);
       return;
     }
     if (el.dataset?.source !== undefined && el.classList.contains('diagram')) {

@@ -21,6 +21,7 @@ src/
   pdf/        pdf.js viewer, form/signature saving (pdf-lib), signature pad
   math/       MathLive loader, equation dialog, MathML/OMML/LaTeX converters
   diagram/    Mermaid loader, SVG/PNG rendering, diagram dialog and templates
+  code/       code cells: sandbox document and worker, runner, dialogs
 schemas/      JSON Schemas (MDZ manifest)
 e2e/          Playwright end-to-end tests
 ```
@@ -140,3 +141,28 @@ diagrams by pictures titled `mermaid` whose alternative text is the source
 (or by the source as text when rendering failed), and the DOCX/ODT readers
 turn such pictures back into diagrams. Markdown and MDZ keep ```` ```mermaid ````
 fences.
+
+## Code cells
+
+Code cells (`CodeCellRun`: code, language, last output) are run by
+`src/code/runner.ts` in a sandbox built to withstand untrusted documents:
+
+- an `<iframe sandbox="allow-scripts">` whose `srcdoc` gives it an **opaque
+  origin** — no access to the application's DOM, `localStorage`, IndexedDB,
+  service worker or cookies. Its own Content-Security-Policy
+  (`default-src 'none'`, scripts only from its inline bootstrap — allowed by
+  hash — and `blob:` URLs, `connect-src blob: data:`) adds to the policy it
+  inherits from the application, so it **cannot reach the network**;
+- inside it, a **worker** (classic: opaque-origin documents cannot start
+  module workers from `blob:` URLs) that runs the code, so that the
+  application stays responsive and **■ Stop** simply destroys the iframe;
+- the only channel is `postMessage`. The worker asks the runner for the files
+  of the Python runtime; the runner serves the five Pyodide core files from
+  the application (`pyodide/`, cached by the service worker on first use) and
+  package wheels listed in Pyodide's lock file from the Pyodide CDN (cached
+  too). Pyodide checks each wheel against the SHA-256 of the lock file.
+
+Python cells share one interpreter per open document; matplotlib uses the
+Agg backend and open figures are returned as PNG files after each run. Code
+never runs when a document is opened: the first run in a document asks for
+confirmation.

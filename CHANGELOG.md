@@ -35,6 +35,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - PDF forms: **Save as… → Flattened PDF – fields locked** writes a copy
   (`…-flattened.pdf`) whose answers can no longer be changed, while **Save**
   keeps the fields editable for later changes.
+- Code cells in text documents (**{ }** in the toolbar): Python (Pyodide,
+  with numpy, matplotlib and the other Pyodide packages) and JavaScript, run on
+  request in an isolated sandbox with no network access and no access to the
+  application, your files or your keys. A confirmation explains this before
+  the first run; ■ stops a cell at any time. Printed output, errors and
+  matplotlib figures are kept in the document, as `{run}` / `{output}` blocks in
+  Markdown and MDZ, and as code and pictures in Word, OpenDocument and LaTeX.
+  The Python runtime is served by the application and, like the packages
+  (downloaded from the Pyodide CDN on first use), kept for offline use.
 - The start screen links to the documentation, and the documentation has an
   **Open the app** link (navigation bar and home page).
 - MDZ manifest schema: optional `subject`, `description`, `keywords`,

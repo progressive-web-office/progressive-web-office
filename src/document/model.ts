@@ -45,6 +45,9 @@ export interface MathRun {
   display?: boolean;
 }
 
+/** Languages of executable code cells (CODE-001). */
+export type CodeLang = 'python' | 'javascript';
+
 /** Diagram languages understood by the editor (DIAG-001). */
 export type DiagramLang = 'mermaid';
 
@@ -54,7 +57,22 @@ export interface DiagramRun {
   lang: DiagramLang;
 }
 
-export type Run = TextRun | ImageRun | MathRun | DiagramRun;
+/** The last result of running a code cell, kept in the document (CODE-005). */
+export interface CellOutput {
+  text: string;
+  error?: boolean;
+  /** Figures, as keys into `RichDocument.resources`. */
+  images?: string[];
+}
+
+/** An executable code cell, run on request in a sandbox (CODE-001). */
+export interface CodeCellRun {
+  cell: string;
+  lang: CodeLang;
+  output?: CellOutput;
+}
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -152,6 +170,7 @@ export interface RichDocument {
 
 export const isImageRun = (run: Run): run is ImageRun => 'image' in run;
 export const isMathRun = (run: Run): run is MathRun => 'math' in run;
+export const isCodeCellRun = (run: Run): run is CodeCellRun => 'cell' in run;
 export const isDiagramRun = (run: Run): run is DiagramRun => 'diagram' in run;
 export const isTextRun = (run: Run): run is TextRun => 'text' in run;
 

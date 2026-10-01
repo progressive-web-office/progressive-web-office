@@ -90,7 +90,7 @@ export function documentTools(host: DocumentHost): AgentTool[] {
     {
       name: 'read_document',
       description:
-        'Read the open text document. Returns each block (paragraph, heading, list item, table...) as Markdown prefixed by its index in brackets, e.g. "[3] ## Results". Equations are LaTeX between $...$ (inline) or $$...$$ (display). Diagrams are ```mermaid fenced blocks. Images appear as ![](resource:KEY) and must be kept as is to preserve them.',
+        'Read the open text document. Returns each block (paragraph, heading, list item, table...) as Markdown prefixed by its index in brackets, e.g. "[3] ## Results". Equations are LaTeX between $...$ (inline) or $$...$$ (display). Diagrams are ```mermaid fenced blocks; executable code cells are ```python {run} or ```javascript {run} blocks, followed by their last output in ```text {output} (do not invent outputs: the user runs the cells). Images appear as ![](resource:KEY) and must be kept as is to preserve them.',
       input_schema: { type: 'object', properties: {} },
       mutates: false,
       run: async () => {
@@ -102,7 +102,7 @@ export function documentTools(host: DocumentHost): AgentTool[] {
     {
       name: 'replace_blocks',
       description:
-        'Replace blocks [start, end) of the document with content written in Markdown (GitHub-flavoured: headings, **bold**, *italic*, lists, tables, links, code, $LaTeX$ and $$display LaTeX$$, and Mermaid diagrams as ```mermaid fenced blocks). Use start == end to insert before block `start` (start == block count appends), and an empty markdown string to delete. Indices refer to the latest read_document result; read again after edits.',
+        'Replace blocks [start, end) of the document with content written in Markdown (GitHub-flavoured: headings, **bold**, *italic*, lists, tables, links, code, $LaTeX$ and $$display LaTeX$$, Mermaid diagrams as ```mermaid fenced blocks, and code cells as ```python {run} blocks). Use start == end to insert before block `start` (start == block count appends), and an empty markdown string to delete. Indices refer to the latest read_document result; read again after edits.',
       input_schema: {
         type: 'object',
         properties: {
