@@ -22,6 +22,12 @@ export interface MdzManifest {
   author?: string | null;
   date?: string | null;
   filename?: string | null;
+  /** Progressive Web Office extensions for document properties (DOC-017). */
+  subject?: string | null;
+  description?: string | null;
+  keywords?: string[] | string | null;
+  language?: string | null;
+  license?: string | null;
   assets?: MdzAsset[];
   [extra: string]: unknown;
 }
@@ -49,7 +55,9 @@ export function validateManifest(value: unknown): ValidationResult {
     else if (Number(m[1]) !== MDZ_SUPPORTED_MAJOR) errors.push(`unsupported MDZ version ${version} (this application supports version ${MDZ_SUPPORTED_MAJOR}.x)`);
   }
   if (typeof value.title !== 'string') errors.push('"title" is required and must be a string');
-  for (const key of ['author', 'date', 'filename']) {
+  // Lenient: other tools may write keywords as one comma-separated string.
+  if (value.keywords !== undefined && value.keywords !== null && typeof value.keywords !== 'string' && (!Array.isArray(value.keywords) || !value.keywords.every((k) => typeof k === 'string'))) errors.push('"keywords" must be an array of strings');
+  for (const key of ['author', 'date', 'filename', 'subject', 'description', 'language', 'license']) {
     if (!optString(value[key])) errors.push(`"${key}" must be a string or null`);
   }
   if (value.assets !== undefined) {

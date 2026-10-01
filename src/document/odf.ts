@@ -1,4 +1,5 @@
 /** Shared OpenDocument helpers: namespaces, lengths, manifest and meta. */
+import { cleanMeta, isoTimestamp, normalizeDate, type DocumentMeta } from './model';
 import { escapeXml as esc, parseXml } from '../core/xml';
 import { readZipText, type ZipEntries } from '../core/zip';
 
@@ -61,32 +62,46 @@ export function manifestXml(mimetype: string, files: { path: string; mediaType: 
   );
 }
 
-export function metaXml(meta: { title?: string; author?: string }): string {
+/** Document properties → meta.xml (DOC-017); the licence is a user-defined property. */
+export function metaXml(meta: DocumentMeta): string {
+  const m = cleanMeta(meta);
   const now = new Date().toISOString().replace(/\.\d+Z$/, '');
+  const el = (tag: string, value: string | undefined): string => (value ? `<${tag}>${esc(value)}</${tag}>` : '');
   return (
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     `<office:document-meta ${ODF_XMLNS} office:version="1.3"><office:meta>` +
     '<meta:generator>ProgressiveWebOffice</meta:generator>' +
-    (meta.title ? `<dc:title>${esc(meta.title)}</dc:title>` : '') +
-    (meta.author ? `<meta:initial-creator>${esc(meta.author)}</meta:initial-creator><dc:creator>${esc(meta.author)}</dc:creator>` : '') +
-    `<meta:creation-date>${now}</meta:creation-date><dc:date>${now}</dc:date>` +
+    el('dc:title', m.title) +
+    el('dc:subject', m.subject) +
+    el('dc:description', m.description) +
+    (m.keywords ?? []).map((k) => el('meta:keyword', k)).join('') +
+    (m.author ? `${el('meta:initial-creator', m.author)}${el('dc:creator', m.author)}` : '') +
+    el('dc:language', m.language) +
+    `<meta:creation-date>${isoTimestamp(m.date, false) ?? now}</meta:creation-date><dc:date>${now}</dc:date>` +
+    (m.license ? `<meta:user-defined meta:name="License">${esc(m.license)}</meta:user-defined>` : '') +
     '</office:meta></office:document-meta>'
   );
 }
 
-export function readOdfMeta(zip: ZipEntries): { title?: string; author?: string; date?: string } {
+/** meta.xml → document properties (DOC-017). */
+export function readOdfMeta(zip: ZipEntries): DocumentMeta {
   const text = readZipText(zip, 'meta.xml');
   if (!text) return {};
   const doc = parseXml(text);
-  const get = (ns: string, name: string): string | undefined => doc.getElementsByTagNameNS(ns, name)[0]?.textContent?.trim() || undefined;
-  const out: { title?: string; author?: string; date?: string } = {};
-  const title = get(ODF_NS.dc, 'title');
-  const author = get(ODF_NS.meta, 'initial-creator') ?? get(ODF_NS.dc, 'creator');
-  const date = get(ODF_NS.meta, 'creation-date');
-  if (title) out.title = title;
-  if (author) out.author = author;
-  if (date) out.date = date;
-  return out;
+  const all = (ns: string, name: string): string[] => Array.from(doc.getElementsByTagNameNS(ns, name)).map((e) => e.textContent?.trim() ?? '').filter(Boolean);
+  const get = (ns: string, name: string): string | undefined => all(ns, name)[0];
+  const license = Array.from(doc.getElementsByTagNameNS(ODF_NS.meta, 'user-defined')).find((e) => /^licen[cs]e$/i.test(e.getAttributeNS(ODF_NS.meta, 'name') ?? ''))?.textContent?.trim();
+  const keywords = all(ODF_NS.meta, 'keyword');
+  return cleanMeta({
+    title: get(ODF_NS.dc, 'title'),
+    author: get(ODF_NS.meta, 'initial-creator') ?? get(ODF_NS.dc, 'creator'),
+    date: normalizeDate(get(ODF_NS.meta, 'creation-date')),
+    subject: get(ODF_NS.dc, 'subject'),
+    description: get(ODF_NS.dc, 'description'),
+    ...(keywords.length ? { keywords } : {}),
+    language: get(ODF_NS.dc, 'language'),
+    license,
+  });
 }
 
 /** Encode text for ODF content: spaces runs, tabs and line breaks. */

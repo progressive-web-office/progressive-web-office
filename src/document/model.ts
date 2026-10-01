@@ -81,10 +81,53 @@ export interface Resource {
   name?: string;
 }
 
+/** Document properties (DOC-017), mapped to each format's metadata. */
 export interface DocumentMeta {
   title?: string;
   author?: string;
+  /** Creation or publication date, ISO 8601 (`YYYY-MM-DD` or a full timestamp). */
   date?: string;
+  subject?: string;
+  description?: string;
+  keywords?: string[];
+  /** BCP 47 language tag, e.g. `fr` or `en-GB`. */
+  language?: string;
+  /** Licence, preferably an SPDX identifier such as `CC-BY-4.0`. */
+  license?: string;
+}
+
+/** Fields of DocumentMeta in display order. */
+export const META_FIELDS = ['title', 'author', 'date', 'subject', 'description', 'keywords', 'language', 'license'] as const;
+
+/** Drop empty values (empty strings, empty keyword lists). */
+export function cleanMeta(meta: DocumentMeta): DocumentMeta {
+  const out: DocumentMeta = {};
+  for (const key of META_FIELDS) {
+    const value = meta[key];
+    if (key === 'keywords') {
+      const list = (value as string[] | undefined)?.map((k) => k.trim()).filter(Boolean) ?? [];
+      if (list.length) out.keywords = list;
+    } else if (typeof value === 'string' && value.trim()) {
+      out[key] = value.trim();
+    }
+  }
+  return out;
+}
+
+/** `2026-09-30T00:00:00Z` → `2026-09-30` (dates without a time of day). */
+export function normalizeDate(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return value.replace(/^(\d{4}-\d{2}-\d{2})T00:00:00(?:\.0+)?(?:Z)?$/, '$1');
+}
+
+/** ISO timestamp for formats that need one (OOXML, ODF); undefined when the date is not ISO. */
+export function isoTimestamp(date: string | undefined, zulu: boolean): string | undefined {
+  if (!date) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return `${date}T00:00:00${zulu ? 'Z' : ''}`;
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  const iso = parsed.toISOString().replace(/\.\d+Z$/, 'Z');
+  return zulu ? iso : iso.replace(/Z$/, '');
 }
 
 export interface RichDocument {

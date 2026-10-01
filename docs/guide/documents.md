@@ -53,6 +53,20 @@ comments, tracked changes, fonts and colours, page layout) are **not**
 preserved when saving. Tracked insertions are accepted and deletions are
 dropped when a `.docx` is opened.
 
+## Document properties
+
+**ⓘ** in the toolbar opens the document properties: title, author, date,
+subject, description, keywords, language and licence. They are saved with the
+document and read back when it is opened again:
+
+| Format | Where the properties are stored |
+|--------|---------------------------------|
+| Word (`.docx`) | Core properties (`docProps/core.xml`); no licence field |
+| OpenDocument (`.odt`) | `meta.xml` (licence as a custom property) |
+| Markdown (`.md`) | YAML front matter at the top of the file |
+| MDZ (`.mdz`) | `manifest.json` |
+| LaTeX (`.tex`) | `\title`, `\author`, `\date` and the PDF properties (`\hypersetup`) |
+
 ## Markdown specifics
 
 - CommonMark with GitHub-flavoured tables and strikethrough.
@@ -60,5 +74,11 @@ dropped when a `.docx` is opened.
   only `<u>…</u>` and `<br>` are interpreted.
 - Saving as `.md` embeds images as `data:` URIs so the file stays
   self-contained. Use **MDZ** to keep images as separate files.
+- A YAML front matter (`---` … `---` at the top of the file) provides the
+  document properties: `title`, `author`, `date`, `subject`, `description`
+  (or `abstract`), `keywords` (list), `lang` (or `language`) and `license`.
+  Other keys (for example `tags` or settings of a static site generator) are
+  kept unchanged when the file is saved again. A front matter is written only
+  when the document has properties beyond a title equal to its first heading.
 
 See [MDZ packages](../formats/mdz.md) for the package format.

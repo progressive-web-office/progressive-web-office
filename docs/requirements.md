@@ -81,6 +81,8 @@ spreadsheets (Excel `.xlsx`, OpenDocument `.ods`, `.csv`), presentations
 | DOC-013 | S | 0.0.2 | The system shall display and preserve embedded images of `.docx`, `.odt` and `.mdz` documents, and let the user insert an image from a local file. |
 | DOC-015 | S | 0.0.2 | The system shall support hyperlinks (display, insert, preserve on save). |
 | DOC-016 | S | 0.0.2 | The system shall support block quotes, preformatted code blocks and inline code. |
+| DOC-017 | S | 0.0.14 | The system shall let the user view and edit the document properties (title, author, date, subject, description, keywords, language, licence) and shall read and write them in every format that supports them: OOXML core properties, ODF `meta.xml`, MDZ manifest, Markdown front matter and LaTeX (`\title`, `\author`, `\date`, hyperref PDF properties). |
+| DOC-018 | S | 0.0.14 | When a Markdown file starts with a YAML front matter, the system shall read the document properties from it and keep the keys it does not interpret unchanged on save; when saving Markdown with properties, it shall write them as front matter. |
 | DOC-014 | W | — | Track changes, comments, footnotes, headers/footers editing and mail merge. |
 
 ## 4b. Markdown & MDZ packages (MD)

@@ -3,7 +3,7 @@ import { writeZip, type ZipEntryInput } from '../core/zip';
 import { writeMarkdown } from './markdown-writer';
 import { assetCategory, MDZ_VERSION, type MdzAsset, type MdzManifest } from './mdz-manifest';
 import type { MdzExtras } from './mdz-reader';
-import { extensionForType, isImageRun, mediaTypeForName, paragraphText, type Block, type RichDocument } from './model';
+import { cleanMeta, extensionForType, isImageRun, mediaTypeForName, paragraphText, type Block, type RichDocument } from './model';
 
 function* imageRuns(blocks: Block[]): Generator<{ image: string; alt?: string }> {
   for (const b of blocks) {
@@ -53,8 +53,16 @@ export function writeMdz(doc: RichDocument): Uint8Array {
   };
   const author = doc.meta.author ?? extras?.manifest?.author;
   if (author) manifest.author = author;
+  // DOC-017: document properties live in the manifest, not in index.md.
+  const meta = cleanMeta(doc.meta);
+  for (const key of ['subject', 'description', 'language', 'license'] as const) {
+    if (meta[key]) manifest[key] = meta[key];
+    else delete manifest[key];
+  }
+  if (meta.keywords) manifest.keywords = meta.keywords;
+  else delete manifest.keywords;
 
-  const markdown = writeMarkdown(doc, { imageUrl: (key) => `./${imagePaths.get(key) ?? ''}` });
+  const markdown = writeMarkdown(doc, { imageUrl: (key) => `./${imagePaths.get(key) ?? ''}`, frontMatter: false });
   return writeZip([
     { path: 'index.md', data: markdown },
     { path: 'manifest.json', data: JSON.stringify(manifest, null, 2) + '\n' },

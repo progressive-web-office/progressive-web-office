@@ -1,6 +1,9 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { writeFrontMatter } from './frontmatter';
 import {
+  cleanMeta,
   groupBlocks,
+  paragraphText,
   isImageRun,
   isMathRun,
   isTextRun,
@@ -21,6 +24,8 @@ export interface MarkdownWriteOptions {
    * that a standalone `.md` file stays self-contained.
    */
   imageUrl?: (key: string) => string;
+  /** Write document properties as YAML front matter (default true; MDZ keeps them in its manifest). */
+  frontMatter?: boolean;
 }
 
 export function bytesToBase64(data: Uint8Array): string {
@@ -220,6 +225,21 @@ class MarkdownWriter {
 }
 
 export function writeMarkdown(doc: RichDocument, opts: MarkdownWriteOptions = {}): string {
-  return new MarkdownWriter(doc, opts).write();
+  const body = new MarkdownWriter(doc, opts).write();
+  return opts.frontMatter === false ? body : markdownFrontMatter(doc) + body;
+}
+
+/**
+ * Front matter for the document properties (DOC-017). A title that merely
+ * repeats the first heading (as read from a plain Markdown file) is not
+ * worth a front matter block on its own.
+ */
+function markdownFrontMatter(doc: RichDocument): string {
+  const meta = cleanMeta(doc.meta);
+  const extra = typeof doc.extras?.frontMatter === 'string' ? doc.extras.frontMatter : '';
+  const firstHeading = doc.blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
+  const onlyHeadingTitle = Object.keys(meta).length === 1 && meta.title !== undefined && firstHeading !== undefined && paragraphText(firstHeading) === meta.title;
+  if (!extra && (Object.keys(meta).length === 0 || onlyHeadingTitle)) return '';
+  return writeFrontMatter(meta, extra);
 }
 

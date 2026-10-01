@@ -1,5 +1,6 @@
 /** LaTeX export (TEX-001, TEX-002): a compilable `article`. */
 import {
+  cleanMeta,
   extensionForType,
   groupBlocks,
   isImageRun,
@@ -9,6 +10,7 @@ import {
   type Block,
   type ListNode,
   type Paragraph,
+  type DocumentMeta,
   type RichDocument,
   type Run,
   type TableCell,
@@ -69,7 +71,8 @@ class LatexWriter {
       '\\usepackage{hyperref}',
       ...(meta.title ? [`\\title{${escapeLatex(meta.title)}}`] : []),
       ...(meta.author ? [`\\author{${escapeLatex(meta.author)}}`] : []),
-      ...(meta.title ? ['\\date{}'] : []),
+      ...(meta.title || meta.date ? [`\\date{${meta.date ? escapeLatex(meta.date) : ''}}`] : []),
+      ...pdfMetadata(meta),
       '',
       '\\begin{document}',
       ...(meta.title ? ['\\maketitle', ''] : []),
@@ -178,6 +181,20 @@ class LatexWriter {
     const fraction = Math.min(1, Math.max(0.05, (width ?? 600) / 600));
     return `\\includegraphics[width=${+fraction.toFixed(3)}\\linewidth]{${target}}`;
   }
+}
+
+/** PDF document properties through hyperref (DOC-017). */
+function pdfMetadata(meta: DocumentMeta): string[] {
+  const m = cleanMeta(meta);
+  const entries: [string, string | undefined][] = [
+    ['pdftitle', m.title],
+    ['pdfauthor', m.author],
+    ['pdfsubject', m.subject],
+    ['pdfkeywords', m.keywords?.join(', ')],
+    ['pdflang', m.language],
+  ];
+  const set = entries.filter((e): e is [string, string] => !!e[1]).map(([k, v]) => `  ${k}={${escapeLatex(v)}}`);
+  return set.length ? ['\\hypersetup{', set.join(',\n'), '}'] : [];
 }
 
 export function writeLatex(doc: RichDocument): LatexOutput {

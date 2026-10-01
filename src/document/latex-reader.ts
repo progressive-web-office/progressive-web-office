@@ -2,7 +2,7 @@
  * LaTeX import (TEX-003, TEX-004): the common subset of `article` documents.
  * Unsupported constructs are kept as visible source text.
  */
-import { addResource, cleanFormat, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TextFormat } from './model';
+import { addResource, cleanFormat, cleanMeta, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TextFormat } from './model';
 
 type Node =
   | { k: 'text'; v: string }
@@ -667,6 +667,26 @@ class Builder {
   }
 }
 
+/** `key={value}, key=value` pairs at the top level of a hyperref option list. */
+function keyValues(src: string): [string, string][] {
+  const out: [string, string][] = [];
+  let depth = 0;
+  let current = '';
+  const push = (): void => {
+    const m = /^\s*([A-Za-z]+)\s*=\s*([\s\S]*?)\s*$/.exec(current);
+    if (m) out.push([m[1]!.toLowerCase(), m[2]!.replace(/^\{([\s\S]*)\}$/, '$1')]);
+    current = '';
+  };
+  for (const ch of src) {
+    if (ch === '{') depth++;
+    if (ch === '}') depth--;
+    if (ch === ',' && depth === 0) push();
+    else current += ch;
+  }
+  push();
+  return out;
+}
+
 export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocument {
   const doc = emptyDocument();
   const src = source.replace(/^﻿/, '').replace(/\r\n?/g, '\n');
@@ -689,7 +709,24 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
       const v = builder.plain((node.args[0] ?? '').replace(/\\thanks\{[^}]*\}/g, '').replace(/\\and\b/g, ', '));
       if (v) doc.meta[node.name] = v;
     }
+    if (node.k === 'cmd' && node.name === 'date') {
+      const v = builder.plain(node.args[0] ?? '');
+      if (v && !/\\today/.test(node.args[0] ?? '')) doc.meta.date = v;
+    }
+    // DOC-017: PDF properties set with \hypersetup{pdfsubject=…, pdfkeywords=…}.
+    if (node.k === 'cmd' && node.name === 'hypersetup') {
+      for (const [key, value] of keyValues(node.args.join(','))) {
+        const v = builder.plain(value);
+        if (!v) continue;
+        if (key === 'pdftitle') doc.meta.title ??= v;
+        else if (key === 'pdfauthor') doc.meta.author ??= v;
+        else if (key === 'pdfsubject') doc.meta.subject = v;
+        else if (key === 'pdfkeywords') doc.meta.keywords = v.split(',');
+        else if (key === 'pdflang') doc.meta.language = v;
+      }
+    }
   }
+  doc.meta = cleanMeta(doc.meta);
   builder.walk(parse(body), {}, { style: 'normal', listDepth: 0, ordered: false, inList: false });
   builder.flush();
   doc.blocks = builder.blocks.length ? builder.blocks : emptyDocument().blocks;

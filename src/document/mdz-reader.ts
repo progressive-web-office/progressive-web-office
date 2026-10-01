@@ -6,7 +6,7 @@ import { strFromU8 } from 'fflate';
 import { readZip, type ZipEntries } from '../core/zip';
 import { readMarkdown } from './markdown-reader';
 import { isSafeArchivePath, validateManifest, type MdzManifest } from './mdz-manifest';
-import { mediaTypeForName, type RichDocument } from './model';
+import { cleanMeta, mediaTypeForName, type RichDocument } from './model';
 
 /** Thrown when the user cancels the entry-document choice. */
 export class MdzCancelled extends Error {
@@ -104,11 +104,21 @@ function readNative(zip: ZipEntries): RichDocument {
   for (const [path, data] of Object.entries(zip)) {
     if (!used.has(path) && !path.endsWith('/') && !JUNK.test(path) && isSafeArchivePath(path)) files[path] = data;
   }
-  doc.meta = {
+  // DOC-017: the manifest wins; a front matter in index.md fills the gaps.
+  const keywords = typeof manifest.keywords === 'string' ? manifest.keywords.split(',') : (manifest.keywords ?? undefined);
+  const fromManifest = cleanMeta({
     title: manifest.title,
-    ...(manifest.author ? { author: manifest.author } : {}),
-    ...(manifest.date ? { date: manifest.date } : {}),
-  };
+    author: manifest.author ?? undefined,
+    date: manifest.date ?? undefined,
+    subject: manifest.subject ?? undefined,
+    description: manifest.description ?? undefined,
+    keywords,
+    language: manifest.language ?? undefined,
+    license: manifest.license ?? undefined,
+  });
+  const fromFrontMatter = cleanMeta(doc.meta);
+  if (fromFrontMatter.title && fromManifest.title === undefined) fromManifest.title = fromFrontMatter.title;
+  doc.meta = { ...fromFrontMatter, ...fromManifest };
   const extras: MdzExtras = { manifest, files };
   if (manifest.filename) extras.filename = manifest.filename;
   doc.extras = { ...doc.extras, mdz: extras };

@@ -76,7 +76,7 @@ export interface DocumentHost {
 const RESOURCE = 'resource:';
 
 export function documentTools(host: DocumentHost): AgentTool[] {
-  const toMarkdown = (blocks: Block[]): string => writeMarkdown({ ...host.doc, blocks }, { imageUrl: (key) => `${RESOURCE}${key}` }).trimEnd();
+  const toMarkdown = (blocks: Block[]): string => writeMarkdown({ ...host.doc, blocks }, { imageUrl: (key) => `${RESOURCE}${key}`, frontMatter: false }).trimEnd();
   const fromMarkdown = (md: string): Block[] =>
     md.trim()
       ? readMarkdown(md, {

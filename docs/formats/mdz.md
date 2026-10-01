@@ -55,6 +55,17 @@ document.mdz (ZIP archive)
 | `date` | string \| null | no | ISO 8601 date recommended |
 | `filename` | string \| null | no | Original Markdown file name |
 | `assets` | array | no | `id`, `path`, `type` required; `alt`, `title` optional |
+| `subject` | string \| null | no | Subject *(Progressive Web Office extension)* |
+| `description` | string \| null | no | Summary *(extension)* |
+| `keywords` | string[] | no | Keywords *(extension; a comma-separated string is also read)* |
+| `language` | string \| null | no | BCP 47 language tag, e.g. `fr` *(extension)* |
+| `license` | string \| null | no | Licence, preferably an SPDX identifier such as `CC-BY-4.0` *(extension)* |
+
+The document properties (**ⓘ** in the editor) are stored in the manifest; the
+`index.md` of a package written by Progressive Web Office has no front matter.
+When an `index.md` does have one, its values fill the fields the manifest
+leaves empty. The last five fields are proposed upstream to become part of the
+MDZ specification.
 
 Unknown fields — including `x-*` extensions — are accepted and **preserved**
 when the package is saved again.

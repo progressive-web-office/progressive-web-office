@@ -3,6 +3,7 @@
  * markdown-it. Raw HTML is kept as literal text (MD-003), except `<u>` and
  * `<br>` which map to underline and line breaks.
  */
+import { parseFrontMatter } from './frontmatter';
 import MarkdownItCallable, { type MarkdownIt, type StateBlock, type StateInline, type Token } from 'markdown-it';
 import {
   addResource,
@@ -113,9 +114,14 @@ export function decodeDataUri(uri: string): ResolvedImage | undefined {
   }
 }
 
-export function readMarkdown(text: string, opts: MarkdownReadOptions = {}): RichDocument {
+export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): RichDocument {
   const doc = emptyDocument();
-  const tokens = getParser().parse(text.replace(/^﻿/, ''), {});
+  // DOC-017: document properties from the YAML front matter.
+  const front = parseFrontMatter(source.replace(/^﻿/, ''));
+  const text = front.body;
+  doc.meta = { ...front.meta };
+  if (front.extra) doc.extras = { ...doc.extras, frontMatter: front.extra };
+  const tokens = getParser().parse(text, {});
   const blocks: Block[] = [];
   const lists: boolean[] = [];
   let quoteDepth = 0;
@@ -209,7 +215,7 @@ export function readMarkdown(text: string, opts: MarkdownReadOptions = {}): Rich
   }
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
-  if (firstHeading) doc.meta.title = firstHeading.runs.map((r) => ('text' in r ? r.text : '')).join('');
+  if (firstHeading && !doc.meta.title) doc.meta.title = firstHeading.runs.map((r) => ('text' in r ? r.text : '')).join('');
   return doc;
 }
 

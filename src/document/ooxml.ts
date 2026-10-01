@@ -1,4 +1,5 @@
 /** Shared OOXML (Office Open XML) helpers: relationships and namespaces. */
+import { cleanMeta, isoTimestamp, normalizeDate, type DocumentMeta } from './model';
 import { attr, children, parseXml } from '../core/xml';
 import { readZipText, type ZipEntries } from '../core/zip';
 
@@ -77,29 +78,38 @@ export function onOff(el: Element | undefined): boolean | undefined {
 }
 
 /** Read Dublin Core metadata from `docProps/core.xml`. */
-export function readCoreProps(zip: ZipEntries): { title?: string; author?: string; date?: string } {
+/** Core properties (docProps/core.xml) → document properties (DOC-017). */
+export function readCoreProps(zip: ZipEntries): DocumentMeta {
   const text = readZipText(zip, 'docProps/core.xml');
   if (!text) return {};
   const doc = parseXml(text);
   const get = (name: string): string | undefined => doc.getElementsByTagNameNS('*', name)[0]?.textContent?.trim() || undefined;
-  const out: { title?: string; author?: string; date?: string } = {};
-  const title = get('title');
-  const author = get('creator');
-  const date = get('created');
-  if (title) out.title = title;
-  if (author) out.author = author;
-  if (date) out.date = date;
-  return out;
+  return cleanMeta({
+    title: get('title'),
+    author: get('creator'),
+    date: normalizeDate(get('created')),
+    subject: get('subject'),
+    description: get('description'),
+    keywords: get('keywords')?.split(/[,;]/),
+    language: get('language'),
+  });
 }
 
-export function coreXml(meta: { title?: string; author?: string }, esc: (s: string) => string): string {
+/** Document properties → docProps/core.xml (OOXML has no licence property). */
+export function coreXml(meta: DocumentMeta, esc: (s: string) => string): string {
+  const m = cleanMeta(meta);
   const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const el = (tag: string, value: string | undefined): string => (value ? `<${tag}>${esc(value)}</${tag}>` : '');
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
     '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
-    (meta.title ? `<dc:title>${esc(meta.title)}</dc:title>` : '') +
-    (meta.author ? `<dc:creator>${esc(meta.author)}</dc:creator>` : '') +
-    `<dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>` +
+    el('dc:title', m.title) +
+    el('dc:subject', m.subject) +
+    el('dc:creator', m.author) +
+    el('cp:keywords', m.keywords?.join(', ')) +
+    el('dc:description', m.description) +
+    el('dc:language', m.language) +
+    `<dcterms:created xsi:type="dcterms:W3CDTF">${isoTimestamp(m.date, true) ?? now}</dcterms:created>` +
     `<dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>` +
     '</cp:coreProperties>'
   );

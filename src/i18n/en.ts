@@ -323,6 +323,22 @@ export const en = {
   'theme.system': 'System',
   'theme.light': 'Light',
   'theme.dark': 'Dark',
+  'meta.button': 'Document properties',
+  'meta.buttonTitle': 'Document properties: title, author, keywords…',
+  'meta.dialogTitle': 'Document properties',
+  'meta.intro': 'Saved with the document in every format that supports them (Word, OpenDocument, Markdown front matter, MDZ manifest, LaTeX/PDF).',
+  'meta.title': 'Title',
+  'meta.author': 'Author',
+  'meta.date': 'Date',
+  'meta.dateHint': 'For example 2026-10-01',
+  'meta.subject': 'Subject',
+  'meta.description': 'Description',
+  'meta.keywords': 'Keywords',
+  'meta.keywordsHint': 'Separated by commas',
+  'meta.language': 'Language',
+  'meta.languageHint': 'Language code, for example fr, en or zh-CN',
+  'meta.license': 'Licence',
+  'meta.licenseHint': 'For example CC-BY-4.0 (not stored in Word files)',
 } as const;
 
 export type MessageKey = keyof typeof en;

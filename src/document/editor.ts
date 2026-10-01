@@ -98,6 +98,15 @@ export class DocumentEditor implements EditorView {
     void this.renderEquations();
   }
 
+  /** Document properties: title, author, keywords… (DOC-017). */
+  private async editProperties(): Promise<void> {
+    const { editProperties } = await import('./properties');
+    const meta = await editProperties(this.element, this.doc.meta);
+    if (!meta) return;
+    this.doc.meta = meta;
+    this.changed();
+  }
+
   /** Insert a new equation at the caret, or edit an existing one (MATH-001). */
   private async editMath(existing?: HTMLElement): Promise<void> {
     const sel = document.getSelection();
@@ -260,6 +269,7 @@ export class DocumentEditor implements EditorView {
       button(t('common.insertImage'), () => void this.pickImage(), { text: '🖼', title: t('common.insertImage') }),
       button(t('doc.insertTable'), () => this.insertTable(), { text: '▦', title: t('doc.insertTableTitle') }),
       button(t('doc.insertEquation'), () => void this.editMath(), { text: '∑', title: t('doc.insertEquationTitle') }),
+      button(t('meta.button'), () => void this.editProperties(), { text: 'ⓘ', title: t('meta.buttonTitle') }),
       button(t('doc.insertRule'), () => {
         exec('insertHorizontalRule');
         this.changed();

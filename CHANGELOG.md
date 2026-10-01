@@ -20,6 +20,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Light / dark / system theme: a toolbar button cycles between following the
   device setting, light and dark; the choice is remembered.
 
+- Document properties (ⓘ in the text editor): title, author, date, subject,
+  description, keywords, language and licence, read and written in Word and
+  PowerPoint/Excel core properties, OpenDocument `meta.xml`, the MDZ manifest,
+  LaTeX (title page and PDF properties) and the YAML front matter of Markdown
+  files, whose other keys are preserved. The original creation date is kept
+  instead of being reset on every save.
+- MDZ manifest schema: optional `subject`, `description`, `keywords`,
+  `language` and `license` fields.
+
 ### Changed
 
 - Recent files show the date and time they were last opened, in the interface
