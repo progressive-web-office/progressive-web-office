@@ -32,6 +32,8 @@ import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
 import { listCss } from './pm/list-css';
+import { CommentPanel } from './comment-panel';
+import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
 import { editPageSetup, pageSetupCss, zonePreview } from './page-setup';
 import 'prosemirror-view/style/prosemirror.css';
@@ -90,6 +92,8 @@ export class DocumentEditor implements EditorView {
   private readonly footerStrip = h('div', { class: 'doc-furniture footer', role: 'button', tabindex: '0', title: t('hf.edit'), 'aria-label': t('hf.footer') });
   /** CODE-004: the user agreed to run this document's code. */
   private trusted = false;
+  /** REV-001: the comments beside the page. */
+  private readonly comments: CommentPanel;
 
   constructor(
     private readonly doc: RichDocument,
@@ -124,7 +128,15 @@ export class DocumentEditor implements EditorView {
       this.refocus();
     });
     this.findBar = new FindBar(() => this.view);
-    this.element = h('div', { class: 'doc-editor' }, this.toolbar(), this.buildTableBar(), this.findBar.element, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes));
+    this.comments = new CommentPanel({ view: () => this.view, doc: this.doc, readOnly: () => this.readOnly, changed: () => this.changed() });
+    this.element = h(
+      'div',
+      { class: 'doc-editor' },
+      this.toolbar(),
+      this.buildTableBar(),
+      this.findBar.element,
+      h('div', { class: 'doc-body' }, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes), this.comments.element),
+    );
     for (const strip of [this.headerStrip, this.footerStrip]) {
       strip.addEventListener('click', () => void this.editPageSetup());
       strip.addEventListener('keydown', (e) => {
@@ -174,10 +186,17 @@ export class DocumentEditor implements EditorView {
           return true;
         },
         handleDrop: (_view, event) => this.onDrop(event as DragEvent),
+        handleKeyDown: (_view, event) => {
+          // REV-001: Ctrl+Alt+M comments the selection.
+          if (!(event.ctrlKey || event.metaKey) || !event.altKey || event.key.toLowerCase() !== 'm') return false;
+          this.addComment();
+          return true;
+        },
       },
     );
     this.updateToolbar();
     this.renderNotes();
+    this.comments.refresh();
     for (const toc of this.tocViews) toc.refresh();
   }
 
@@ -348,6 +367,8 @@ export class DocumentEditor implements EditorView {
     else if (tr.selectionSet) this.statusSoon();
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
+    if (tr.docChanged) this.comments.refresh();
+    else if (tr.selectionSet) this.comments.selectionChanged();
     if (tr.docChanged) {
       this.xrefCache = undefined;
       this.citeCache = undefined;
@@ -484,7 +505,16 @@ export class DocumentEditor implements EditorView {
 
   async save(format: Parameters<EditorView['save'] & object>[0]): Promise<Uint8Array> {
     this.doc.blocks = this.currentBlocks();
-    return writeDocumentAsync(this.doc, format as TextFormat);
+    // REV-001: comments whose text is gone are left out (an undo can still bring them back here).
+    const out = { ...this.doc };
+    pruneComments(out);
+    return writeDocumentAsync(out, format as TextFormat);
+  }
+
+  /** Comment the selection or the word at the cursor (REV-001). */
+  private addComment(): void {
+    if (this.readOnly) return;
+    if (!this.comments.add()) window.alert(t('comment.selectText'));
   }
 
   /** FILE-017: no edits while read-only (toolbars hidden, document not editable). */
@@ -728,6 +758,7 @@ export class DocumentEditor implements EditorView {
       act(t('para.button'), '¶', () => void this.editParagraph()),
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
+      act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`),
       act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
       act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
       act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),

@@ -391,7 +391,17 @@ integration is ever needed.
 | COLLAB-005 | M | 0.1.0 | Each participant shall keep the session's document and version history on their device (IndexedDB), so that reloading the page rejoins the session with them, even when nobody else is online. |
 | COLLAB-006 | M | 0.1.0 | The collaboration protocol, history and presence shall come from the `@scelles/collab` package, shared with QRShare (no duplicated implementation). |
 | COLLAB-008 | S | 0.1.0 | The system shall let several people edit a text document on devices of which at least one is fully offline, merging their changes character by character (CRDT) through passes of animated QR codes handed to QRShare (handoff protocol v2), or files of codes: one device shows its state vector, the other shows only the updates missing from it, which are validated on an isolated copy (schema, limits, properties) before being applied, after the user saw a summary and accepted; frames shall be versioned, size-limited, optionally compressed and signed (Ed25519) by trusted devices, and every import logged. A device without the document's history shall join the history of the other device instead of starting its own. |
-| COLLAB-007 | S | — | Collaboration on presentations, comments and suggested changes (track changes), and a character-level text merge with remote carets. |
+| COLLAB-007 | S | — | Collaboration on presentations, comments shared during a real-time session, suggested changes (track changes), and a character-level text merge with remote carets. |
+
+## 9k. Review: comments (REV)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| REV-001 | S | 0.2.0 | The system shall let the user comment the selected text of a text document, or the word at the cursor (toolbar or Ctrl+Alt+M), signing comments with a name asked once (by default the collaboration name) and the date; it shall highlight commented text, list the threads beside the page in the order of their text, select a comment's text when its thread is clicked, mark the thread under the cursor, and let the user reply, resolve, reopen and delete a comment (delete being undoable); comments whose text was deleted shall not be saved. |
+| REV-002 | S | 0.2.0 | The system shall read and write Word comments: ranges (`commentRangeStart`, `commentRangeEnd`, `commentReference`), `comments.xml` (author, initials, date, paragraphs) and `commentsExtended.xml` (replies, resolved state). |
+| REV-003 | S | 0.2.0 | The system shall read and write OpenDocument annotations: `office:annotation` with `office:annotation-end` for ranges (a comment without end being put on the word before it), author, date and initials, LibreOffice's replies (`loext:parent-name`) and resolved state (`loext:resolved`). |
+| REV-004 | S | 0.2.0 | The system shall read and write comments in Markdown with CriticMarkup: the commented text as `{==text==}` followed by `{>>Author: comment<<}`, replies following their comment, a comment without highlighted text being put on the word before it. |
+| REV-005 | S | — | Suggested changes (track changes): insertions and deletions recorded with their author, accepted or rejected one by one or all at once, kept in DOCX (`w:ins`, `w:del`) and ODT (`text:tracked-changes`). |
 
 ## 9j. Images and drawing (IMG)
 

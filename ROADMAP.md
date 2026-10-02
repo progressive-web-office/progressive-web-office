@@ -66,8 +66,9 @@ group is not a commitment.
 
 ### Review and collaboration
 
-- Comments and track changes (ODF and DOCX), on top of real-time
-  collaboration
+- ✅ Comments in text documents (REV-001 to REV-004: DOCX, ODT, Markdown);
+  next: comments shared in real-time sessions, comments on spreadsheet
+  cells, track changes (REV-005)
 - ✅ Asynchronous collaboration without a network for text documents
   (COLLAB-008, 0.1.0): character-level merge through passes of animated QR
   codes with QRShare, signed frames, trusted devices, an import log

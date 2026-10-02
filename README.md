@@ -72,6 +72,9 @@ Nextcloud / WebDAV account; create, rename, move and delete files; search
 all documents at once; links between Markdown notes (`[[note]]`) with
 backlinks.
 
+**Comments**: comment text in documents, reply and resolve; kept in Word,
+OpenDocument and Markdown (CriticMarkup) files.
+
 **ZIP archives**: a ZIP file opens as a folder (archives inside it too);
 documents, pictures and source files open from it, and the archive can be
 downloaded with its changes.

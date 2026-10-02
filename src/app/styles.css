@@ -191,7 +191,32 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 
 /* Document editor */
 .doc-editor { display: flex; flex-direction: column; min-height: 100%; }
-.doc-scroll { flex: 1; padding: 24px 12px 48px; }
+.doc-body { flex: 1; display: flex; align-items: flex-start; min-width: 0; }
+.doc-scroll { flex: 1; min-width: 0; padding: 24px 12px 48px; }
+/* Comments (REV-001): the commented text, then the threads beside the page. */
+.doc-page .comment-anchor { background: rgba(255, 196, 0, 0.28); border-bottom: 2px solid #d9a400; }
+.doc-editor { --comment-active: rgba(255, 170, 0, 0.55); }
+.doc-comments { flex: none; width: 19rem; position: sticky; top: 0; max-height: 100vh; overflow: auto; padding: 16px 12px 24px 0; box-sizing: border-box; }
+.doc-comments[hidden] { display: none; }
+.doc-comments h2 { font-size: 0.95rem; margin: 8px 0; color: var(--muted); }
+.comment-card, .comment-compose { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #d9a400; border-radius: var(--radius); padding: 8px 10px; margin-bottom: 10px; font-size: 0.875rem; }
+.comment-card { cursor: pointer; }
+.comment-card.active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.comment-card.resolved { opacity: 0.7; border-left-color: var(--muted); }
+.comment-quote { margin: 0 0 6px; padding-left: 6px; border-left: 2px solid var(--border); color: var(--muted); font-style: italic; overflow-wrap: anywhere; }
+.comment-entry.reply { margin-left: 12px; padding-top: 6px; border-top: 1px solid var(--border); }
+.comment-meta { margin: 0 0 2px; color: var(--muted); font-size: 0.8rem; }
+.comment-meta strong { color: var(--text); }
+.comment-text { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.comment-actions button { font-size: 0.8rem; padding: 2px 8px; }
+.comment-actions button.danger { color: var(--danger); }
+.comment-compose textarea { width: 100%; box-sizing: border-box; font: inherit; }
+@media (max-width: 1100px) {
+  .doc-body { flex-direction: column; align-items: stretch; }
+  .doc-comments { width: auto; position: static; max-height: none; padding: 0 12px 24px; }
+}
+@media print { .doc-comments { display: none; } .doc-page .comment-anchor { background: none; border: 0; } }
 .doc-page {
   max-width: 816px; min-height: 1056px; margin: 0 auto;
   padding: 72px 80px; background: #fff; color: #1c2430;

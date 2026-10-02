@@ -1523,13 +1523,18 @@ export class App {
     this.alert.replaceChildren();
   }
 
+  /** Tasks running: nested ones share the indicator, hidden when the last one ends. */
+  private busyCount = 0;
+
   private async withBusy(task: () => Promise<void>): Promise<void> {
-    this.busyTimer = setTimeout(() => (this.busy.hidden = false), 300);
+    if (this.busyCount++ === 0) this.busyTimer = setTimeout(() => (this.busy.hidden = false), 300);
     try {
       await task();
     } finally {
-      clearTimeout(this.busyTimer);
-      this.busy.hidden = true;
+      if (--this.busyCount === 0) {
+        clearTimeout(this.busyTimer);
+        this.busy.hidden = true;
+      }
     }
   }
 

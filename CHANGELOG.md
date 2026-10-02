@@ -13,6 +13,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Cell formatting in spreadsheets: bold, italic, underline, text and fill
   colours, borders and alignment, kept in Excel and OpenDocument files and
   printed. The budget, grade book and invoice templates use it.
+- Comments in text documents: comment the selection or the word at the
+  cursor (Ctrl+Alt+M), reply, resolve and delete, with the threads beside
+  the page. Comments are kept in Word (with replies and resolved state),
+  OpenDocument (LibreOffice annotations) and Markdown (CriticMarkup) files.
 - ZIP archives open as a folder in the side panel: documents, source files
   and pictures open from it, archives inside the archive are folders too,
   other files can be downloaded, and the archive can be downloaded with its
@@ -28,6 +32,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 ### Fixed
 
 - Frozen numeric cells scrolled away with the sheet.
+- The "Working…" indicator could stay on screen after opening a ZIP
+  archive.
 
 ## [0.1.0] - 2026-10-02
 

@@ -903,6 +903,19 @@ export const en = {
   'zip.download': 'Download the archive with its changes',
   'zip.savedInside': 'Saved in the archive. Download the archive (⬇) to keep the changes.',
   'folder.cannotShow': '“{name}” cannot be shown here. Download it?',
+  'comment.panel': 'Comments',
+  'comment.add': 'Comment',
+  'comment.by': 'Comment by {author}',
+  'comment.anonymous': 'Anonymous',
+  'comment.reply': 'Reply',
+  'comment.resolve': 'Resolve',
+  'comment.reopen': 'Reopen',
+  'comment.delete': 'Delete',
+  'comment.save': 'Post',
+  'comment.newLabel': 'New comment',
+  'comment.replyLabel': 'Reply',
+  'comment.yourName': 'Your name, shown on your comments:',
+  'comment.selectText': 'Select the text to comment, or put the cursor in a word.',
 } as const;
 
 export type MessageKey = keyof typeof en;

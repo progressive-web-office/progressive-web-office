@@ -203,6 +203,37 @@ At the start of a line, type:
 back into a normal paragraph. In a table, <kbd>Tab</kbd> and
 <kbd>Shift</kbd>+<kbd>Tab</kbd> move between cells.
 
+## Comments
+
+Select some text (or put the cursor in a word) and click **💬** or press
+<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>, type the comment, then **Post**
+(<kbd>Ctrl</kbd>+<kbd>Enter</kbd>). The first time, the app asks for the
+name shown on your comments; it uses the name chosen for real-time
+collaboration when there is one.
+
+Commented text is highlighted and the threads are listed beside the page,
+in the order of the text (below the page on narrow screens). Click a thread
+to select its text; the thread of the text under the cursor is outlined.
+Each thread offers:
+
+- **Reply**;
+- **Resolve** (its text is no longer highlighted) and **Reopen**;
+- **Delete**, which removes the comment from the text; <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+  brings it back.
+
+A comment whose text you delete goes with it. Comments are not printed.
+
+Comments are kept when saving:
+
+| Format | How |
+|--------|-----|
+| DOCX | Word comments, with replies and their resolved state, as Word shows them |
+| ODT | LibreOffice comments (annotations), with replies and their resolved state |
+| Markdown, MDZ | [CriticMarkup](https://github.com/CriticMarkup/CriticMarkup-toolkit): `{==commented text==}{>>Ann: the comment<<}`, replies following |
+
+During a real-time collaboration session, the commented text is shared, but
+the comments themselves are not yet: save and share the file instead.
+
 ## Pasting
 
 Pasted content is **sanitised**: only headings, paragraphs, basic formatting,
@@ -232,9 +263,11 @@ accepted.
 | Captions and cross-references | ✅ (fields) | ✅ | ✅ (anchors and links) | ✅ (anchors and links) |
 | Citations and bibliography | ✅ (Word sources) | ✅ | ✅ (pandoc) | ✅ (pandoc) |
 
-Other features of Word/LibreOffice files (comments, tracked changes, named
-styles beyond headings, sections and page layout) are **not** preserved
-when saving. Tracked insertions are accepted and deletions are dropped when
+Comments are kept in all four formats (see [Comments](#comments)).
+
+Other features of Word/LibreOffice files (tracked changes, named styles
+beyond headings, sections and page layout) are **not** preserved when
+saving. Tracked insertions are accepted and deletions are dropped when
 a `.docx` is opened.
 
 ## Document properties
