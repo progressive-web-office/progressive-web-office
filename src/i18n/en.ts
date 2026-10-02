@@ -733,6 +733,16 @@ export const en = {
   'folder.local': 'A folder of this device',
   'folder.localReadOnly': 'A folder of this device (read-only in this browser)',
   'folder.browserStorage': 'Browser storage',
+  'ro.toggle': 'Read-only',
+  'ro.lockTitle': 'Show the document read-only (no accidental changes)',
+  'ro.allowTitle': 'Allow changes to this document',
+  'ro.banner': 'Read-only: changes are not allowed.',
+  'ro.lockedBanner': 'Read-only: this document comes from a place that cannot be written.',
+  'ro.edit': 'Edit',
+  'ro.editCopy': 'Edit a copy',
+  'ro.editCopyTitle': 'Make an editable copy, saved as a new file',
+  'ro.copySuffix': ' (copy)',
+  'ro.cannotSave': 'This document is read-only: choose Edit, or Save as to keep a copy.',
 } as const;
 
 export type MessageKey = keyof typeof en;

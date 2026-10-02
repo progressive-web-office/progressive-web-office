@@ -257,6 +257,7 @@ export class SlideEditor implements EditorView {
     el.append(h('span', { class: 'handle', 'aria-hidden': 'true' }));
     let drag: { mode: 'move' | 'resize'; x: number; y: number; sx: number; sy: number; sw: number; sh: number; moved: boolean } | null = null;
     el.addEventListener('pointerdown', (e) => {
+      if (this.readOnly) return;
       if (this.editing?.shape === shape) return;
       e.stopPropagation();
       this.select(shape.id);
@@ -297,8 +298,17 @@ export class SlideEditor implements EditorView {
     });
   }
 
+  /** FILE-017: no edits while read-only. */
+  private readOnly = false;
+
+  setReadOnly(readOnly: boolean): void {
+    this.finishEditing();
+    this.readOnly = readOnly;
+    this.element.classList.toggle('read-only', readOnly);
+  }
+
   private startEditing(el: HTMLElement, shape: Shape): void {
-    if (this.editing?.shape === shape) return;
+    if (this.readOnly || this.editing?.shape === shape) return;
     this.finishEditing();
     this.select(shape.id);
     // Edit the source text: equations show as `$…$` while editing (TEX-006).
@@ -359,6 +369,7 @@ export class SlideEditor implements EditorView {
       else if (e.key === 'PageUp' || e.key === 'ArrowUp') this.goTo(this.current - 1);
       return;
     }
+    if (this.readOnly) return;
     const step = e.shiftKey ? 10 : 1;
     const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
     const m = moves[e.key];

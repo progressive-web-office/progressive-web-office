@@ -402,7 +402,7 @@ export class SheetEditor implements EditorView {
     const handle = h('span', { class: 'sheet-chart-resize', 'aria-hidden': 'true' });
     el.append(figure, tools, handle);
     el.addEventListener('keydown', (e) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !this.readOnly) {
         e.preventDefault();
         this.removeChart(index);
       } else if (e.key === 'Enter') {
@@ -575,7 +575,17 @@ export class SheetEditor implements EditorView {
     this.renderBody();
   }
 
+  /** FILE-017: no edits while read-only. */
+  private readOnly = false;
+
+  setReadOnly(readOnly: boolean): void {
+    this.commitEdit();
+    this.readOnly = readOnly;
+    this.element.classList.toggle('read-only', readOnly);
+  }
+
   private startEdit(initial?: string): void {
+    if (this.readOnly) return;
     this.commitEdit();
     const { row, col } = this.focusCell;
     const td = this.td(row, col);
@@ -687,6 +697,7 @@ export class SheetEditor implements EditorView {
       case 'Delete':
       case 'Backspace':
         e.preventDefault();
+        if (this.readOnly) return;
         this.snapshot();
         clearRange(this.wb, this.si, this.range());
         this.changed();
@@ -845,7 +856,7 @@ export class SheetEditor implements EditorView {
     this.viewport.addEventListener('copy', (e) => this.onCopy(e, false));
     this.viewport.addEventListener('cut', (e) => this.onCopy(e, true));
     this.viewport.addEventListener('paste', (e) => {
-      if (e.target !== this.viewport) return;
+      if (e.target !== this.viewport || this.readOnly) return;
       const text = e.clipboardData?.getData('text/plain');
       if (!text) return;
       e.preventDefault();
@@ -875,7 +886,7 @@ export class SheetEditor implements EditorView {
     if (e.target !== this.viewport || !e.clipboardData) return;
     e.preventDefault();
     e.clipboardData.setData('text/plain', copyRange(this.wb, this.si, this.calc, this.range()));
-    if (cut) {
+    if (cut && !this.readOnly) {
       this.snapshot();
       clearRange(this.wb, this.si, this.range());
       this.changed();

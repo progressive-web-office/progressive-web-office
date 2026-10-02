@@ -102,3 +102,15 @@ and **⋯**, which holds the other actions (open, save as, share, collaborate,
 print, close…). Editing toolbars are a single row: swipe it sideways to
 reach the other buttons, so that the document stays visible above the
 keyboard.
+
+## Read-only
+
+🔓 in the header (in **⋯** on a phone) shows the open document **read-only**:
+toolbars disappear and nothing can be changed by accident; a banner reminds
+it. **Edit** allows changes again; **Edit a copy** turns it into an
+untitled copy, saved as a new file. Save does not write a read-only
+document (Save as keeps a copy).
+
+Documents from a place that cannot be written, such as a folder opened
+read-only by the browser, always open read-only: only **Edit a copy** is
+offered.

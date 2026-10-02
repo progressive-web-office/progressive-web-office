@@ -807,3 +807,10 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
   .toolbar .sep { display: none; }
   .doc-page { min-height: 70vh; }
 }
+
+/* Read-only documents (FILE-017) */
+.readonly-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 12px; background: var(--sel); border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+.readonly-banner[hidden] { display: none; }
+.readonly-banner span { flex: 1; }
+.read-only .toolbar, .read-only .table-bar, .read-only .sheet-formula-bar input { display: none !important; }
+@media print { .readonly-banner { display: none !important; } }

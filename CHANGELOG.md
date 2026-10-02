@@ -71,6 +71,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   (kept across visits, available offline and shared with QRShare) or a
   Nextcloud / WebDAV account, which the explorer manages too (folders
   created, files renamed, moved and deleted on the server).
+- Read-only documents: 🔓 shows the open document, spreadsheet or
+  presentation read-only (toolbars hidden, no changes, Save refused) with a
+  banner offering Edit and Edit a copy; documents of a read-only folder
+  always open read-only, editable only as a copy.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

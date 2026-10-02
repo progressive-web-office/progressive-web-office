@@ -42,6 +42,10 @@ interface OpenDocument {
   dav?: CloudSource;
   /** Path in the open folder: Save writes it back there (FOLDER-001). */
   folderPath?: string;
+  /** Shown without allowing changes (FILE-017). */
+  readOnly?: boolean;
+  /** Its source cannot be written (read-only folder): editing needs a copy. */
+  locked?: boolean;
 }
 
 interface CloudSource {
@@ -83,6 +87,8 @@ export class App {
   private readonly main: HTMLElement;
   private readonly statusBar: HTMLElement;
   private readonly alert: HTMLElement;
+  /** "Read-only" banner with Edit / Edit a copy (FILE-017). */
+  private readonly roBanner: HTMLElement;
   private readonly busy: HTMLElement;
   private current: OpenDocument | null = null;
   private dirty = false;
@@ -103,8 +109,9 @@ export class App {
     this.main = h('main', { class: 'app-main', id: 'main' });
     this.statusBar = h('footer', { class: 'app-status', 'aria-live': 'polite' });
     this.alert = h('div', { class: 'app-alert', role: 'alert', hidden: true });
+    this.roBanner = h('div', { class: 'readonly-banner', role: 'status', hidden: true });
     this.busy = h('div', { class: 'app-busy', role: 'status', hidden: true }, t('app.working'));
-    root.replaceChildren(this.header, this.alert, this.main, this.statusBar, this.busy);
+    root.replaceChildren(this.header, this.alert, this.roBanner, this.main, this.statusBar, this.busy);
     // Side panels (folder, assistant) start under the header, which wraps on narrow screens.
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(() => root.style.setProperty('--header-h', `${this.header.offsetHeight}px`)).observe(this.header);
@@ -402,6 +409,8 @@ export class App {
   async save(format?: DocumentFormat): Promise<void> {
     const doc = this.current;
     if (!doc?.view.save) return;
+    // FILE-017: a read-only document is not saved in place; "Save as" makes a copy.
+    if (!format && doc.readOnly) return this.showNotice(t('ro.cannotSave'));
     if (!format && doc.source) return this.commitToRepository();
     if (!format && doc.grist) return this.saveToGrist();
     if (!format && doc.dav) return this.saveToCloud();
@@ -572,6 +581,7 @@ export class App {
     this.unregisterAgentTools = null;
     this.dirty = false;
     this.discardDraft();
+    this.renderReadOnly();
     this.showStart();
   }
 
@@ -680,6 +690,7 @@ export class App {
     this.hideError();
     this.main.replaceChildren(doc.view.element);
     this.main.dataset.kind = doc.kind;
+    this.renderReadOnly();
     doc.view.mounted?.();
     this.renderHeader();
     this.renderStatus();
@@ -829,6 +840,7 @@ export class App {
       });
       actions.append(select);
     }
+    if (doc?.view.setReadOnly && !doc.locked) actions.append(button(t('ro.toggle'), () => this.setReadOnly(!doc.readOnly), { title: doc.readOnly ? t('ro.allowTitle') : t('ro.lockTitle'), text: doc.readOnly ? '🔒' : '🔓', className: 'icon', pressed: !!doc.readOnly }));
     if (doc?.view.agentTools) actions.append(button(t('ai.open'), () => this.toggleAssistant(), { title: t('ai.openTitle'), text: '✨', className: 'icon', pressed: this.root.classList.contains('with-ai') }));
     if (doc?.view.save) actions.append(button(t('share.send'), () => void this.sendToDevice(), { title: t('share.sendTitle'), text: '📲', className: 'icon' }));
     if (doc?.view.collab && (doc.kind === 'document' || doc.kind === 'spreadsheet')) {
@@ -857,6 +869,46 @@ export class App {
     actions.addEventListener('change', () => this.header.classList.remove('more-open'));
     this.header.classList.remove('more-open');
     this.header.replaceChildren(...items.filter((n): n is Node => n !== null), actions);
+  }
+
+  // --- read-only documents (FILE-017) -----------------------------------------------
+
+  /** Show the open document read-only, or allow edits again; `locked` when its source cannot be written. */
+  setReadOnly(readOnly: boolean, locked = false): void {
+    const doc = this.current;
+    if (!doc?.view.setReadOnly) return;
+    doc.readOnly = readOnly;
+    doc.locked = readOnly && (locked || !!doc.locked);
+    doc.view.setReadOnly(readOnly);
+    this.renderReadOnly();
+    this.renderHeader();
+  }
+
+  /** Make the read-only document an editable, unsaved copy. */
+  editCopy(): void {
+    const doc = this.current;
+    if (!doc) return;
+    delete doc.folderPath;
+    delete doc.source;
+    delete doc.dav;
+    delete doc.grist;
+    doc.name = doc.name.replace(/(\.[^.]+)?$/, (ext) => `${t('ro.copySuffix')}${ext}`);
+    doc.locked = false;
+    this.folder?.setCurrent(undefined);
+    this.setReadOnly(false);
+    this.markChanged();
+    document.title = `${doc.name} — ${t('app.name')}`;
+  }
+
+  private renderReadOnly(): void {
+    const doc = this.current;
+    this.roBanner.hidden = !doc?.readOnly;
+    if (!doc?.readOnly) return this.roBanner.replaceChildren();
+    this.roBanner.replaceChildren(
+      h('span', {}, `🔒 ${doc.locked ? t('ro.lockedBanner') : t('ro.banner')}`),
+      ...(doc.locked ? [] : [button(t('ro.edit'), () => this.setReadOnly(false), { title: t('ro.allowTitle') })]),
+      button(t('ro.editCopy'), () => this.editCopy(), { title: t('ro.editCopyTitle'), className: doc.locked ? 'primary' : '' }),
+    );
   }
 
   // --- folder mode (FOLDER-001..FOLDER-003) and master documents (DOC-028) ------
@@ -973,6 +1025,7 @@ export class App {
       if (!bytes) return this.showError(t('folder.missing', { path }));
       if (!(await this.openBytes(basename(path), bytes))) return;
       if (this.current) this.current.folderPath = path;
+      if (this.current && !folder.provider.capabilities.write) this.setReadOnly(true, true);
       folder.setCurrent(path);
       this.renderHeader();
       if (query) this.current?.view.find?.(query);

@@ -34,6 +34,8 @@ export interface EditorView {
   collab?(): import('../collab/parts').CollabAdapter;
   /** Tools for AI agents working on this document (AI-001, AI-006). */
   agentTools?(): AgentTool[];
+  /** Show the document without allowing changes (FILE-017). */
+  setReadOnly?(readOnly: boolean): void;
   /** Show the first match of a search (FOLDER-002). */
   find?(query: string): void;
   /** The document with its sub-documents as `include` blocks, to assemble (DOC-028). */

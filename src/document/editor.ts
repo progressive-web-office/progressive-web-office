@@ -156,6 +156,7 @@ export class DocumentEditor implements EditorView {
           openInclude: (src) => this.ctx.openLink?.(src) ?? false,
           editCitation: (pos, node) => void this.editCitation(pos, node),
         }),
+        editable: () => !this.readOnly,
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
         dispatchTransaction: (tr) => this.dispatch(tr),
         handlePaste: (_view, event) => this.onPaste(event),
@@ -250,6 +251,7 @@ export class DocumentEditor implements EditorView {
 
   /** Cite sources at the cursor, or change the citation at `pos` (DOC-027). */
   private async editCitation(pos?: number, node?: PmNode): Promise<void> {
+    if (this.readOnly) return;
     const initial = node ? { cite: node.attrs.keys as string[], ...(node.attrs.locator ? { locator: node.attrs.locator as string } : {}) } : undefined;
     const result = await pickCitation(this.element, this.doc.references?.entries ?? [], initial);
     if (!result) return this.refocus();
@@ -320,6 +322,7 @@ export class DocumentEditor implements EditorView {
 
   /** Insert a footnote at the cursor, or edit one; an emptied note is removed (DOC-022). */
   private async editNote(pos?: number, node?: PmNode): Promise<void> {
+    if (this.readOnly) return;
     const { editFootnote } = await import('./footnote-dialog');
     const runs = await editFootnote(this.element, node?.attrs.runs as Run[] | undefined);
     if (!runs) return;
@@ -361,6 +364,7 @@ export class DocumentEditor implements EditorView {
   // --- code cells (CODE-001..CODE-005) ----------------------------------------
 
   private onCellAction(action: string, pos: number, node: PmNode): void {
+    if (this.readOnly) return;
     if (action === 'run') void this.runCells([pos]);
     else if (action === 'run-all') void this.runCells(this.cellPositions());
     else if (action === 'stop') this.runner?.stop();
@@ -377,6 +381,7 @@ export class DocumentEditor implements EditorView {
 
   /** Insert a new cell on its own line, or edit an existing one (CODE-001). */
   private async editCell(pos?: number, node?: PmNode): Promise<void> {
+    if (this.readOnly) return;
     const { editCell } = await import('../code/ui');
     const current = node?.attrs as { cell: string; lang: 'python' | 'javascript'; output: unknown } | undefined;
     const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : undefined);
@@ -429,6 +434,7 @@ export class DocumentEditor implements EditorView {
 
   /** Insert a new diagram on its own line, or edit an existing one (DIAG-001). */
   private async editDiagram(pos?: number, node?: PmNode): Promise<void> {
+    if (this.readOnly) return;
     const { editDiagram } = await import('../diagram/ui');
     const source = await editDiagram(this.element, (node?.attrs.diagram as string | undefined) ?? '');
     if (source === null) return;
@@ -439,6 +445,7 @@ export class DocumentEditor implements EditorView {
 
   /** Insert a new equation at the cursor, or edit an existing one (MATH-001). */
   private async editMath(pos?: number, node?: PmNode): Promise<void> {
+    if (this.readOnly) return;
     const { editEquation } = await import('../math/ui');
     const value = await editEquation(this.element, node ? { latex: node.attrs.math as string, display: !!node.attrs.display } : undefined);
     if (!value) return;
@@ -474,6 +481,15 @@ export class DocumentEditor implements EditorView {
   async save(format: Parameters<EditorView['save'] & object>[0]): Promise<Uint8Array> {
     this.doc.blocks = this.currentBlocks();
     return writeDocumentAsync(this.doc, format as TextFormat);
+  }
+
+  /** FILE-017: no edits while read-only (toolbars hidden, document not editable). */
+  private readOnly = false;
+
+  setReadOnly(readOnly: boolean): void {
+    this.readOnly = readOnly;
+    this.element.classList.toggle('read-only', readOnly);
+    this.view.setProps({});
   }
 
   /** FOLDER-002: show the first match of a search from the folder panel. */
