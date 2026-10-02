@@ -40,6 +40,8 @@ export interface HandleResult {
   reply?: Uint8Array;
   /** Whether the document changed. */
   changed: boolean;
+  /** Whether the reply asks the other device for one more pass. */
+  awaitsReply: boolean;
 }
 
 /** The document id of a pass, or null when the bytes are not sync frames. */
@@ -98,9 +100,9 @@ export class DocumentSync {
         else await got.refuse();
       }
     }
-    if (!replyUpdate) return { changed };
+    if (!replyUpdate) return { changed, awaitsReply: false };
     // Pass 1 asks for an update and our state vector; pass 2 already brought its update.
     const reply = gotUpdate ? [replyUpdate] : [await this.sync.hello(), replyUpdate, await this.sync.stateVector()];
-    return { reply: offline.joinFrames(reply), changed };
+    return { reply: offline.joinFrames(reply), changed, awaitsReply: !gotUpdate };
   }
 }

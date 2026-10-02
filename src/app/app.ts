@@ -463,6 +463,19 @@ export class App {
     }
   }
 
+  /** Merge changes with another device through QR codes (COLLAB-008). */
+  async syncOffline(): Promise<void> {
+    const doc = this.current;
+    const syncable = doc?.view.syncable?.();
+    if (!doc || !syncable) return;
+    try {
+      const { openOfflineSync } = await import('../collab/offline/ui');
+      await openOfflineSync({ root: this.root, document: syncable, name: doc.name });
+    } catch (err) {
+      this.showError(t('sync.invalid', { message: (err as Error).message }));
+    }
+  }
+
   /** Open QRShare's receive screen (SHARE-005). */
   async receiveFromDevice(): Promise<void> {
     const { loadShareSettings, receiveUrl } = await import('../share/qrshare');
@@ -846,6 +859,7 @@ export class App {
     if (doc?.view.collab && (doc.kind === 'document' || doc.kind === 'spreadsheet')) {
       actions.append(button(t('collab.start'), () => (this.collab ? this.leaveCollaboration() : void this.startCollaboration()), { title: this.collab ? t('collab.leaveTitle') : t('collab.startTitle'), text: '👥', className: 'icon', pressed: !!this.collab }));
     }
+    if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) actions.append(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
     actions.append(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
     actions.append(this.themeButton());
     actions.append(button(t('about.open'), () => void this.showAbout(), { title: t('about.openTitle'), text: '?', className: 'icon' }));
