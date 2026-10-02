@@ -37,6 +37,7 @@ scans it and opens the document in Progressive Web Office. -->
 | Text | `.odt` `.docx` `.md` `.mdz` `.tex`, LaTeX project `.zip`, `.odm` | `.odt` `.docx` `.md` `.mdz` `.tex` `.zip` |
 | Spreadsheet | `.ods` `.xlsx` `.csv` `.tsv` | `.ods` `.xlsx` `.csv` |
 | Presentation | `.odp` `.pptx` | `.odp` `.pptx` |
+| Templates | `.ott` `.dotx` `.ots` `.xltx` `.otp` `.potx` | the same |
 | PDF | `.pdf` | filled forms, signed copy |
 
 Files up to 50 MB. Legacy binary formats (`.doc`, `.xls`, `.ppt`) are not

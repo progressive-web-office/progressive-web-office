@@ -43,9 +43,9 @@ group is not a commitment.
   (Markdown or LaTeX text with highlighting, side-by-side preview) and
   reading (no toolbar, larger text)
 - ✅ Page numbering styles (DOC-029, 0.0.14)
-- ✅ Templates and examples, the user's own templates in the browser
-  (FILE-018, FILE-019); next: templates kept in a folder, the template
-  formats `.ott`, `.dotx`, `.potx`, `.ots`, `.xltx` (FILE-020)
+- ✅ Templates and examples, the user's own templates in the browser, the
+  template file formats (FILE-018 to FILE-020); next: templates kept in a
+  folder
 - Master documents, next steps: numbering and table of contents running
   across sub-documents while editing, cross-references to targets in other
   sub-documents

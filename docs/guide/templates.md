@@ -39,6 +39,15 @@ formatting, footnotes, a table of contents, an equation numbered and
 referenced, a captioned table, a Mermaid diagram, a Python code cell and
 citations with their list of references. Change anything to try it.
 
+## Template files
+
+Template files made by LibreOffice, Word, Excel or PowerPoint (`.ott`,
+`.ots`, `.otp`, `.dotx`, `.xltx`, `.potx`) open like any file, as a **new,
+untitled document**: saving it never changes the template. To make one,
+choose **Save as… › Save as template file (.ott)…** (or `.dotx`, `.ots`,
+`.xltx`, `.otp`, `.potx`, depending on the document). Template files can be
+shared and used in other office suites.
+
 ## Your own templates
 
 In an open document, **Save as… › Save as template…** keeps a copy of it in

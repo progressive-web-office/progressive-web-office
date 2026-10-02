@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Template files: `.ott`, `.ots`, `.otp`, `.dotx`, `.xltx` and `.potx` open as
+  new, untitled documents (saving never changes the template), and *Save
+  as… › Save as template file* writes them.
 - Templates and examples (🧩 on the start screen): letter, report, meeting
   minutes, exercise sheet, budget, grade book, invoice and talk, plus an
   example document touring the word processor, in English or French; your
