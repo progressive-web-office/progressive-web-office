@@ -37,6 +37,9 @@ group is not a commitment.
 ### Word processor
 
 - Named paragraph and character styles beyond headings
+- Editing modes, switchable per document: visual (WYSIWYG), source
+  (Markdown or LaTeX text with highlighting, side-by-side preview) and
+  reading (no toolbar, larger text)
 - Page numbering styles: `1`, `1/10`, `Page 1 of 10`, `- 1 -`, roman
   numerals (`i`, `ii`) for front matter, a chosen starting number, no number
   on the first page
@@ -119,6 +122,10 @@ group is not a commitment.
 - TextBundle import; upstream MDZ collaboration
 
 ### Cross-cutting
+
+- Phones: a contextual toolbar docked above the keyboard (the essential
+  buttons for the selection, the rest under "More"), toolbars that can be
+  hidden, and a full-screen writing mode
 
 - Templates, local version history, command palette
 - Accessibility checker
