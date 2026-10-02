@@ -24,6 +24,19 @@ function mappable(map: PosMap): Mappable {
 }
 
 /** The same edit, with deletions kept as marked text and insertions marked. */
+/**
+ * The change mark just before or after `from`..`to` of the same kind and
+ * author: typing or deleting on, a moment later, extends that change
+ * rather than starting another one.
+ */
+function neighbour(doc: PmNode, from: number, to: number, mark: Mark): Mark | undefined {
+  const same = (node: PmNode | null | undefined): Mark | undefined => {
+    const m = node?.isText ? mark.type.isInSet(node.marks) : undefined;
+    return m && m.attrs.author === mark.attrs.author ? m : undefined;
+  };
+  return same(doc.resolve(from).nodeBefore) ?? same(doc.resolve(to).nodeAfter);
+}
+
 export function trackTransaction(state: EditorState, tr: Transaction, by: Revision): Transaction {
   if (!tr.docChanged) return tr;
   const out = state.tr;
@@ -58,7 +71,7 @@ export function trackTransaction(state: EditorState, tr: Transaction, by: Revisi
         if (!node.isText || schema.marks.insertion!.isInSet(node.marks)) gone.push([Math.max(pos, oFrom), Math.min(pos + node.nodeSize, oTo)]);
         return false;
       });
-      out.addMark(oFrom, oTo, del);
+      out.addMark(oFrom, oTo, neighbour(out.doc, oFrom, oTo, del) ?? del);
       for (const [a, b] of gone.reverse()) out.delete(a, b);
     }
     const at = out.mapping.slice(start).map(oTo, -1);
@@ -69,7 +82,7 @@ export function trackTransaction(state: EditorState, tr: Transaction, by: Revisi
       const end = out.mapping.slice(k).map(at, 1);
       insStart = out.mapping.slice(k).map(at, -1);
       out.removeMark(insStart, end, schema.marks.deletion!);
-      out.addMark(insStart, end, ins);
+      out.addMark(insStart, end, neighbour(out.doc, insStart, end, ins) ?? ins);
     }
     const outMap = out.mapping.slice(start);
     const prev = toOut;

@@ -7,6 +7,8 @@ import { t } from '../i18n';
 
 export interface PaletteCommand {
   label: string;
+  /** Other words finding it, such as its name in other languages (UI-018). */
+  keywords?: string;
   /** Keyboard shortcuts doing the same (UI-018). */
   keys?: string[];
   /** Where it is (the toolbar or panel), shown beside the name. */
@@ -17,14 +19,15 @@ export interface PaletteCommand {
 const fold = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** Commands matching a query: every word of the query in the name, in any order; names starting with it first. */
-export function filterCommands<T extends { label: string }>(commands: T[], query: string): T[] {
+export function filterCommands<T extends { label: string; keywords?: string }>(commands: T[], query: string): T[] {
   const words = fold(query).split(/\s+/).filter(Boolean);
   if (!words.length) return commands;
   const scored = commands
     .map((c) => {
       const name = fold(c.label);
-      if (!words.every((w) => name.includes(w))) return undefined;
-      return { c, score: (name.startsWith(words[0]!) ? 0 : 1) + name.length / 1000 };
+      const all = c.keywords ? `${name} ${fold(c.keywords)}` : name;
+      if (!words.every((w) => all.includes(w))) return undefined;
+      return { c, score: (name.startsWith(words[0]!) ? 0 : name.includes(words[0]!) ? 1 : 2) + name.length / 1000 };
     })
     .filter((x): x is { c: T; score: number } => !!x);
   return scored.sort((a, b) => a.score - b.score).map((x) => x.c);
@@ -62,7 +65,7 @@ export function collectCommands(root: HTMLElement): PaletteCommand[] {
     const key = `${label}\u0000${where}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ label, where, ...(fromTitle.keys.length ? { keys: fromTitle.keys } : {}), run: () => b.click() });
+    out.push({ label, where, ...(fromTitle.keys.length ? { keys: fromTitle.keys } : {}), ...(b.dataset.keywords ? { keywords: b.dataset.keywords } : {}), run: () => b.click() });
   }
   // Entries of menus such as "Save as…".
   for (const select of Array.from(root.querySelectorAll<HTMLSelectElement>('select'))) {

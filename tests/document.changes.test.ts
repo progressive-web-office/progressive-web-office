@@ -76,6 +76,23 @@ describe('REV-005 tracked changes: editing', () => {
     expect(text(s)).toEqual([{ text: 'a' }, { text: 'bc', deleted: by }, { text: 'Z', inserted: by }]);
   });
 
+  it('joins a change to the neighbouring one of the same author, typed a moment later', () => {
+    let s = EditorState.create({ doc: blocksToPm([{ type: 'paragraph', style: 'normal', runs: [{ text: 'abcd' }] }]), schema });
+    const first = { author: 'Cy', date: '2026-10-02T11:00:00Z' };
+    const later = { author: 'Cy', date: '2026-10-02T11:00:01Z' };
+    // Backspace over "c" then "b": one deletion.
+    s = s.apply(trackTransaction(s, s.tr.delete(3, 4), first));
+    s = s.apply(trackTransaction(s, s.tr.delete(2, 3), later));
+    expect(text(s)).toEqual([{ text: 'a' }, { text: 'bc', deleted: first }, { text: 'd' }]);
+    // Typing "X" then "Y": one insertion.
+    s = s.apply(trackTransaction(s, s.tr.insertText('X', 2), first));
+    s = s.apply(trackTransaction(s, s.tr.insertText('Y', 3), later));
+    expect(text(s)).toEqual([{ text: 'a' }, { text: 'XY', inserted: first }, { text: 'bc', deleted: first }, { text: 'd' }]);
+    // Another author's change stays apart.
+    s = s.apply(trackTransaction(s, s.tr.insertText('Z', 4), { author: 'Di', date: later.date }));
+    expect(text(s)).toEqual([{ text: 'a' }, { text: 'XY', inserted: first }, { text: 'Z', inserted: { author: 'Di', date: later.date } }, { text: 'bc', deleted: first }, { text: 'd' }]);
+  });
+
   it('lists, accepts and rejects changes', () => {
     let s = state();
     const changes = changesOf(s.doc);

@@ -13,7 +13,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - The command palette shows the keyboard shortcut of each command that has
   one, and lists the review mode (also for read-only documents) and the
   review actions with their keys; it is wider, in three columns (command,
-  shortcut, place).
+  shortcut, place). The review mode is also found by keywords in any
+  language (*correction*, *relecture*, *proofreading*…).
 - Examples with plots: a lab report with Python cells (fit with error bars,
   damped oscillations, Bode plot, histogram, field map, SymPy) whose output
   and figures are already drawn, and a workbook of measurements with line
@@ -80,6 +81,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Tracked changes typed or deleted across a second boundary were split
+  into several changes: they now join the neighbouring change of the same
+  author.
 - The review bar of text documents was shown outside the review mode.
 - Pictures linked from a Markdown note opened from a folder or an archive
   (relative paths with spaces or accents, `<img>` tags, `![[name]]` embeds)

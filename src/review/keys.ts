@@ -87,6 +87,9 @@ export interface KeyLike {
   altKey: boolean;
 }
 
+/** Words finding the review mode in the palette, whatever the interface language (UI-018). */
+export const REVIEW_KEYWORDS = 'review proofreading correction correct annotate comment read relecture relire corriger annoter commenter lecture 审阅 批改 批注';
+
 /** Palette commands for the review actions (UI-018, REVIEW-002). */
 export function reviewCommands(label: (action: ReviewAction) => string, where: string, run: (action: ReviewAction) => void): { label: string; where: string; keys: string[]; run(): void }[] {
   return REVIEW_KEYS.map(({ action, keys }) => ({ label: label(action), where, keys: keys.slice(0, 2), run: () => run(action) }));

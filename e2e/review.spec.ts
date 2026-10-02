@@ -112,7 +112,8 @@ test('finds the review mode and its shortcuts in the command palette, also read-
   await page.getByRole('button', { name: 'Read-only' }).click();
   const palette = page.getByRole('dialog', { name: 'Commands' });
   await page.keyboard.press('Control+Shift+P');
-  await palette.getByRole('combobox').fill('review');
+  // Found in any language: "correction" in an English interface.
+  await palette.getByRole('combobox').fill('correction');
   const option = palette.getByRole('option', { name: /Review mode/ });
   await expect(option.locator('kbd')).toHaveText('Ctrl+Alt+R');
   await page.keyboard.press('Enter');

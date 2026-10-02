@@ -46,6 +46,13 @@ import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
 import { editPageSetup, pageSetupCss, zonePreview } from './page-setup';
 import { DocReview } from './review';
+import { REVIEW_KEYWORDS } from '../review/keys';
+
+/** Words finding a button in the command palette (UI-018). */
+function withKeywords(b: HTMLButtonElement, keywords: string): HTMLButtonElement {
+  b.dataset.keywords = keywords;
+  return b;
+}
 import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-tables/style/tables.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
@@ -882,7 +889,7 @@ export class DocumentEditor implements EditorView {
   commands(): import('../app/palette').PaletteCommand[] {
     const toggle = this.review.active
       ? { label: t('review.leaveTitle'), where: t('review.bar'), keys: ['Ctrl+Alt+R'], run: () => this.review.toggle(false) }
-      : { label: t('review.mode'), where: t('doc.formatting'), keys: ['Ctrl+Alt+R'], run: () => this.review.toggle(true) };
+      : { label: t('review.mode'), where: t('doc.formatting'), keys: ['Ctrl+Alt+R'], keywords: REVIEW_KEYWORDS, run: () => this.review.toggle(true) };
     return [toggle, ...this.review.commands()];
   }
 
@@ -1092,7 +1099,7 @@ export class DocumentEditor implements EditorView {
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('doc.formatting') },
       // REVIEW-001: the review mode, named, first in the toolbar.
-      act(t('review.mode'), `📖 ${t('review.mode')}`, () => this.review.toggle(true), t('review.modeTitle')),
+      withKeywords(act(t('review.mode'), `📖 ${t('review.mode')}`, () => this.review.toggle(true), t('review.modeTitle')), REVIEW_KEYWORDS),
       h('span', { class: 'sep' }),
       act(t('common.undo'), '↶', () => this.command(undo), `${t('common.undo')} (Ctrl+Z)`),
       act(t('common.redo'), '↷', () => this.command(redo), `${t('common.redo')} (Ctrl+Y)`),

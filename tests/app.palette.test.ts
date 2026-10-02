@@ -13,6 +13,15 @@ describe('UI-018 command palette', () => {
   });
 });
 
+describe('UI-018 keywords in the command palette', () => {
+  it('finds a command by its keywords, in any language', () => {
+    const commands = [{ label: 'Review mode', keywords: 'correction relecture proofreading' }, { label: 'Bold' }];
+    expect(filterCommands(commands, 'correction').map((c) => c.label)).toEqual(['Review mode']);
+    expect(filterCommands(commands, 'mode relec').map((c) => c.label)).toEqual(['Review mode']);
+    expect(filterCommands(commands, 'bold').map((c) => c.label)).toEqual(['Bold']);
+  });
+});
+
 describe('UI-018 shortcuts in the command palette', () => {
   it('finds the keyboard shortcut at the end of a tooltip', () => {
     expect(splitShortcut('Comment (Ctrl+Alt+M)')).toEqual({ label: 'Comment', keys: ['Ctrl+Alt+M'] });
