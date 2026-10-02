@@ -115,7 +115,7 @@ group is not a commitment.
 - Read-only opening: open any document read-only (viewing without
   accidental edits, files from a read-only folder or link), with a visible
   banner and "Edit a copy"
-- Obsidian vaults: a folder of Markdown notes with YAML front matter
+- Note vaults: a folder of linked Markdown notes with YAML front matter
   (tags, aliases, any key kept), `[[wiki links]]`, `[[note#heading]]`,
   `[[note|alias]]`, `![[embeds]]`, backlinks, and links that follow renames
 - Crash recovery from an operation log in IndexedDB, beyond autosave
