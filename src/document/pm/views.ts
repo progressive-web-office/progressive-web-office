@@ -32,6 +32,8 @@ export interface ViewHooks {
   editCitation(pos: number, node: PmNode): void;
   /** Open a sub-document from the folder; false without a folder (DOC-028). */
   openInclude(src: string): boolean;
+  /** Edit a picture's alternative text (IMG-003). */
+  editImage(pos: number, node: PmNode): void;
 }
 
 /** The code cell element of a node view, with its position (for running cells in order). */
@@ -378,8 +380,14 @@ class ImageView implements NodeView {
   constructor(
     private node: PmNode,
     private hooks: ViewHooks,
+    getPos: () => number | undefined,
   ) {
     this.dom = document.createElement('img');
+    // IMG-003: a double click edits the alternative text.
+    this.dom.addEventListener('dblclick', () => {
+      const pos = getPos();
+      if (pos !== undefined) this.hooks.editImage(pos, this.node);
+    });
     this.render();
   }
 
@@ -416,6 +424,6 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     cite: (node, view, getPos) => new CiteView(node, view, getPos, hooks),
     bibliography: () => new BibliographyView(hooks),
     include: (node) => new IncludeView(node, hooks),
-    image: (node) => new ImageView(node, hooks),
+    image: (node, _view, getPos) => new ImageView(node, hooks, getPos),
   };
 }

@@ -4,7 +4,7 @@
  * a reliable undo history and precise collaboration.
  */
 import { Fragment, Slice, type Node as PmNode } from 'prosemirror-model';
-import { EditorState, TextSelection, type Command, type Transaction } from 'prosemirror-state';
+import { EditorState, NodeSelection, TextSelection, type Command, type Transaction } from 'prosemirror-state';
 import { EditorView as PmView } from 'prosemirror-view';
 import { toggleMark } from 'prosemirror-commands';
 import { addColumnAfter, addColumnBefore, addRowAfter, addRowBefore, deleteColumn, deleteRow, deleteTable, isInTable, mergeCells, splitCell, toggleHeaderRow } from 'prosemirror-tables';
@@ -186,6 +186,7 @@ export class DocumentEditor implements EditorView {
           citations: () => this.citations(),
           openInclude: (src) => this.ctx.openLink?.(src) ?? false,
           editCitation: (pos, node) => void this.editCitation(pos, node),
+          editImage: (pos, node) => void this.describeImage(pos, node),
         }),
         editable: () => !this.readOnly,
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
@@ -512,6 +513,24 @@ export class DocumentEditor implements EditorView {
   }
 
   /** Document properties: title, author, keywords… (DOC-017). */
+  /** The accessibility check, and a way to each issue (DOC-030). */
+  private async checkAccessibility(): Promise<void> {
+    const [{ checkAccessibility }, { showAccessibility }] = await Promise.all([import('./a11y'), import('./a11y-dialog')]);
+    const choice = await showAccessibility(this.element, checkAccessibility(this.view.state.doc, this.doc.meta));
+    if (!choice) return this.refocus();
+    const { issue, fix } = choice;
+    if (issue.kind === 'title' || issue.kind === 'language') return void this.editProperties();
+    if (issue.pos === undefined) return;
+    const node = this.view.state.doc.nodeAt(issue.pos);
+    if (fix && node?.type === schema.nodes.image) return void this.describeImage(issue.pos, node);
+    const tr = this.view.state.tr;
+    if (node && !node.isText && node.type !== schema.nodes.paragraph && !node.isBlock) tr.setSelection(NodeSelection.create(tr.doc, issue.pos));
+    else tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(issue.pos + 1, tr.doc.content.size))));
+    this.view.dispatch(tr.scrollIntoView());
+    if (fix && issue.kind === 'tableHeader') this.command(toggleHeaderRow);
+    this.refocus();
+  }
+
   private async editProperties(): Promise<void> {
     const { editProperties } = await import('./properties');
     const meta = await editProperties(this.element, this.doc.meta);
@@ -853,6 +872,7 @@ export class DocumentEditor implements EditorView {
       act(t('doc.insertCode'), '{ }', () => void this.editCell(), t('doc.insertCodeTitle')),
       act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
       act(t('meta.button'), 'ⓘ', () => void this.editProperties(), t('meta.buttonTitle')),
+      act(t('a11y.button'), '♿', () => void this.checkAccessibility(), t('a11y.buttonTitle')),
       act(t('hf.button'), '▤', () => void this.editPageSetup()),
       act(t('toc.button'), '§', () => this.command(insertToc), t('toc.insertTitle')),
       act(t('doc.insertRule'), '―', () => this.command(insertRule())),
@@ -979,13 +999,32 @@ export class DocumentEditor implements EditorView {
     if (file) await this.insertImageFile(file);
   }
 
-  private async insertImageFile(file: File, pos?: number): Promise<void> {
+  private async insertImageFile(file: File, pos?: number, describe = true): Promise<void> {
     if (!file.type.startsWith('image/')) return;
     const data = new Uint8Array(await file.arrayBuffer());
     const key = addResource(this.doc, data, file.type, file.name);
-    const node = schema.nodes.image!.create({ image: key, alt: file.name.replace(/\.[^.]+$/, '') });
+    const node = schema.nodes.image!.create({ image: key, alt: null });
+    const at = pos ?? this.view.state.selection.from;
     if (pos !== undefined) this.view.dispatch(this.view.state.tr.insert(pos, node));
     else this.command(insertInline(node));
+    // IMG-003: describe the picture and caption it, right away.
+    const placed = this.view.state.doc.nodeAt(at)?.type === schema.nodes.image ? at : undefined;
+    if (describe && placed !== undefined) await this.describeImage(placed, this.view.state.doc.nodeAt(placed)!, true);
+  }
+
+  /** The alternative text of a picture, and a caption when it is new (IMG-003). */
+  private async describeImage(pos: number, node: PmNode, isNew = false): Promise<void> {
+    if (this.readOnly) return;
+    const { editPicture } = await import('./picture-dialog');
+    const choice = await editPicture(this.element, { alt: node.attrs.alt as string | null, src: this.resolve(node.attrs.image as string)?.url, withCaption: isNew });
+    if (!choice) return this.refocus();
+    const current = this.view.state.doc.nodeAt(pos);
+    if (current?.type !== schema.nodes.image) return;
+    const tr = this.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, alt: choice.alt });
+    tr.setSelection(TextSelection.near(tr.doc.resolve(pos + 1)));
+    this.view.dispatch(tr);
+    if (choice.caption) this.command(insertCaption('figure', seqWord('figure'), choice.caption, newAnchor('figure')));
+    this.refocus();
   }
 
   private onPaste(e: ClipboardEvent): boolean {
@@ -994,7 +1033,7 @@ export class DocumentEditor implements EditorView {
     const images = Array.from(data.files).filter((f) => f.type.startsWith('image/'));
     if (images.length) {
       void (async () => {
-        for (const f of images) await this.insertImageFile(f);
+        for (const f of images) await this.insertImageFile(f, undefined, images.length === 1);
       })();
       return true;
     }
@@ -1025,7 +1064,7 @@ export class DocumentEditor implements EditorView {
     if (!files.length) return false;
     const pos = this.view.posAtCoords({ left: e.clientX, top: e.clientY })?.pos;
     void (async () => {
-      for (const f of files) await this.insertImageFile(f, pos);
+      for (const f of files) await this.insertImageFile(f, pos, files.length === 1);
     })();
     return true;
   }

@@ -17,6 +17,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   side by side; find text in the pages (Ctrl+F); highlight text and add
   notes, saved as standard PDF annotations, with a panel listing the
   annotations of the file.
+- Pictures inserted in a document ask for their alternative text (or mark
+  them as decorative) and an optional numbered caption; a double click edits
+  the alternative text.
+- Accessibility check of text documents: pictures, headings, tables, links,
+  contrast, title and language, with a way to each issue.
 - Exercise sheets and answer keys from one document: mark paragraphs as
   solutions, hide them, and save the sheet without them; kept in Word,
   OpenDocument and Markdown (`::: solution`) files.

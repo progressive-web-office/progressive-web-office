@@ -82,9 +82,8 @@ group is not a commitment.
   blur or pixelate a region, annotations (arrows, text, highlights)
 - Minimal vector drawing: shapes, lines and arrows, text, freehand, layers;
   saved as SVG and kept editable in documents and slides
-- Caption images easily: a caption and alt text when inserting or pasting a
-  picture, numbered as figures (cross-references), and a check for pictures
-  without alt text
+- ✅ Caption images easily: a caption and alt text when inserting or pasting
+  a picture (IMG-003), and an accessibility check (DOC-030)
 
 ### Presentations
 
@@ -137,5 +136,5 @@ group is not a commitment.
 
 - ✅ Templates (FILE-018 to FILE-020); local version history, command
   palette
-- Accessibility checker
+- ✅ Accessibility checker for text documents (DOC-030)
 - Encrypted share links

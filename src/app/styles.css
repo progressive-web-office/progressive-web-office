@@ -920,3 +920,9 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .template-list li { display: flex; flex-direction: column; gap: 2px; }
 .template-card { justify-content: flex-start; font-weight: 600; text-align: left; padding: 10px 12px; }
 .template-list .hint { margin: 0 4px; font-size: 0.85em; }
+
+/* IMG-003, DOC-030: picture description and accessibility check. */
+.picture-dialog .picture-preview { display: block; max-width: 100%; max-height: 30vh; margin: 0 auto 8px; object-fit: contain; }
+.picture-dialog textarea { width: 100%; box-sizing: border-box; font: inherit; }
+.a11y-list { padding-left: 1.2em; }
+.a11y-list li { margin: 4px 0; }

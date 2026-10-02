@@ -376,3 +376,32 @@ test('marks solutions, hides them and saves the exercise sheet without them (TEA
   const key = await saveAs(page, 'Markdown (.md)');
   expect(key.data.toString()).toContain('::: solution\n\n2 + 3 = 5\n\n:::');
 });
+
+test('describes and captions an inserted picture, then checks accessibility (IMG-003, DOC-030)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Results');
+  await page.keyboard.press('Enter');
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Insert image' }).click();
+  await (await chooser).setFiles({ name: 'IMG_2041.png', mimeType: 'image/png', buffer: png });
+  const dialog = page.getByRole('dialog', { name: 'Picture' });
+  await dialog.getByLabel(/^Alternative text/).fill('The voltage across the capacitor');
+  await dialog.getByLabel(/^Caption/).fill('Charge of a capacitor');
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(editor.locator('img[data-resource]')).toHaveAttribute('alt', 'The voltage across the capacitor');
+  await expect(editor.locator('p.caption')).toContainText('Figure 1: Charge of a capacitor');
+
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('See here.');
+  await page.getByRole('button', { name: 'Check accessibility' }).click();
+  const check = page.getByRole('dialog', { name: 'Accessibility check' });
+  await expect(check.getByRole('listitem')).toHaveText([/no title/, /language is not set/]);
+  await check.getByRole('button', { name: 'Close' }).click();
+
+  // A double click edits the alternative text; a decorative picture needs none.
+  await editor.locator('img[data-resource]').dispatchEvent('dblclick');
+  await page.getByLabel(/Decorative picture/).check();
+  await page.getByRole('button', { name: 'OK' }).click();
+  await expect(editor.locator('img[data-resource]')).toHaveAttribute('alt', '');
+});

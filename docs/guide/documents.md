@@ -71,6 +71,29 @@ update the fields), and LibreOffice updates it with *Tools › Update*. In
 Markdown it is written `[[_TOC_]]` (shown as a table of contents by GitLab,
 Typora and others) and in LaTeX `\tableofcontents`.
 
+### Pictures
+
+When you insert a picture (🖼, paste or drag and drop), the app asks for:
+
+- its **alternative text**: what the picture shows, for readers who cannot
+  see it (screen readers, text-only exports); tick **Decorative picture**
+  when it only decorates;
+- an optional **caption**, added below it as a numbered figure (see
+  [Captions and cross-references](#captions-and-cross-references)).
+
+Double-click a picture to change its alternative text.
+
+### Accessibility check
+
+**♿ Check accessibility** lists what makes the document harder to read with
+a screen reader or for people with low vision: pictures without alternative
+text (or with a file name as text), skipped heading levels (a Heading 3
+right after a Heading 1), empty headings, tables without a header row, links
+whose text does not say where they go ("click here"), coloured text with a
+contrast below 4.5:1, and a missing title or language. **Show** goes to the
+issue; **Fix** opens the picture's description, the properties, or turns
+the table's first row into a header row.
+
 ### Captions and cross-references
 
 🏷 numbers a **figure**, a **table** or an **equation**:
