@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_QRSHARE_URL,
+  handoffFeatures,
   handoffSendUrl,
   probeHandoff,
   loadShareSettings,
@@ -79,5 +80,26 @@ describe('SHARE-007 detecting QRShare handoff support', () => {
   it('is unknown when the manifest cannot be read (offline, CORS)', async () => {
     expect(await probeHandoff('https://example.org/qr/', (async () => { throw new TypeError('Failed to fetch'); }) as typeof fetch)).toBeNull();
     expect(await probeHandoff('https://example.org/qr/', fetchJson({}, false))).toBeNull();
+  });
+});
+
+describe('SHARE-012 QRShare handoff protocol v2', () => {
+  const fetchJson = (body: unknown) => (async () => new Response(JSON.stringify(body))) as typeof fetch;
+
+  it('asks for a send mode and for the file back in the same window', () => {
+    expect(handoffSendUrl('https://example.org/qr/', 'airgap', 'animated-qr')).toBe('https://example.org/qr/#/send?handoff=1&policy=airgap&mode=animated-qr');
+    expect(receiveUrl('https://example.org/qr/', 'airgap', 'https://pwo.example/app/', true)).toBe(
+      'https://example.org/qr/#/receive/qr?policy=airgap&return=https%3A%2F%2Fpwo.example%2Fapp%2F&reply=opener',
+    );
+  });
+
+  it('reads the versions and features from the manifest', async () => {
+    expect(await handoffFeatures('https://example.org/qr/', fetchJson({ qrshare_handoff: { versions: [1, 2], features: ['mode', 'reply-opener'] } }))).toEqual({
+      versions: [1, 2],
+      features: ['mode', 'reply-opener'],
+    });
+    expect(await handoffFeatures('https://example.org/qr/', fetchJson({ qrshare_handoff: { versions: [1] } }))).toEqual({ versions: [1], features: [] });
+    expect(await handoffFeatures('https://example.org/qr/', fetchJson({ qrshare_handoff: { versions: 'x', features: [3] } }))).toEqual({ versions: [], features: [] });
+    expect(await handoffFeatures('https://example.org/qr/', (async () => { throw new TypeError('offline'); }) as typeof fetch)).toBeNull();
   });
 });

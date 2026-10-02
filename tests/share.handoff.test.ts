@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HANDOFF_TYPE, parseHandoffMessage, receiveFromOpener, sendFileToWindow, type WindowLike } from '../src/share/handoff';
+import { HANDOFF_TYPE, parseHandoffMessage, receiveFromOpener, receiveFromWindow, sendFileToWindow, type WindowLike } from '../src/share/handoff';
 
 /** Window double: postMessage delivers a message event to this window, coming from its peer. */
 class FakeWindow implements WindowLike {
@@ -58,5 +58,33 @@ describe('SHARE-007 QRShare app handoff protocol (v1)', () => {
     const { app: evil, other: pwo2 } = pair('https://evil.example', 'https://pwo.example');
     void sendFileToWindow(evil, pwo2, 'https://pwo.example', new File(['x'], 'x.md'), 200);
     expect(await receiveFromOpener(pwo2, ['https://qrshare.example'], 200)).toBeNull();
+  });
+});
+
+describe('SHARE-012 file sent back by the QRShare window PWO opened (v2)', () => {
+  const file = (_from: FakeWindow, to: FakeWindow, origin: string) =>
+    to.postMessage({ type: HANDOFF_TYPE, version: 1, action: 'file', name: 'pass.qsyn', mimeType: 'application/octet-stream', data: new Uint8Array([1, 2]).buffer }, origin);
+
+  it('receives the file from that window and origin only', async () => {
+    const { app, other: qrshare } = pair('https://pwo.example', 'https://qrshare.example');
+    const stranger = new FakeWindow('https://evil.example');
+    const receiving = receiveFromWindow(app, qrshare, 'https://qrshare.example', { timeoutMs: 500 });
+    // From another window: ignored.
+    app.peer = stranger;
+    file(stranger, app, 'https://pwo.example');
+    app.peer = qrshare;
+    qrshare.peer = app;
+    file(qrshare, app, 'https://pwo.example');
+    const got = await receiving;
+    expect(got?.name).toBe('pass.qsyn');
+    expect(new Uint8Array(await got!.arrayBuffer())).toEqual(new Uint8Array([1, 2]));
+  });
+
+  it('gives up when cancelled', async () => {
+    const { app, other: qrshare } = pair('https://pwo.example', 'https://qrshare.example');
+    const abort = new AbortController();
+    const receiving = receiveFromWindow(app, qrshare, 'https://qrshare.example', { signal: abort.signal });
+    abort.abort();
+    expect(await receiving).toBeNull();
   });
 });

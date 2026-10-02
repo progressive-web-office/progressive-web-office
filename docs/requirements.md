@@ -331,6 +331,7 @@ integration is ever needed.
 | SHARE-010 | S | 0.0.14 | When the application is opened with such a link, the system shall rebuild and open the document — the fragment is never sent to a server — remove the fragment from the address, and report a damaged link. |
 | SHARE-006 | C | — | Native, embedded implementation of the QRShare frame protocol (licences are compatible: QRShare is BSD-3-Clause since 0.5.0, Progressive Web Office AGPL-3.0-or-later). |
 | SHARE-011 | S | 0.0.14 | When the user gives the address of a document on a web server, the system shall check that it can be downloaded and make a link (with its QR code) that opens it read-only in the application, optionally pinned to that version by its SHA-256 fingerprint; when the linked file has changed, or cannot be read (CORS, HTTP error, over 50 MB), the system shall say so and not show it. |
+| SHARE-012 | S | 0.0.14 | Where QRShare announces the handoff protocol v2 in its manifest (`versions` containing 2, `features` `mode` and `reply-opener`), the system shall be able to ask QRShare for a given send mode (e.g. animated QR codes, skipping the choice) and, when receiving, to get the received file back in its own window, from QRShare's origin only, after the user's click in QRShare. |
 
 ## 9f. AI assistant and agent integration (AI)
 

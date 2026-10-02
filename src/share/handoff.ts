@@ -1,7 +1,8 @@
 /**
  * QRShare app handoff protocol, version 1 (SHARE-007, SHARE-008): hand a file
  * to QRShare, or receive one from it, through `postMessage` between two
- * windows. Same protocol as QRShare's `src/share/handoff.ts`.
+ * windows. Same protocol as QRShare's `src/share/handoff.ts`. Version 2
+ * (SHARE-012) only adds URL parameters: the messages stay those of version 1.
  */
 
 export const HANDOFF_TYPE = 'qrshare-handoff';
@@ -79,6 +80,34 @@ export function sendFileToWindow(self: WindowLike, target: WindowLike, expectedO
       }
     };
     const timer = setTimeout(() => done('timeout'), timeoutMs);
+    self.addEventListener('message', onMessage);
+  });
+}
+
+/**
+ * Version 2 (SHARE-012): wait for the file that the QRShare window we opened
+ * (`reply=opener`) sends back, from that window and `expectedOrigin` only.
+ * Resolves to null on timeout or when `signal` aborts.
+ */
+export function receiveFromWindow(self: WindowLike, source: WindowLike, expectedOrigin: string, opts: { timeoutMs?: number; signal?: AbortSignal } = {}): Promise<File | null> {
+  return new Promise((resolve) => {
+    const done = (value: File | null): void => {
+      clearTimeout(timer);
+      self.removeEventListener('message', onMessage);
+      opts.signal?.removeEventListener('abort', onAbort);
+      resolve(value);
+    };
+    const onAbort = (): void => done(null);
+    const onMessage = (event: MessageEvent): void => {
+      if (event.source !== (source as unknown) || event.origin !== expectedOrigin) return;
+      const message = parseHandoffMessage(event.data);
+      if (message?.action !== 'file') return;
+      source.postMessage(envelope('received'), expectedOrigin);
+      done(new File([message.data], message.name, { type: message.mimeType }));
+    };
+    const timer = opts.timeoutMs ? setTimeout(() => done(null), opts.timeoutMs) : undefined;
+    if (opts.signal?.aborted) return done(null);
+    opts.signal?.addEventListener('abort', onAbort);
     self.addEventListener('message', onMessage);
   });
 }
