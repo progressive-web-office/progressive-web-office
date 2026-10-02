@@ -759,11 +759,10 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .folder-head h2 { flex: 1; margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder-readonly { margin: 0; font-size: 0.8rem; color: var(--muted); }
 .folder-search { width: 100%; box-sizing: border-box; }
-.folder-tree, .folder-results { flex: 1; min-height: 0; overflow: auto; }
-.folder-tree[hidden], .folder-results[hidden] { display: none; }
-.folder-tree ul, .folder-results ul { list-style: none; margin: 0; padding: 0 0 0 12px; }
-.folder-tree > ul, .folder-results > ul { padding-left: 0; }
-.folder-tree summary { cursor: pointer; padding: 2px 4px; white-space: nowrap; }
+.folder-results { flex: 1; min-height: 0; overflow: auto; }
+.folder-results[hidden], .folder-panel .fs-explorer[hidden] { display: none; }
+.folder-results ul { list-style: none; margin: 0; padding: 0; }
+.folder-panel { --fs-accent: var(--accent); --fs-hover: var(--sel); --fs-muted: var(--muted); }
 .folder-file { display: block; width: 100%; text-align: left; border: none; background: transparent; padding: 3px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .folder-file[data-icon]::before { content: attr(data-icon) ' ' / ''; }
 .folder-file:hover { background: var(--sel); }

@@ -3,8 +3,23 @@
 ## Working on a folder
 
 **Open a folder** (start screen) opens a local folder as a project: its
-documents are listed in a panel on the left, by sub-folder. Click a document
-to open it; 📁 in the header shows or hides the panel.
+documents are listed in a panel on the left, by sub-folder (a sub-folder
+opens when you click it). Click a document to open it; 📁 in the header
+shows or hides the panel.
+
+The panel's toolbar manages the folder:
+
+| Button | Action |
+|--------|--------|
+| ＋ | new document, in the selected folder, opened right away |
+| 📁＋ | new folder |
+| ✎ | rename the selected file or folder (<kbd>F2</kbd>) |
+| 🗑 | delete it, after confirmation (<kbd>Del</kbd>) |
+| ↻ | reload the folder |
+
+Drag a file or folder onto another folder (or onto the empty space below the
+tree, for the top of the folder) to move it. The open document follows when
+it is renamed or moved.
 
 - **Save** writes the document back into the folder, in place. *Save as*
   another format writes the converted file next to it, in the same folder.
@@ -53,3 +68,14 @@ mixed in one master document. They are kept as:
 LibreOffice master documents (`.odm`) and LaTeX projects split with
 `\include` / `\input` open as master documents. A LaTeX project opened as a
 ZIP archive is read with its chapters already in place.
+
+## For developers: the file system module
+
+The explorer is built on `src/fs/`, a module that depends on nothing else in
+the application, to be shared later with other web apps (such as QRShare).
+It defines one `StorageProvider` interface (`list`, `read`, `write`,
+`mkdir`, `move`, `remove`, with `write` and `persistentAccess`
+capabilities) and providers for a local folder (File System Access API), the
+browser's private storage (OPFS, shared by the apps of the same origin), a
+read-only folder picked in any browser and memory, plus a framework-free
+`Explorer` component whose texts and icons are given by the host.

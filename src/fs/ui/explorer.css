@@ -1,0 +1,16 @@
+/* File explorer (src/fs/ui): neutral styles, themable through CSS variables. */
+.fs-explorer { display: flex; flex-direction: column; gap: 4px; min-height: 0; flex: 1; }
+.fs-toolbar { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.fs-tool { min-width: 30px; }
+.fs-readonly { font-size: 0.8rem; color: var(--fs-muted, #6b7685); flex: 1; }
+.fs-tree { flex: 1; min-height: 0; overflow: auto; }
+.fs-tree.fs-drop { outline: 2px dashed var(--fs-accent, #1f5fbf); outline-offset: -2px; }
+.fs-list { list-style: none; margin: 0; padding: 0 0 0 14px; }
+.fs-tree > .fs-list { padding-left: 0; }
+.fs-entry { display: block; width: 100%; text-align: left; border: none; background: transparent; padding: 3px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: inherit; font: inherit; }
+.fs-entry[data-icon]::before { content: attr(data-icon) ' ' / ''; }
+.fs-entry:hover, .fs-entry.fs-drop { background: var(--fs-hover, rgba(31, 95, 191, 0.12)); }
+.fs-entry.fs-selected { outline: 1px solid var(--fs-accent, #1f5fbf); }
+.fs-entry[aria-current='page'] { background: var(--fs-hover, rgba(31, 95, 191, 0.12)); font-weight: 600; }
+.fs-directory[aria-expanded='true']::after { content: ''; }
+.fs-empty { color: var(--fs-muted, #6b7685); font-size: 0.85rem; padding: 4px; }

@@ -3,7 +3,7 @@
  * text, CSV, BibTeX, Word and OpenDocument texts.
  */
 import { detectFormat } from '../core/format';
-import type { ProjectFolder } from '../storage/folder';
+import { readBytes, type StorageProvider } from '../fs';
 import { allParagraphs, runsText, type RichDocument } from '../document/model';
 
 export interface SearchHit {
@@ -32,13 +32,13 @@ export class FolderIndex {
   private readonly texts = new Map<string, { size: number; text: string; folded: string }>();
 
   constructor(
-    private readonly folder: ProjectFolder,
+    private readonly provider: StorageProvider,
     /** Reads Word, OpenDocument and MDZ texts (lazy-loaded readers). */
     private readonly readRich: (name: string, bytes: Uint8Array) => Promise<RichDocument | undefined>,
   ) {}
 
   private async text(path: string): Promise<{ text: string; folded: string } | undefined> {
-    const bytes = await this.folder.read(path);
+    const bytes = await readBytes(this.provider, path).catch(() => undefined);
     if (!bytes) return undefined;
     const cached = this.texts.get(path);
     if (cached && cached.size === bytes.length) return cached;

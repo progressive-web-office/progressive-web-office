@@ -405,7 +405,7 @@ export class App {
     if (!format && doc.source) return this.commitToRepository();
     if (!format && doc.grist) return this.saveToGrist();
     if (!format && doc.dav) return this.saveToCloud();
-    if (doc.folderPath && this.folder?.folder.writable) return this.saveToFolder(format);
+    if (doc.folderPath && this.folder?.provider.capabilities.write) return this.saveToFolder(format);
     const target = format ?? doc.format;
     try {
       const bytes = await doc.view.save(target);
@@ -804,7 +804,7 @@ export class App {
       );
     }
     const actions = h('nav', { class: 'header-actions', 'aria-label': t('file.actions') });
-    if (this.folder) actions.append(button(t('folder.panel'), () => this.toggleFolderPanel(), { text: '📁', className: 'icon', title: t('folder.toggleTitle', { name: this.folder.folder.name }), pressed: this.root.classList.contains('with-folder') }));
+    if (this.folder) actions.append(button(t('folder.panel'), () => this.toggleFolderPanel(), { text: '📁', className: 'icon', title: t('folder.toggleTitle', { name: this.folder.provider.label }), pressed: this.root.classList.contains('with-folder') }));
     if (doc?.view.masterDocument?.()?.blocks.some((b) => b.type === 'include')) actions.append(button(t('master.export'), () => void this.exportAssembled(), { title: t('master.exportTitle') }));
     actions.append(
       button(t('file.open'), () => void this.pickAndOpen(), { title: t('file.openTitle') }),
@@ -849,10 +849,11 @@ export class App {
 
   /** Open a local folder as a project: its documents in a side panel. */
   async openFolder(): Promise<void> {
-    const { pickFolder } = await import('../storage/folder');
+    const { canPickDirectory, pickDirectory, pickFileList } = await import('../fs');
     let folder;
     try {
-      folder = await pickFolder();
+      // Writable with the File System Access API (Chromium), read-only elsewhere.
+      folder = canPickDirectory() ? await pickDirectory() : await pickFileList();
     } catch (err) {
       this.showError(t('folder.error', { message: (err as Error).message }));
       return;
@@ -860,8 +861,8 @@ export class App {
     if (folder) await this.setFolder(folder);
   }
 
-  private async setFolder(folder: import('../storage/folder').ProjectFolder): Promise<void> {
-    const [{ FolderPanel }, { FolderIndex }, { rememberFolder }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent')]);
+  private async setFolder(folder: import('../fs').StorageProvider): Promise<void> {
+    const [{ FolderPanel }, { FolderIndex }, { rememberFolder }, { DirectoryHandleProvider }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent'), import('../fs')]);
     this.folder?.element.remove();
     const index = new FolderIndex(folder, async (name, bytes) => {
       const format = detectFormat(name, bytes);
@@ -869,11 +870,18 @@ export class App {
       const { readDocument } = await import('../document/io');
       return readDocument(format as import('../document/io').TextFormat, bytes);
     });
-    this.folder = new FolderPanel(folder, index, { open: (path, query) => void this.openFromFolder(path, query), close: () => this.closeFolder() });
+    this.folder = new FolderPanel(folder, index, {
+      open: (path, query) => void this.openFromFolder(path, query),
+      close: () => this.closeFolder(),
+      changed: (change) => this.folderChanged(change),
+      error: (message) => this.showError(message),
+      prompt: async (message, value) => window.prompt(message, value),
+      confirm: async (message) => window.confirm(message),
+    });
     this.root.append(this.folder.element);
     this.root.classList.add('with-folder');
     await this.withBusy(() => this.folder!.refresh());
-    if (folder.handle) void rememberFolder(folder.handle);
+    if (folder instanceof DirectoryHandleProvider && folder.id.startsWith('fsa:')) void rememberFolder(folder.root);
     this.renderHeader();
   }
 
@@ -882,6 +890,22 @@ export class App {
     this.folder = null;
     this.root.classList.remove('with-folder');
     if (this.current) delete this.current.folderPath;
+    this.renderHeader();
+  }
+
+  /** A file renamed, moved or deleted in the explorer: follow the open document (FOLDER-004). */
+  private async folderChanged(change: import('../fs').ExplorerChange): Promise<void> {
+    const doc = this.current;
+    const { isInside } = await import('../fs');
+    if (!doc?.folderPath || !isInside(doc.folderPath, change.path)) return;
+    if (change.type === 'remove') {
+      delete doc.folderPath;
+      this.dirty = true;
+    } else if (change.to) {
+      doc.folderPath = change.to + doc.folderPath.slice(change.path.length);
+      doc.name = basename(doc.folderPath);
+    }
+    this.folder?.setCurrent(doc.folderPath);
     this.renderHeader();
   }
 
@@ -897,9 +921,9 @@ export class App {
     if (!handle || this.current || !recent.isConnected) return;
     const reopen = button(t('folder.reopen', { name: handle.name }), () => {
       void (async () => {
-        const { HandleFolder } = await import('../storage/folder');
-        const folder = await HandleFolder.reopen(handle);
-        if (folder) await this.setFolder(folder);
+        const { DirectoryHandleProvider } = await import('../fs');
+        const folder = new DirectoryHandleProvider(handle);
+        if (await folder.permitted(true)) await this.setFolder(folder);
         else this.showError(t('folder.denied', { name: handle.name }));
       })();
     }, { className: 'card folder', icon: '📁' });
@@ -916,7 +940,8 @@ export class App {
     }
     if (!this.confirmDiscard()) return;
     await this.withBusy(async () => {
-      const bytes = await folder.folder.read(path);
+      const { readBytes } = await import('../fs');
+      const bytes = await readBytes(folder.provider, path).catch(() => undefined);
       if (!bytes) return this.showError(t('folder.missing', { path }));
       if (!(await this.openBytes(basename(path), bytes))) return;
       if (this.current) this.current.folderPath = path;
@@ -934,7 +959,7 @@ export class App {
     const target = format ?? doc.format;
     const path = format ? replaceExtension(doc.folderPath, fileExtension(target)) : doc.folderPath;
     try {
-      await folder.folder.write(path, await doc.view.save(target));
+      await folder.provider.write(path, new Blob([(await doc.view.save(target)) as BlobPart]));
       doc.folderPath = path;
       doc.name = basename(path);
       doc.format = target;
@@ -988,9 +1013,10 @@ export class App {
     const format = formats[labels.indexOf(choice)]!;
     await this.withBusy(async () => {
       const [{ assemble }, { readDocument, writeDocumentAsync }] = await Promise.all([import('../document/master'), import('../document/io')]);
-      const folder = this.folder?.folder;
+      const provider = this.folder?.provider;
+      const { readBytes } = await import('../fs');
       const { doc: assembled, missing } = await assemble(master, doc.folderPath ?? doc.name, async (path) => {
-        const bytes = await folder?.read(path);
+        const bytes = provider ? await readBytes(provider, path).catch(() => undefined) : undefined;
         const fmt = bytes ? detectFormat(path, bytes) : null;
         return bytes && fmt && formatKind(fmt) === 'document' ? readDocument(fmt as import('../document/io').TextFormat, bytes) : undefined;
       });

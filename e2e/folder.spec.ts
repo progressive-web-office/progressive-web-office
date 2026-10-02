@@ -11,10 +11,13 @@ async function fakeFolder(page: Page, files: Record<string, string>): Promise<vo
       name: path.split('/').pop(),
       getFile: async () => new File([store.get(path) ?? ''], path.split('/').pop()!),
       createWritable: async () => {
-        const parts: Uint8Array[] = [];
+        const parts: (Uint8Array | Blob)[] = [];
         return {
-          write: async (d: Uint8Array) => void parts.push(d),
-          close: async () => void store.set(path, new TextDecoder().decode(parts[0] ?? new Uint8Array())),
+          write: async (d: Uint8Array | Blob) => void parts.push(d),
+          close: async () => {
+            const d = parts[0] ?? new Uint8Array();
+            store.set(path, d instanceof Blob ? await d.text() : new TextDecoder().decode(d));
+          },
         };
       },
     });
@@ -32,8 +35,18 @@ async function fakeFolder(page: Page, files: Record<string, string>): Promise<vo
           yield rest.includes('/') ? dirHandle(`${prefix}${head}/`, head) : fileHandle(path);
         }
       },
-      getDirectoryHandle: async (n: string) => dirHandle(`${prefix}${n}/`, n),
-      getFileHandle: async (n: string) => fileHandle(`${prefix}${n}`),
+      getDirectoryHandle: async (n: string, opts: { create?: boolean } = {}) => {
+        if (!opts.create && ![...store.keys()].some((k) => k.startsWith(`${prefix}${n}/`))) throw Object.assign(new Error('NotFoundError'), { name: 'NotFoundError' });
+        return dirHandle(`${prefix}${n}/`, n);
+      },
+      getFileHandle: async (n: string, opts: { create?: boolean } = {}) => {
+        if (!opts.create && !store.has(`${prefix}${n}`)) throw Object.assign(new Error('NotFoundError'), { name: 'NotFoundError' });
+        if (opts.create && !store.has(`${prefix}${n}`)) store.set(`${prefix}${n}`, '');
+        return fileHandle(`${prefix}${n}`);
+      },
+      removeEntry: async (n: string) => {
+        for (const k of [...store.keys()]) if (k === `${prefix}${n}` || k.startsWith(`${prefix}${n}/`)) store.delete(k);
+      },
       queryPermission: async () => 'granted',
     });
     (window as unknown as { showDirectoryPicker: () => Promise<unknown> }).showDirectoryPicker = async () => dirHandle('', 'thesis');
@@ -51,6 +64,8 @@ test('works on a folder: tree, search, links, saving in place and master documen
   await page.getByRole('button', { name: 'Open a folder' }).click();
   const panel = page.getByRole('complementary', { name: 'Folder' });
   await expect(panel.getByRole('heading', { name: '📁 thesis' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: /\.md$|chapters/ })).toHaveText(['chapters', 'main.md']);
+  await panel.getByRole('button', { name: 'chapters' }).click();
   await expect(panel.getByRole('button', { name: /\.md$/ })).toHaveText(['one.md', 'two.md', 'main.md']);
 
   // Search across the folder, then open a result at its match.
@@ -67,7 +82,7 @@ test('works on a folder: tree, search, links, saving in place and master documen
   await expect(editor.locator('div.include')).toHaveCount(2);
   await editor.getByRole('link', { name: 'the first chapter' }).click({ modifiers: ['Control'] });
   await expect(page.locator('.doc-page h1')).toHaveText('Control');
-  await expect(panel.getByRole('button', { name: 'one.md' })).toHaveAttribute('aria-current', 'page');
+  await expect(panel.locator('[aria-current=page]')).toHaveText('one.md');
 
   // Saving writes the file back into the folder.
   await editor.locator('p').first().click();
@@ -91,4 +106,26 @@ test('works on a folder: tree, search, links, saving in place and master documen
   expect(md).toContain('# Control\n\nA PID regulator. Tuned.');
   expect(md).toContain('# Results');
   expect(md).not.toContain('{{#include');
+});
+
+test('creates, renames and deletes documents in the folder (FOLDER-004)', async ({ page }) => {
+  await fakeFolder(page, { 'notes/a.md': '# A\n' });
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  const files = () => page.evaluate(() => [...(window as unknown as { __folder: Map<string, string> }).__folder.keys()].sort());
+  await panel.getByRole('button', { name: 'notes' }).click();
+  page.once('dialog', (d) => void d.accept('Plan.md'));
+  await panel.getByRole('button', { name: 'New document' }).click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Untitled');
+  await expect.poll(files).toEqual(['notes/Plan.md', 'notes/a.md']);
+  // Renaming the open document follows it.
+  page.once('dialog', (d) => void d.accept('Outline.md'));
+  await panel.getByRole('button', { name: 'Rename (F2)' }).click();
+  await expect.poll(files).toEqual(['notes/Outline.md', 'notes/a.md']);
+  await expect(page.locator('.doc-name')).toHaveText('Outline.md');
+  await expect(panel.locator('[aria-current=page]')).toHaveText('Outline.md');
+  await panel.getByRole('button', { name: 'a.md' }).click();
+  page.once('dialog', (d) => void d.accept());
+  await panel.getByRole('button', { name: 'Delete (Del)' }).click();
+  await expect.poll(files).toEqual(['notes/Outline.md']);
 });

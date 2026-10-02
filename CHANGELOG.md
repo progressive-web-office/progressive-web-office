@@ -61,6 +61,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   cross-references and bibliography running on across chapters. Kept as
   OpenDocument linked sections (`.odm` opens too), Word sub-documents, LaTeX
   `\include` and Markdown `{{#include …}}`.
+- File explorer in the folder panel: new document, new folder, rename (F2),
+  delete (Del) and move by drag and drop, the open document following a
+  rename or a move; sub-folders load when opened. It is built on `src/fs/`,
+  a storage-independent module (a `StorageProvider` interface with local
+  folder, browser storage (OPFS), read-only folder and memory providers, and
+  a framework-free explorer component) meant to be shared with other apps.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

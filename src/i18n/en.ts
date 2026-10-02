@@ -699,7 +699,7 @@ export const en = {
   'folder.search': 'Search the folder',
   'folder.refresh': 'Reload the folder',
   'folder.close': 'Close the folder',
-  'folder.readOnly': 'Read-only in this browser: Save downloads a copy. Chromium-based browsers (Chrome, Edge…) save into the folder.',
+  'folder.readOnly': 'Read-only',
   'folder.empty': 'No documents in this folder.',
   'folder.searching': 'Searching…',
   'folder.found': '{n} matches in {files} documents',
@@ -717,6 +717,16 @@ export const en = {
   'master.openSubTitle': 'Open {src}',
   'master.noFolder': 'Open the folder of this document (📁) to open its sub-documents.',
   'master.subHint': 'sub-document, assembled on export',
+  'folder.newFile': 'New document',
+  'folder.newFolder': 'New folder',
+  'folder.rename': 'Rename (F2)',
+  'folder.remove': 'Delete (Del)',
+  'folder.namePrompt': 'Name:',
+  'folder.newFolderName': 'New folder',
+  'folder.confirmRemove': 'Delete “{name}”? This cannot be undone.',
+  'folder.confirmRemoveFolder': 'Delete the folder “{name}” and everything in it? This cannot be undone.',
+  'folder.untitled': 'Untitled',
+  'folder.readOnlyHint': 'Read-only in this browser: Save downloads a copy. Chromium-based browsers (Chrome, Edge…) save into the folder.',
 } as const;
 
 export type MessageKey = keyof typeof en;
