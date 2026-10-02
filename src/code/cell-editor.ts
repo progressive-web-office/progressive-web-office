@@ -1,5 +1,5 @@
 /**
- * The code editor of a cell (CODE-007): highlighting, indentation, closing
+ * The code editor of a cell (CODE-011): highlighting, indentation, closing
  * brackets and completion, Python (with the interpreter's names when it is
  * running) or JavaScript.
  */
@@ -74,7 +74,7 @@ async function loadLanguage(lang: CodeLang, complete?: SmartComplete): Promise<E
     const [{ python }, sources] = await Promise.all([import('@codemirror/lang-python'), pythonSources(complete)]);
     return [python(), completionSupport(sources)];
   }
-  // CODE-008: the TypeScript language service, for JavaScript cells (modules, top-level await).
+  // CODE-012: the TypeScript language service, for JavaScript cells (modules, top-level await).
   const [{ javascript }, { scriptIntelligence }] = await Promise.all([import('@codemirror/lang-javascript'), import('./ts-language')]);
   return [javascript(), ...(await scriptIntelligence('cell.mjs'))];
 }

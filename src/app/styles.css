@@ -1038,7 +1038,7 @@ body.distraction-free .ai-panel { display: none !important; }
 .app-busy { display: flex; align-items: center; gap: 8px; }
 .app-busy[hidden] { display: none; }
 
-/* CODE-007: the completion list in both themes. */
+/* CODE-011: the completion list in both themes. */
 .cm-tooltip { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); }
 .cm-tooltip.cm-tooltip-autocomplete > ul { font-family: ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace; max-height: 16em; }
 .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: #fff; }
@@ -1047,14 +1047,14 @@ body.distraction-free .ai-panel { display: none !important; }
 .cm-completionInfo { background: var(--surface); color: var(--text); border: 1px solid var(--border); white-space: pre-wrap; max-width: 28em; max-height: 18em; overflow: auto; font-size: 0.85rem; }
 .code-cell-output .spinner, .collab-bar .spinner { margin-right: 0.4em; }
 
-/* CODE-008: what the TypeScript language service says. */
+/* CODE-012: what the TypeScript language service says. */
 .cm-ts-info { max-width: 32em; padding: 6px 8px; font-size: 0.85rem; }
 .cm-ts-info code { display: block; white-space: pre-wrap; font-family: ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace; color: var(--text); }
 .cm-ts-info p { margin: 6px 0 0; white-space: pre-wrap; color: var(--muted); }
 .cm-tooltip-lint { background: var(--surface); color: var(--text); }
 .cm-diagnostic { padding: 4px 8px; font-size: 0.85rem; white-space: pre-wrap; }
 
-/* CODE-009: a cell whose code is hidden shows its output only (on screen and in print). */
+/* CODE-013: a cell whose code is hidden shows its output only (on screen and in print). */
 .code-cell.code-hidden > .code-cell-source { display: none; }
 .code-cell.code-hidden > .code-cell-output { border-top: 0; }
 .code-cell-hidden-note { font-weight: 400; font-style: italic; }

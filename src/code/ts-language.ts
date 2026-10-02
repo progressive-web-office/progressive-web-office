@@ -1,9 +1,9 @@
 /**
- * TypeScript and JavaScript intelligence in the code editors (CODE-008):
+ * TypeScript and JavaScript intelligence in the code editors (CODE-012):
  * completions with types and documentation, errors underlined, the type of
  * what is under the pointer. The language service runs in a worker loaded on
  * first use; until it answers (or if it cannot load), the simple completion
- * of CODE-007 is used.
+ * of CODE-011 is used.
  */
 import type { Completion, CompletionContext, CompletionResult, CompletionSource } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';

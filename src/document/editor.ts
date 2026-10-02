@@ -494,11 +494,11 @@ export class DocumentEditor implements EditorView {
     else if (action === 'run-all') void this.runCells(this.cellPositions());
     else if (action === 'stop') this.runner?.stop();
     else if (action === 'edit') void this.editCell(pos, node);
-    // CODE-009: show or hide the code, the output staying.
+    // CODE-013: show or hide the code, the output staying.
     else if (action === 'toggle-code') this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, hidden: !node.attrs.hidden }));
   }
 
-  /** CODE-009: hide (or show) the code of every cell of the document. */
+  /** CODE-013: hide (or show) the code of every cell of the document. */
   private setAllCodeHidden(hidden: boolean): void {
     const tr = this.view.state.tr;
     this.view.state.doc.descendants((n, pos) => {
@@ -520,7 +520,7 @@ export class DocumentEditor implements EditorView {
     if (this.readOnly) return;
     const { editCell } = await import('../code/ui');
     const current = node?.attrs as { cell: string; lang: 'python' | 'javascript'; output: unknown } | undefined;
-    // CODE-007: the interpreter of the document's cells completes with what it knows, once running.
+    // CODE-011: the interpreter of the document's cells completes with what it knows, once running.
     const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : undefined, (code, line, column) => this.runner?.complete(code, line, column) ?? Promise.resolve(null));
     if (!value) return;
     // Changing the code makes the previous output stale.

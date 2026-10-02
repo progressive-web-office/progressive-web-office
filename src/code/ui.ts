@@ -69,7 +69,7 @@ function modal(host: HTMLElement, titleId: string): { dialog: HTMLDialogElement;
 
 /**
  * Insert or edit a cell. Resolves to null when cancelled. `complete` gives
- * the completions of the running interpreter (CODE-007).
+ * the completions of the running interpreter (CODE-011).
  */
 export async function editCell(host: HTMLElement, initial?: CellValue, complete?: SmartComplete): Promise<CellValue | null> {
   const { createCellEditor } = await import('./cell-editor');

@@ -174,7 +174,7 @@ export class TextView implements PwoView {
       ?.load()
       .then(async (lang) => {
         this.parserLanguage = lang instanceof LanguageSupport ? lang.language : (lang as StreamLanguage<unknown>);
-        // CODE-007, CODE-008: completion; for JavaScript and TypeScript, the TypeScript language service.
+        // CODE-011, CODE-012: completion; for JavaScript and TypeScript, the TypeScript language service.
         this.view.dispatch({ effects: this.language.reconfigure([lang, (await import('../code/completion')).completionSupport()]) });
         if (/JavaScript|TypeScript/.test(entry.name)) {
           const { scriptIntelligence } = await import('../code/ts-language');

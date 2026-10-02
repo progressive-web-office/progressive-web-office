@@ -1,5 +1,5 @@
 /**
- * Completion while writing code (CODE-007): keywords, snippets and the names
+ * Completion while writing code (CODE-011): keywords, snippets and the names
  * of the code for every language that has them, the standard objects of
  * JavaScript and TypeScript (`Math.`, `JSON.`…), and for Python cells the
  * names known by the running interpreter (jedi: variables of earlier cells,

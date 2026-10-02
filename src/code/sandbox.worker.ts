@@ -140,7 +140,7 @@ async function runPython(id: number, code: string): Promise<Output> {
   return { text: out.join(''), images };
 }
 
-// --- completion (CODE-007) -------------------------------------------------------
+// --- completion (CODE-011) -------------------------------------------------------
 
 /** jedi's completions, with the interpreter's names (variables of earlier cells, imported modules). */
 const COMPLETE = `

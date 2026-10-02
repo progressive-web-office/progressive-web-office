@@ -54,7 +54,7 @@ export class CodeRunner {
   }
 
   /**
-   * CODE-007: completions of the running Python interpreter (null when it is
+   * CODE-011: completions of the running Python interpreter (null when it is
    * not running: it is not started only for this, nor waited for long).
    */
   complete(code: string, line: number, column: number, timeoutMs = 2500): Promise<import('./completion').SmartItem[] | null> {

@@ -3,7 +3,7 @@ import { openApp, openFile } from './helpers';
 
 const popup = (page: import('@playwright/test').Page) => page.locator('.cm-tooltip-autocomplete');
 
-test('completes Python and JavaScript in source files (CODE-007)', async ({ page }) => {
+test('completes Python and JavaScript in source files (CODE-011)', async ({ page }) => {
   const errors = await openApp(page);
   await openFile(page, 'sum.py', 'def total(values):\n    return sum(values)\n', 'text/x-python');
   const code = page.getByRole('textbox', { name: 'Content of sum.py' });
@@ -34,7 +34,7 @@ test('completes Python and JavaScript in source files (CODE-007)', async ({ page
   expect(errors).toEqual([]);
 });
 
-test('completes the code of a cell (CODE-007)', async ({ page }) => {
+test('completes the code of a cell (CODE-011)', async ({ page }) => {
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'New document' }).click();
   await page.getByRole('textbox', { name: 'Document' }).click();
@@ -53,7 +53,7 @@ test('completes the code of a cell (CODE-007)', async ({ page }) => {
 });
 
 /** jedi comes from the Pyodide CDN (see code-cells.spec.ts for PYODIDE_PACKAGES). */
-test('completes with the names known by the running interpreter (CODE-007)', async ({ page }) => {
+test('completes with the names known by the running interpreter (CODE-011)', async ({ page }) => {
   const local = process.env.PYODIDE_PACKAGES;
   test.skip(!local && !process.env.CI, 'needs PYODIDE_PACKAGES or network access to the Pyodide CDN');
   test.setTimeout(180_000);
@@ -82,7 +82,7 @@ test('completes with the names known by the running interpreter (CODE-007)', asy
   await expect(popup(page).getByRole('option', { name: /^voltage_drop/ })).toBeVisible({ timeout: 30_000 });
 });
 
-test('knows the types of TypeScript and JavaScript: completions, errors, types under the pointer (CODE-008)', async ({ page }) => {
+test('knows the types of TypeScript and JavaScript: completions, errors, types under the pointer (CODE-012)', async ({ page }) => {
   test.setTimeout(90_000);
   const errors = await openApp(page);
   await openFile(page, 'shapes.ts', 'interface Circle {\n  radius: number;\n  /** The colour, as a CSS name. */\n  colour: string;\n}\nconst c: Circle = { radius: 2, colour: "red" };\nconst n: number = "three";\n', 'text/plain');

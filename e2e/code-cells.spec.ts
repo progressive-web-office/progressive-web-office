@@ -118,7 +118,7 @@ test('plots a matplotlib figure and stores it with the document (CODE-005)', asy
   expect(errors).toEqual([]);
 });
 
-test('hides the code of a cell, its output staying, and keeps it hidden in the file (CODE-009)', async ({ page }) => {
+test('hides the code of a cell, its output staying, and keeps it hidden in the file (CODE-013)', async ({ page }) => {
   const errors = await openApp(page);
   await openFile(page, 'nb.md', '# Notes\n\n```python {run}\nprint(6 * 7)\n```\n\n```text {output}\n42\n```\n');
   const cell = page.locator('.doc-page .code-cell');

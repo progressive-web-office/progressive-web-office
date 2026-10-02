@@ -1,5 +1,5 @@
 /**
- * TypeScript language service (CODE-008), in a worker: completions with
+ * TypeScript language service (CODE-012), in a worker: completions with
  * types and documentation, type errors and the type of what is under the
  * pointer, for TypeScript and JavaScript. Loaded on first use; the standard
  * library declarations it needs are loaded with it.

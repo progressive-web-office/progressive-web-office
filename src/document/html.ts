@@ -335,7 +335,7 @@ export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (
   cell.className = 'code-cell';
   cell.dataset.lang = run.lang;
   cell.contentEditable = 'false';
-  // CODE-009: only the output of a cell whose code is hidden is shown (and printed).
+  // CODE-013: only the output of a cell whose code is hidden is shown (and printed).
   if (run.hidden) {
     cell.classList.add('code-hidden');
     cell.dataset.hidden = 'true';

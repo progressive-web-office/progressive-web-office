@@ -10,7 +10,7 @@ const context = (doc: string, explicit = false) => {
 };
 const labels = (r: CompletionResult | null) => (r?.options ?? []).map((o) => o.label);
 
-describe('CODE-007 completion while writing code', () => {
+describe('CODE-011 completion while writing code', () => {
   it('turns the interpreter completions into options, best first, with signature and documentation', () => {
     const items: SmartItem[] = [
       { name: 'linspace', type: 'function', signature: 'linspace(start, stop, num=50)', doc: 'Return evenly spaced numbers.' },

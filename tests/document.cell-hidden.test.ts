@@ -11,7 +11,7 @@ const doc = (hidden: boolean): RichDocument => ({
   meta: {},
 });
 
-describe('CODE-009 cells whose code is hidden', () => {
+describe('CODE-013 cells whose code is hidden', () => {
   it('keeps the hidden code in Markdown with the {run hide} flag', () => {
     const md = writeMarkdown(doc(true));
     expect(md).toContain('```python {run hide}\nprint(6 * 7)\n```');
