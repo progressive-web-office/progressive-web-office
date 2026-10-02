@@ -191,7 +191,7 @@ The code is TypeScript without a UI framework, built with Vite. See
 
 The full list is in [ROADMAP.md](ROADMAP.md); changes are in
 [CHANGELOG.md](CHANGELOG.md). The project is in initial development
-(`0.0.x`).
+(`0.x`): 0.1.0 is its first minor release.
 
 ## Contributing
 

@@ -1,6 +1,6 @@
 {
   "name": "progressive-web-office",
-  "version": "0.0.13",
+  "version": "0.1.0",
   "description": "A simple office suite that runs entirely in the browser: edit .docx/.odt documents, .xlsx/.ods/.csv spreadsheets and view PDF files.",
   "private": true,
   "type": "module",

@@ -1,8 +1,8 @@
 # Roadmap
 
-Development phases are **milestones**, not releases. Following Semantic
-Versioning for initial development, phase *n* is tagged `0.0.(n+1)` in the
-changelog.
+Development phases are **milestones**. Following Semantic Versioning for
+initial development, phases 0 to 12 are `0.0.1` to `0.0.13` in the
+changelog; phase 13 is the first minor release, `0.1.0`.
 
 | Phase | Milestone | Scope | Status |
 |-------|-----------|-------|--------|
@@ -19,7 +19,7 @@ changelog.
 | 10 | 0.0.11 | Git repositories: GitHub and GitLab browse, open, commit | ✅ |
 | 11 | 0.0.12 | Device-to-device exchange with QRShare (Web Share, share target) | ✅ |
 | 12 | 0.0.13 | AI assistant (Claude) with document tools; WebMCP tools for external agents | ✅ |
-| 13 | 0.0.14 | QRShare app handoff (send and receive files between the two apps in the browser); light/dark/system theme; document properties and Markdown front matter; Mermaid diagrams; sandboxed Python/JavaScript code cells; Grist connector; choice of AI provider (Claude, OpenAI, Mistral, Albert, Ollama, OpenAI-compatible); Nextcloud / WebDAV; spreadsheet charts; real-time collaboration (documents, spreadsheets) with presence and shared versions; ProseMirror word processor (find/replace, character and paragraph formatting, page breaks, footnotes, table of contents, header/footer, tables with merged cells, captions and cross-references, citations and bibliography, master documents); folder mode (side panel, search across documents, links between documents) | ⏳ |
+| 13 | 0.1.0 | QRShare app handoff (send and receive files between the two apps in the browser); light/dark/system theme; document properties and Markdown front matter; Mermaid diagrams; sandboxed Python/JavaScript code cells; Grist connector; choice of AI provider (Claude, OpenAI, Mistral, Albert, Ollama, OpenAI-compatible); Nextcloud / WebDAV; spreadsheet charts; real-time collaboration (documents, spreadsheets) with presence and shared versions; ProseMirror word processor (find/replace, character and paragraph formatting, page breaks, footnotes, table of contents, header/footer, tables with merged cells, captions and cross-references, citations and bibliography, master documents); folder mode (side panel, search across documents, links between documents) | ✅ |
 
 ## Planned
 
@@ -42,7 +42,7 @@ group is not a commitment.
 - Editing modes, switchable per document: visual (WYSIWYG), source
   (Markdown or LaTeX text with highlighting, side-by-side preview) and
   reading (no toolbar, larger text)
-- ✅ Page numbering styles (DOC-029, 0.0.14)
+- ✅ Page numbering styles (DOC-029, 0.1.0)
 - ✅ Templates and examples, the user's own templates in the browser, the
   template file formats (FILE-018 to FILE-020); next: templates kept in a
   folder
@@ -62,7 +62,7 @@ group is not a commitment.
 - Comments and track changes (ODF and DOCX), on top of real-time
   collaboration
 - ✅ Asynchronous collaboration without a network for text documents
-  (COLLAB-008, 0.0.14): character-level merge through passes of animated QR
+  (COLLAB-008, 0.1.0): character-level merge through passes of animated QR
   codes with QRShare, signed frames, trusted devices, an import log
 - Offline synchronisation of spreadsheets, images sent once by SHA-256
   (blob frames), the Yjs history embedded in ODT and DOCX files

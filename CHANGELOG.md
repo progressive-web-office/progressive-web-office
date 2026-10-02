@@ -8,6 +8,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-02
+
+First minor release: everything since 0.0.13, summed up in the README.
+
 ### Added
 
 - Slide size and orientation in presentations: 16:9, 4:3, A4 or Letter,

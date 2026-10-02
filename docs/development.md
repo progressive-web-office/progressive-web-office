@@ -34,8 +34,9 @@ description: How to build, test and contribute to Progressive Web Office.
   their `describe()` titles (for example `DOC-001`).
 - **Test-driven development**: write the failing test first, then the code.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
-- The project follows [Semantic Versioning](https://semver.org/); roadmap
-  phases are `0.0.x` milestones (see `ROADMAP.md`).
+- The project follows [Semantic Versioning](https://semver.org/): roadmap
+  phases were `0.0.x` milestones up to `0.0.13`, then `0.1.0` (see
+  `ROADMAP.md`); new features bump the minor version while in `0.x`.
 - Every notable change is listed in `CHANGELOG.md`
   ([Keep a Changelog](https://keepachangelog.com/)).
 - AI assistance is disclosed with an `Assisted-by: AI` commit trailer.
