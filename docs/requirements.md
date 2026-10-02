@@ -257,6 +257,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-011 | S | 0.0.14 | The system shall let the user choose a light, dark or system theme (following the operating system preference by default); the choice shall persist and apply to native controls. Document pages and slides shall stay light, as on paper. |
 | UI-012 | S | 0.0.14 | The system shall offer an About window, from the toolbar and the start screen, showing the version, the git commit and date of the build, the licence, whether the app is installed and works offline, a QR code of the app address to open it on another device (shown full screen when activated), and links to the documentation, source code, changelog, requirements and problem reports; it shall copy these details for a problem report. |
 | UI-013 | S | 0.0.14 | The system shall display its version and the short git commit of the build (e.g. `v0.0.13 (6cae6fc)`) in the toolbar and on the start screen, as QRShare does; activating it shall open the About window. |
+| UI-014 | S | 0.0.14 | On a narrow screen (phone), the system shall keep the header on one line, with Save visible and the other file actions in a menu, and lay out each editing toolbar as a single row that scrolls horizontally, so that the document stays visible above the on-screen keyboard. |
 
 ## 9. Quality (QA)
 

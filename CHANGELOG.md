@@ -199,6 +199,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Phones: the header keeps one line (Save, and the other actions in a “⋯”
+  menu) and editing toolbars one row that scrolls sideways, instead of
+  covering most of the screen above the keyboard.
 - Side panels (assistant, folder) no longer cover the second line of the
   header when it wraps on narrow windows.
 

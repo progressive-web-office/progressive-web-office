@@ -729,4 +729,6 @@ export const zh: Record<MessageKey, string> = {
   'folder.confirmRemoveFolder': '删除文件夹“{name}”及其全部内容？此操作无法撤销。',
   'folder.untitled': '未命名',
   'folder.readOnlyHint': '在此浏览器中为只读：保存将下载副本。基于 Chromium 的浏览器（Chrome、Edge…）可直接保存到文件夹。',
+  'app.more': '更多操作',
+  'app.moreTitle': '打开、另存为、分享、打印…',
 };

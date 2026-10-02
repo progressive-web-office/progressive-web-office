@@ -811,7 +811,7 @@ export class App {
       button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }),
     );
     if (doc?.view.save) {
-      actions.append(button(t('file.save'), () => void this.save(), { title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : doc.dav ? t('dav.saveBackTitle', { path: doc.dav.path }) : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
+      actions.append(button(t('file.save'), () => void this.save(), { className: 'keep', title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : doc.dav ? t('dav.saveBackTitle', { path: doc.dav.path }) : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
       if (!doc.source && !doc.grist) actions.append(button(t('dav.saveToCloud'), () => void this.saveToCloud(true), { title: t('dav.saveToCloudTitle'), text: '☁', className: 'icon' }));
       if (!doc.source && !doc.grist) actions.append(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
       const select = h(
@@ -842,6 +842,20 @@ export class App {
         button(t('file.close'), () => this.close(), { title: t('file.closeTitle') }),
       );
     }
+    // UI-014: on a phone, the actions other than Save go into a "⋯" menu.
+    if (!doc?.view.save) actions.querySelector('button')?.classList.add('keep');
+    const more = button(t('app.more'), () => {
+      const open = this.header.classList.toggle('more-open');
+      more.setAttribute('aria-expanded', String(open));
+    }, { text: '⋯', className: 'icon more-toggle', title: t('app.moreTitle') });
+    more.setAttribute('aria-expanded', 'false');
+    actions.append(more);
+    actions.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest('button, select');
+      if (target && target !== more && target.tagName === 'BUTTON') this.header.classList.remove('more-open');
+    });
+    actions.addEventListener('change', () => this.header.classList.remove('more-open'));
+    this.header.classList.remove('more-open');
     this.header.replaceChildren(...items.filter((n): n is Node => n !== null), actions);
   }
 

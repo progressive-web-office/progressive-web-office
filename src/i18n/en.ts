@@ -727,6 +727,8 @@ export const en = {
   'folder.confirmRemoveFolder': 'Delete the folder “{name}” and everything in it? This cannot be undone.',
   'folder.untitled': 'Untitled',
   'folder.readOnlyHint': 'Read-only in this browser: Save downloads a copy. Chromium-based browsers (Chrome, Edge…) save into the folder.',
+  'app.more': 'More actions',
+  'app.moreTitle': 'Open, save as, share, print…',
 } as const;
 
 export type MessageKey = keyof typeof en;

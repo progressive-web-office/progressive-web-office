@@ -781,3 +781,29 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .doc-page div.include .include-src { font-weight: 600; }
 .doc-page div.include .include-hint { flex: 1; color: #6b7685; font-size: 0.85em; }
 .doc-page div.include.ProseMirror-selectednode { outline: 2px solid var(--accent); }
+
+/* --- Phones (UI-014): one header line, one toolbar row ---------------------------- */
+.more-toggle { display: none; }
+@media (max-width: 700px) {
+  .app-header { flex-wrap: nowrap; position: relative; padding: 4px 8px; gap: 6px; }
+  .app-header .doc-name { min-width: 0; flex: 1; max-width: none; }
+  .app-header .doc-source { display: none; }
+  .header-actions { flex-wrap: nowrap; }
+  .header-actions > :not(.keep):not(.more-toggle) { display: none; }
+  .more-toggle { display: inline-flex; }
+  .app-header.more-open .header-actions {
+    position: absolute; top: 100%; right: 8px; z-index: 40;
+    flex-direction: column; align-items: stretch; gap: 4px;
+    min-width: 220px; max-height: 70vh; overflow: auto; padding: 6px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+  .app-header.more-open .header-actions > * { display: flex; justify-content: flex-start; }
+  .app-header.more-open .header-actions > .more-toggle { order: -1; align-self: flex-end; }
+  /* Icon buttons show their name in the menu. */
+  .app-header.more-open .header-actions > button.icon[aria-label]::after { content: ' ' attr(aria-label); margin-left: 6px; }
+  .toolbar { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding: 4px 8px; }
+  .toolbar > * { flex: 0 0 auto; }
+  .toolbar .sep { display: none; }
+  .doc-page { min-height: 70vh; }
+}

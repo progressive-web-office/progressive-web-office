@@ -729,4 +729,6 @@ export const fr: Record<MessageKey, string> = {
   'folder.confirmRemoveFolder': 'Supprimer le dossier « {name} » et tout son contenu ? Cette action est définitive.',
   'folder.untitled': 'Sans titre',
   'folder.readOnlyHint': 'Lecture seule dans ce navigateur : Enregistrer télécharge une copie. Les navigateurs basés sur Chromium (Chrome, Edge…) enregistrent dans le dossier.',
+  'app.more': 'Plus d’actions',
+  'app.moreTitle': 'Ouvrir, enregistrer sous, partager, imprimer…',
 };

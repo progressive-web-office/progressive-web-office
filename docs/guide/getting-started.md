@@ -94,3 +94,11 @@ and browser information to paste into the report.
 ## Limits
 
 Files larger than 50 MB are refused to keep the browser responsive.
+
+## On a phone
+
+On a narrow screen the header keeps one line: the document name, **Save**
+and **⋯**, which holds the other actions (open, save as, share, collaborate,
+print, close…). Editing toolbars are a single row: swipe it sideways to
+reach the other buttons, so that the document stays visible above the
+keyboard.
