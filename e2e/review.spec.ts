@@ -105,3 +105,21 @@ test('reviews a text document page by page and comments it (REVIEW-001..REVIEW-0
   await expect(bar).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test('finds the review mode and its shortcuts in the command palette, also read-only (REVIEW-001, UI-018)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'notes.md', `# Notes\n\n${'Some text. '.repeat(50)}\n`, 'text/markdown');
+  await page.getByRole('button', { name: 'Read-only' }).click();
+  const palette = page.getByRole('dialog', { name: 'Commands' });
+  await page.keyboard.press('Control+Shift+P');
+  await palette.getByRole('combobox').fill('review');
+  const option = palette.getByRole('option', { name: /Review mode/ });
+  await expect(option.locator('kbd')).toHaveText('Ctrl+Alt+R');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('toolbar', { name: 'Review' })).toBeVisible();
+  await page.keyboard.press('Control+Shift+P');
+  await palette.getByRole('combobox').fill('next comment');
+  await expect(palette.getByRole('option').first().locator('kbd')).toHaveText(']');
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});

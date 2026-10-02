@@ -6,6 +6,7 @@ export const zh: Record<MessageKey, string> = {
   'app.tagline': '在浏览器中私密地打开、编辑和保存文档、电子表格与演示文稿。',
   'app.ready': '就绪',
   'app.working': '处理中…',
+  'app.header': '应用程序',
   'app.language': '语言',
   'start.newDocument': '新建文档',
   'start.newSpreadsheet': '新建电子表格',

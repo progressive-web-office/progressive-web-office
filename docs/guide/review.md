@@ -6,9 +6,11 @@ the same buttons and keyboard shortcuts, and comments added as you read.
 
 ## Review mode of text documents
 
-Click **📖 Review mode**, first in the toolbar of a text document, (or press
+Click **📖 Review mode**, first in the toolbar of a text document (or press
 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd>). The editing toolbars make way
-for the review bar:
+for the review bar. The command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type *review*) offers it too, even for a read-only document.
+
+In review mode:
 
 - the document is laid out as pages, like a PDF file; a page break in the
   document starts a new page;

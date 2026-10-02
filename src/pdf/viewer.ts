@@ -3,7 +3,7 @@
  * (PDF-008..PDF-015), built on pdf.js for rendering and pdf-lib for saving.
  */
 // The legacy build ships polyfills (e.g. Map.prototype.getOrInsertComputed) needed by current browsers.
-import { t } from '../i18n';
+import { t, type MessageKey } from '../i18n';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
@@ -15,7 +15,7 @@ import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
 import { findInPages, type PdfMatch } from './find';
 import type { PdfNote } from './annotations';
 import { askAuthor } from '../app/author';
-import { isTyping, reviewAction, spreadStart, type ReviewAction } from '../review/keys';
+import { isTyping, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
 
 const VIEW_KEY = 'pwo.pdf.view';
@@ -587,6 +587,11 @@ export class PdfViewer implements EditorView {
   /** The pages with annotations, in order. */
   private annotatedPages(): number[] {
     return [...new Set([...this.notes.map((n) => n.page), ...this.existing.map((a) => a.page)])].sort((a, b) => a - b).map((p) => p + 1);
+  }
+
+  /** UI-018: the review actions, with their keys, in the command palette. */
+  commands(): ReturnType<typeof reviewCommands> {
+    return reviewCommands((a) => t(`review.action.${a}` as MessageKey), t('pdf.label'), (a) => void this.review(a));
   }
 
   /** Do a review action; false when it does not apply. */

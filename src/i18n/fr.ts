@@ -6,6 +6,7 @@ export const fr: Record<MessageKey, string> = {
   'app.tagline': 'Ouvrez, modifiez et enregistrez documents, classeurs et présentations — en toute confidentialité, dans votre navigateur.',
   'app.ready': 'Prêt',
   'app.working': 'Traitement…',
+  'app.header': 'Application',
   'app.language': 'Langue',
   'start.newDocument': 'Nouveau document',
   'start.newSpreadsheet': 'Nouveau classeur',

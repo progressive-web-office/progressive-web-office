@@ -4,6 +4,7 @@ export const en = {
   'app.tagline': 'Open, edit and save documents, spreadsheets and presentations — privately, in your browser.',
   'app.ready': 'Ready',
   'app.working': 'Working…',
+  'app.header': 'Application',
   'app.language': 'Language',
   'start.newDocument': 'New document',
   'start.newSpreadsheet': 'New spreadsheet',

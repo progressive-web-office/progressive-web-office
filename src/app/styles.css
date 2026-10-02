@@ -933,13 +933,15 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .a11y-list li { margin: 4px 0; }
 
 /* UI-018: command palette. */
-.dialog.palette { width: min(36rem, calc(100vw - 32px)); padding: 8px; align-self: start; margin-top: 10vh; }
+.dialog.palette { width: min(60rem, calc(100vw - 32px)); max-width: none; padding: 8px; align-self: start; margin-top: 10vh; }
 .palette-input { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 8px 10px; }
 .palette-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 50vh; overflow: auto; }
-.palette-list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
-.palette-list .palette-meta { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.palette-list li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(7rem, auto) minmax(0, 14rem); align-items: center; gap: 16px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.palette-list li.hint { display: block; }
+.palette-list .palette-keys { display: flex; flex-wrap: wrap; gap: 4px; }
+@media (max-width: 600px) { .palette-list li { grid-template-columns: minmax(0, 1fr) auto; } .palette-list .palette-where { display: none; } }
 .palette-list kbd { padding: 0 5px; border: 1px solid var(--border, #bbb); border-bottom-width: 2px; border-radius: 4px; font: 0.8em ui-monospace, monospace; white-space: nowrap; }
-.palette-list li small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+.palette-list li small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .palette-list li.active { background: var(--sel); outline: 1px solid var(--accent); }
 
 /* FILE-025: versions kept in the browser. */

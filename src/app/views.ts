@@ -42,6 +42,8 @@ export interface EditorView {
   setReadOnly?(readOnly: boolean): void;
   /** Show the first match of a search (FOLDER-002). */
   find?(query: string): void;
+  /** Commands of the view for the command palette, shown or not on screen (UI-018). */
+  commands?(): import('./palette').PaletteCommand[];
   /** The document with its sub-documents as `include` blocks, to assemble (DOC-028). */
   masterDocument?(): import('../document/model').RichDocument | undefined;
   destroy(): void;

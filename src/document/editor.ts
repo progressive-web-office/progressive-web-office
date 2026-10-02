@@ -878,6 +878,14 @@ export class DocumentEditor implements EditorView {
     this.view.setProps({});
   }
 
+  /** UI-018: the review mode in the palette, even when the toolbar is hidden (read-only). */
+  commands(): import('../app/palette').PaletteCommand[] {
+    const toggle = this.review.active
+      ? { label: t('review.leaveTitle'), where: t('review.bar'), keys: ['Ctrl+Alt+R'], run: () => this.review.toggle(false) }
+      : { label: t('review.mode'), where: t('doc.formatting'), keys: ['Ctrl+Alt+R'], run: () => this.review.toggle(true) };
+    return [toggle, ...this.review.commands()];
+  }
+
   /** FOLDER-002: show the first match of a search from the folder panel. */
   find(query: string): void {
     this.findBar.openWith(query);

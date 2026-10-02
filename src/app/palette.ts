@@ -49,7 +49,8 @@ export function collectCommands(root: HTMLElement): PaletteCommand[] {
   const out: PaletteCommand[] = [];
   const seen = new Set<string>();
   const visible = (el: HTMLElement): boolean => !el.closest('[hidden], dialog, .palette') && (el.offsetParent !== null || el.getClientRects().length > 0);
-  const whereOf = (el: HTMLElement): string => el.closest<HTMLElement>('[role=toolbar], aside, header, [aria-label]')?.getAttribute('aria-label') ?? '';
+  // The toolbar, panel or menu around the control (not the control itself).
+  const whereOf = (el: HTMLElement): string => el.parentElement?.closest<HTMLElement>('[role=toolbar], aside, header, [aria-label]')?.getAttribute('aria-label') ?? '';
   for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>('button'))) {
     if (b.disabled || !visible(b)) continue;
     const raw = (b.getAttribute('aria-label') || b.title || b.textContent || '').replace(/\s+/g, ' ').trim();
@@ -97,7 +98,7 @@ export function openPalette(host: HTMLElement, commands: PaletteCommand[]): Prom
       list.replaceChildren(
         ...(shown.length
           ? shown.map((c, i) => {
-              const li = h('li', { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' }, h('span', {}, c.label), h('span', { class: 'palette-meta' }, ...(c.keys ?? []).map((k) => h('kbd', {}, k)), c.where ? h('small', {}, c.where) : ''));
+              const li = h('li', { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' }, h('span', { class: 'palette-name' }, c.label), h('span', { class: 'palette-keys' }, ...(c.keys ?? []).map((k) => h('kbd', {}, k))), h('small', { class: 'palette-where' }, c.where));
               li.addEventListener('mousedown', (e) => e.preventDefault());
               li.addEventListener('click', () => run(i));
               return li;

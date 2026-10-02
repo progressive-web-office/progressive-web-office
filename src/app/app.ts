@@ -113,7 +113,7 @@ export class App {
     private readonly root: HTMLElement,
     private readonly options: AppOptions = {},
   ) {
-    this.header = h('header', { class: 'app-header' });
+    this.header = h('header', { class: 'app-header', 'aria-label': t('app.header') });
     this.main = h('main', { class: 'app-main', id: 'main' });
     this.statusBar = h('footer', { class: 'app-status', 'aria-live': 'polite' });
     this.alert = h('div', { class: 'app-alert', role: 'alert', hidden: true });
@@ -1468,7 +1468,11 @@ export class App {
     this.paletteOpen = true;
     const { collectCommands, openPalette } = await import('./palette');
     try {
-      await openPalette(this.root, collectCommands(this.root));
+      const shown = collectCommands(this.root);
+      // UI-018: the view's own commands, such as the review mode, even when no button shows them.
+      const labels = new Set(shown.map((c) => c.label));
+      const extra = (this.current?.view.commands?.() ?? []).filter((c) => !labels.has(c.label));
+      await openPalette(this.root, [...extra, ...shown]);
     } finally {
       this.paletteOpen = false;
     }

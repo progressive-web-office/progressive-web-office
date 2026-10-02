@@ -87,6 +87,11 @@ export interface KeyLike {
   altKey: boolean;
 }
 
+/** Palette commands for the review actions (UI-018, REVIEW-002). */
+export function reviewCommands(label: (action: ReviewAction) => string, where: string, run: (action: ReviewAction) => void): { label: string; where: string; keys: string[]; run(): void }[] {
+  return REVIEW_KEYS.map(({ action, keys }) => ({ label: label(action), where, keys: keys.slice(0, 2), run: () => run(action) }));
+}
+
 /** The review action of a key press, if any. */
 export function reviewAction(e: KeyLike): ReviewAction | undefined {
   if (e.ctrlKey || e.metaKey || e.altKey) return undefined;

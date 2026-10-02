@@ -11,7 +11,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 ### Added
 
 - The command palette shows the keyboard shortcut of each command that has
-  one.
+  one, and lists the review mode (also for read-only documents) and the
+  review actions with their keys; it is wider, in three columns (command,
+  shortcut, place).
 - Examples with plots: a lab report with Python cells (fit with error bars,
   damped oscillations, Bode plot, histogram, field map, SymPy) whose output
   and figures are already drawn, and a workbook of measurements with line

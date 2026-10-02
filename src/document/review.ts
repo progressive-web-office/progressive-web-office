@@ -6,9 +6,9 @@
 import type { EditorView as PmView } from 'prosemirror-view';
 import { TextSelection } from 'prosemirror-state';
 import { button, h } from '../app/dom';
-import { t } from '../i18n';
+import { t, type MessageKey } from '../i18n';
 import { fitScale, PAGES_PER_ROW, type PdfZoom } from '../pdf/fit';
-import { isTyping, reviewAction, spreadStart, type ReviewAction } from '../review/keys';
+import { isTyping, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
 import type { PageFlow } from '../pdf/viewer';
 
@@ -164,6 +164,12 @@ export class DocReview {
       this.host.view().focus();
     }
     this.host.statusChanged();
+  }
+
+  /** The review actions for the command palette, while reviewing. */
+  commands(): ReturnType<typeof reviewCommands> {
+    if (!this.active) return [];
+    return reviewCommands((a) => t(`review.action.${a}` as MessageKey), t('review.bar'), (a) => void this.do(a));
   }
 
   status(): string {
