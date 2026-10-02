@@ -67,6 +67,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   a storage-independent module (a `StorageProvider` interface with local
   folder, browser storage (OPFS), read-only folder and memory providers, and
   a framework-free explorer component) meant to be shared with other apps.
+- *Open a folder* offers a folder of the device, the browser's own storage
+  (kept across visits, available offline and shared with QRShare) or a
+  Nextcloud / WebDAV account, which the explorer manages too (folders
+  created, files renamed, moved and deleted on the server).
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

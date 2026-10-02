@@ -731,4 +731,8 @@ export const zh: Record<MessageKey, string> = {
   'folder.readOnlyHint': '在此浏览器中为只读：保存将下载副本。基于 Chromium 的浏览器（Chrome、Edge…）可直接保存到文件夹。',
   'app.more': '更多操作',
   'app.moreTitle': '打开、另存为、分享、打印…',
+  'folder.where': '文档在哪里？通过 ☁ 添加的 Nextcloud / WebDAV 账户也会列出。',
+  'folder.local': '本设备上的文件夹',
+  'folder.localReadOnly': '本设备上的文件夹（在此浏览器中只读）',
+  'folder.browserStorage': '浏览器存储',
 };

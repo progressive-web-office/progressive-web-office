@@ -54,6 +54,13 @@ async function fakeFolder(page: Page, files: Record<string, string>): Promise<vo
   await page.goto('./');
 }
 
+async function openLocalFolder(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Open a folder' });
+  await dialog.getByLabel('A folder of this device').check();
+  await dialog.getByRole('button', { name: 'Open' }).click();
+}
+
 test('works on a folder: tree, search, links, saving in place and master documents (FOLDER-001..003, DOC-028)', async ({ page }) => {
   await fakeFolder(page, {
     'main.md': '# Thesis\n\nSee [the first chapter](chapters/one.md).\n\n{{#include chapters/one.md}}\n\n{{#include chapters/two.md}}\n',
@@ -61,7 +68,7 @@ test('works on a folder: tree, search, links, saving in place and master documen
     'chapters/two.md': '# Results\n\nThe regulator is stable.\n',
     'notes.txt': 'not shown in the tree',
   });
-  await page.getByRole('button', { name: 'Open a folder' }).click();
+  await openLocalFolder(page);
   const panel = page.getByRole('complementary', { name: 'Folder' });
   await expect(panel.getByRole('heading', { name: '📁 thesis' })).toBeVisible();
   await expect(panel.getByRole('button', { name: /\.md$|chapters/ })).toHaveText(['chapters', 'main.md']);
@@ -110,7 +117,7 @@ test('works on a folder: tree, search, links, saving in place and master documen
 
 test('creates, renames and deletes documents in the folder (FOLDER-004)', async ({ page }) => {
   await fakeFolder(page, { 'notes/a.md': '# A\n' });
-  await page.getByRole('button', { name: 'Open a folder' }).click();
+  await openLocalFolder(page);
   const panel = page.getByRole('complementary', { name: 'Folder' });
   const files = () => page.evaluate(() => [...(window as unknown as { __folder: Map<string, string> }).__folder.keys()].sort());
   await panel.getByRole('button', { name: 'notes' }).click();
@@ -128,4 +135,23 @@ test('creates, renames and deletes documents in the folder (FOLDER-004)', async 
   page.once('dialog', (d) => void d.accept());
   await panel.getByRole('button', { name: 'Delete (Del)' }).click();
   await expect.poll(files).toEqual(['notes/Outline.md']);
+});
+
+test('keeps documents in the browser storage (FOLDER-006)', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Open a folder' });
+  await dialog.getByLabel('Browser storage').check();
+  await dialog.getByRole('button', { name: 'Open' }).click();
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await expect(panel.getByRole('heading', { name: '📁 Browser storage' })).toBeVisible();
+  page.once('dialog', (d) => void d.accept('Draft.md'));
+  await panel.getByRole('button', { name: 'New document' }).click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Untitled');
+  // Still there after a reload.
+  await page.reload();
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  await dialog.getByLabel('Browser storage').check();
+  await dialog.getByRole('button', { name: 'Open' }).click();
+  await expect(panel.getByRole('button', { name: 'Draft.md' })).toBeVisible();
 });

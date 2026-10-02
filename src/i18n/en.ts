@@ -729,6 +729,10 @@ export const en = {
   'folder.readOnlyHint': 'Read-only in this browser: Save downloads a copy. Chromium-based browsers (Chrome, Edge…) save into the folder.',
   'app.more': 'More actions',
   'app.moreTitle': 'Open, save as, share, print…',
+  'folder.where': 'Where are the documents? Nextcloud / WebDAV accounts added with ☁ are listed too.',
+  'folder.local': 'A folder of this device',
+  'folder.localReadOnly': 'A folder of this device (read-only in this browser)',
+  'folder.browserStorage': 'Browser storage',
 } as const;
 
 export type MessageKey = keyof typeof en;

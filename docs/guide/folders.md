@@ -2,7 +2,16 @@
 
 ## Working on a folder
 
-**Open a folder** (start screen) opens a local folder as a project: its
+**Open a folder** (start screen) asks where the documents are:
+
+- **a folder of this device**;
+- **browser storage**: a space kept by the browser for this site, with
+  nothing to choose or allow, available offline and to the other apps of the
+  same site (QRShare); clearing the site's data erases it;
+- a **Nextcloud / WebDAV** account added with ☁ (see
+  [Nextcloud / WebDAV](./cloud.md)).
+
+It then opens it as a project: its
 documents are listed in a panel on the left, by sub-folder (a sub-folder
 opens when you click it). Click a document to open it; 📁 in the header
 shows or hides the panel.

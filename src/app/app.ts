@@ -863,11 +863,25 @@ export class App {
 
   /** Open a local folder as a project: its documents in a side panel. */
   async openFolder(): Promise<void> {
-    const { canPickDirectory, pickDirectory, pickFileList } = await import('../fs');
+    const { canPickDirectory, pickDirectory, pickFileList, privateStorage } = await import('../fs');
+    const { loadDavAccounts, davClient, davLabel } = await import('../webdav/ui');
+    // FOLDER-006: a local folder, the browser's own storage, or a Nextcloud / WebDAV account.
+    const local = canPickDirectory() ? t('folder.local') : t('folder.localReadOnly');
+    const browser = t('folder.browserStorage');
+    const accounts = loadDavAccounts();
+    const cloud = accounts.map((a) => `☁ ${davLabel(a)}`);
+    const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud], local);
+    if (!choice) return;
     let folder;
     try {
+      if (choice === browser) folder = await privateStorage('Documents', browser);
+      else if (cloud.includes(choice)) {
+        const account = accounts[cloud.indexOf(choice)]!;
+        const { WebDavProvider } = await import('../webdav/provider');
+        folder = new WebDavProvider(davClient(account), `webdav:${account.id}`, davLabel(account));
+      }
       // Writable with the File System Access API (Chromium), read-only elsewhere.
-      folder = canPickDirectory() ? await pickDirectory() : await pickFileList();
+      else folder = canPickDirectory() ? await pickDirectory() : await pickFileList();
     } catch (err) {
       this.showError(t('folder.error', { message: (err as Error).message }));
       return;

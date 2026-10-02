@@ -134,6 +134,21 @@ export class WebDavClient {
     return entry?.etag ? { etag: entry.etag } : {};
   }
 
+  /** Create a folder (MKCOL); 405 when it exists. */
+  async mkdir(path: string): Promise<void> {
+    await this.request('MKCOL', this.url(path, true));
+  }
+
+  /** Rename or move a file or folder; 412 when the target exists. */
+  async move(from: string, to: string, dir = false): Promise<void> {
+    await this.request('MOVE', this.url(from, dir), { headers: { Destination: this.url(to, dir), Overwrite: 'F' } });
+  }
+
+  /** Delete a file or a folder with its content. */
+  async remove(path: string, dir = false): Promise<void> {
+    await this.request('DELETE', this.url(path, dir));
+  }
+
   private async propfind(url: string, depth: '0' | '1'): Promise<DavEntry[]> {
     const res = await this.request('PROPFIND', url, { headers: { Depth: depth, 'Content-Type': 'application/xml; charset=utf-8' }, body: PROPFIND_BODY });
     const doc = new DOMParser().parseFromString(await res.text(), 'application/xml');

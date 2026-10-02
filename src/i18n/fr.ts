@@ -731,4 +731,8 @@ export const fr: Record<MessageKey, string> = {
   'folder.readOnlyHint': 'Lecture seule dans ce navigateur : Enregistrer télécharge une copie. Les navigateurs basés sur Chromium (Chrome, Edge…) enregistrent dans le dossier.',
   'app.more': 'Plus d’actions',
   'app.moreTitle': 'Ouvrir, enregistrer sous, partager, imprimer…',
+  'folder.where': 'Où sont les documents ? Les comptes Nextcloud / WebDAV ajoutés avec ☁ sont aussi proposés.',
+  'folder.local': 'Un dossier de cet appareil',
+  'folder.localReadOnly': 'Un dossier de cet appareil (lecture seule dans ce navigateur)',
+  'folder.browserStorage': 'Stockage du navigateur',
 };
