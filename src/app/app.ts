@@ -947,6 +947,7 @@ export class App {
     if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) actions.append(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
     actions.append(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
     actions.append(this.themeButton());
+    actions.append(button(t('palette.label'), () => void this.openPalette(), { title: t('palette.button'), text: '⌘', className: 'icon' }));
     actions.append(button(t('about.open'), () => void this.showAbout(), { title: t('about.openTitle'), text: '?', className: 'icon' }));
     if (doc) {
       actions.append(
@@ -1415,6 +1416,20 @@ export class App {
     });
   }
 
+  /** Every action of the screen, found by name (UI-018). */
+  private paletteOpen = false;
+
+  async openPalette(): Promise<void> {
+    if (this.paletteOpen || this.root.querySelector('dialog[open]')) return;
+    this.paletteOpen = true;
+    const { collectCommands, openPalette } = await import('./palette');
+    try {
+      await openPalette(this.root, collectCommands(this.root));
+    } finally {
+      this.paletteOpen = false;
+    }
+  }
+
   /** About window (UI-012). */
   async showAbout(): Promise<void> {
     const { showAbout } = await import('./about');
@@ -1560,6 +1575,12 @@ export class App {
     window.addEventListener('keydown', (e) => {
       if (!(e.ctrlKey || e.metaKey)) return;
       const key = e.key.toLowerCase();
+      // UI-018: the command palette.
+      if (key === 'p' && e.shiftKey) {
+        e.preventDefault();
+        void this.openPalette();
+        return;
+      }
       if (key === 's') {
         e.preventDefault();
         void this.save();

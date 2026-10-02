@@ -1008,6 +1008,10 @@ export const en = {
   'variants.error': 'A value cannot be drawn: {message}',
   'variants.stem': 'sheet',
   'variants.keySuffix': 'key',
+  'palette.label': 'Commands',
+  'palette.placeholder': 'Type the name of an action…',
+  'palette.none': 'No matching action.',
+  'palette.button': 'Commands (Ctrl+Shift+P)',
 } as const;
 
 export type MessageKey = keyof typeof en;

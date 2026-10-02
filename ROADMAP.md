@@ -134,7 +134,7 @@ group is not a commitment.
   buttons for the selection, the rest under "More"), toolbars that can be
   hidden, and a full-screen writing mode
 
-- ✅ Templates (FILE-018 to FILE-020); local version history, command
-  palette
+- ✅ Templates (FILE-018 to FILE-020), command palette (UI-018); local
+  version history
 - ✅ Accessibility checker for text documents (DOC-030)
 - Encrypted share links

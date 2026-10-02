@@ -1010,4 +1010,8 @@ export const fr: Record<MessageKey, string> = {
   'variants.error': 'Une valeur ne peut pas être tirée : {message}',
   'variants.stem': 'fiche',
   'variants.keySuffix': 'corrige',
+  'palette.label': 'Commandes',
+  'palette.placeholder': 'Tapez le nom d’une action…',
+  'palette.none': 'Aucune action correspondante.',
+  'palette.button': 'Commandes (Ctrl+Maj+P)',
 };

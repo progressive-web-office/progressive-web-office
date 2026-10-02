@@ -22,6 +22,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   the alternative text.
 - Accessibility check of text documents: pictures, headings, tables, links,
   contrast, title and language, with a way to each issue.
+- Command palette (Ctrl+Shift+P): find any button or menu entry of the
+  screen by typing part of its name.
 - Random variants of exercise sheets: values drawn in the text
   (`{{R=rand(10..20)}}`), computed results (`{{=R*2}}`), N sheets and answer
   keys in a ZIP with a CSV of the values.

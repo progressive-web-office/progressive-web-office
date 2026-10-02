@@ -1010,4 +1010,8 @@ export const zh: Record<MessageKey, string> = {
   'variants.error': '无法抽取某个值：{message}',
   'variants.stem': '练习',
   'variants.keySuffix': '答案',
+  'palette.label': '命令',
+  'palette.placeholder': '输入操作名称…',
+  'palette.none': '没有匹配的操作。',
+  'palette.button': '命令 (Ctrl+Shift+P)',
 };

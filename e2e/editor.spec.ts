@@ -434,3 +434,15 @@ test('generates random variants of a sheet with their answer keys (TEACH-002)', 
   expect(text('sheet-1-key.md')).toContain(`U = ${r} x 2 = ${Number(r) * 2} V`);
   expect(text('sheet-values.csv').split('\n')[0]).toBe('variant,R');
 });
+
+test('runs an action found by name in the command palette (UI-018)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Plan');
+  await page.keyboard.press('Control+Shift+P');
+  const palette = page.getByRole('dialog', { name: 'Commands' });
+  await palette.getByRole('combobox').fill('table conten');
+  await expect(palette.getByRole('option').first()).toContainText('Table of contents');
+  await page.keyboard.press('Enter');
+  await expect(palette).toBeHidden();
+  await expect(editor.locator('.toc')).toHaveCount(1);
+});
