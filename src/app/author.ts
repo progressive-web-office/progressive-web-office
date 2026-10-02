@@ -1,15 +1,15 @@
-/** The name comments and annotations are signed with (REV-001, PDF-018). */
+/**
+ * The user's name (SET-003), set once in the settings or asked the first time
+ * it is needed: it signs comments, annotations and tracked changes (REV-001,
+ * PDF-018) and shows the user in a collaboration (COLLAB-003).
+ */
 
 const AUTHOR_KEY = 'pwo.comments.author';
-const COLLAB_KEY = 'pwo.collab.identity';
 
-/** The name chosen once, else the real-time collaboration name, else ''. */
+/** The name chosen once, else ''. */
 export function commentAuthor(): string {
   try {
-    const own = localStorage.getItem(AUTHOR_KEY);
-    if (own) return own;
-    const collab = JSON.parse(localStorage.getItem(COLLAB_KEY) ?? 'null') as { name?: string } | null;
-    return collab?.name ?? '';
+    return localStorage.getItem(AUTHOR_KEY) ?? '';
   } catch {
     return '';
   }

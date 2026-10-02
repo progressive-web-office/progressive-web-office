@@ -10,7 +10,7 @@ import { t, type MessageKey } from '../i18n';
 import { fitScale, PAGES_PER_ROW, type PdfZoom } from '../pdf/fit';
 import { isTyping, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
-import { loadReading, rememberReading, type PageFlow } from '../review/settings';
+import { loadReading, rememberReading, saveReading, type PageFlow } from '../review/settings';
 
 /** A page of the screen layout, in CSS pixels (US Letter at 96 dpi, as the editor). */
 export const PAGE = { width: 816, height: 1056, marginX: 80, marginY: 72, gap: 24 } as const;
@@ -125,8 +125,10 @@ export class DocReview {
 
   // --- mode -----------------------------------------------------------------------------
 
-  toggle(on = !this.active): void {
+  toggle(on = !this.active, remember = true): void {
     this.active = on;
+    // REVIEW-006: one switch for every file.
+    if (remember) saveReading({ review: on });
     this.bar.hidden = !on;
     this.host.root.classList.toggle('reviewing', on);
     this.host.scroller.tabIndex = on ? 0 : -1;

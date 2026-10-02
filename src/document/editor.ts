@@ -613,7 +613,7 @@ export class DocumentEditor implements EditorView {
 
   mounted(): void {
     // SET-002: documents with text may open in review mode.
-    if (loadReading().docReview && this.view.state.doc.textContent.trim()) this.review.toggle(true);
+    if (loadReading().review && this.view.state.doc.textContent.trim()) this.review.toggle(true, false);
   }
 
   focus(): void {
@@ -999,7 +999,7 @@ export class DocumentEditor implements EditorView {
   }
 
   destroy(): void {
-    if (this.review.active) this.review.toggle(false);
+    if (this.review.active) this.review.toggle(false, false);
     this.runner?.destroy();
     this.view.destroy();
     clearTimeout(this.statusTimer);

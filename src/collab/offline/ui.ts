@@ -5,6 +5,7 @@
  */
 import * as Y from 'yjs';
 import { loadIdentity } from '@scelles/collab';
+import { commentAuthor } from '../../app/author';
 import { button, h } from '../../app/dom';
 import type { SyncableDocument } from '../../app/views';
 import { t } from '../../i18n';
@@ -99,7 +100,7 @@ export async function openOfflineSync(host: OfflineSyncHost): Promise<void> {
   }
   const docId = id;
   const doc = ydoc;
-  const sync = new DocumentSync({ doc, docId, key: await deviceKey(), name: loadIdentity(IDENTITY_KEY).name, peers: new IdbPeerStore(), log: new IdbImportLog() });
+  const sync = new DocumentSync({ doc, docId, key: await deviceKey(), name: commentAuthor() || loadIdentity(IDENTITY_KEY).name, peers: new IdbPeerStore(), log: new IdbImportLog() });
   const settings = loadShareSettings();
   const features = await handoffFeatures(settings.url);
   const canScan = !!features?.features.includes('reply-opener');

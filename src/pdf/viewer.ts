@@ -17,7 +17,7 @@ import type { PdfNote } from './annotations';
 import { askAuthor } from '../app/author';
 import { isTyping, REVIEW_KEYWORDS, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
-import { loadReading, rememberReading, type PageFlow } from '../review/settings';
+import { loadReading, rememberReading, saveReading, type PageFlow } from '../review/settings';
 
 const GAP = 12;
 
@@ -182,7 +182,7 @@ export class PdfViewer implements EditorView {
   mounted(): void {
     this.layout();
     // SET-002: PDF files may open in review mode.
-    if (loadReading().pdfReview) this.setReviewing(true);
+    if (loadReading().review) this.setReviewing(true, false);
     if (typeof ResizeObserver === 'function') {
       let width = this.scroller.clientWidth;
       let height = this.scroller.clientHeight;
@@ -353,8 +353,10 @@ export class PdfViewer implements EditorView {
   }
 
   /** REVIEW-005: the review mode of a PDF file. */
-  setReviewing(on: boolean): void {
+  setReviewing(on: boolean, remember = true): void {
     this.reviewing = on;
+    // REVIEW-006: one switch for every file.
+    if (remember) saveReading({ review: on });
     this.element.classList.toggle('reviewing', on);
     this.reviewButton.setAttribute('aria-pressed', String(on));
     this.renderNotesPanel();

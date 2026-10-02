@@ -435,13 +435,15 @@ integration is ever needed.
 | REVIEW-003 | S | 0.2.0 | Page by page, the mouse wheel shall turn the pages when the spread has nothing more to scroll. |
 | REVIEW-004 | S | 0.2.0 | The system shall offer a full screen without distractions (f, Esc to leave) showing only the pages, the review bar and the comments. |
 | REVIEW-005 | S | 0.2.0 | The PDF viewer shall offer the same review mode button and shortcut (Ctrl+Alt+R): the highlight and note tools named in the toolbar, the form and signature tools hidden, and the annotations panel shown, explaining how to annotate while it is empty. |
+| REVIEW-006 | S | 0.2.0 | The review mode shall be one switch for every file: turned on in a text document or a PDF file, the files opened next open in review mode, until it is left in any of them; the settings shall show and change the same switch. |
 
 ## 9n. Settings (SET)
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
 | SET-001 | S | 0.2.0 | The system shall offer a settings window (⚙ in the header, and the command palette by "settings", "paramètres"…) with its settings grouped by category — general (language, theme, the user's name, the format family of new files), reading and review, writing (typography as you type), printing (paper, orientation, margins) — each kept in the browser as soon as it changes. |
-| SET-002 | S | 0.2.0 | The reading and review settings shall set how PDF files and text documents in review mode open: pages side by side, fit to the width or to the whole page, scrolling or page by page, and whether PDF files and text documents open in review mode; the choices made in the toolbar shall become the new defaults unless the user turns this off. |
+| SET-002 | S | 0.2.0 | The reading and review settings shall set how PDF files and text documents in review mode open: pages side by side, fit to the width or to the whole page, scrolling or page by page, and whether the review mode is on (REVIEW-006); the choices made in the toolbar shall become the new defaults unless the user turns this off. |
+| SET-003 | S | 0.2.0 | The user's name shall be one setting, asked once when it is needed and empty: it signs comments, PDF annotations and tracked changes, and shows the user in real-time collaboration and synchronisation without a network; renaming oneself in a collaboration shall change it. |
 
 ## 9j. Images and drawing (IMG)
 

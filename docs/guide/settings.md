@@ -10,7 +10,10 @@ once.
 - **Language** of the interface (English, French, Chinese).
 - **Theme**: as the system, light or dark.
 - **Your name**: it signs your comments, PDF annotations and tracked
-  changes. Without one, it is asked the first time.
+  changes, and shows you to the other participants of a collaboration (and
+  of a synchronisation without a network). Without one, it is asked once,
+  the first time it is needed; renaming yourself in a collaboration changes
+  it too.
 - **New files in**: OpenDocument (open standard) or Microsoft Office
   formats, for new documents and the format offered first when saving.
 
@@ -25,7 +28,9 @@ they open:
 - **Remember the last choice made in the toolbar**: when it is on, a change
   in the toolbar becomes the default for the next file; turn it off to open
   every file with the settings above;
-- **Open PDF files in review mode**, **Open text documents in review mode**.
+- **Review mode for every file**: PDF files and text documents open in
+  [review mode](./review), until it is left (*Edit*) in any of them — the
+  same switch as the *Review mode* button of the documents and PDF files.
 
 For example, to read two whole pages side by side, page by page: 2 pages,
 *Whole page*, *Page by page*.

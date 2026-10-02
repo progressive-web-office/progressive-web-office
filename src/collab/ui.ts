@@ -3,7 +3,8 @@
  * peer-to-peer connection, who is here, invitation link, saved versions.
  * The protocol and history come from @scelles/collab, shared with QRShare.
  */
-import { CollabSession, colorOf, createIdentity, loadIdentity, saveIdentity, type CollabRoom, type Participant, type VersionEntry } from '@scelles/collab';
+import { CollabSession, colorOf, createIdentity, loadIdentity, saveIdentity, type CollabRoom, type Identity, type Participant, type VersionEntry } from '@scelles/collab';
+import { commentAuthor, saveAuthor } from '../app/author';
 import { button, h } from '../app/dom';
 import { showQrFullScreen, zoomableQr } from '../app/qr';
 import { t } from '../i18n';
@@ -12,6 +13,13 @@ import { collabHash, collabUrl, type CollabLink } from './link';
 import type { CollabAdapter } from './parts';
 
 const APP_ID = 'progressive-web-office';
+
+/** SET-003: the user's name of the settings, with the colour kept for the collaboration; a random one until it is set. */
+export function myIdentity(): Identity {
+  const saved = loadIdentity(IDENTITY_KEY);
+  const name = commentAuthor();
+  return name ? { name, color: saved.color } : saved;
+}
 const IDENTITY_KEY = 'pwo.collab.identity';
 /** Restoring a version rewrites the editor content: these are the shared types. */
 const SCHEMA = { parts: 'map', list: 'array' } as const;
@@ -165,7 +173,7 @@ export class Collaboration {
   /** Join (or start, when `initiator`) the session of `link` for the open editor. */
   static async start(link: CollabLink, adapter: CollabAdapter, initiator: boolean, host: CollabHost): Promise<Collaboration> {
     const transport = await connect(link);
-    const session = new CollabSession(transport.room, { siteId: transport.selfId, identity: loadIdentity(IDENTITY_KEY) });
+    const session = new CollabSession(transport.room, { siteId: transport.selfId, identity: myIdentity() });
     // This device keeps the document and its history: a reload rejoins with them.
     await session.persist({ prefix: 'pwo-collab-', roomId: link.room }).catch(() => undefined);
     let self: Collaboration | undefined;
@@ -274,7 +282,7 @@ export class Collaboration {
   }
 
   private async rename(): Promise<void> {
-    const current = this.session.participants.find((p) => p.self)?.user ?? loadIdentity(IDENTITY_KEY);
+    const current = this.session.participants.find((p) => p.self)?.user ?? myIdentity();
     const input = h('input', { type: 'text', value: current.name, maxlength: '60', 'aria-label': t('collab.name') });
     const name = await this.dialog(t('collab.renameTitle'), [h('label', {}, t('collab.name'), input), button(t('collab.randomName'), () => (input.value = createIdentity().name))], () => input.value.trim());
     if (!name) return;
@@ -282,6 +290,8 @@ export class Collaboration {
     const color = colorOf(name);
     const identity = { name, color: color === colorOf('') ? current.color : color };
     saveIdentity(identity, IDENTITY_KEY);
+    // The same name everywhere (SET-003).
+    saveAuthor(name);
     this.session.setIdentity(identity);
   }
 

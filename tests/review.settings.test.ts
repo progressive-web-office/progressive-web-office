@@ -5,7 +5,7 @@ describe('SET-002 reading and review settings', () => {
   beforeEach(() => localStorage.clear());
 
   it('has defaults', () => {
-    expect(loadReading()).toEqual({ perRow: 1, zoom: 'width', flow: 'scroll', rememberLast: true, pdfReview: false, docReview: false });
+    expect(loadReading()).toEqual({ perRow: 1, zoom: 'width', flow: 'scroll', rememberLast: true, review: false });
   });
 
   it('keeps the chosen defaults', () => {
@@ -22,8 +22,11 @@ describe('SET-002 reading and review settings', () => {
   });
 
   it('ignores invalid values and reads the former PDF view', () => {
-    localStorage.setItem('pwo.reading', JSON.stringify({ perRow: 5, zoom: 'huge', flow: 'x', pdfReview: 'yes' }));
-    expect(loadReading()).toMatchObject({ perRow: 1, zoom: 'width', flow: 'scroll', pdfReview: false });
+    localStorage.setItem('pwo.reading', JSON.stringify({ perRow: 5, zoom: 'huge', flow: 'x', review: 'yes' }));
+    expect(loadReading()).toMatchObject({ perRow: 1, zoom: 'width', flow: 'scroll', review: false });
+    // The former separate settings turn the review mode on.
+    localStorage.setItem('pwo.reading', JSON.stringify({ docReview: true }));
+    expect(loadReading().review).toBe(true);
     localStorage.clear();
     localStorage.setItem('pwo.pdf.view', JSON.stringify({ zoom: 'page', columns: 2, flow: 'pages' }));
     expect(loadReading()).toMatchObject({ perRow: 2, zoom: 'page', flow: 'pages' });

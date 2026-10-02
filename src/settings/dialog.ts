@@ -81,8 +81,7 @@ function readingPanel(): HTMLElement[] {
     field(t('settings.zoom'), select([['width', t('review.action.fitWidth')], ['page', t('review.action.fitPage')]], r.zoom, (zoom) => set({ zoom }))),
     field(t('review.flow'), select([['scroll', t('review.flowScroll')], ['pages', t('review.flowPages')]], r.flow, (flow) => set({ flow }))),
     field(t('settings.rememberLast'), check(r.rememberLast, (rememberLast) => set({ rememberLast })), t('settings.rememberLastHint')),
-    field(t('settings.pdfReview'), check(r.pdfReview, (pdfReview) => set({ pdfReview }))),
-    field(t('settings.docReview'), check(r.docReview, (docReview) => set({ docReview }))),
+    field(t('settings.review'), check(r.review, (review) => set({ review })), t('settings.reviewHint')),
   ];
 }
 

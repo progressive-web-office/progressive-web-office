@@ -15,17 +15,15 @@ export interface ReadingSettings {
   flow: PageFlow;
   /** The choices made in the toolbar become the defaults. */
   rememberLast: boolean;
-  /** PDF files open in review mode. */
-  pdfReview: boolean;
-  /** Text documents open in review mode. */
-  docReview: boolean;
+  /** REVIEW-006: the review mode, for every file (PDF files and text documents) until it is left. */
+  review: boolean;
 }
 
 const KEY = 'pwo.reading';
 /** Where the PDF viewer kept its last view before these settings. */
 const FORMER_PDF_KEY = 'pwo.pdf.view';
 
-export const DEFAULT_READING: ReadingSettings = { perRow: 1, zoom: 'width', flow: 'scroll', rememberLast: true, pdfReview: false, docReview: false };
+export const DEFAULT_READING: ReadingSettings = { perRow: 1, zoom: 'width', flow: 'scroll', rememberLast: true, review: false };
 
 function read(key: string): Record<string, unknown> | undefined {
   try {
@@ -45,8 +43,8 @@ export function loadReading(): ReadingSettings {
     zoom: v.zoom === 'page' || v.zoom === 'width' ? v.zoom : d.zoom,
     flow: v.flow === 'pages' || v.flow === 'scroll' ? v.flow : d.flow,
     rememberLast: typeof v.rememberLast === 'boolean' ? v.rememberLast : d.rememberLast,
-    pdfReview: typeof v.pdfReview === 'boolean' ? v.pdfReview : d.pdfReview,
-    docReview: typeof v.docReview === 'boolean' ? v.docReview : d.docReview,
+    // Formerly one setting for PDF files and one for documents.
+    review: typeof v.review === 'boolean' ? v.review : v.pdfReview === true || v.docReview === true,
   };
 }
 
