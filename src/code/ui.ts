@@ -136,3 +136,25 @@ export function confirmRun(host: HTMLElement): Promise<boolean> {
     m.show();
   });
 }
+
+/** CODE-016: may the code of this document download code (packages, widget modules) from `origin`? */
+export function confirmDownload(host: HTMLElement, origin: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const m = modal(host, 'code-download-title');
+    const finish = (ok: boolean): void => {
+      m.close();
+      resolve(ok);
+    };
+    m.dialog.append(
+      h('h2', { id: 'code-download-title' }, t('widgets.downloadTitle')),
+      h('p', {}, t('widgets.downloadFrom', { origin })),
+      h('p', {}, t('widgets.downloadSandbox')),
+      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(false)), button(t('widgets.downloadAllow'), () => finish(true), { className: 'primary' })),
+    );
+    m.dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      finish(false);
+    });
+    m.show();
+  });
+}

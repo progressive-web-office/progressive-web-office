@@ -42,8 +42,22 @@ export function projectUrl(pkg: Pick<PackageJson, 'homepage' | 'repository'>, sp
   return m ? `https://${m[1]}/${m[2]}` : undefined;
 }
 
+/** The Python packages bundled with the app for widgets (CODE-016), from `public/python/wheels.json`. */
+function pythonDependencies(root: string): Dependency[] {
+  try {
+    const list = JSON.parse(readFileSync(join(root, 'public/python/wheels.json'), 'utf8')) as { wheels: { name: string; version: string; license: string; url?: string }[] };
+    return list.wheels.map((w) => ({ name: `${w.name} (Python)`, version: w.version, license: w.license, ...(w.url ? { url: w.url } : {}) }));
+  } catch {
+    return [];
+  }
+}
+
 /** The runtime dependencies of the project at `root`, with the versions installed in node_modules. */
 export function runtimeDependencies(root: string): Dependency[] {
+  return [...npmDependencies(root), ...pythonDependencies(root)];
+}
+
+function npmDependencies(root: string): Dependency[] {
   const read = (path: string): PackageJson => JSON.parse(readFileSync(path, 'utf8')) as PackageJson;
   const ranges = read(join(root, 'package.json')).dependencies ?? {};
   return Object.keys(ranges)

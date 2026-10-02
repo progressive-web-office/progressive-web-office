@@ -199,6 +199,9 @@ class MarkdownWriter {
     if (text) parts.push(fenced(text, `text {output${run.output?.error ? ' error' : ''}}`));
     const images = (run.output?.images ?? []).filter((key) => this.doc.resources.has(key));
     if (images.length) parts.push(images.map((key) => `![Output](${this.imageUrl(key).replace(/[()\s]/g, encodeURIComponent)} "output")`).join(' '));
+    // CODE-016: widgets are kept as their picture.
+    const widgets = (run.output?.widgets ?? []).map((w) => w.snapshot).filter((key): key is string => !!key && this.doc.resources.has(key));
+    if (widgets.length) parts.push(widgets.map((key) => `![Widget](${this.imageUrl(key).replace(/[()\s]/g, encodeURIComponent)} "widget")`).join(' '));
     return parts.join('\n\n');
   }
 

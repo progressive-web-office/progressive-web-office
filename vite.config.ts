@@ -9,6 +9,8 @@ import { runtimeDependencies } from './src/app/dependencies.ts';
 
 /** Hash of the code sandbox bootstrap, the only inline script the policy allows (CODE-003). */
 const SANDBOX_HASH = `'sha256-${createHash('sha256').update(SANDBOX_BOOTSTRAP).digest('base64')}'`;
+/** Hash of the widget view runtime, the inline script of widget frames (CODE-016). */
+const VIEW_HASH = `'sha256-${createHash('sha256').update(readFileSync(resolve(import.meta.dirname, 'src/code/widgets/view-runtime.js'), 'utf8')).digest('base64')}'`;
 
 /** Build information shown in the About window (UI-012). */
 const PKG = JSON.parse(readFileSync(resolve(import.meta.dirname, 'package.json'), 'utf8')) as { version: string };
@@ -25,7 +27,7 @@ function gitCommit(): string {
 const CSP = [
   "default-src 'self'",
   // blob: and the bootstrap hash are for the code sandbox, whose own policy is stricter (CODE-003).
-  `script-src 'self' 'wasm-unsafe-eval' blob: ${SANDBOX_HASH}`,
+  `script-src 'self' 'wasm-unsafe-eval' blob: ${SANDBOX_HASH} ${VIEW_HASH}`,
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
@@ -171,12 +173,18 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         // The Python runtime (~13 MB) and the TypeScript language service (~4 MB)
         // are cached on first use instead (CODE-002, CODE-008).
-        globIgnores: ['pyodide/**', 'assets/ts.worker-*.js', 'assets/lib.*.d-*.js'],
+        globIgnores: ['pyodide/**', 'python/**', 'assets/ts.worker-*.js', 'assets/lib.*.d-*.js'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes('/pyodide/') && url.origin === self.location.origin,
             handler: 'CacheFirst',
             options: { cacheName: 'pyodide-runtime', expiration: { maxEntries: 16 } },
+          },
+          {
+            // CODE-016: the widget packages bundled with the application.
+            urlPattern: ({ url }) => url.origin === self.location.origin && /\/python\/[^/]+\.(whl|json)$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'python-widgets', expiration: { maxEntries: 16 } },
           },
           {
             urlPattern: ({ url }) => url.origin === self.location.origin && /\/assets\/(ts\.worker-|lib\..+\.d-)[\w-]+\.js$/.test(url.pathname),

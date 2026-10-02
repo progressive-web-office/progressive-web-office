@@ -16,7 +16,9 @@ export function cellsAsBlocks(doc: RichDocument): RichDocument {
     const out: Paragraph[] = only.hidden ? [] : [{ type: 'paragraph', style: 'code', runs: only.cell ? [{ text: only.cell }] : [] }];
     const text = only.output?.text.replace(/\n+$/, '');
     if (text) out.push({ type: 'paragraph', style: 'code', runs: [{ text }] });
-    const images = (only.output?.images ?? []).filter((key) => doc.resources.has(key));
+    // CODE-016: a widget is exported as its picture.
+    const widgetPictures = (only.output?.widgets ?? []).map((w) => w.snapshot).filter((k): k is string => !!k);
+    const images = [...(only.output?.images ?? []), ...widgetPictures].filter((key) => doc.resources.has(key));
     if (images.length) out.push({ type: 'paragraph', style: 'normal', runs: images.map((image) => ({ image, alt: 'Output' })) });
     return out;
   };

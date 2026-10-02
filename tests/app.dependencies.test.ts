@@ -19,7 +19,11 @@ describe('UI-017 dependencies in the About window', () => {
   it('lists the runtime dependencies with their installed versions', () => {
     const deps = runtimeDependencies(process.cwd());
     const names = deps.map((d) => d.name);
-    expect(names).toEqual(Object.keys(pkg.dependencies).filter((n) => !n.startsWith('@types/')).sort());
+    const python = names.filter((n) => n.endsWith(' (Python)'));
+    expect(names.filter((n) => !python.includes(n))).toEqual(Object.keys(pkg.dependencies).filter((n) => !n.startsWith('@types/')).sort());
+    // CODE-016: the Python packages bundled for widgets are listed too.
+    expect(python).toEqual(['comm (Python)', 'psygnal (Python)', 'ipywidgets (Python)', 'anywidget (Python)']);
+    expect(deps.find((d) => d.name === 'anywidget (Python)')?.license).toBe('MIT');
     const yjs = deps.find((d) => d.name === 'yjs')!;
     expect(yjs.version).toBe(JSON.parse(readFileSync('node_modules/yjs/package.json', 'utf8')).version);
     expect(yjs.license).toBe('MIT');

@@ -94,6 +94,16 @@ export interface CellOutput {
   error?: boolean;
   /** Figures, as keys into `RichDocument.resources`. */
   images?: string[];
+  /** CODE-016: widgets the cell shows. */
+  widgets?: CellWidget[];
+}
+
+/** A widget shown by a cell (CODE-016). */
+export interface CellWidget {
+  /** Model id of the running widget. */
+  id: string;
+  /** Picture of the widget (PNG, key into `RichDocument.resources`), for print, export and reopening. */
+  snapshot?: string;
 }
 
 /** An executable code cell, run on request in a sandbox (CODE-001). */

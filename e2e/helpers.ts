@@ -38,3 +38,31 @@ export async function answerName(page: Page, name: string): Promise<void> {
   await dialog.getByRole('textbox').fill(name);
   await dialog.getByRole('button', { name: 'OK' }).click();
 }
+
+/**
+ * Packages of the Python distribution from a local folder (PYODIDE_PACKAGES)
+ * when the Pyodide CDN is out of reach. The folder may hold the same wheels
+ * from the Python package index: the lock file is then given their hashes.
+ * False when neither the folder nor the network (CI) is there.
+ */
+export async function usePyodidePackages(page: Page): Promise<boolean> {
+  const local = process.env.PYODIDE_PACKAGES;
+  if (!local) return !!process.env.CI;
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const { createHash } = await import('node:crypto');
+  const files = new Set(readdirSync(local));
+  await page.route('https://cdn.jsdelivr.net/pyodide/**', (route) => {
+    const name = new URL(route.request().url()).pathname.split('/').pop()!;
+    if (!files.has(name)) return route.abort();
+    return route.fulfill({ body: readFileSync(`${local}/${name}`), headers: { 'Access-Control-Allow-Origin': '*' } });
+  });
+  await page.route('**/pyodide/pyodide-lock.json', async (route) => {
+    const response = await route.fetch();
+    const lock = (await response.json()) as { packages: Record<string, { file_name: string; sha256: string }> };
+    for (const p of Object.values(lock.packages)) {
+      if (files.has(p.file_name)) p.sha256 = createHash('sha256').update(readFileSync(`${local}/${p.file_name}`)).digest('hex');
+    }
+    return route.fulfill({ response, json: lock });
+  });
+  return true;
+}

@@ -1086,3 +1086,11 @@ body.distraction-free .ai-panel { display: none !important; }
 .dag-item { margin: 4px 0; }
 .dag-item.dag-ok::before, .dag-item.dag-stale::before, .dag-item.dag-error::before, .dag-item.dag-blocked::before, .dag-item.dag-new::before { content: none; }
 .dag-highlight { outline: 3px solid #ff6a00; outline-offset: 2px; border-radius: 6px; transition: outline-color 0.3s; }
+
+/* CODE-016: widgets shown by a cell, each in a frame of its own. */
+.code-cell-widgets { display: block; padding: 6px 10px; border-top: 1px dashed #d6dce5; background: #fff; }
+.code-cell-widget { display: block; }
+.code-cell-widget + .code-cell-widget { margin-top: 6px; }
+.code-widget-frame { display: block; width: 100%; border: 0; background: transparent; color-scheme: normal; }
+.code-cell-widget img { max-width: 100%; height: auto; }
+.print-document .code-widget-frame { display: none; }

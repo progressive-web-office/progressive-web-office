@@ -1,0 +1,36 @@
+{
+  "wheels": [
+    {
+      "file": "comm-0.2.3-py3-none-any.whl",
+      "sha256": "c615d91d75f7f04f095b30d1c1711babd43bdc6419c1be9886a85f2f4e489417",
+      "name": "comm",
+      "version": "0.2.3",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/ipython/comm"
+    },
+    {
+      "file": "psygnal-0.16.1-py3-none-any.whl",
+      "sha256": "93b96894d8c46f0a3c0bfaaf8abe73f0d6db2c20cc6d303624cf08f85abc3c92",
+      "name": "psygnal",
+      "version": "0.16.1",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/pyapp-kit/psygnal"
+    },
+    {
+      "file": "ipywidgets-8.1.9-py3-none-any.whl",
+      "sha256": "f2b8cbcaae10252b809fbe4d7470db75c09b769a32cbf816d20e5ca6d3c5a79d",
+      "name": "ipywidgets",
+      "version": "8.1.9",
+      "license": "BSD-3-Clause",
+      "url": "https://github.com/jupyter-widgets/ipywidgets"
+    },
+    {
+      "file": "anywidget-0.11.0-py3-none-any.whl",
+      "sha256": "c574d9acc6503ad27b37a9acea48f957a8ba7c9c9876cfcb37898931c098ce9d",
+      "name": "anywidget",
+      "version": "0.11.0",
+      "license": "MIT",
+      "url": "https://anywidget.dev"
+    }
+  ]
+}

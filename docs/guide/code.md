@@ -96,6 +96,116 @@ it uses (and through which names), and which cells use it.
 Showing the graph starts the Python interpreter to read the cells (no code of
 the document runs).
 
+## Widgets
+
+Cells can show **interactive widgets**: knobs, gauges, sliders, charts…
+Progressive Web Office is a host of [anywidget](https://anywidget.dev)
+widgets: a widget is a web module (its *front end*) and a set of values
+(*traits*) shared with the code. Moving a knob changes the value in the code;
+changing the value in the code moves the knob.
+
+### From Python
+
+Write widgets as in Jupyter or marimo, with `anywidget` and `traitlets`; the
+widget on the last line of a cell (or given to `display()`) is shown below
+it:
+
+```python {run}
+import anywidget, traitlets, pwo
+
+class Counter(anywidget.AnyWidget):
+    _esm = """
+    export default {
+      render({ model, el }) {
+        const b = document.createElement("button");
+        const show = () => { b.textContent = `count is ${model.get("count")}`; };
+        b.onclick = () => { model.set("count", model.get("count") + 1); model.save_changes(); };
+        model.on("change:count", show);
+        show();
+        el.append(b);
+      },
+    };
+    """
+    count = traitlets.Int(0).tag(sync=True)
+
+counter = pwo.ui(Counter())
+counter
+```
+
+- `anywidget`, `ipywidgets`, `comm` and `psygnal` come with the application
+  (they work offline); they are loaded the first time a cell mentions them.
+- **`pwo.ui(widget)`** makes the widget *reactive*: when the user changes
+  it, the cells using it run again (like `mo.ui.anywidget` in marimo). A
+  widget without `pwo.ui` only changes its values (and calls its
+  `observe` / `on_change` callbacks).
+- Layout widgets of `ipywidgets` are drawn too: `HBox`, `VBox`, `Box`,
+  `GridBox` with their `Layout`, `Label`, `HTML`. Other `ipywidgets`
+  controls (sliders, buttons…) are not: use an anywidget.
+- Widgets composed of other widgets (AFM references `anywidget:<id>`) work.
+
+### Packages of widgets
+
+**`await pwo.install(...)`** installs packages of pure Python wheels:
+
+- a wheel URL: `await pwo.install("https://example.org/x-1.0-py3-none-any.whl")`;
+- a list of wheels, one per line, relative to the list (`wheel.txt`, as
+  published with the anywidget instruments demos):
+  `await pwo.install("https://example.org/demo/public/wheel.txt")`;
+- a project name of the Python package index: `await pwo.install("some-widget")`.
+
+The first download from a site asks you (**Download code for this
+document?**): allow only sites you trust. Downloaded packages are kept for
+offline use. Their requirements that come with Python in the browser
+(`numpy`…) are loaded with them.
+
+### From JavaScript
+
+JavaScript cells create widgets from the text of a module and its traits:
+
+```javascript {run}
+const esm = await importWidget("https://example.org/widgets/index.js");
+const css = await importWidget("https://example.org/widgets/index.css");
+const gauge = widget(esm, { value: 3.2, min: 0, max: 5, label: "Level" }, { css });
+const gain = ui(widget(esm, { value: 2.5 }, { css }));
+display(gauge, gain);
+```
+
+- `widget(esm, traits, { css })` creates a widget; `w.get(name)`,
+  `w.set(name, value)`, `w.on("change:name", callback)`, `w.send(message)`.
+- `display(...)` shows widgets below the cell; `ui(w)` re-runs the cells
+  using `w` when the user changes it.
+- `importWidget(url)` gives the text of a module (or a style sheet), after
+  you allowed the site.
+
+### Instrument panels
+
+The [anywidget instruments](https://anywidgetinstruments.github.io/)
+(industrial, automotive, aeronautics) work in both ways: from Python with
+their package (`await pwo.install(".../wheel.txt")` then
+`import anywidget_instruments_industrial as ai`), or from JavaScript with
+their front end and the traits of their contract (`_kind` selects the
+instrument):
+
+```javascript {run}
+const esm = await importWidget("https://example.org/instruments/index.js");
+const css = await importWidget("https://example.org/instruments/index.css");
+const level = widget(esm, { _kind: "tank", value: 3.2, min: 0, max: 5, unit: "m", label: "Level" }, { css });
+const gain = ui(widget(esm, { _kind: "knob", mode: "control", value: 2.5, max: 10, unit: "dB", label: "Gain" }, { css }));
+display(level, gain);
+```
+
+These instruments are for visualization, teaching and simulation: they are
+not certified instruments.
+
+### Safety, saving and printing
+
+Each widget runs in a frame of its own, isolated like the cells: no access
+to the page, your files or other documents, and no network. When the
+document is saved or printed, each widget is kept as a **picture**: it is
+shown in print, in Word, OpenDocument and LaTeX exports, in Markdown
+(`![Widget](… "widget")`) and when the document is reopened, until the cell
+runs again.
+
 ## Hiding the code
 
 **🙈** in the bar of a cell hides its code: only its output (text and

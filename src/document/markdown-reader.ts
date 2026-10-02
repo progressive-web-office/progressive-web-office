@@ -356,9 +356,14 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         // CODE-006: figures produced by the previous cell.
         const target = !heading && !row ? lastCell(blocks) : undefined;
         const figures = runs.filter((r) => !(isTextRun(r) && !r.text.trim()));
-        if (target && figures.length && figures.every((r) => isImageRun(r) && r.title === 'output' && r.image)) {
+        if (target && figures.length && figures.every((r) => isImageRun(r) && (r.title === 'output' || r.title === 'widget') && r.image)) {
           target.output ??= { text: '' };
-          target.output.images = [...(target.output.images ?? []), ...figures.map((r) => (r as ImageRun).image)];
+          const pictures = figures as ImageRun[];
+          const images = pictures.filter((r) => r.title === 'output').map((r) => r.image);
+          // CODE-016: the picture of a widget the cell showed.
+          const widgets = pictures.filter((r) => r.title === 'widget').map((r, i) => ({ id: `saved-${target.output!.widgets?.length ?? 0}-${i}`, snapshot: r.image }));
+          if (images.length) target.output.images = [...(target.output.images ?? []), ...images];
+          if (widgets.length) target.output.widgets = [...(target.output.widgets ?? []), ...widgets];
           break;
         }
         const p = newParagraph(heading ?? 'normal');

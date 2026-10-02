@@ -23,6 +23,8 @@ export interface ViewHooks {
   editDiagram(pos: number, node: PmNode): void;
   /** A code cell button or its source was clicked. */
   cellAction(action: string, pos: number, node: PmNode): void;
+  /** CODE-016: draw the live widgets of a cell (slots `.code-cell-widget[data-model]`). */
+  mountWidgets?(cell: HTMLElement): void;
   /** Current numbers and cross-reference targets (DOC-026). */
   xref(): PmCrossRefs;
   /** Show the paragraph with this anchor. */
@@ -40,6 +42,8 @@ export interface ViewHooks {
 export interface CellHandle {
   element: HTMLElement;
   getPos(): number | undefined;
+  /** Draw the cell again from the document (after a run that left its node unchanged). */
+  refresh(): void;
 }
 
 const CELL_HANDLE = Symbol('cell');
@@ -359,9 +363,10 @@ class CodeCellView extends AtomView {
     const a = this.node.attrs;
     const run: CodeCellRun = { cell: a.cell as string, lang: a.lang as CodeCellRun['lang'], ...(a.output ? { output: a.output as CodeCellRun['output'] } : {}), ...(a.hidden ? { hidden: true } : {}) };
     const el = codeCellElement(run, document, (key) => this.hooks.resolve(key));
-    (el as HTMLElement & { [CELL_HANDLE]?: CellHandle })[CELL_HANDLE] = { element: el, getPos: this.getPos };
+    (el as HTMLElement & { [CELL_HANDLE]?: CellHandle })[CELL_HANDLE] = { element: el, getPos: this.getPos, refresh: () => this.render() };
     this.dom.replaceChildren(el);
     void import('../../code/ui').then(({ decorateCells }) => decorateCells(this.dom));
+    if (run.output?.widgets?.length) this.hooks.mountWidgets?.(el);
     this.dom.onclick = (e) => {
       const target = e.target as HTMLElement;
       const action = target.closest<HTMLElement>('[data-action]')?.dataset.action ?? (target.closest('.code-cell-source') ? 'edit' : undefined);

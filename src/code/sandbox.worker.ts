@@ -29,6 +29,18 @@ interface ForgetRequest {
   lang: 'python' | 'javascript';
   names: string[];
 }
+interface CommRequest {
+  type: 'comm';
+  comm_id: string;
+  data: Record<string, unknown>;
+  buffers?: ArrayBuffer[];
+}
+interface FetchReply {
+  type: 'fetched';
+  id: number;
+  files?: ArrayBuffer[];
+  error?: string;
+}
 interface FileReply {
   type: 'file';
   id: number;
@@ -84,16 +96,23 @@ interface PyProxyLike {
 }
 interface Pyodide {
   runPythonAsync(code: string): Promise<unknown>;
+  registerJsModule(name: string, module: object): void;
+  pyimport(name: string): unknown;
+  loadPackage(names: string[], options?: { messageCallback?(m: string): void; errorCallback?(m: string): void }): Promise<unknown>;
+  globals: { get(name: string): unknown };
   loadPackagesFromImports(code: string, options?: { messageCallback?(m: string): void; errorCallback?(m: string): void }): Promise<unknown>;
   setStdout(options: { batched(text: string): void }): void;
   setStderr(options: { batched(text: string): void }): void;
 }
 
 let python: Promise<Pyodide> | undefined;
+/** Packages of the Python distribution. */
+let lockNames = new Set<string>();
 
 async function loadPython(id: number): Promise<Pyodide> {
   report(id, 'loading-python');
   const [loader, asm, lock] = await Promise.all([requestFile('pyodide.mjs'), requestFile('pyodide.asm.mjs'), requestFile('pyodide-lock.json')]);
+  lockNames = new Set(Object.keys((JSON.parse(new TextDecoder().decode(lock)) as { packages: Record<string, unknown> }).packages));
   const { loadPyodide } = (await import(/* @vite-ignore */ blobModule(loader))) as { loadPyodide(options: object): Promise<Pyodide> };
   const { default: createPyodideModule } = (await import(/* @vite-ignore */ blobModule(asm))) as { default: unknown };
   return loadPyodide({
@@ -133,21 +152,34 @@ async function runPython(id: number, code: string): Promise<Output> {
   const out: string[] = [];
   py.setStdout({ batched: (t) => out.push(`${t}\n`) });
   py.setStderr({ batched: (t) => out.push(`${t}\n`) });
+  // CODE-016: widgets (and the pwo module) are loaded when the code mentions them.
+  if (WIDGET_CODE.test(code)) {
+    try {
+      await ensureWidgets(id);
+    } catch (err) {
+      out.push(`Widgets unavailable: ${(err as Error).message}\n`);
+    }
+  }
   await py.loadPackagesFromImports(code, {
     messageCallback: (m) => report(id, `packages:${m}`),
     errorCallback: (m) => out.push(`${m}\n`),
   });
   report(id, 'running');
+  let shown: string[] = [];
   try {
     const value = await py.runPythonAsync(code);
-    if (value !== undefined && value !== null) out.push(`${describe(value)}\n`);
+    // A widget on the last line is shown, not described.
+    const isWidget = widgetsReady && value !== undefined && value !== null && typeof value === 'object' && (py.globals.get('_pwo_show') as (v: unknown) => boolean)(value);
+    if (value !== undefined && value !== null && !isWidget) out.push(`${describe(value)}\n`);
   } catch (err) {
-    return { text: out.join('') + pythonError(err), error: true, images: [] };
+    return { text: out.join('') + pythonError(err), error: true, images: [], widgets: await takeDisplayed(py) };
+  } finally {
+    shown = await takeDisplayed(py);
   }
   const figures = (await py.runPythonAsync(FIGURES)) as PyProxyLike;
   const images = ((figures.toJs?.() as unknown[]) ?? []).map((b) => (b as Uint8Array).slice().buffer);
   figures.destroy?.();
-  return { text: out.join(''), images };
+  return { text: out.join(''), images, widgets: shown };
 }
 
 // --- completion (CODE-011) -------------------------------------------------------
@@ -284,7 +316,7 @@ async function runJavaScript(id: number, code: string): Promise<Output> {
   for (const k of Object.keys(original) as (keyof typeof original)[]) console[k] = (...args: unknown[]) => void out.push(`${format(args)}\n`);
   try {
     await import(/* @vite-ignore */ blobModule(code));
-    return { text: out.join(''), images: [] };
+    return { text: out.join(''), images: [], widgets: jsDisplayed.splice(0) };
   } catch (err) {
     const e = err as Error;
     return { text: `${out.join('')}${e?.name ?? 'Error'}: ${e?.message ?? String(err)}\n`, error: true, images: [] };
@@ -293,18 +325,272 @@ async function runJavaScript(id: number, code: string): Promise<Output> {
   }
 }
 
+
+// --- widgets (CODE-016) -----------------------------------------------------------
+
+/** Code that uses widgets or the pwo module. */
+const WIDGET_CODE = /\b(pwo|anywidget|ipywidgets)\b/;
+let widgetsReady = false;
+let widgets: Promise<void> | undefined;
+/** The packages bundled with the application, in installation order. */
+const BUNDLED = new Set(['anywidget', 'ipywidgets', 'comm', 'psygnal']);
+
+let nextFetch = 0;
+const fetches = new Map<number, { resolve(files: ArrayBuffer[]): void; reject(e: Error): void }>();
+
+/** Files from a URL or the package index, through the application (which asks the user). */
+function fetchFiles(spec: string, kind: 'python' | 'module'): Promise<ArrayBuffer[]> {
+  const id = ++nextFetch;
+  return new Promise((resolve, reject) => {
+    fetches.set(id, { resolve, reject });
+    scope.postMessage({ type: 'fetch-request', id, spec, kind });
+  });
+}
+
+const GLUE = `
+import _pwo_js
+import pwo_widgets
+from js import Object
+from pyodide.ffi import to_js
+
+def _pwo_send(payload, buffers):
+    _pwo_js.send(to_js(payload, dict_converter=Object.fromEntries), to_js([memoryview(b) for b in buffers]))
+
+async def _pwo_fetch(spec):
+    files = await _pwo_js.fetch(spec)
+    return [f.to_bytes() for f in files]
+
+async def _pwo_load(names):
+    await _pwo_js.load(to_js(list(names)))
+
+def _pwo_show(value):
+    return pwo_widgets.show(value)
+
+def _pwo_receive(comm_id, data, buffers):
+    return to_js(pwo_widgets.receive(comm_id, data.to_py(), [b.to_bytes() for b in buffers]))
+
+pwo_widgets.install(_pwo_send)
+pwo_widgets.module(_pwo_fetch, _pwo_load)
+`;
+
+/** Install the bundled widget packages and the bridge (once). */
+function ensureWidgets(id: number): Promise<void> {
+  widgets ??= (async () => {
+    python ??= loadPython(id);
+    const py = await python;
+    report(id, 'packages:widgets');
+    await py.loadPackage(['traitlets', 'ipython', 'typing-extensions'], { messageCallback: (m) => report(id, `packages:${m}`), errorCallback: (m) => report(id, `packages:${m}`) });
+    const list = JSON.parse(new TextDecoder().decode(await requestFile('python/wheels.json'))) as { wheels: { file: string }[] };
+    const bridge = new TextDecoder().decode(await requestFile('pwo_widgets.py'));
+    // The bridge is a module of its own; the wheels are unpacked by it.
+    (self as unknown as { __pwoBridge?: string }).__pwoBridge = bridge;
+    await py.runPythonAsync(`
+import sys, types
+from js import __pwoBridge
+_m = types.ModuleType("pwo_widgets")
+exec(__pwoBridge, _m.__dict__)
+sys.modules["pwo_widgets"] = _m
+del _m
+`);
+    const bridgeModule = py.pyimport('pwo_widgets') as { unpack(data: Uint8Array): unknown };
+    for (const w of list.wheels) bridgeModule.unpack(new Uint8Array(await requestFile(`python/${w.file}`)));
+    py.registerJsModule('_pwo_js', {
+      send(payload: { msg_type: string; comm_id: string; data: unknown; metadata: unknown }, buffers: Uint8Array[]) {
+        const list = Array.from(buffers, (b) => b.slice().buffer);
+        scope.postMessage({ type: 'comm', ...payload, buffers: list, transfer: list }, list);
+      },
+      fetch: async (spec: string) => (await fetchFiles(spec, 'python')).map((b) => new Uint8Array(b)),
+      async load(names: string[]) {
+        const wanted = Array.from(names);
+        if (wanted.some((n) => BUNDLED.has(n))) await ensureWidgets(id);
+        const known = wanted.filter((n) => lockNames.has(n) && !BUNDLED.has(n));
+        if (known.length) await py.loadPackage(known, { messageCallback: () => undefined, errorCallback: (m) => console.warn(m) });
+      },
+    });
+    await py.runPythonAsync(GLUE);
+    widgetsReady = true;
+  })();
+  return widgets;
+}
+
+async function takeDisplayed(py: Pyodide): Promise<string[]> {
+  const js = jsDisplayed.splice(0);
+  if (!widgetsReady) return js;
+  const taken = (await py.runPythonAsync('import pwo_widgets as _w; _w.take_displayed()')) as PyProxyLike;
+  const ids = (taken.toJs?.() as string[]) ?? [];
+  taken.destroy?.();
+  return [...js, ...ids];
+}
+
+/** A message of a widget's front end. */
+async function receiveComm(commId: string, data: Record<string, unknown>, buffers: ArrayBuffer[]): Promise<void> {
+  const js = jsWidgets.get(commId);
+  if (js) {
+    const names = js.receive(data, buffers);
+    if (names.length) scope.postMessage({ type: 'widget-changed', lang: 'javascript', names });
+    return;
+  }
+  if (!widgetsReady || !python) return;
+  const py = await python;
+  const receive = py.globals.get('_pwo_receive') as (id: string, data: unknown, buffers: Uint8Array[]) => PyProxyLike | string[];
+  const result = receive(commId, data, buffers.map((b) => new Uint8Array(b)));
+  const names = Array.isArray(result) ? result : (((result as PyProxyLike).toJs?.() as string[]) ?? []);
+  if (names.length) scope.postMessage({ type: 'widget-changed', lang: 'python', names });
+}
+
+// JavaScript widgets: an AFM module and its traits, from a JavaScript cell.
+
+const jsWidgets = new Map<string, JsWidget>();
+const jsDisplayed: string[] = [];
+const isBinary = (v: unknown): v is ArrayBuffer | ArrayBufferView => v instanceof ArrayBuffer || ArrayBuffer.isView(v);
+
+/** Top-level binary traits travel as buffers. */
+function splitState(state: Record<string, unknown>): { state: Record<string, unknown>; buffer_paths: string[][]; buffers: ArrayBuffer[] } {
+  const out: Record<string, unknown> = {};
+  const buffer_paths: string[][] = [];
+  const buffers: ArrayBuffer[] = [];
+  for (const [k, v] of Object.entries(state)) {
+    if (isBinary(v)) {
+      buffer_paths.push([k]);
+      buffers.push((v instanceof ArrayBuffer ? new Uint8Array(v) : new Uint8Array(v.buffer, v.byteOffset, v.byteLength)).slice().buffer);
+      out[k] = null;
+    } else out[k] = v;
+  }
+  return { state: out, buffer_paths, buffers };
+}
+
+class JsWidget {
+  readonly model_id = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+  private readonly state: Record<string, unknown>;
+  private readonly handlers = new Map<string, ((...args: unknown[]) => void)[]>();
+  reactive = false;
+
+  constructor(esm: string, traits: Record<string, unknown> = {}, options: { css?: string; name?: string } = {}) {
+    if (typeof esm !== 'string' || !esm.trim()) throw new TypeError('widget(esm, traits): esm is the text of the widget module');
+    this.state = {
+      _model_name: 'AnyModel',
+      _model_module: 'anywidget',
+      _view_name: 'AnyView',
+      _view_module: 'anywidget',
+      _esm: esm,
+      _anywidget_id: options.name ?? 'pwo.js.widget',
+      ...(options.css ? { _css: options.css } : {}),
+      ...traits,
+    };
+    jsWidgets.set(this.model_id, this);
+    this.post('comm_open', splitState(this.state));
+  }
+
+  private post(msg_type: string, data: { state?: Record<string, unknown>; buffer_paths?: string[][]; buffers?: ArrayBuffer[]; method?: string; content?: unknown }): void {
+    const { buffers = [], ...rest } = data;
+    scope.postMessage({ type: 'comm', msg_type, comm_id: this.model_id, data: rest, metadata: {}, buffers, transfer: buffers }, buffers);
+  }
+
+  get(key: string): unknown {
+    return this.state[key];
+  }
+
+  set(key: string, value: unknown): void {
+    this.state[key] = value;
+    const { state, buffer_paths, buffers } = splitState({ [key]: value });
+    this.post('comm_msg', { method: 'update', state, buffer_paths, buffers });
+    this.emit(`change:${key}`, value);
+    this.emit('change');
+  }
+
+  /** `change:<trait>`, `change` or `msg:custom`. */
+  on(name: string, callback: (...args: unknown[]) => void): this {
+    this.handlers.set(name, [...(this.handlers.get(name) ?? []), callback]);
+    return this;
+  }
+
+  off(name?: string, callback?: (...args: unknown[]) => void): this {
+    if (!name) this.handlers.clear();
+    else this.handlers.set(name, callback ? (this.handlers.get(name) ?? []).filter((h) => h !== callback) : []);
+    return this;
+  }
+
+  /** A custom message to the front end. */
+  send(content: unknown, buffers: ArrayBuffer[] = []): void {
+    this.post('comm_msg', { method: 'custom', content, buffers });
+  }
+
+  private emit(name: string, ...args: unknown[]): void {
+    for (const h of this.handlers.get(name) ?? []) {
+      try {
+        h(...args);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+
+  /** From the front end; the names of the cells' scope to re-run for (`ui`). */
+  receive(data: Record<string, unknown>, buffers: ArrayBuffer[]): string[] {
+    if (data.method === 'update' && data.state && typeof data.state === 'object') {
+      const patch = { ...(data.state as Record<string, unknown>) };
+      ((data.buffer_paths as (string | number)[][]) ?? []).forEach((path, i) => {
+        if (path.length === 1 && buffers[i]) patch[String(path[0])] = new DataView(buffers[i]!);
+      });
+      // Front ends often write back what they were given: only real changes count.
+      const changed = Object.keys(patch).filter((k) => JSON.stringify(this.state[k]) !== JSON.stringify(patch[k]) || isBinary(patch[k]));
+      Object.assign(this.state, patch);
+      for (const k of changed) this.emit(`change:${k}`, patch[k]);
+      if (changed.length) this.emit('change');
+      if (!this.reactive || !changed.length) return [];
+      const shared = (globalThis as unknown as { __pwoScope?: Record<string, unknown> }).__pwoScope ?? {};
+      return Object.keys(shared).filter((k) => shared[k] === this && !k.startsWith('_'));
+    }
+    if (data.method === 'custom') this.emit('msg:custom', data.content, buffers.map((b) => new DataView(b)));
+    return [];
+  }
+}
+
+Object.assign(globalThis, {
+  /** `widget(esm, traits, { css })`: a widget from the text of an AFM module. */
+  widget: (esm: string, traits?: Record<string, unknown>, options?: { css?: string; name?: string }) => new JsWidget(esm, traits, options),
+  /** Show widgets below the cell (other values are printed). */
+  display: (...values: unknown[]) => {
+    for (const v of values) {
+      if (v instanceof JsWidget) jsDisplayed.push(v.model_id);
+      else console.log(v);
+    }
+  },
+  /** Re-run the cells using this widget when the user changes it. */
+  ui: <T>(w: T): T => {
+    if (w instanceof JsWidget) w.reactive = true;
+    return w;
+  },
+  /** The text of a widget module (or any text file) from a URL, after the user agreed. */
+  importWidget: async (url: string): Promise<string> => new TextDecoder().decode((await fetchFiles(url, 'module'))[0]),
+});
+
 // --- protocol -----------------------------------------------------------------
 
 interface Output {
   text: string;
   error?: boolean;
   images: ArrayBuffer[];
+  /** CODE-016: models of the widgets the cell shows. */
+  widgets?: string[];
 }
 
 let queue: Promise<unknown> = Promise.resolve();
 
 scope.addEventListener('message', (event: MessageEvent) => {
-  const message = event.data as RunRequest | FileReply | CompleteRequest | AnalyzeRequest | ForgetRequest;
+  const message = event.data as RunRequest | FileReply | CompleteRequest | AnalyzeRequest | ForgetRequest | CommRequest | FetchReply;
+  if (message.type === 'comm') {
+    // From a widget's front end, after the cells already queued.
+    queue = queue.then(() => receiveComm(message.comm_id, message.data, message.buffers ?? []).catch((err) => console.error(err)));
+    return;
+  }
+  if (message.type === 'fetched') {
+    const f = fetches.get(message.id);
+    fetches.delete(message.id);
+    if (message.files) f?.resolve(message.files);
+    else f?.reject(new Error(message.error ?? 'Download refused'));
+    return;
+  }
   if (message.type === 'analyze' || message.type === 'forget') {
     // Queued with the cells: the analysis and the cleaning come before the runs that follow.
     queue = queue.then(async () => {

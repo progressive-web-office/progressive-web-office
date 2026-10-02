@@ -240,6 +240,7 @@ export class DocumentEditor implements EditorView {
           },
           editDiagram: (pos, node) => void this.editDiagram(pos, node),
           cellAction: (action, pos, node) => this.onCellAction(action, pos, node),
+          mountWidgets: (cell) => this.mountWidgets(cell),
           xref: () => this.crossRefs(),
           gotoAnchor: (id) => this.gotoAnchor(id),
           citations: () => this.citations(),
@@ -600,15 +601,70 @@ export class DocumentEditor implements EditorView {
     return error.kind === 'multiple' ? t('code.definedTwice', { name: error.name, cells: list }) : t('code.cycle', { cells: list });
   }
 
+  /** The sandbox of the document's code, with its widgets (CODE-016). */
+  private async ensureRunner(): Promise<CodeRunner> {
+    if (this.runner) return this.runner;
+    const { CodeRunner } = await import('../code/runner');
+    const runner = new CodeRunner(this.element);
+    runner.confirmDownload = async (origin) => (await import('../code/ui')).confirmDownload(this.element, origin);
+    runner.onWidgetChanged = (lang, names) => void this.widgetChanged(lang, names);
+    this.runner = runner;
+    return runner;
+  }
+
+  /** Draw the live widgets of a cell; a widget of an earlier session keeps its picture. */
+  private mountWidgets(cell: HTMLElement): void {
+    const host = this.runner?.widgets;
+    const dark = document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+    for (const slot of cell.querySelectorAll<HTMLElement>('.code-cell-widget[data-model]')) {
+      const id = slot.dataset.model!;
+      if (host?.has(id)) void host.mount(slot, id, dark);
+      else if (!slot.querySelector('img')) slot.replaceChildren(h('span', { class: 'hint' }, t('widgets.notRunning')));
+    }
+  }
+
+  /** CODE-016: a picture of each live widget, kept with the document (print, export, reopening). */
+  private async captureWidgets(): Promise<void> {
+    const host = this.runner?.widgets;
+    if (!host) return;
+    const updates: { pos: number; widgets: { id: string; snapshot?: string }[] }[] = [];
+    for (const { pos, node } of this.allCells()) {
+      const output = node.attrs.output as { widgets?: { id: string; snapshot?: string }[] } | null;
+      if (!output?.widgets?.some((w) => host.has(w.id))) continue;
+      const widgets = await Promise.all(
+        output.widgets.map(async (w) => {
+          const png = host.has(w.id) ? await host.snapshot(w.id) : undefined;
+          return png ? { id: w.id, snapshot: addResource(this.doc, new Uint8Array(png), 'image/png') } : w;
+        }),
+      );
+      updates.push({ pos, widgets });
+    }
+    if (!updates.length) return;
+    const tr = this.view.state.tr.setMeta('addToHistory', false);
+    for (const u of updates) {
+      const node = tr.doc.nodeAt(u.pos)!;
+      tr.setNodeMarkup(u.pos, undefined, { ...node.attrs, output: { ...(node.attrs.output as object), widgets: u.widgets } });
+    }
+    this.view.dispatch(tr);
+  }
+
+  /** A widget marked with `ui()` changed: the cells using it run again (CODE-016, CODE-014). */
+  private async widgetChanged(lang: string, names: string[]): Promise<void> {
+    const cells = this.allCells().filter((c) => c.node.attrs.lang === lang);
+    const targets: number[] = [];
+    for (const c of cells) {
+      const deps = await this.depsOf(lang, c.node.attrs.cell as string, false);
+      if (deps && names.some((n) => deps.refs.includes(n) && !deps.defs.includes(n))) targets.push(c.pos);
+    }
+    if (targets.length) await this.runCells(targets, loadReactivity() === 'off' ? 'off' : 'auto');
+  }
+
   /** CODE-015: the cells, their states and their links, for the graph. */
   private async dagView(): Promise<DagView> {
     const [{ cellStates, edgesOf }, { LANG_LABEL }] = await Promise.all([import('../code/dag'), import('../code/ui')]);
     const cells = this.allCells();
     // Python is analysed by the interpreter: the sandbox starts, no code of the document runs.
-    if (!this.runner && cells.some((c) => c.node.attrs.lang === 'python')) {
-      const { CodeRunner } = await import('../code/runner');
-      this.runner = new CodeRunner(this.element);
-    }
+    if (cells.some((c) => c.node.attrs.lang === 'python')) await this.ensureRunner();
     const { deps, graph } = await this.graphOf(cells, true);
     const now = this.allCells();
     if (now.length !== cells.length) return this.dagView();
@@ -633,17 +689,14 @@ export class DocumentEditor implements EditorView {
   }
 
   /** Run cells in the sandbox and store their output in the document (CODE-002, CODE-005, CODE-014). */
-  private async runCells(positions: number[]): Promise<void> {
+  private async runCells(positions: number[], force?: 'lazy' | 'auto' | 'off'): Promise<void> {
     const ui = await import('../code/ui');
     if (!this.trusted) {
       if (!(await ui.confirmRun(this.element))) return;
       this.trusted = true;
     }
-    if (!this.runner) {
-      const { CodeRunner } = await import('../code/runner');
-      this.runner = new CodeRunner(this.element);
-    }
-    const mode = loadReactivity();
+    await this.ensureRunner();
+    const mode = force ?? loadReactivity();
     if (mode === 'off') return this.runInOrder(positions.map((pos) => ({ pos })));
     const reactive = await import('../code/reactive');
     const cells = this.allCells();
@@ -664,7 +717,7 @@ export class DocumentEditor implements EditorView {
     for (const lang of ['python', 'javascript']) {
       const now = new Set(cells.flatMap((c, i) => (c.node.attrs.lang === lang ? (deps[i]?.defs ?? []) : [])));
       const before = this.defined.get(lang) ?? new Set<string>();
-      this.runner.forget(lang as 'python' | 'javascript', [...before].filter((n) => !now.has(n)));
+      this.runner!.forget(lang as 'python' | 'javascript', [...before].filter((n) => !now.has(n)));
       this.defined.set(lang, new Set([...before].filter((n) => now.has(n))));
     }
     // Cells in error say why, and do not run.
@@ -721,11 +774,14 @@ export class DocumentEditor implements EditorView {
         ui.setCellStatus(cell, text);
       });
       const images = result.images.map((png) => addResource(this.doc, png, 'image/png'));
-      const output = { text: result.text, ...(result.error ? { error: true } : {}), ...(images.length ? { images } : {}) };
+      const widgets = (result.widgets ?? []).map((id) => ({ id }));
+      const output = { text: result.text, ...(result.error ? { error: true } : {}), ...(images.length ? { images } : {}), ...(widgets.length ? { widgets } : {}) };
       const now = handle!.getPos();
       const current = now === undefined ? null : this.view.state.doc.nodeAt(now);
       if (now !== undefined && current?.type === schema.nodes.code_cell) {
         this.view.dispatch(markCells(this.view.state.tr.setNodeMarkup(now, undefined, { ...current.attrs, output }), { fresh: [now] }));
+        // The same output as before leaves the node as it was: the status shown while running goes.
+        if (cell.isConnected && cell.querySelector('.code-cell-output.pending')) handle!.refresh();
       }
       if (!after) {
         if (result.error) {
@@ -822,6 +878,7 @@ export class DocumentEditor implements EditorView {
   }
 
   async save(format: Parameters<EditorView['save'] & object>[0]): Promise<Uint8Array> {
+    await this.captureWidgets();
     this.doc.blocks = this.currentBlocks();
     // REV-001: comments whose text is gone are left out (an undo can still bring them back here).
     const out = { ...this.doc };
@@ -1169,7 +1226,8 @@ export class DocumentEditor implements EditorView {
     };
   }
 
-  printContent(_settings?: PrintSettings): HTMLElement {
+  async printContent(_settings?: PrintSettings): Promise<HTMLElement> {
+    await this.captureWidgets();
     const root = h('div', { class: 'print-document' });
     for (const node of Array.from(this.view.dom.childNodes)) root.append(node.cloneNode(true));
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');

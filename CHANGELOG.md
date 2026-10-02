@@ -10,6 +10,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Widgets in code cells (CODE-016): anywidget widgets from Python (anywidget,
+  ipywidgets, comm and psygnal bundled; ipywidgets boxes, grid and layouts)
+  and from JavaScript cells (`widget`, `display`, `ui`, `importWidget`), each
+  in an isolated frame, synchronised both ways; `pwo.ui` re-runs the cells
+  using a widget when it changes; `pwo.install` installs wheels from a URL, a
+  `wheel.txt` list or the package index after the user allowed the site;
+  widgets are kept as pictures when saving and printing. Works with the
+  anywidget instruments.
+
 - Dependency graph of the code cells (CODE-015): *View › Dependencies of the
   cells* or 🔀 on a cell shows the cells, coloured by state, and the names
   linking them; a click goes to the cell; also given as a list.

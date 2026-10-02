@@ -10,6 +10,8 @@
 import workerUrl from './sandbox.worker.ts?worker&url';
 import { bootstrapHash, sandboxSrcdoc } from './sandbox-html';
 import type { CodeLang } from '../document/model';
+import PWO_WIDGETS from './widgets/pwo_widgets.py?raw';
+import { WidgetHost, type CommMessage } from './widgets/host';
 
 /** Pyodide version bundled with the application (see vite.config.ts). */
 export const PYODIDE_VERSION = '314.0.7';
@@ -21,6 +23,8 @@ export interface RunResult {
   error?: boolean;
   /** PNG images (matplotlib figures). */
   images: Uint8Array[];
+  /** CODE-016: models of the widgets the cell shows. */
+  widgets?: string[];
 }
 
 export type RunStatus = 'loading-python' | 'running' | `packages:${string}`;
@@ -41,6 +45,17 @@ export class CodeRunner {
   private readonly onMessage = (e: MessageEvent): void => this.handle(e);
 
   constructor(private readonly host: HTMLElement = document.body) {}
+
+  private widgetHost: WidgetHost | undefined;
+  /** CODE-016: the widgets of the document's code. */
+  get widgets(): WidgetHost {
+    this.widgetHost ??= new WidgetHost((comm_id, data, buffers) => this.post({ type: 'comm', comm_id, data, buffers }, buffers));
+    return this.widgetHost;
+  }
+  /** A widget marked with `ui()` changed: the names bound to it, by language. */
+  onWidgetChanged?: (lang: CodeLang, names: string[]) => void;
+  /** Ask the user before downloading code (packages, widget modules) from `origin`. */
+  confirmDownload?: (origin: string) => Promise<boolean>;
 
   run(lang: CodeLang, code: string, onStatus?: (status: RunStatus) => void): Promise<RunResult> {
     return this.start().then(
@@ -109,6 +124,9 @@ export class CodeRunner {
     this.pending.clear();
     for (const done of this.analyses.values()) done(null);
     this.analyses.clear();
+    // The models lived in the stopped interpreter.
+    this.widgetHost?.destroy();
+    this.widgetHost = undefined;
   }
 
   destroy(): void {
@@ -167,7 +185,7 @@ export class CodeRunner {
       case 'result': {
         const p = this.pending.get(m.id);
         this.pending.delete(m.id);
-        p?.resolve({ text: m.text ?? '', error: m.error, images: (m.images ?? []).map((b) => new Uint8Array(b)) });
+        p?.resolve({ text: m.text ?? '', error: m.error, images: (m.images ?? []).map((b) => new Uint8Array(b)), ...((m as { widgets?: string[] }).widgets?.length ? { widgets: (m as { widgets?: string[] }).widgets } : {}) });
         break;
       }
       case 'deps': {
@@ -183,16 +201,58 @@ export class CodeRunner {
         done?.(Array.isArray(m.items) ? (m.items as import('./completion').SmartItem[]) : null);
         break;
       }
+      case 'comm':
+        this.widgets.handle(m as unknown as CommMessage);
+        break;
+      case 'widget-changed': {
+        const w = m as unknown as { lang: CodeLang; names: string[] };
+        this.onWidgetChanged?.(w.lang, w.names);
+        break;
+      }
+      case 'fetch-request': {
+        const f = m as unknown as { id: number; spec: string; kind: 'python' | 'module' };
+        void this.download(f.spec, f.kind).then(
+          (files) => this.post({ type: 'fetched', id: f.id, files }, files),
+          (err: Error) => this.post({ type: 'fetched', id: f.id, error: err.message }),
+        );
+        break;
+      }
       case 'fatal':
         this.stop(m.message ?? 'The sandbox stopped.');
         break;
     }
   }
 
+  /** Download packages or a widget module the code asked for, once the user agreed for that site. */
+  private async download(spec: string, kind: 'python' | 'module'): Promise<ArrayBuffer[]> {
+    const { resolveSpec } = await import('./widgets/packages');
+    return resolveSpec(spec, kind, async (url) => {
+      const origin = new URL(url).origin;
+      if (!this.allowed.has(origin)) {
+        if (!(await this.confirmDownload?.(origin))) throw new Error(`Download from ${origin} refused`);
+        this.allowed.add(origin);
+      }
+    });
+  }
+
+  private readonly allowed = new Set<string>();
+
   /** Serve the Python runtime from the application, packages from the CDN; nothing else. */
   private async serveFile(id: number, name: string): Promise<void> {
     try {
       let url: string;
+      // CODE-016: the widget bridge, and the widget packages bundled with the application (checked).
+      if (name === 'pwo_widgets.py') {
+        const bytes = new TextEncoder().encode(PWO_WIDGETS).buffer as ArrayBuffer;
+        this.post({ type: 'file', id, bytes }, [bytes]);
+        return;
+      }
+      if (name.startsWith('python/')) {
+        const { bundledWheel } = await import('./widgets/packages');
+        const bytes = await bundledWheel(name.slice('python/'.length));
+        this.post({ type: 'file', id, bytes }, [bytes]);
+        return;
+      }
       if (CORE_FILES.has(name)) url = coreUrl(name);
       else if ((await this.packageFiles()).has(name)) url = CDN + name;
       else throw new Error(`Not a Python runtime file: ${name}`);

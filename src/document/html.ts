@@ -361,6 +361,26 @@ export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (
       figures.append(img);
     }
     if (figures.childElementCount) cell.append(figures);
+    // CODE-016: widgets are drawn live by the editor; their picture stands for them elsewhere.
+    if (run.output.widgets?.length) {
+      const widgets = doc.createElement('span');
+      widgets.className = 'code-cell-widgets';
+      for (const w of run.output.widgets) {
+        const slot = doc.createElement('span');
+        slot.className = 'code-cell-widget';
+        slot.dataset.model = w.id;
+        const info = w.snapshot ? resolveImage(w.snapshot) : undefined;
+        if (info) {
+          const img = doc.createElement('img');
+          img.src = info.url;
+          img.alt = 'Widget';
+          img.dataset.resource = w.snapshot;
+          slot.append(img);
+        }
+        widgets.append(slot);
+      }
+      cell.append(widgets);
+    }
   }
   return cell;
 }
@@ -380,6 +400,12 @@ function codeCellFromDom(el: HTMLElement, lookupImage: (img: HTMLImageElement) =
       .map(lookupImage)
       .filter((k): k is string => !!k);
     if (images.length) run.output.images = images;
+    const widgets = Array.from(el.querySelectorAll<HTMLElement>('.code-cell-widget[data-model]')).map((w) => {
+      const img = w.querySelector('img');
+      const snapshot = img ? lookupImage(img) : undefined;
+      return { id: w.dataset.model!, ...(snapshot ? { snapshot } : {}) };
+    });
+    if (widgets.length) run.output.widgets = widgets;
   }
   return run;
 }
