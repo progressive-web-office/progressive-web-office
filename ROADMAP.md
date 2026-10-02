@@ -65,6 +65,39 @@ group is not a commitment.
 - ✅ PDF annotations: highlights and notes (PDF-018)
 - ✅ Review comments on lines of source files (FILE-024)
 
+### Writing aids
+
+- Typography as you type: French spacing before `; : ! ?` and inside
+  `« »`, curly quotes per language, `--` to dashes, `...` to an ellipsis;
+  text transforms (straighten quotes, remove double spaces and stray
+  characters, join broken lines, sentence and title case)
+- Readability: per-paragraph difficulty (Flesch and Kandel-Moles for French,
+  Gunning-Fog, Coleman-Liau, ARI) shown in the margin
+- Writing goals and statistics: a word target per document, words written
+  per day, a focus timer (Pomodoro)
+- Focus and typewriter modes: the current paragraph highlighted, the line
+  kept in the middle of the screen, the rest of the interface hidden
+- Snippets with fields (`${1:title}`, date, clipboard) inserted from a list,
+  and autocompletion of citations (`@`), tags (`#`), links (`[[`) and emoji
+- Citation styles from CSL files (APA, Chicago, ISO 690…) and a reference
+  library kept in sync with Zotero (Better BibTeX export)
+
+### Notes and knowledge
+
+- Tags (`#tag` and front matter keywords): a tag panel with counts,
+  colours and renaming across the folder, search by tag
+- Related notes (shared tags and links) and the other files of the folder
+  beside the open note
+- A graph of the links between the notes of a folder
+- Note identifiers (timestamps) and links by identifier
+
+### Working on several documents
+
+- Document tabs and a split view: two documents side by side (a copy and
+  its answer key, a source and its translation), pinned tabs
+- Markdown extras: highlight `==text==`, callouts (`> [!NOTE]`), attributes
+  (`{#id .class}`), unnumbered headings
+
 ### Review and collaboration
 
 - ✅ Comments in text documents (REV-001 to REV-004: DOCX, ODT, Markdown);
