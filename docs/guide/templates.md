@@ -57,6 +57,13 @@ a plot that is drawn again when the slider moves; a button written in a
 JavaScript cell counts clicks with a cell that follows it. Press **⏩**, then
 play with them. It also tells how to use the anywidget instruments.
 
+**Instrument panel** uses the
+[anywidget instruments](https://anywidgetinstruments.github.io/): its first
+cell installs them from the wheels published with their demos (you are asked
+first, then they are kept for offline use); two knobs and a switch, made
+reactive with `pwo.ui`, drive a tank, a gauge, a thermometer, a LED and a
+seven-segment display, as in their marimo gallery.
+
 **Measurements and charts** is a workbook: a damped signal computed by
 formulas (`EXP`, `SIN`) from two parameters you can change, with its line
 chart, and a linear fit of measurements (`SLOPE`, `INTERCEPT`, `RSQ`,

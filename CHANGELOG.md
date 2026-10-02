@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Example *Instrument panel* (CODE-016, FILE-018): the anywidget instruments
+  installed from their published wheels, knobs and a switch driving a tank, a
+  gauge, a thermometer, a LED and a display.
+
 - Example *Interactive widgets* (CODE-016, FILE-018): a reactive Python
   slider (anywidget) driving a plot, and a widget written in a JavaScript
   cell.

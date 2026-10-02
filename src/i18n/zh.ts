@@ -881,6 +881,8 @@ export const zh: Record<MessageKey, string> = {
   'tpl.labDesc': '已绘制图形的 Python 单元格：拟合、阻尼振荡、波特图、直方图、场图、SymPy。',
   'tpl.widgets': '交互式小部件',
   'tpl.widgetsDesc': '用 Python 滑块驱动图形、用 JavaScript 按钮，基于 anywidget；如何使用 anywidget instruments。',
+  'tpl.instruments': '仪表盘',
+  'tpl.instrumentsDesc': '来自 anywidget instruments 的旋钮、开关、储罐、仪表、温度计和指示灯，由 Python 驱动（会下载这些仪表）。',
   'tpl.measurements': '测量与图表',
   'tpl.measurementsDesc': '由公式计算的信号和线性拟合（SLOPE、RSQ），附折线图和散点图。',
   'tpl.saveAs': '另存为模板…',

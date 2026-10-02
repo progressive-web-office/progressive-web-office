@@ -879,6 +879,8 @@ export const en = {
   'tpl.labDesc': 'Python cells with figures already drawn: fit, damped oscillations, Bode plot, histogram, field map, SymPy.',
   'tpl.widgets': 'Interactive widgets',
   'tpl.widgetsDesc': 'A slider in Python driving a plot and a button in JavaScript, built on anywidget; how to use the anywidget instruments.',
+  'tpl.instruments': 'Instrument panel',
+  'tpl.instrumentsDesc': 'Knobs, switch, tank, gauge, thermometer and LED from the anywidget instruments, driven from Python (downloads the instruments).',
   'tpl.measurements': 'Measurements and charts',
   'tpl.measurementsDesc': 'A signal computed by formulas and a linear fit (SLOPE, RSQ), with line and scatter charts.',
   'tpl.saveAs': 'Save as template…',

@@ -96,6 +96,14 @@ describe('FILE-018 examples with plots', () => {
     expect(cells[3]!.cell).toContain('clicks.get("count")');
   });
 
+  it.each(['en', 'fr'] as const)('instruments (%s): the anywidget instruments installed, reactive controls driving indicators (CODE-016)', (lang) => {
+    const cells = runs(doc('instruments', lang)).filter(isCodeCellRun);
+    expect(cells.map((c) => c.lang)).toEqual(['python', 'python', 'python']);
+    expect(cells[0]!.cell).toContain('await pwo.install("https://anywidgetinstruments.github.io/anywidget-instruments-industrial/marimo/gallery/public/wheel.txt")');
+    expect(cells[1]!.cell).toContain('setpoint = pwo.ui(ai.Knob(');
+    expect(cells[2]!.cell).toContain('ai.Tank(level');
+  });
+
   it('measurements: scientific functions and charts drawn from the data', () => {
     const built = byId('measurements').build('fr') as Extract<Built, { kind: 'spreadsheet' }>;
     const charts = built.wb.sheets.flatMap((s) => s.charts ?? []);
