@@ -2,7 +2,7 @@
  * Search across the documents of a folder (FOLDER-002): Markdown, LaTeX,
  * text, CSV, BibTeX, Word and OpenDocument texts.
  */
-import { detectFormat } from '../core/format';
+import { detectFormat, isTextName } from '../core/format';
 import { readBytes, type StorageProvider } from '../fs';
 import { allParagraphs, runsText, type RichDocument } from '../document/model';
 
@@ -17,7 +17,7 @@ const PLAIN = /\.(md|markdown|txt|tex|bib|csv|tsv|json|ya?ml|html?)$/i;
 const RICH = /\.(docx|odt|odm|mdz)$/i;
 
 /** Whether a file's text can be searched. */
-export const searchable = (path: string): boolean => PLAIN.test(path) || RICH.test(path);
+export const searchable = (path: string): boolean => PLAIN.test(path) || RICH.test(path) || isTextName(path);
 
 /** Text without case and accents, keeping each character's position. */
 const fold = (s: string): string =>
@@ -43,7 +43,7 @@ export class FolderIndex {
     const cached = this.texts.get(path);
     if (cached && cached.size === bytes.length) return cached;
     let text = '';
-    if (PLAIN.test(path)) text = new TextDecoder().decode(bytes);
+    if (PLAIN.test(path) || isTextName(path)) text = new TextDecoder().decode(bytes);
     else if (RICH.test(path) && detectFormat(path, bytes)) text = documentText((await this.readRich(path, bytes).catch(() => undefined)) ?? { blocks: [] } as unknown as RichDocument);
     const entry = { size: bytes.length, text, folded: fold(text) };
     this.texts.set(path, entry);

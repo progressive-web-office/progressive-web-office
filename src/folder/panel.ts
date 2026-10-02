@@ -6,7 +6,7 @@ import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import { Explorer, listFiles, type Entry, type ExplorerChange, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
-import type { FolderIndex, SearchHit } from './search';
+import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault } from './vault';
 
 /** Files the app opens, by extension. */
@@ -19,6 +19,8 @@ export interface FolderPanelHooks {
   error(message: string): void;
   prompt(message: string, value: string): Promise<string | null>;
   confirm(message: string): Promise<boolean>;
+  /** Buttons added next to the folder's name (e.g. download an archive, FILE-021). */
+  actions?: HTMLElement[];
 }
 
 const ICONS: [RegExp, string][] = [
@@ -26,6 +28,10 @@ const ICONS: [RegExp, string][] = [
   [/\.(xlsx|ods|csv|tsv|ots|xltx)$/i, '📊'],
   [/\.(pptx|odp|otp|potx)$/i, '📽️'],
   [/\.pdf$/i, '📕'],
+  [/\.(png|jpe?g|gif|webp|bmp|avif|svg|ico)$/i, '🖼️'],
+  [/\.(zip|7z|rar|tar|gz|tgz|xz|bz2)$/i, '🗜️'],
+  [/\.(txt|log|csv|json|ya?ml|toml|ini|cfg|xml|bib)$/i, '📃'],
+  [/\.(c|h|cpp|cc|cxx|hpp|py|java|js|mjs|ts|tsx|jsx|cs|go|rs|rb|php|sh|r|m|jl|kt|swift|sql|html?|css|scss|lua|hs|f90|pas|ml|scala|dart|ipynb)$|(^|\/)(makefile|dockerfile)$/i, '🧾'],
 ];
 export const iconOf = (path: string): string => ICONS.find(([re]) => re.test(path))?.[1] ?? '📄';
 
@@ -63,8 +69,9 @@ export class FolderPanel {
         confirmRemove: (name, folder) => t(folder ? 'folder.confirmRemoveFolder' : 'folder.confirmRemove', { name }),
         error: (message) => t('folder.error', { message }),
       },
-      filter: (e: Entry) => !e.name.startsWith('.') && e.name !== 'node_modules' && (e.kind === 'directory' || OPENABLE.test(e.name)),
-      icon: (e: Entry) => (e.kind === 'directory' ? '📁' : iconOf(e.name)),
+      // Every file is listed: documents, text and source files, pictures, archives; others can be downloaded (FILE-021).
+      filter: (e: Entry) => !e.name.startsWith('.') && e.name !== 'node_modules' && e.name !== '__MACOSX',
+      icon: (e: Entry) => (e.kind === 'directory' ? (/\.zip$/i.test(e.name) ? '🗜️' : '📁') : iconOf(e.name)),
       onOpen: (e) => hooks.open(e.path),
       onChange: async (change) => {
         await this.reindex();
@@ -84,7 +91,7 @@ export class FolderPanel {
     this.element = h(
       'aside',
       { class: 'folder-panel', 'aria-label': t('folder.panel') },
-      h('div', { class: 'folder-head' }, h('h2', { title: provider.label }, `📁 ${provider.label}`), button(t('folder.close'), () => hooks.close(), { text: '✕', className: 'icon' })),
+      h('div', { class: 'folder-head' }, h('h2', { title: provider.label }, `📁 ${provider.label}`), ...(hooks.actions ?? []), button(t('folder.close'), () => hooks.close(), { text: '✕', className: 'icon' })),
       provider.capabilities.write ? '' : h('p', { class: 'folder-readonly' }, t('folder.readOnlyHint')),
       this.search,
       this.results,
@@ -137,7 +144,7 @@ export class FolderPanel {
     if (!query) return;
     this.results.replaceChildren(h('p', { class: 'hint' }, t('folder.searching')));
     const all = await listFiles(this.provider);
-    const hits: SearchHit[] = await this.index.search(query, all.filter((p) => OPENABLE.test(p) || /\.(txt|bib)$/i.test(p)));
+    const hits: SearchHit[] = await this.index.search(query, all.filter((p) => OPENABLE.test(p) || searchable(p)));
     if (query !== this.search.value.trim()) return;
     this.results.replaceChildren(
       h('p', { class: 'hint' }, hits.length ? t('folder.found', { n: hits.reduce((s, x) => s + x.count, 0), files: hits.length }) : t('folder.notFound')),
@@ -148,7 +155,7 @@ export class FolderPanel {
           h(
             'li',
             {},
-            OPENABLE.test(hit.path) ? button(hit.path, () => this.hooks.open(hit.path, query), { className: 'folder-file', icon: iconOf(hit.path) }) : h('span', { class: 'folder-file' }, hit.path),
+            OPENABLE.test(hit.path) || searchable(hit.path) ? button(hit.path, () => this.hooks.open(hit.path, query), { className: 'folder-file', icon: iconOf(hit.path) }) : h('span', { class: 'folder-file' }, hit.path),
             ...hit.snippets.map((s) => h('p', { class: 'folder-snippet' }, s)),
           ),
         ),

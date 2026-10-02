@@ -1,12 +1,18 @@
 /** Document format detection (FILE-003, FILE-004). */
-import { readZip, readZipText } from './zip';
+import { strFromU8, unzipSync } from 'fflate';
+import { readZipText, type ZipEntries } from './zip';
+
+const EMPTY = new Uint8Array();
 import { t } from '../i18n';
 
-export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf';
-export type DocumentKind = 'document' | 'spreadsheet' | 'presentation' | 'pdf';
+export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf' | 'text' | 'image';
+/** `file`: text and source files (FILE-022) and pictures (FILE-023), which keep their own name and extension. */
+export type DocumentKind = 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'file';
 
 /** Maximum accepted file size (FILE-012). */
 export const MAX_FILE_SIZE = 50 * 1024 * 1024;
+/** Maximum size of a ZIP archive opened as a folder (FILE-021); its files are read one at a time. */
+export const MAX_ARCHIVE_SIZE = 1024 * 1024 * 1024;
 
 export const MIME_TYPES: Record<DocumentFormat, string> = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -21,6 +27,8 @@ export const MIME_TYPES: Record<DocumentFormat, string> = {
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   odp: 'application/vnd.oasis.opendocument.presentation',
   pdf: 'application/pdf',
+  text: 'text/plain',
+  image: 'application/octet-stream',
 };
 
 /** Human-readable, translated format name. */
@@ -30,7 +38,7 @@ export function formatLabel(format: DocumentFormat): string {
 
 
 /** File extensions accepted by the open dialog. */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.tex', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx'];
+export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.tex', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
 
 export function formatKind(format: DocumentFormat): DocumentKind {
   switch (format) {
@@ -50,6 +58,9 @@ export function formatKind(format: DocumentFormat): DocumentKind {
       return 'presentation';
     case 'pdf':
       return 'pdf';
+    case 'text':
+    case 'image':
+      return 'file';
   }
 }
 
@@ -60,6 +71,7 @@ export function saveFormatsFor(kind: DocumentKind, family: 'open' | 'microsoft' 
   if (kind === 'document') return [...pair('odt', 'docx'), 'md', 'mdz', 'tex', 'texzip'];
   if (kind === 'spreadsheet') return [...pair('ods', 'xlsx'), 'csv'];
   if (kind === 'presentation') return pair('odp', 'pptx');
+  if (kind === 'file') return [];
   return ['pdf'];
 }
 
@@ -73,7 +85,7 @@ const extensionOf = (name: string): string => {
 
 /** File extension used when saving a format. */
 export function fileExtension(format: DocumentFormat): string {
-  return format === 'texzip' ? 'zip' : format;
+  return format === 'texzip' ? 'zip' : format === 'text' ? 'txt' : format === 'image' ? 'png' : format;
 }
 
 /**
@@ -83,18 +95,89 @@ export function fileExtension(format: DocumentFormat): string {
 export function detectFormat(name: string, bytes: Uint8Array): DocumentFormat | null {
   if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) return 'pdf'; // %PDF-
   if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) return detectZipFormat(bytes);
+  if (isPicture(bytes)) return 'image';
   const ext = extensionOf(name);
   if (!looksLikeText(bytes)) return null;
   if (ext === 'csv' || ext === 'tsv') return 'csv';
   if (ext === 'md' || ext === 'markdown') return 'md';
   if (ext === 'tex' || ext === 'latex' || ext === 'ltx') return 'tex';
+  if (ext === 'svg' && /<svg[\s>]/.test(new TextDecoder().decode(bytes.subarray(0, 4096)))) return 'image';
+  if (TEXT_EXTENSIONS.has(ext) || TEXT_NAMES.test(baseName(name))) return 'text';
   return null;
 }
 
-function detectZipFormat(bytes: Uint8Array): DocumentFormat | null {
-  let zip;
+/** Text and source files (FILE-022), by extension. */
+const TEXT_EXTENSIONS = new Set(
+  ('txt text log nfo c h cpp cc cxx c++ hpp hh hxx ino py pyw pyi ipynb java kt kts scala groovy gradle js mjs cjs ts mts cts tsx jsx vue svelte ' +
+    'json jsonc json5 geojson xml xsd xsl xslt html htm xhtml css scss sass less sh bash zsh fish ps1 psm1 bat cmd r rmd qmd m mat jl rs go rb php pl pm lua ' +
+    'swift dart hs lhs ml mli fs fsi fsx cs vb sql yaml yml toml ini cfg conf properties env bib bbl sty cls bst dtx ins asm s v sv vhd vhdl ' +
+    'f f77 f90 f95 f03 for pas pp adb ads lisp lsp scm ss rkt clj cljs el erl hrl ex exs elm nim zig cmake mk mak diff patch srt vtt rst adoc asciidoc org ' +
+    'gitignore gitattributes editorconfig dockerignore tf hcl proto graphql gql sol cu cuh glsl hlsl wgsl coffee awk sed tcl lean agda idr pro P sage gp maxima mpl')
+    .toLowerCase()
+    .split(/\s+/),
+);
+const TEXT_NAMES = /^(makefile|gnumakefile|dockerfile|containerfile|readme|license|licence|copying|authors|changelog|install|news|todo|vagrantfile|gemfile|rakefile|procfile|jenkinsfile)$/i;
+/** Whether a file name is the one of a text or source file (FILE-022). */
+export const isTextName = (name: string): boolean => TEXT_EXTENSIONS.has(extensionOf(name)) || TEXT_NAMES.test(baseName(name));
+const baseName = (name: string): string => name.slice(name.replace(/\\/g, '/').lastIndexOf('/') + 1);
+
+/** Pictures shown by browsers (FILE-023), by signature. */
+function isPicture(bytes: Uint8Array): boolean {
+  const ascii = (from: number, text: string): boolean => [...text].every((ch, i) => bytes[from + i] === ch.charCodeAt(0));
+  return (
+    startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) || // PNG
+    startsWith(bytes, [0xff, 0xd8, 0xff]) || // JPEG
+    ascii(0, 'GIF87a') ||
+    ascii(0, 'GIF89a') ||
+    (ascii(0, 'RIFF') && ascii(8, 'WEBP')) ||
+    (ascii(0, 'BM') && bytes.length > 26) ||
+    (ascii(4, 'ftyp') && (ascii(8, 'avif') || ascii(8, 'avis'))) ||
+    startsWith(bytes, [0x00, 0x00, 0x01, 0x00]) // ICO
+  );
+}
+
+/** Extensions that make a ZIP a collection of files rather than one LaTeX or Markdown project (FILE-021). */
+const FOREIGN_TO_PROJECTS = /\.(docx?|odt|odm|xlsx?|ods|pptx?|odp|ott|ots|otp|dotx|xltx|potx|rtf|zip|7z|rar|ipynb|c|h|cpp|cc|cxx|hpp|py|java|js|ts|rs|go|rb|php|cs|m|jl|sql|html?|mp4|mp3|exe)$/i;
+
+/**
+ * A ZIP archive that is no document (OpenDocument, Office Open XML, MDZ, a
+ * LaTeX project, a ZIP of Markdown notes): opened as a folder (FILE-021).
+ */
+export function isArchive(bytes: Uint8Array): boolean {
+  if (!startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]) && !startsWith(bytes, [0x50, 0x4b, 0x05, 0x06])) return false;
   try {
-    zip = readZip(bytes);
+    zipNames(bytes);
+  } catch {
+    return false;
+  }
+  return detectZipFormat(bytes) === null;
+}
+
+/** Names of the entries of a ZIP, without decompressing them. */
+function zipNames(bytes: Uint8Array): string[] {
+  const names: string[] = [];
+  unzipSync(bytes, {
+    filter: (f) => {
+      names.push(f.name);
+      return false;
+    },
+  });
+  return names;
+}
+
+/** Decompress only the entries needed to recognize a format (archives can be large). */
+function readZipFor(bytes: Uint8Array, keep: (name: string, size: number) => boolean): ZipEntries {
+  return unzipSync(bytes, { filter: (f) => keep(f.name, f.originalSize) });
+}
+
+function detectZipFormat(bytes: Uint8Array): DocumentFormat | null {
+  let zip: ZipEntries;
+  let names: string[];
+  try {
+    names = zipNames(bytes);
+    const small = (size: number): boolean => size < 4 * 1024 * 1024;
+    zip = readZipFor(bytes, (name, size) => (name === 'mimetype' || name === '[Content_Types].xml' || name === 'manifest.json' || /\.tex$/i.test(name)) && small(size));
+    for (const name of names) if (!(name in zip)) zip[name] = EMPTY;
   } catch {
     return null;
   }
@@ -110,10 +193,15 @@ function detectZipFormat(bytes: Uint8Array): DocumentFormat | null {
   if (types.includes('wordprocessingml.document.main') || zip['word/document.xml']) return 'docx';
   if (types.includes('spreadsheetml.sheet.main') || zip['xl/workbook.xml']) return 'xlsx';
   if (types.includes('presentationml.presentation.main') || zip['ppt/presentation.xml']) return 'pptx';
-  // TEX-003: a ZIP holding a LaTeX project.
-  if (!types && Object.keys(zip).some((p) => /\.tex$/i.test(p))) return 'texzip';
+  if (types) return null;
+  const files = names.filter((n) => !n.endsWith('/') && !/(^|\/)__MACOSX\//.test(n));
+  const foreign = files.some((p) => FOREIGN_TO_PROJECTS.test(p));
+  // TEX-003: a ZIP holding one LaTeX project.
+  const tex = files.filter((p) => /\.tex$/i.test(p));
+  const mains = tex.filter((p) => /\\documentclass/.test(strFromU8(zip[p] ?? EMPTY)));
+  if (tex.length && mains.length <= 1 && !foreign && !files.some((p) => /\.(md|markdown)$/i.test(p))) return 'texzip';
   // MD-014: a plain ZIP of Markdown files (and assets) is imported as MDZ.
-  if (!types && Object.keys(zip).some((p) => /\.(md|markdown)$/i.test(p))) return 'mdz';
+  if (files.some((p) => /\.(md|markdown)$/i.test(p)) && !foreign && !tex.length) return 'mdz';
   return null;
 }
 

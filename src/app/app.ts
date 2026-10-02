@@ -5,6 +5,8 @@ import {
   fileExtension,
   formatKind,
   formatLabel,
+  isArchive,
+  MAX_ARCHIVE_SIZE,
   MAX_FILE_SIZE,
   MIME_TYPES,
   saveFormatsFor,
@@ -86,7 +88,7 @@ const basename = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
 /** AGPL-3.0 §13: offer the source code to every user. */
 const SOURCE_URL = 'https://github.com/s-celles/progressive-web-office';
 
-const KIND_KEY = { document: 'kind.document', spreadsheet: 'kind.spreadsheet', presentation: 'kind.presentation', pdf: 'kind.pdf' } as const;
+const KIND_KEY = { document: 'kind.document', spreadsheet: 'kind.spreadsheet', presentation: 'kind.presentation', pdf: 'kind.pdf', file: 'kind.file' } as const;
 
 export class App {
   private readonly header: HTMLElement;
@@ -126,7 +128,7 @@ export class App {
     root.dataset.dropLabel = t('start.drop');
     this.installDropZone();
     window.addEventListener('beforeunload', (e) => {
-      if (this.dirty) {
+      if (this.dirty || this.archiveChanged()) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -141,13 +143,17 @@ export class App {
 
   /** Open a user-provided file (picker, drop, file handler, recent list). */
   async openFile(file: File): Promise<void> {
-    if (file.size > MAX_FILE_SIZE) {
-      this.showError(t('error.tooLarge', { name: file.name, limit: MAX_FILE_SIZE / 1024 / 1024 }));
+    // FILE-021: an archive is opened as a folder, its files read one at a time.
+    const limit = /\.zip$/i.test(file.name) ? MAX_ARCHIVE_SIZE : MAX_FILE_SIZE;
+    if (file.size > limit) {
+      this.showError(t('error.tooLarge', { name: file.name, limit: limit / 1024 / 1024 }));
       return;
     }
-    if (!this.confirmDiscard()) return;
     await this.withBusy(async () => {
       const bytes = await readFileBytes(file);
+      if (isArchive(bytes)) return void (await this.openArchive(file.name, bytes));
+      if (file.size > MAX_FILE_SIZE) return this.showError(t('error.tooLarge', { name: file.name, limit: MAX_FILE_SIZE / 1024 / 1024 }));
+      if (!this.confirmDiscard()) return;
       const format = await this.openBytes(file.name, bytes);
       if (format) this.onFileOpened?.(file, format);
     });
@@ -156,6 +162,10 @@ export class App {
   /** Detect the format and show the matching editor; returns the format on success. */
   private async openBytes(name: string, bytes: Uint8Array, source?: RepoSource, resolveImage?: import('../document/markdown-reader').MarkdownReadOptions['resolveImage']): Promise<DocumentFormat | null> {
     try {
+      if (isArchive(bytes)) {
+        await this.openArchive(name, bytes);
+        return null;
+      }
       const format = detectFormat(name, bytes);
       if (!format) {
         this.showError(t('error.unsupported', { name }));
@@ -404,7 +414,7 @@ export class App {
   /** Hook used by the recent-files feature. */
   onFileOpened?: (file: File, format: DocumentFormat) => void;
 
-  async newDocument(kind: Exclude<DocumentKind, 'pdf'>): Promise<void> {
+  async newDocument(kind: Exclude<DocumentKind, 'pdf' | 'file'>): Promise<void> {
     if (!this.confirmDiscard()) return;
     await this.withBusy(async () => {
       try {
@@ -483,8 +493,11 @@ export class App {
     const target = format ?? doc.format;
     try {
       const bytes = await doc.view.save(target);
-      const name = replaceExtension(doc.name, fileExtension(target));
-      if (await saveFile(bytes, name, target)) {
+      // FILE-022: a text or source file keeps its name and extension.
+      const own = doc.kind === 'file';
+      const name = own ? doc.name : replaceExtension(doc.name, fileExtension(target));
+      const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : 'txt';
+      if (await saveFile(bytes, name, target, own ? { mimeType: 'text/plain', extension: ext } : undefined)) {
         doc.name = name;
         doc.format = target;
         this.dirty = false;
@@ -640,7 +653,7 @@ export class App {
     if (view.printContent && doc.kind !== 'pdf') {
       const { openPrintPreview } = await import('../print/preview');
       const orientation = view.printOrientation?.();
-      await openPrintPreview(this.root, doc.kind, (s) => view.printContent!(s), orientation ? { orientation } : {});
+      await openPrintPreview(this.root, doc.kind === 'file' ? 'document' : doc.kind, (s) => view.printContent!(s), orientation ? { orientation } : {});
     } else if (view.print) {
       view.print();
     } else {
@@ -1110,9 +1123,11 @@ export class App {
     if (folder) await this.setFolder(folder);
   }
 
-  private async setFolder(folder: import('../fs').StorageProvider): Promise<void> {
-    const [{ FolderPanel }, { FolderIndex }, { rememberFolder }, { DirectoryHandleProvider }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent'), import('../fs')]);
+  private async setFolder(folder: import('../fs').StorageProvider): Promise<boolean> {
+    if (!this.confirmArchiveClose()) return false;
+    const [{ FolderPanel }, { FolderIndex }, { rememberFolder }, { DirectoryHandleProvider }, { ArchiveProvider }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent'), import('../fs'), import('../archive/provider')]);
     this.folder?.element.remove();
+    if (this.current) delete this.current.folderPath;
     const index = new FolderIndex(folder, async (name, bytes) => {
       const format = detectFormat(name, bytes);
       if (!format || formatKind(format) !== 'document') return undefined;
@@ -1126,15 +1141,58 @@ export class App {
       error: (message) => this.showError(message),
       prompt: async (message, value) => window.prompt(message, value),
       confirm: async (message) => window.confirm(message),
+      // FILE-021: an archive is written back as a whole, by download.
+      ...(folder instanceof ArchiveProvider ? { actions: [button(t('zip.download'), () => void this.downloadArchive(folder), { text: '⬇', className: 'icon' })] } : {}),
     });
     this.root.append(this.folder.element);
     this.root.classList.add('with-folder');
     await this.withBusy(() => this.folder!.refresh());
     if (folder instanceof DirectoryHandleProvider && folder.id.startsWith('fsa:')) void rememberFolder(folder.root);
     this.renderHeader();
+    return true;
+  }
+
+  /** Open a ZIP archive as a folder (FILE-021). */
+  private async openArchive(name: string, bytes: Uint8Array): Promise<boolean> {
+    const { ArchiveProvider } = await import('../archive/provider');
+    let archive;
+    try {
+      archive = new ArchiveProvider(bytes, name);
+    } catch (err) {
+      this.showError(t('error.open', { name, message: (err as Error).message }));
+      return false;
+    }
+    if (!(await this.setFolder(archive))) return false;
+    this.showNotice(t('zip.opened', { name }));
+    return true;
+  }
+
+  /** The open archive, when it has changes not downloaded yet. */
+  private archiveChanged(): import('../archive/provider').ArchiveProvider | undefined {
+    const p = this.folder?.provider as Partial<import('../archive/provider').ArchiveProvider> | undefined;
+    return p?.id?.startsWith('zip:') && p.modified ? (p as import('../archive/provider').ArchiveProvider) : undefined;
+  }
+
+  private confirmArchiveClose(): boolean {
+    const archive = this.archiveChanged();
+    return !archive || window.confirm(t('zip.discard', { name: archive.label }));
+  }
+
+  private async downloadArchive(archive: import('../archive/provider').ArchiveProvider): Promise<void> {
+    await this.withBusy(async () => {
+      const { archiveBytes } = await import('../archive/provider');
+      try {
+        const bytes = await archiveBytes(archive);
+        const name = /\.zip$/i.test(archive.label) ? archive.label : `${archive.label}.zip`;
+        if (await saveFile(bytes, name, 'texzip', { mimeType: 'application/zip', extension: 'zip' })) archive.modified = false;
+      } catch (err) {
+        this.showError(t('error.save', { message: (err as Error).message }));
+      }
+    });
   }
 
   private closeFolder(): void {
+    if (!this.confirmArchiveClose()) return;
     this.folder?.element.remove();
     this.folder = null;
     this.root.classList.remove('with-folder');
@@ -1200,11 +1258,20 @@ export class App {
       if (query) this.current.view.find?.(query);
       return;
     }
-    if (!this.confirmDiscard()) return;
     await this.withBusy(async () => {
       const { readBytes } = await import('../fs');
       const bytes = await readBytes(folder.provider, path).catch(() => undefined);
       if (!bytes) return this.showError(t('folder.missing', { path }));
+      // FILE-021: an archive inside the folder opens in its turn; other files can be downloaded.
+      if (isArchive(bytes)) return void (await this.openArchive(basename(path), bytes));
+      if (!detectFormat(basename(path), bytes)) {
+        if (window.confirm(t('folder.cannotShow', { name: basename(path) }))) {
+          const ext = path.includes('.') ? path.slice(path.lastIndexOf('.') + 1) : 'bin';
+          await saveFile(bytes, basename(path), 'text', { mimeType: 'application/octet-stream', extension: ext });
+        }
+        return;
+      }
+      if (!this.confirmDiscard()) return;
       const images = /\.(md|markdown)$/i.test(path) ? await this.noteImages(path, new TextDecoder().decode(bytes)) : undefined;
       if (!(await this.openBytes(basename(path), bytes, undefined, images && ((src) => images.get(src))))) return;
       if (this.current && !this.current.fromTemplate) this.current.folderPath = path;
@@ -1225,6 +1292,7 @@ export class App {
     const path = format ? replaceExtension(doc.folderPath, fileExtension(target)) : doc.folderPath;
     try {
       await folder.provider.write(path, new Blob([(await doc.view.save(target)) as BlobPart]));
+      if (this.archiveChanged()) this.showNotice(t('zip.savedInside'));
       doc.folderPath = path;
       doc.name = basename(path);
       doc.format = target;

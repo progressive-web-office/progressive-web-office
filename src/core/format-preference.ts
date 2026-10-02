@@ -28,14 +28,14 @@ export function saveFormatFamily(family: FormatFamily): void {
   }
 }
 
-const FORMATS: Record<Exclude<DocumentKind, 'pdf'>, Record<FormatFamily, DocumentFormat>> = {
+const FORMATS: Record<Exclude<DocumentKind, 'pdf' | 'file'>, Record<FormatFamily, DocumentFormat>> = {
   document: { open: 'odt', microsoft: 'docx' },
   spreadsheet: { open: 'ods', microsoft: 'xlsx' },
   presentation: { open: 'odp', microsoft: 'pptx' },
 };
 
 /** Format of a new document of `kind`. */
-export function defaultFormat(kind: Exclude<DocumentKind, 'pdf'>, family: FormatFamily = loadFormatFamily()): DocumentFormat {
+export function defaultFormat(kind: Exclude<DocumentKind, 'pdf' | 'file'>, family: FormatFamily = loadFormatFamily()): DocumentFormat {
   return FORMATS[kind][family];
 }
 

@@ -31,8 +31,8 @@ group is not a commitment.
 - ✅ Cell formatting (SHEET-014: bold, italic, underline, colours, fills,
   borders, alignment) and freeze panes (SHEET-017); next: fonts and sizes,
   merged cells
-- ✅ Sort (SHEET-016); filter, fill handle, conditional formatting, data
-  validation
+- ✅ Sort (SHEET-016); autofilter kept in files (SHEET-018), next its
+  buttons in the grid; fill handle, conditional formatting, data validation
 - About a hundred more functions
 - Executable notebooks: code cells (Python/JavaScript) that read and write
   the cells of an open workbook
@@ -57,6 +57,12 @@ group is not a commitment.
 - Visual comparison of two versions of a document
 - Reading and review mode: clickable outline, focus mode, read aloud
   (Web Speech)
+
+### Files
+
+- ✅ ZIP archives opened as folders, nested archives included (FILE-021);
+  source and text files in a code editor (FILE-022); pictures (FILE-023)
+- Next: comments on lines of source files, PDF annotations
 
 ### Review and collaboration
 

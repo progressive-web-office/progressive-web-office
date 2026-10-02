@@ -13,6 +13,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Cell formatting in spreadsheets: bold, italic, underline, text and fill
   colours, borders and alignment, kept in Excel and OpenDocument files and
   printed. The budget, grade book and invoice templates use it.
+- ZIP archives open as a folder in the side panel: documents, source files
+  and pictures open from it, archives inside the archive are folders too,
+  other files can be downloaded, and the archive can be downloaded with its
+  changes. Files are decompressed only when opened.
+- Text and source files (C, C++, Python, Java, JavaScript, R, MATLAB, SQL
+  and many more) open in a code editor with syntax colouring, line numbers,
+  folding and search, built on CodeMirror. They are saved under their own
+  name, keeping their line ends.
+- Pictures open in a viewer, fitted to the window or at their own size.
 - Autofilters are kept in Excel and OpenDocument spreadsheets: their range,
   the values chosen in each column and the rows they hide.
 

@@ -106,6 +106,14 @@ export async function openView(
       const { createPdfViewer } = await import('../pdf/viewer');
       return createPdfViewer(bytes, ctx);
     }
+    case 'text': {
+      const { TextView } = await import('../files/text-view');
+      return new TextView(bytes, ctx, fileName);
+    }
+    case 'image': {
+      const { ImageView } = await import('../files/image-view');
+      return new ImageView(bytes, ctx, fileName);
+    }
     default:
       throw new Error(`Editing ${format} files is not available yet.`);
   }
