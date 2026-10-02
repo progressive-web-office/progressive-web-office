@@ -6,10 +6,10 @@ description: File formats that Progressive Web Office can open and save.
 
 | Family | Open | Save |
 |--------|------|------|
-| Text documents | `.odt`, `.docx`, `.md`, `.mdz`, `.tex`, LaTeX project `.zip` | `.odt`, `.docx`, `.md`, `.mdz`, `.tex`, LaTeX project `.zip` |
+| Text documents | `.odt`, `.docx`, `.md`, `.mdz`, `.tex`, LaTeX project `.zip`, `.odm` (master document) | `.odt`, `.docx`, `.md`, `.mdz`, `.tex`, LaTeX project `.zip` |
 | Spreadsheets | `.ods`, `.xlsx`, `.csv`, `.tsv` | `.ods`, `.xlsx`, `.csv` |
 | Presentations | `.odp`, `.pptx` | `.odp`, `.pptx` |
-| PDF | `.pdf` | — (view only) |
+| PDF | `.pdf` | `.pdf` with filled form fields and signatures, or a flattened copy |
 
 ## Open formats first
 
