@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Templates and examples (🧩 on the start screen): letter, report, meeting
+  minutes, exercise sheet, budget, grade book, invoice and talk, plus an
+  example document touring the word processor, in English or French; your
+  own templates saved from any document (*Save as template…*) and kept in
+  the browser.
 - Freeze panes in spreadsheets (❄): the rows above and the columns left of
   the active cell stay in view; kept in Excel and OpenDocument files.
 - Sort a spreadsheet range (⇅ *Sort…*) by a column, ascending or

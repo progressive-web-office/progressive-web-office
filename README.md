@@ -55,6 +55,8 @@ supported.
 - Equations (MathLive editor, LaTeX source), Mermaid diagrams, Python and
   JavaScript code cells run in a sandbox without network access.
 - Find and replace, document properties, read-only mode, print preview.
+- Templates (letter, report, minutes, exercise sheet, budget, grade book,
+  invoice, talk), an example document, and your own templates.
 
 **Spreadsheets**: formulas (44 functions), several sheets, number formats,
 charts (column, bar, line, pie, scatter) saved as native charts.
@@ -130,6 +132,7 @@ Stored **in your browser only**:
   assistant (localStorage). AI keys are kept only if you choose to save
   them in the browser;
 - documents you put in *Browser storage* (Origin Private File System);
+- the templates you save (IndexedDB);
 - for the synchronisation without a network: this device's key, the
   devices you trusted, the history of each synchronised document and the
   last imports (IndexedDB).
