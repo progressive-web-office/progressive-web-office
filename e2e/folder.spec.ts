@@ -137,6 +137,39 @@ test('creates, renames and deletes documents in the folder (FOLDER-004)', async 
   await expect.poll(files).toEqual(['notes/Outline.md']);
 });
 
+test('imports files, moves with the keyboard, sorts, filters names and undoes a deletion (FOLDER-008..011)', async ({ page }) => {
+  await fakeFolder(page, { 'notes/a.md': '# A\n', 'notes/b.md': '# B\n', 'z.md': '# Z\n' });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  const files = () => page.evaluate(() => [...(window as unknown as { __folder: Map<string, string> }).__folder.keys()].sort());
+  // Keyboard: open the folder with the right arrow, go down into it.
+  await panel.getByRole('button', { name: 'notes' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(panel.getByRole('button', { name: 'a.md' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(panel.getByRole('button', { name: 'a.md' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(panel.getByRole('button', { name: 'b.md' })).toBeFocused();
+  // Import into the selected file's folder; a taken name gets a number.
+  await panel.locator('.fs-explorer input[type=file]').setInputFiles([{ name: 'a.md', mimeType: 'text/markdown', buffer: Buffer.from('# New\n') }]);
+  await expect.poll(files).toEqual(['notes/a 2.md', 'notes/a.md', 'notes/b.md', 'z.md']);
+  await expect(panel.locator('[data-path="notes/a 2.md"]')).toHaveAttribute('data-meta', /6 B/);
+  // Sort by type keeps folders first.
+  await panel.getByLabel('Sort by').selectOption('size');
+  await expect(panel.locator('.fs-tree > .fs-list > li > .fs-entry')).toHaveText(['notes', 'z.md']);
+  // Select two files, delete them, then undo.
+  await panel.getByRole('button', { name: 'a.md', exact: true }).click();
+  await panel.getByRole('button', { name: 'b.md' }).click({ modifiers: ['ControlOrMeta'] });
+  page.once('dialog', (d) => void d.accept());
+  await panel.getByRole('button', { name: 'Delete (Del)' }).click();
+  await expect.poll(files).toEqual(['notes/a 2.md', 'z.md']);
+  await panel.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await expect.poll(files).toEqual(['notes/a 2.md', 'notes/a.md', 'notes/b.md', 'z.md']);
+  // Names are found at once in the search box.
+  await panel.getByLabel('Search the folder').fill('a 2');
+  await expect(panel.locator('.folder-names').getByRole('button', { name: 'notes/a 2.md' })).toBeVisible();
+});
+
 test('keeps documents in the browser storage (FOLDER-006)', async ({ page }) => {
   await page.goto('./');
   await page.getByRole('button', { name: 'Open a folder' }).click();

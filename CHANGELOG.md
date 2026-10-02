@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- File explorer: size and date of each file, sorting by name, date, size or
+  type (remembered), files found by name in the folder search (FOLDER-008);
+  keyboard navigation in the tree (FOLDER-009); importing files and folders
+  of the device by drag and drop or with 📥 (FOLDER-010); selecting several
+  entries to delete or move them together, and undoing the last deletion
+  (FOLDER-011).
+
 - The code of a cell can be hidden (one cell, or every cell from the View
   menu): only its output is shown, printed and exported; Markdown keeps it
   with `{run hide}`.

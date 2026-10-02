@@ -1805,7 +1805,8 @@ export class App {
     this.root.addEventListener('drop', (e) => {
       this.root.classList.remove('dragging');
       const file = e.dataTransfer?.files[0];
-      if (file) {
+      // Files dropped on the folder explorer are imported there (FOLDER-010).
+      if (file && !e.defaultPrevented) {
         e.preventDefault();
         void this.openFile(file);
       }

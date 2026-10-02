@@ -22,20 +22,45 @@ The panel's toolbar manages the folder:
 |--------|--------|
 | ＋ | new document, in the selected folder, opened right away |
 | 📁＋ | new folder |
+| 📥 | import files of this device into the selected folder |
 | ✎ | rename the selected file or folder (<kbd>F2</kbd>) |
-| 🗑 | delete it, after confirmation (<kbd>Del</kbd>) |
+| 🗑 | delete the selected files and folders, after confirmation (<kbd>Del</kbd>) |
 | ↻ | reload the folder |
+| *Sort by* | order by name, date (newest first), size (largest first) or type; folders stay first, and the choice is remembered |
+
+Each file shows its size and the date it was last changed (the full date in
+its tooltip).
 
 Drag a file or folder onto another folder (or onto the empty space below the
 tree, for the top of the folder) to move it. The open document follows when
 it is renamed or moved.
 
+**Importing files**: drop files or folders from the desktop onto the tree
+(onto a folder, or onto a file to import next to it), or use 📥. A name
+already taken gets a number (`notes 2.md`).
+
+**Several at once**: <kbd>Ctrl</kbd>+click (<kbd>⌘</kbd>+click on macOS)
+adds or removes an entry, <kbd>Shift</kbd>+click selects a range,
+<kbd>Ctrl</kbd>+<kbd>A</kbd> selects every entry shown. Deleting or dragging
+then acts on all of them.
+
+**Undoing a deletion**: after a deletion, *Undo* (or <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+in the tree) puts the files back. Deletions larger than 64 MB cannot be
+undone; the confirmation says so.
+
+**Keyboard**: in the tree, <kbd>↑</kbd> <kbd>↓</kbd> move,
+<kbd>Home</kbd> <kbd>End</kbd> go to the first and last entry,
+<kbd>→</kbd> opens a folder (then goes into it), <kbd>←</kbd> closes it (or
+goes to its parent), <kbd>Enter</kbd> opens a document,
+<kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> extends the selection.
+
 - **Save** writes the document back into the folder, in place. *Save as*
   writes a new file wherever you choose (it is not added to the folder);
   the document then follows that new file.
-- **Search the folder** looks for a word in all its documents at once
-  (Markdown, LaTeX, text, BibTeX, Word, OpenDocument), ignoring case and
-  accents. Click a result to open the document at the first match.
+- **Search the folder** first lists the files whose **name** contains the
+  words, then looks for them in all its documents at once (Markdown, LaTeX,
+  text, BibTeX, Word, OpenDocument), ignoring case and accents. Click a
+  result to open the document at the first match.
 - **Links between documents**: a link to another file of the folder
   (`[chapter 1](chapters/one.md)`, a relative link in a Word or OpenDocument
   file) opens that document with <kbd>Ctrl</kbd>+click

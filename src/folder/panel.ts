@@ -4,7 +4,7 @@
  */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
-import { Explorer, listFiles, type Entry, type ExplorerChange, type StorageProvider } from '../fs';
+import { basename, Explorer, listFiles, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault } from './vault';
@@ -33,6 +33,19 @@ const ICONS: [RegExp, string][] = [
   [/\.(txt|log|csv|json|ya?ml|toml|ini|cfg|xml|bib)$/i, '📃'],
   [/\.(c|h|cpp|cc|cxx|hpp|py|java|js|mjs|ts|tsx|jsx|cs|go|rs|rb|php|sh|r|m|jl|kt|swift|sql|html?|css|scss|lua|hs|f90|pas|ml|scala|dart|ipynb)$|(^|\/)(makefile|dockerfile)$/i, '🧾'],
 ];
+const SORT_KEY = 'pwo.folder.sort';
+const savedSort = (): SortKey | undefined => {
+  try {
+    const v = localStorage.getItem(SORT_KEY);
+    return v === 'name' || v === 'date' || v === 'size' || v === 'type' ? v : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** Lower case, without accents. */
+const fold = (s: string): string => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
 export const iconOf = (path: string): string => ICONS.find(([re]) => re.test(path))?.[1] ?? '📄';
 
 export class FolderPanel {
@@ -67,6 +80,13 @@ export class FolderPanel {
         namePrompt: t('folder.namePrompt'),
         folderName: t('folder.newFolderName'),
         confirmRemove: (name, folder) => t(folder ? 'folder.confirmRemoveFolder' : 'folder.confirmRemove', { name }),
+        confirmRemoveMany: (n) => t('folder.confirmRemoveMany', { n }),
+        noUndo: t('folder.noUndo'),
+        deleted: (n) => t('folder.deleted', { n }),
+        undo: t('folder.undo'),
+        importFiles: t('folder.import'),
+        sortBy: t('folder.sortBy'),
+        sortNames: { name: t('folder.sortName'), date: t('folder.sortDate'), size: t('folder.sortSize'), type: t('folder.sortType') },
         error: (message) => t('folder.error', { message }),
       },
       // Every file is listed: documents, text and source files, pictures, archives; others can be downloaded (FILE-021).
@@ -81,6 +101,15 @@ export class FolderPanel {
       prompt: hooks.prompt,
       confirm: hooks.confirm,
       onError: hooks.error,
+      // FOLDER-008: the order chosen is kept for the next folders.
+      ...(savedSort() ? { sort: savedSort() } : {}),
+      onSort: (key) => {
+        try {
+          localStorage.setItem(SORT_KEY, key);
+        } catch {
+          /* not kept */
+        }
+      },
     });
     this.search = h('input', { type: 'search', class: 'folder-search', 'aria-label': t('folder.search'), placeholder: t('folder.search') });
     this.search.addEventListener('input', () => {
@@ -142,11 +171,21 @@ export class FolderPanel {
     this.results.hidden = !query;
     this.explorer.element.hidden = !!query;
     if (!query) return;
-    this.results.replaceChildren(h('p', { class: 'hint' }, t('folder.searching')));
     const all = await listFiles(this.provider);
+    if (query !== this.search.value.trim()) return;
+    // FOLDER-008: files whose name matches come first, at once.
+    const q = fold(query);
+    const named = all.filter((p) => fold(basename(p)).includes(q)).slice(0, 100);
+    const names = named.length
+      ? h('section', { class: 'folder-names' }, h('h3', {}, t('folder.byName')), h('ul', { role: 'list' }, ...named.map((p) => h('li', {}, button(p, () => this.hooks.open(p), { className: 'folder-file', icon: iconOf(p) })))))
+      : '';
+    const inDocs = named.length ? h('h3', {}, t('folder.inDocuments')) : '';
+    this.results.replaceChildren(names, inDocs, h('p', { class: 'hint' }, t('folder.searching')));
     const hits: SearchHit[] = await this.index.search(query, all.filter((p) => OPENABLE.test(p) || searchable(p)));
     if (query !== this.search.value.trim()) return;
     this.results.replaceChildren(
+      names,
+      inDocs,
       h('p', { class: 'hint' }, hits.length ? t('folder.found', { n: hits.reduce((s, x) => s + x.count, 0), files: hits.length }) : t('folder.notFound')),
       h(
         'ul',
