@@ -68,6 +68,16 @@ function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`
 - The format list applies a number format (decimals, thousands separator,
   percent, dates, currency) to the selection.
 
+## Formatting cells
+
+The toolbar formats the selected cells: **B** *I* U (also
+<kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd>), the text colour
+(**A**) and the fill colour (▧), borders around each cell (▦), and the
+alignment (⇤ ↔ ⇥). ⌫ (or <kbd>Ctrl</kbd>+<kbd>Space</kbd>) removes the
+formatting and keeps the values and number formats. The buttons show the
+formatting of the active cell. Formatting is kept in Excel and OpenDocument
+files and printed.
+
 ## Freezing rows and columns
 
 **❄** (*Freeze panes*) keeps the rows above and the columns left of the

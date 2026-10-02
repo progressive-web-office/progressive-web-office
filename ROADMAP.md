@@ -28,8 +28,9 @@ group is not a commitment.
 
 ### Spreadsheet
 
-- Cell formatting (number formats, fonts, borders, fills); ✅ freeze panes
-  (SHEET-017)
+- ✅ Cell formatting (SHEET-014: bold, italic, underline, colours, fills,
+  borders, alignment) and freeze panes (SHEET-017); next: fonts and sizes,
+  merged cells
 - ✅ Sort (SHEET-016); filter, fill handle, conditional formatting, data
   validation
 - About a hundred more functions
@@ -105,16 +106,16 @@ group is not a commitment.
 
 - Real-file corpus (Word and LibreOffice documents) with an automatic
   fidelity report in CI; preserve unknown content on save
-- File explorer: a storage-independent module (`src/fs/`, a
+- ✅ File explorer: a storage-independent module (`src/fs/`, a
   `StorageProvider` interface: list, read, write, mkdir, move, remove) with
   providers for local folders (File System Access API), the browser's
   private storage (OPFS), WebDAV / Nextcloud and Git repositories; create,
   rename, move and delete files and folders; designed to be extracted as a
   library shared with QRShare
-- Read-only opening: open any document read-only (viewing without
+- ✅ Read-only opening: open any document read-only (viewing without
   accidental edits, files from a read-only folder or link), with a visible
   banner and "Edit a copy"
-- Note vaults: a folder of linked Markdown notes with YAML front matter
+- ✅ Note vaults: a folder of linked Markdown notes with YAML front matter
   (tags, aliases, any key kept), `[[wiki links]]`, `[[note#heading]]`,
   `[[note|alias]]`, `![[embeds]]`, backlinks, and links that follow renames
 - Crash recovery from an operation log in IndexedDB, beyond autosave

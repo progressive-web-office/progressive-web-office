@@ -8,6 +8,16 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ## [Unreleased]
 
+### Added
+
+- Cell formatting in spreadsheets: bold, italic, underline, text and fill
+  colours, borders and alignment, kept in Excel and OpenDocument files and
+  printed. The budget, grade book and invoice templates use it.
+
+### Fixed
+
+- Frozen numeric cells scrolled away with the sheet.
+
 ## [0.1.0] - 2026-10-02
 
 First minor release: everything since 0.0.13, summed up in the README.

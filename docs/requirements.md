@@ -200,7 +200,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | SHEET-011 | S | 0.0.3 | The system shall let the user insert and delete rows and columns. |
 | SHEET-012 | S | 0.0.3 | Where formulas are written to `.ods`, the system shall translate references to OpenFormula syntax (`of:=SUM([.A1:.B2])`) and back when reading. |
 | SHEET-013 | C | 0.0.6 | The system shall support copy / paste of cell ranges as tab-separated text. |
-| SHEET-014 | C | — | Cell formatting (fonts, colours, number formats, borders). |
+| SHEET-014 | S | 0.2.0 | The system shall let the user format the selected cells (bold, italic, underline, text colour, fill colour, borders, horizontal alignment) from the toolbar or with Ctrl+B/I/U, clear the formatting (Ctrl+Space) while keeping values and number formats, show the formatting on screen and in print, and keep it in XLSX (fonts, fills, borders, alignment) and ODS (cell styles), including formatted empty cells. |
 | SHEET-015 | W | — | Pivot tables, macros. |
 | SHEET-016 | S | 0.1.0 | The system shall let the user sort the rows of a range (the selection, or the filled block around the active cell) by one column, ascending or descending, keeping an optional header row in place: numbers before text, text compared without case or accents, empty cells last, by computed values, with formulas translated as they move; one undo step restores the order. |
 | SHEET-017 | S | 0.1.0 | The system shall let the user freeze the rows above and the columns left of the active cell (the first row from A1), which stay in view while the sheet scrolls, unfreeze them, and keep frozen panes in XLSX (`pane state="frozen"`) and ODS (`settings.xml`). |
