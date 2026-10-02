@@ -6,6 +6,7 @@ import type { MessageKey } from '../i18n';
 import { readMarkdown } from '../document/markdown-reader';
 import { isTextRun, type Paragraph, type RichDocument } from '../document/model';
 import { getCell, newWorkbook, setInput, type Workbook } from '../sheet/model';
+import { applyCellStyle } from '../sheet/ops';
 import { contentSlide, DEFAULT_SIZE, textShape, titleSlide, type Presentation, type Slide } from '../slides/model';
 import { DOCUMENT_TEXTS, LABELS, type DocumentTexts, type TemplateLang } from './content';
 
@@ -70,6 +71,10 @@ function budget(lang: TemplateLang): Workbook {
   for (const cell of s.cells.values()) if (typeof cell.value === 'number' || cell.formula) cell.numFmt = '#,##0.00';
   s.colWidths = new Map([[0, 160]]);
   s.freeze = { rows: 1, cols: 1 };
+  // SHEET-014: headings in bold on a light fill, the balance stands out.
+  applyCellStyle(wb, 0, { r1: 0, c1: 0, r2: 0, c2: 4 }, { bold: true, fill: '#d9e2f3' });
+  for (const r of [1, 4]) applyCellStyle(wb, 0, { r1: r, c1: 0, r2: r, c2: 4 }, { bold: true });
+  applyCellStyle(wb, 0, { r1: 9, c1: 0, r2: 9, c2: 4 }, { bold: true, fill: '#e2efda', border: true });
   // The expenses' heading row repeats the months: they name the series.
   s.charts = [{ type: 'column', title: L.chart, range: 'A5:D9', headers: true, anchor: { row: 11, col: 0 }, width: 480, height: 280 }];
   return wb;
@@ -104,6 +109,7 @@ function grades(lang: TemplateLang): Workbook {
   setInput(s, `E${last + 3}`, `=COUNTIF(E2:E${last},">=10")`);
   s.colWidths = new Map([[0, 170], [5, 120]]);
   s.freeze = { rows: 1, cols: 1 };
+  applyCellStyle(wb, 0, { r1: 0, c1: 0, r2: 0, c2: 5 }, { bold: true, fill: '#d9e2f3', align: 'center' });
   return wb;
 }
 
@@ -141,6 +147,10 @@ function invoice(lang: TemplateLang): Workbook {
   setInput(s, 'D14', '=D12+D13');
   for (const ref of ['C8', 'C9', 'C10', 'D8', 'D9', 'D10', 'D12', 'D13', 'D14']) getCell(s, ref)!.numFmt = '#,##0.00';
   s.colWidths = new Map([[0, 220], [2, 110], [3, 110]]);
+  applyCellStyle(wb, 0, { r1: 0, c1: 0, r2: 0, c2: 0 }, { bold: true });
+  applyCellStyle(wb, 0, { r1: 6, c1: 0, r2: 6, c2: 3 }, { bold: true, fill: '#d9e2f3', border: true });
+  applyCellStyle(wb, 0, { r1: 7, c1: 0, r2: 9, c2: 3 }, { border: true });
+  applyCellStyle(wb, 0, { r1: 13, c1: 2, r2: 13, c2: 3 }, { bold: true });
   return wb;
 }
 
