@@ -187,3 +187,28 @@ test('keeps the relays and the TURN server of the collaboration (COLLAB-009)', a
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('pwo.collab.network') ?? '{}'));
   expect(stored).toEqual({ relays: ['wss://relay.example.org', 'wss://nos.lol'], turn: { urls: 'turn:turn.example.org:3478', username: 'ann', credential: 'secret' } });
 });
+
+test('a name changed in the settings reaches the others, the session going on (SET-003, COLLAB-003)', async ({ context }) => {
+  const alice = await context.newPage();
+  await localTransport(alice);
+  await openApp(alice);
+  await openFile(alice, 'notes.csv', 'Item,Qty\nPens,3\n', 'text/csv');
+  const url = await start(alice);
+  const bob = await context.newPage();
+  await localTransport(bob);
+  await bob.goto(url);
+  await expect(cell(bob, 1, 0)).toHaveText('Pens');
+  await alice.getByRole('button', { name: 'Settings' }).click();
+  const settings = alice.getByRole('dialog', { name: 'Settings' });
+  await settings.getByLabel('Your name').fill('Ann B. Lee');
+  await settings.getByLabel('Your name').press('Tab');
+  await settings.getByRole('button', { name: 'Close' }).click();
+  await expect(alice.locator('.collab-person.self')).toContainText('Ann B. Lee');
+  await expect(bob.locator('.collab-person:not(.self)')).toHaveText('Ann B. Lee');
+  // Still together: an edit goes through.
+  await expect(alice.locator('.collab-bar')).toContainText('Connected · 1 other(s)');
+  await cell(alice, 1, 1).click();
+  await alice.keyboard.type('9');
+  await alice.keyboard.press('Enter');
+  await expect(cell(bob, 1, 1)).toHaveText('9');
+});

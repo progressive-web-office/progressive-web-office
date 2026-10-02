@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { strToU8, unzipSync, zipSync } from 'fflate';
-import { openApp, openFile, saveAs } from './helpers';
+import { openApp, openFile, saveAs, answerName } from './helpers';
 
 // A 1×1 transparent PNG.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
@@ -89,9 +89,9 @@ test('comments lines of a source file in its own comment syntax (FILE-024)', asy
   const code = page.getByRole('textbox', { name: 'Content of sum.py' });
   await expect(code.locator('.tok-keyword').first()).toHaveText('def');
   await code.locator('.cm-line').nth(2).click();
-  const answers = ['Use sum(xs)', 'Prof'];
-  page.on('dialog', (d) => void d.accept(answers.shift()));
+  page.once('dialog', (d) => void d.accept('Use sum(xs)'));
   await page.getByRole('button', { name: 'Comment the line' }).click();
+  await answerName(page, 'Prof');
   await expect(code.locator('.cm-line').nth(2)).toHaveText('    # REVIEW(Prof): Use sum(xs)');
   await expect(code.locator('.cm-review')).toHaveCount(1);
   const panel = page.getByRole('complementary', { name: 'Review comments' });

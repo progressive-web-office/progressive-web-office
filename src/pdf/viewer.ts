@@ -259,8 +259,8 @@ export class PdfViewer implements EditorView {
     this.renderNotesPanel();
   }
 
-  private signature(): Pick<PdfNote, 'author' | 'date'> {
-    const author = askAuthor(t('comment.yourName'));
+  private async signature(): Promise<Pick<PdfNote, 'author' | 'date'>> {
+    const author = await askAuthor(t('comment.yourName'));
     return { ...(author ? { author } : {}), date: new Date().toISOString() };
   }
 
@@ -293,13 +293,17 @@ export class PdfViewer implements EditorView {
       }
     }
     if (!byPage.size) return;
-    const sign = this.signature();
+    // The rectangles are taken before the name may be asked (the selection is lost meanwhile).
+    sel.removeAllRanges();
+    void this.signature().then((sign) => this.addHighlights(byPage, sign));
+  }
+
+  private addHighlights(byPage: Map<number, [number, number, number, number][]>, sign: Pick<PdfNote, 'author' | 'date'>): void {
     let last: PdfNote | undefined;
     for (const [page, boxes] of byPage) {
       last = { kind: 'highlight', page, boxes, text: '', ...sign };
       this.notes.push(last);
     }
-    sel.removeAllRanges();
     this.notesChanged(last);
   }
 
@@ -320,9 +324,11 @@ export class PdfViewer implements EditorView {
     this.element.classList.remove('placing-note');
     const b = page.el.getBoundingClientRect();
     const [x, y] = page.viewport.convertToPdfPoint(e.clientX - b.left, e.clientY - b.top) as [number, number];
-    const note: PdfNote = { kind: 'note', page: page.index, boxes: [[x, y - 20, x + 20, y]], text: '', ...this.signature() };
-    this.notes.push(note);
-    this.notesChanged(note);
+    void this.signature().then((sign) => {
+      const note: PdfNote = { kind: 'note', page: page.index, boxes: [[x, y - 20, x + 20, y]], text: '', ...sign };
+      this.notes.push(note);
+      this.notesChanged(note);
+    });
   }
 
   private notesChanged(focus?: PdfNote): void {

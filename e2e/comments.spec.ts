@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { unzipSync } from 'fflate';
-import { openApp, openFile, saveAs } from './helpers';
+import { openApp, openFile, saveAs, answerName } from './helpers';
 
 test('comments a word, replies, resolves and saves the comments in DOCX (REV-001, REV-002)', async ({ page }) => {
   const errors = await openApp(page);
@@ -9,8 +9,8 @@ test('comments a word, replies, resolves and saves the comments in DOCX (REV-001
   await editor.click();
   // The cursor at the end of a word: the word is commented.
   await page.keyboard.type('The answer is wrong');
-  page.once('dialog', (d) => void d.accept('Ann Lee'));
   await page.keyboard.press('Control+Alt+m');
+  await answerName(page, 'Ann Lee');
   const panel = page.getByRole('complementary', { name: 'Comments' });
   await panel.getByRole('textbox', { name: 'New comment' }).fill('Check the sign.');
   await panel.getByRole('button', { name: 'Post', exact: true }).click();
@@ -69,8 +69,9 @@ test('tracks changes, accepts and rejects them, and saves them in DOCX (REV-005)
   const editor = page.getByRole('textbox', { name: 'Document' });
   await editor.click();
   await page.keyboard.type('The brown fox.');
-  page.once('dialog', (d) => void d.accept('Ann'));
   await page.getByRole('button', { name: 'Track changes' }).click();
+  await answerName(page, 'Ann');
+  await editor.click();
   await expect(page.getByRole('button', { name: 'Track changes' })).toHaveAttribute('aria-pressed', 'true');
   // Delete "brown" (5 characters before " fox.") and type "red".
   await page.keyboard.press('End');

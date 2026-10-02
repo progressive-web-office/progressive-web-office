@@ -5,7 +5,7 @@
 import type { Node as PmNode } from 'prosemirror-model';
 import { TextSelection } from 'prosemirror-state';
 import type { EditorView as PmView } from 'prosemirror-view';
-import { askAuthor } from '../app/author';
+import { askAuthor, commentAuthor } from '../app/author';
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import { initialsOf, newCommentId } from './comments';
@@ -104,7 +104,7 @@ export class CommentPanel {
         h(
           'div',
           { class: 'comment-actions' },
-          button(t('comment.reply'), () => this.compose(card, (text) => this.addReply(c.id, text))),
+          button(t('comment.reply'), () => void askAuthor(t('comment.yourName')).then(() => this.compose(card, (text) => this.addReply(c.id, text)))),
           button(t(c.resolved ? 'comment.reopen' : 'comment.resolve'), () => this.setResolved(c.id, !c.resolved)),
           button(t('comment.delete'), () => this.remove(c.id), { className: 'danger' }),
         ),
@@ -174,12 +174,13 @@ export class CommentPanel {
       to = $pos.start() + end;
     }
     const range = { from, to };
-    this.compose(null, (text) => this.create(range.from, range.to, text));
+    // The name first (asked once), then the comment.
+    void askAuthor(t('comment.yourName')).then(() => this.compose(null, (text) => this.create(range.from, range.to, text)));
     return true;
   }
 
   private signature(): Pick<DocComment, 'author' | 'initials' | 'date'> {
-    const author = askAuthor(t('comment.yourName'));
+    const author = commentAuthor();
     return { ...(author ? { author, initials: initialsOf(author) } : {}), date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') };
   }
 

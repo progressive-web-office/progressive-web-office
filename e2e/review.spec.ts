@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PDFDocument, StandardFonts } from '@pdfme/pdf-lib';
-import { openApp, openFile } from './helpers';
+import { openApp, openFile, answerName } from './helpers';
 
 async function pdf(pages: number): Promise<Buffer> {
   const doc = await PDFDocument.create();
@@ -86,8 +86,8 @@ test('reviews a text document page by page and comments it (REVIEW-001..REVIEW-0
   await editor.getByText('Paragraph 60.').dblclick();
   await page.keyboard.type('x');
   await expect(editor).toContainText('Paragraph 60.');
-  page.once('dialog', (d) => void d.accept('Prof'));
   await page.keyboard.press('c');
+  await answerName(page, 'Prof');
   const panel = page.getByRole('complementary', { name: 'Comments' });
   await panel.getByRole('textbox', { name: 'New comment' }).fill('Too long.');
   await panel.getByRole('button', { name: 'Post', exact: true }).click();

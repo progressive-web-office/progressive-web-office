@@ -189,13 +189,13 @@ export class TextView implements PwoView {
   }
 
   /** A review comment above the line of the cursor, in the language's comment syntax (FILE-024). */
-  private addReview(): void {
+  private async addReview(): Promise<void> {
     if (this.readOnlyMode) return;
     const state = this.view.state;
     const line = state.doc.lineAt(state.selection.main.head);
     const text = window.prompt(t('textfile.reviewPrompt', { line: line.number }), '')?.trim();
     if (!text) return this.view.focus();
-    const author = askAuthor(t('comment.yourName')) || t('comment.anonymous');
+    const author = (await askAuthor(t('comment.yourName'))) || t('comment.anonymous');
     const tokens = (state.languageDataAt<CommentTokens>('commentTokens', line.from)[0] ?? {}) as CommentTokens;
     const indent = /^\s*/.exec(line.text)![0];
     const insert = `${reviewLine(tokens, author, text, indent)}\n`;

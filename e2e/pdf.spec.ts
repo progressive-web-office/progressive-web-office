@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { PDFDocument, PDFName, StandardFonts } from '@pdfme/pdf-lib';
-import { openApp, openFile, saveAs } from './helpers';
+import { openApp, openFile, saveAs, answerName } from './helpers';
 
 async function samplePdf(): Promise<Buffer> {
   const doc = await PDFDocument.create();
@@ -36,8 +36,8 @@ test('highlights text and adds notes saved as PDF annotations (PDF-018)', async 
     window.getSelection()!.removeAllRanges();
     window.getSelection()!.addRange(range);
   });
-  page.once('dialog', (d) => void d.accept('Prof'));
   await page.getByRole('button', { name: 'Highlight', exact: true }).click();
+  await answerName(page, 'Prof');
   const panel = page.getByRole('complementary', { name: 'Annotations' });
   const card = panel.getByRole('article', { name: 'Highlight, page 1' });
   await expect(card).toContainText('Prof');

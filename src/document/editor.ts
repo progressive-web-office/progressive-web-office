@@ -168,7 +168,7 @@ export class DocumentEditor implements EditorView {
     this.findBar = new FindBar(() => this.view);
     this.comments = new CommentPanel({ view: () => this.view, doc: this.doc, readOnly: () => this.readOnly, changed: () => this.changed() });
     this.changesPanel = new ChangePanel(() => this.view, () => this.readOnly);
-    this.trackButton = button(t('track.button'), () => this.toggleTracking(), { text: '±', title: t('track.title'), className: 'track-btn' });
+    this.trackButton = button(t('track.button'), () => void this.toggleTracking(), { text: '±', title: t('track.title'), className: 'track-btn' });
     this.trackButton.setAttribute('aria-pressed', 'false');
     const scroller = h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes);
     this.element = h('div', { class: 'doc-editor' });
@@ -845,10 +845,10 @@ export class DocumentEditor implements EditorView {
   }
 
   /** Record the edits as tracked changes, or stop (REV-005). */
-  private toggleTracking(): void {
+  private async toggleTracking(): Promise<void> {
     if (this.tracking) this.tracking = undefined;
     else {
-      const author = askAuthor(t('comment.yourName'));
+      const author = await askAuthor(t('comment.yourName'));
       this.tracking = author ? { author } : {};
     }
     this.trackButton.setAttribute('aria-pressed', String(!!this.tracking));

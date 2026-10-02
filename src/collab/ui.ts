@@ -4,7 +4,7 @@
  * The protocol and history come from @scelles/collab, shared with QRShare.
  */
 import { CollabSession, colorOf, createIdentity, loadIdentity, saveIdentity, type CollabRoom, type Identity, type Participant, type VersionEntry } from '@scelles/collab';
-import { commentAuthor, saveAuthor } from '../app/author';
+import { commentAuthor, NAME_CHANGED, saveAuthor } from '../app/author';
 import { button, h } from '../app/dom';
 import { showQrFullScreen, zoomableQr } from '../app/qr';
 import { t } from '../i18n';
@@ -127,6 +127,12 @@ export class Collaboration {
   private lastCursor = '';
   private cursorTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly onSelection = (): void => this.cursorMoved();
+  /** SET-003: a name changed elsewhere (settings, first comment) is shown to the others at once, in the same session. */
+  private readonly onName = (e: Event): void => {
+    const name = (e as CustomEvent<string>).detail;
+    const current = this.session.participants.find((p) => p.self)?.user ?? myIdentity();
+    if (name && name !== current.name) this.session.setIdentity({ name, color: current.color });
+  };
   private readonly startedAt = Date.now();
   private readonly ticker: ReturnType<typeof setInterval>;
   private readonly help = h('p', { class: 'collab-help', hidden: true });
@@ -166,6 +172,7 @@ export class Collaboration {
     this.hello();
     this.ticker = setInterval(() => this.renderState(), 2000);
     document.addEventListener('selectionchange', this.onSelection);
+    addEventListener(NAME_CHANGED, this.onName);
     this.renderPeople();
     this.renderState();
   }
@@ -290,9 +297,9 @@ export class Collaboration {
     const color = colorOf(name);
     const identity = { name, color: color === colorOf('') ? current.color : color };
     saveIdentity(identity, IDENTITY_KEY);
+    this.session.setIdentity(identity);
     // The same name everywhere (SET-003).
     saveAuthor(name);
-    this.session.setIdentity(identity);
   }
 
   /** Show the invitation: QR code, link, and ways to send it (COLLAB-001). */
@@ -411,6 +418,7 @@ export class Collaboration {
 
   destroy(): void {
     clearInterval(this.ticker);
+    removeEventListener(NAME_CHANGED, this.onName);
     clearTimeout(this.cursorTimer);
     document.removeEventListener('selectionchange', this.onSelection);
     this.adapter.showPeers?.([]);

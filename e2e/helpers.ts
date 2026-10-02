@@ -31,3 +31,10 @@ export async function saveAs(page: Page, label: string): Promise<{ name: string;
   for await (const c of stream) chunks.push(c as Buffer);
   return { name: d.suggestedFilename(), data: Buffer.concat(chunks) };
 }
+
+/** Answer the window asking the user's name, the first time it is needed (SET-003). */
+export async function answerName(page: Page, name: string): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: 'Your name, shown on your comments:' });
+  await dialog.getByRole('textbox').fill(name);
+  await dialog.getByRole('button', { name: 'OK' }).click();
+}

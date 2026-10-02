@@ -29,6 +29,14 @@ test('two browsers find each other through a relay and edit together (COLLAB-001
   await bob.goto(url);
   await expect(bob.locator('td[data-r="1"][data-c="0"]')).toHaveText('Pens', { timeout: 60_000 });
   await expect(alice.locator('.collab-bar')).toContainText('Connected · 1 other(s)');
+  // Renaming oneself keeps the connection, and the others see the new name.
+  await alice.locator('.collab-person.self').click();
+  const rename = alice.getByRole('dialog', { name: 'Change how others see you' });
+  await rename.getByRole('textbox').fill('Ann Lee');
+  await rename.getByRole('button', { name: 'OK' }).click();
+  await expect(bob.locator('.collab-person:not(.self)')).toHaveText('Ann Lee', { timeout: 15_000 });
+  await expect(bob.locator('.collab-bar')).toContainText('Connected · 1 other(s)');
+  await expect(alice.locator('.collab-bar')).toContainText('Connected · 1 other(s)');
 });
 
 test('goes through the relays when the browsers cannot connect directly (COLLAB-011)', async ({ browser }) => {
