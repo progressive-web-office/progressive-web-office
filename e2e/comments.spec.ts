@@ -62,3 +62,36 @@ test('shows the comments of an OpenDocument text (REV-003)', async ({ page }) =>
   await card.click();
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('this part');
 });
+
+test('tracks changes, accepts and rejects them, and saves them in DOCX (REV-005)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New document' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await editor.click();
+  await page.keyboard.type('The brown fox.');
+  page.once('dialog', (d) => void d.accept('Ann'));
+  await page.getByRole('button', { name: 'Track changes' }).click();
+  await expect(page.getByRole('button', { name: 'Track changes' })).toHaveAttribute('aria-pressed', 'true');
+  // Delete "brown" (5 characters before " fox.") and type "red".
+  await page.keyboard.press('End');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Backspace');
+  await page.keyboard.type('red');
+  await expect(editor.locator('del.tracked')).toHaveText('brown');
+  await expect(editor.locator('ins.tracked')).toHaveText('red');
+  const changes = page.getByRole('region', { name: 'Changes' });
+  await expect(changes.getByRole('article')).toHaveCount(2);
+  await expect(changes.getByRole('article', { name: 'Deleted by Ann' })).toContainText('brown');
+
+  const { data } = await saveAs(page, 'Word document (.docx)');
+  const xml = new TextDecoder().decode(unzipSync(new Uint8Array(data))['word/document.xml']);
+  expect(xml).toMatch(/<w:del [^>]*w:author="Ann"[^>]*><w:r><w:delText xml:space="preserve">brown<\/w:delText>/);
+  expect(xml).toMatch(/<w:ins [^>]*w:author="Ann"[^>]*><w:r><w:t xml:space="preserve">red<\/w:t>/);
+
+  // Accept the deletion, reject the insertion.
+  await changes.getByRole('article', { name: 'Deleted by Ann' }).getByRole('button', { name: 'Accept' }).click();
+  await changes.getByRole('article', { name: 'Inserted by Ann' }).getByRole('button', { name: 'Reject' }).click();
+  await expect(editor.locator('p').first()).toHaveText('The  fox.');
+  await expect(changes).toBeHidden();
+  expect(errors).toEqual([]);
+});

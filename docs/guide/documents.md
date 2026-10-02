@@ -234,6 +234,24 @@ Comments are kept when saving:
 During a real-time collaboration session, the commented text is shared, but
 the comments themselves are not yet: save and share the file instead.
 
+## Tracking changes
+
+Click **±** (Track changes) to record your edits instead of applying them:
+the text you type is underlined in green, the text you delete stays, struck
+out in red, both signed with your name and the date. Deleting text you
+inserted while tracking removes it. Click **±** again to stop. Formatting
+changes and joined paragraphs are not tracked.
+
+The **Changes** panel beside the page lists every change: click one to
+select it, **Accept** or **Reject** it, or **Accept all** / **Reject all**.
+Accepting an insertion keeps its text; accepting a deletion removes its
+text; rejecting does the opposite.
+
+Changes are kept in Word (`.docx`, as Word shows them), OpenDocument
+(`.odt`, as LibreOffice shows them) and Markdown (CriticMarkup
+`{++added++}` and `{--deleted--}`, without author). A LaTeX export applies
+them (accepts every change).
+
 ## Pasting
 
 Pasted content is **sanitised**: only headings, paragraphs, basic formatting,
@@ -263,12 +281,11 @@ accepted.
 | Captions and cross-references | ✅ (fields) | ✅ | ✅ (anchors and links) | ✅ (anchors and links) |
 | Citations and bibliography | ✅ (Word sources) | ✅ | ✅ (pandoc) | ✅ (pandoc) |
 
-Comments are kept in all four formats (see [Comments](#comments)).
+Comments and tracked changes are kept in all four formats (see
+[Comments](#comments) and [Tracking changes](#tracking-changes)).
 
-Other features of Word/LibreOffice files (tracked changes, named styles
-beyond headings, sections and page layout) are **not** preserved when
-saving. Tracked insertions are accepted and deletions are dropped when
-a `.docx` is opened.
+Other features of Word/LibreOffice files (named styles beyond headings,
+sections and page layout) are **not** preserved when saving.
 
 ## Document properties
 

@@ -196,9 +196,18 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 /* Comments (REV-001): the commented text, then the threads beside the page. */
 .doc-page .comment-anchor { background: rgba(255, 196, 0, 0.28); border-bottom: 2px solid #d9a400; }
 .doc-editor { --comment-active: rgba(255, 170, 0, 0.55); }
-.doc-comments { flex: none; width: 19rem; position: sticky; top: 0; max-height: 100vh; overflow: auto; padding: 16px 12px 24px 0; box-sizing: border-box; }
-.doc-comments[hidden] { display: none; }
-.doc-comments h2 { font-size: 0.95rem; margin: 8px 0; color: var(--muted); }
+.doc-side { flex: none; width: 19rem; position: sticky; top: 0; max-height: 100vh; overflow: auto; padding: 16px 12px 24px 0; box-sizing: border-box; }
+.doc-side:not(:has(> :not([hidden]))) { display: none; }
+.doc-comments[hidden], .doc-changes[hidden] { display: none; }
+.doc-comments h2, .doc-changes h2 { font-size: 0.95rem; margin: 8px 0; color: var(--muted); }
+/* REV-005: tracked changes in the text and in the panel. */
+.doc-page ins.tracked { color: #0a6e2e; text-decoration: underline; text-decoration-color: #0a6e2e; background: rgba(10, 110, 46, 0.08); }
+.doc-page del.tracked { color: #b3261e; text-decoration: line-through; background: rgba(179, 38, 30, 0.06); }
+.comment-card.change-card { border-left-color: #0a6e2e; }
+.comment-card.change-card.delete { border-left-color: #b3261e; }
+.change-text { display: block; margin: 2px 0; overflow-wrap: anywhere; }
+.change-all { margin-bottom: 8px; }
+.track-btn[aria-pressed='true'] { background: #0a6e2e; color: #fff; border-color: #0a6e2e; }
 .comment-card, .comment-compose { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid #d9a400; border-radius: var(--radius); padding: 8px 10px; margin-bottom: 10px; font-size: 0.875rem; }
 .comment-card { cursor: pointer; }
 .comment-card.active { border-color: var(--accent); border-left-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -214,9 +223,9 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 .comment-compose textarea { width: 100%; box-sizing: border-box; font: inherit; }
 @media (max-width: 1100px) {
   .doc-body { flex-direction: column; align-items: stretch; }
-  .doc-comments { width: auto; position: static; max-height: none; padding: 0 12px 24px; }
+  .doc-side { width: auto; position: static; max-height: none; padding: 0 12px 24px; }
 }
-@media print { .doc-comments { display: none; } .doc-page .comment-anchor { background: none; border: 0; } }
+@media print { .doc-side { display: none; } .doc-page .comment-anchor { background: none; border: 0; } }
 .doc-page {
   max-width: 816px; min-height: 1056px; margin: 0 auto;
   padding: 72px 80px; background: #fff; color: #1c2430;

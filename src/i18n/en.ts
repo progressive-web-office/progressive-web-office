@@ -953,6 +953,18 @@ export const en = {
   'textfile.reviews': 'Review comments',
   'textfile.reviewOn': 'Comment on line {line}',
   'textfile.lineShort': 'line {line}',
+  'track.button': 'Track changes',
+  'track.title': 'Track changes: insertions and deletions are recorded with your name until accepted or rejected',
+  'track.on': 'Tracking changes',
+  'track.panel': 'Changes',
+  'track.accept': 'Accept',
+  'track.reject': 'Reject',
+  'track.acceptAll': 'Accept all',
+  'track.rejectAll': 'Reject all',
+  'track.inserted': 'Inserted by {author}',
+  'track.deleted': 'Deleted by {author}',
+  'track.insertedShort': 'inserted',
+  'track.deletedShort': 'deleted',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -17,6 +17,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   side by side; find text in the pages (Ctrl+F); highlight text and add
   notes, saved as standard PDF annotations, with a panel listing the
   annotations of the file.
+- Tracked changes in text documents: record insertions and deletions with
+  their author, accept or reject them one by one or all at once; kept in
+  Word, OpenDocument and Markdown (CriticMarkup) files.
 - Comments in text documents: comment the selection or the word at the
   cursor (Ctrl+Alt+M), reply, resolve and delete, with the threads beside
   the page. Comments are kept in Word (with replies and resolved state),

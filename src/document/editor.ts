@@ -23,7 +23,7 @@ import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } 
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, newAnchor, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument } from './model';
+import { addResource, newAnchor, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
@@ -32,6 +32,10 @@ import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
 import { listCss } from './pm/list-css';
+import { askAuthor } from '../app/author';
+import { isHistoryTransaction } from 'prosemirror-history';
+import { ChangePanel } from './change-panel';
+import { trackTransaction, UNTRACKED } from './changes';
 import { CommentPanel } from './comment-panel';
 import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
@@ -94,6 +98,10 @@ export class DocumentEditor implements EditorView {
   private trusted = false;
   /** REV-001: the comments beside the page. */
   private readonly comments: CommentPanel;
+  /** REV-005: tracked changes, recorded while `tracking` with this author. */
+  private readonly changesPanel: ChangePanel;
+  private tracking: Revision | undefined;
+  private readonly trackButton: HTMLButtonElement;
 
   constructor(
     private readonly doc: RichDocument,
@@ -129,13 +137,16 @@ export class DocumentEditor implements EditorView {
     });
     this.findBar = new FindBar(() => this.view);
     this.comments = new CommentPanel({ view: () => this.view, doc: this.doc, readOnly: () => this.readOnly, changed: () => this.changed() });
+    this.changesPanel = new ChangePanel(() => this.view, () => this.readOnly);
+    this.trackButton = button(t('track.button'), () => this.toggleTracking(), { text: '±', title: t('track.title'), className: 'track-btn' });
+    this.trackButton.setAttribute('aria-pressed', 'false');
     this.element = h(
       'div',
       { class: 'doc-editor' },
       this.toolbar(),
       this.buildTableBar(),
       this.findBar.element,
-      h('div', { class: 'doc-body' }, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes), this.comments.element),
+      h('div', { class: 'doc-body' }, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes), h('div', { class: 'doc-side' }, this.changesPanel.element, this.comments.element)),
     );
     for (const strip of [this.headerStrip, this.footerStrip]) {
       strip.addEventListener('click', () => void this.editPageSetup());
@@ -197,6 +208,7 @@ export class DocumentEditor implements EditorView {
     this.updateToolbar();
     this.renderNotes();
     this.comments.refresh();
+    this.changesPanel.refresh();
     for (const toc of this.tocViews) toc.refresh();
   }
 
@@ -361,13 +373,20 @@ export class DocumentEditor implements EditorView {
   }
 
   private dispatch(tr: Transaction): void {
+    // REV-005: while tracking, edits are recorded as insertions and deletions.
+    if (this.tracking && tr.docChanged && !tr.getMeta(REMOTE) && !tr.getMeta(UNTRACKED) && !isHistoryTransaction(tr)) {
+      tr = trackTransaction(this.view.state, tr, { ...this.tracking, date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
+    }
     const state = this.view.state.apply(tr);
     this.view.updateState(state);
     if (tr.docChanged && !tr.getMeta(REMOTE)) this.changed();
     else if (tr.selectionSet) this.statusSoon();
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
-    if (tr.docChanged) this.comments.refresh();
+    if (tr.docChanged) {
+      this.comments.refresh();
+      this.changesPanel.refresh();
+    }
     else if (tr.selectionSet) this.comments.selectionChanged();
     if (tr.docChanged) {
       this.xrefCache = undefined;
@@ -500,7 +519,7 @@ export class DocumentEditor implements EditorView {
 
   status(): string {
     const { words, characters } = wordCount({ ...this.doc, blocks: this.currentBlocks() });
-    return t(words === 1 ? 'doc.word' : 'doc.words', { words, characters });
+    return t(words === 1 ? 'doc.word' : 'doc.words', { words, characters }) + (this.tracking ? ` · ${t('track.on')}` : '');
   }
 
   async save(format: Parameters<EditorView['save'] & object>[0]): Promise<Uint8Array> {
@@ -509,6 +528,18 @@ export class DocumentEditor implements EditorView {
     const out = { ...this.doc };
     pruneComments(out);
     return writeDocumentAsync(out, format as TextFormat);
+  }
+
+  /** Record the edits as tracked changes, or stop (REV-005). */
+  private toggleTracking(): void {
+    if (this.tracking) this.tracking = undefined;
+    else {
+      const author = askAuthor(t('comment.yourName'));
+      this.tracking = author ? { author } : {};
+    }
+    this.trackButton.setAttribute('aria-pressed', String(!!this.tracking));
+    this.element.classList.toggle('tracking', !!this.tracking);
+    this.ctx.statusChanged();
   }
 
   /** Comment the selection or the word at the cursor (REV-001). */
@@ -759,6 +790,7 @@ export class DocumentEditor implements EditorView {
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
       act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`),
+      this.trackButton,
       act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
       act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
       act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),

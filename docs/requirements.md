@@ -405,7 +405,7 @@ integration is ever needed.
 | REV-002 | S | 0.2.0 | The system shall read and write Word comments: ranges (`commentRangeStart`, `commentRangeEnd`, `commentReference`), `comments.xml` (author, initials, date, paragraphs) and `commentsExtended.xml` (replies, resolved state). |
 | REV-003 | S | 0.2.0 | The system shall read and write OpenDocument annotations: `office:annotation` with `office:annotation-end` for ranges (a comment without end being put on the word before it), author, date and initials, LibreOffice's replies (`loext:parent-name`) and resolved state (`loext:resolved`). |
 | REV-004 | S | 0.2.0 | The system shall read and write comments in Markdown with CriticMarkup: the commented text as `{==text==}` followed by `{>>Author: comment<<}`, replies following their comment, a comment without highlighted text being put on the word before it. |
-| REV-005 | S | — | Suggested changes (track changes): insertions and deletions recorded with their author, accepted or rejected one by one or all at once, kept in DOCX (`w:ins`, `w:del`) and ODT (`text:tracked-changes`). |
+| REV-005 | S | 0.2.0 | The system shall let the user track changes in a text document: while on, typed text shall be recorded as an insertion and deleted text kept, struck out, as a deletion, each with its author (asked once) and date (deleting tracked inserted text removing it); changes shall be shown in the text and listed in a panel to be accepted or rejected one by one or all at once, and kept in DOCX (`w:ins`, `w:del`/`w:delText`), ODT (`text:tracked-changes`, changed regions) and Markdown (CriticMarkup `{++ ++}`, `{-- --}`); LaTeX exports shall accept them. |
 
 ## 9j. Images and drawing (IMG)
 
