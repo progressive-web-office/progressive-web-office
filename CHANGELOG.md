@@ -113,6 +113,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   the values shown in each column; the filter and the rows it hides are kept
   in Excel and OpenDocument files.
 
+### Changed
+
+- The review mode is one switch for every file, also in the settings.
+- One name for the user, asked once: comments, annotations, tracked
+  changes and collaboration use it (no more random collaboration name
+  signing comments).
+
 ### Fixed
 
 - Devices of a real-time collaboration could fail to find each other, even
@@ -355,10 +362,6 @@ First minor release: everything since 0.0.13, summed up in the README.
 
 ### Changed
 
-- The review mode is one switch for every file, also in the settings.
-- One name for the user, asked once: comments, annotations, tracked
-  changes and collaboration use it (no more random collaboration name
-  signing comments).
 - The start screen cards have icons (📝 document, 📊 spreadsheet, 📽️
   presentation, 📂 open, 🗂️ repository, 📲 receive, ☁️ cloud, 🗃️ Grist);
   they are decorative and do not change the buttons' names for screen
