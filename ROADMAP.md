@@ -41,6 +41,12 @@ group is not a commitment.
   equations ("see figure 3", "equation (2)")
 - Bibliography from BibTeX / CSL, written as `\cite` in LaTeX and as
   fields in Word
+- Master documents: a master document assembles sub-documents (chapters)
+  edited separately, possibly by different people in collaboration, with
+  continuous numbering, a global table of contents and cross-references
+  across sub-documents; read and written as ODF master documents (`.odm`,
+  linked sections), Word sub-documents, LaTeX `\include` / `\input` and a
+  Markdown include syntax; exported as one assembled DOCX, ODT, LaTeX or PDF
 - Mail merge: a document combined with a CSV file or a workbook gives N
   documents or one PDF
 - Form fields (text, check box, list), exported as a fillable PDF
