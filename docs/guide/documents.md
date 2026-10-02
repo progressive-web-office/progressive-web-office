@@ -234,6 +234,31 @@ Comments are kept when saving:
 During a real-time collaboration session, the commented text is shared, but
 the comments themselves are not yet: save and share the file instead.
 
+## Exercise sheets and answer keys
+
+Write the exercises and their solutions in one document. Put the cursor in
+a solution's paragraphs (or select them) and click **✓ Solution**: they get a
+green frame labelled *Solution*. Click **✓** again to make them normal text.
+
+- **👁 Hide the solutions** shows the exercise sheet, on screen and in print;
+  click it again for the answer key.
+- **Save as… → Exercise sheet without solutions** (`.odt`, `.docx` or
+  `.md`) writes a copy without the solutions, next to the document, which
+  keeps them: one file to maintain, two to hand out.
+
+Solutions are kept in Word files as content controls named *Solution*, in
+OpenDocument files as sections named *Solution1*, *Solution2*… (which
+LibreOffice can hide), and in Markdown as fenced divs, as in Pandoc and
+Quarto:
+
+```markdown
+Compute 2 + 3.
+
+::: solution
+2 + 3 = 5
+:::
+```
+
 ## Tracking changes
 
 Click **±** (Track changes) to record your edits instead of applying them:

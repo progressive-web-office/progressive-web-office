@@ -38,6 +38,7 @@ import { mathmlToOmml, OMML_NS } from '../math/convert';
 import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { anchoredComments, CommentRanges } from './comments';
+import { solutionSegments } from './solutions';
 import { APP_XML, coreXml, DOCX_NUMBER_FORMAT, EMU_PER_PX, NS, REL } from './ooxml';
 import { citations, formatEntry, type Citations } from './bibliography';
 import { citationInstr, SOURCES_PROPS, sourcesXml } from './word-sources';
@@ -236,7 +237,14 @@ class DocxWriter {
     return String(id);
   }
 
+  /** Solutions in a content control named Solution (TEACH-001). */
   private blocks(blocks: Block[]): string {
+    return solutionSegments(blocks)
+      .map((s) => (s.solution ? `<w:sdt><w:sdtPr><w:alias w:val="Solution"/><w:tag w:val="pwo:solution"/></w:sdtPr><w:sdtContent>${this.plainBlocks(s.blocks)}</w:sdtContent></w:sdt>` : this.plainBlocks(s.blocks)))
+      .join('');
+  }
+
+  private plainBlocks(blocks: Block[]): string {
     let out = '';
     for (const group of groupBlocks(blocks)) {
       if (group.type === 'list') {

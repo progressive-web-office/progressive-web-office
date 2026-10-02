@@ -65,6 +65,8 @@ export interface ViewContext {
   openLink?(href: string): boolean;
   /** Documents of the open folder, relative to this document (DOC-028). */
   folderDocuments?(): Promise<string[]> | undefined;
+  /** What the view offers in the header changed (e.g. its save variants). */
+  headerChanged?(): void;
 }
 
 /** Create a view for existing file bytes. */

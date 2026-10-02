@@ -17,6 +17,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   side by side; find text in the pages (Ctrl+F); highlight text and add
   notes, saved as standard PDF annotations, with a panel listing the
   annotations of the file.
+- Exercise sheets and answer keys from one document: mark paragraphs as
+  solutions, hide them, and save the sheet without them; kept in Word,
+  OpenDocument and Markdown (`::: solution`) files.
 - Tracked changes in text documents: record insertions and deletions with
   their author, accept or reject them one by one or all at once; kept in
   Word, OpenDocument and Markdown (CriticMarkup) files.

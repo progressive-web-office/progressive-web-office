@@ -309,7 +309,9 @@ class OdtReader {
               out.push({ type: 'include', src: decodeURI(href.replace(/^\.\.\//, '')) });
               break;
             }
-            out.push(...this.readBlocks(el, listStyle, depth));
+            // TEACH-001: a section named Solution… holds solutions.
+            const solution = /^(solution|corrig|answer)/i.test(attr(el, 'name') ?? '');
+            out.push(...this.readBlocks(el, listStyle, depth).map((b) => (solution && b.type === 'paragraph' ? { ...b, solution: true } : b)));
             break;
           }
           case 'index-body':

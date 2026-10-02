@@ -967,4 +967,11 @@ export const zh: Record<MessageKey, string> = {
   'track.deleted': '{author} 删除',
   'track.insertedShort': '插入',
   'track.deletedShort': '删除',
+  'solution.button': '答案',
+  'solution.title': '将段落标记为答案：在答案中显示，在练习中隐藏',
+  'solution.hide': '隐藏答案',
+  'solution.hideTitle': '在屏幕和打印中隐藏答案（练习版）',
+  'solution.label': '答案',
+  'solution.sheet': '不含答案的练习（.{ext}）',
+  'solution.sheetSuffix': '-练习',
 };

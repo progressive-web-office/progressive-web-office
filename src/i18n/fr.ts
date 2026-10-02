@@ -967,4 +967,11 @@ export const fr: Record<MessageKey, string> = {
   'track.deleted': 'Suppression de {author}',
   'track.insertedShort': 'insertion',
   'track.deletedShort': 'suppression',
+  'solution.button': 'Solution',
+  'solution.title': 'Marquer les paragraphes comme solution : affichés dans le corrigé, retirés de la fiche d’exercices',
+  'solution.hide': 'Masquer les solutions',
+  'solution.hideTitle': 'Masquer les solutions (la fiche d’exercices), à l’écran et à l’impression',
+  'solution.label': 'Solution',
+  'solution.sheet': 'Fiche sans solutions (.{ext})',
+  'solution.sheetSuffix': '-fiche',
 };

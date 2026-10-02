@@ -359,3 +359,20 @@ test('cites BibTeX sources and lists the references (DOC-027)', async ({ page })
   expect(md).toContain('<div id="refs"></div>');
   expect(md).toContain('references:');
 });
+
+test('marks solutions, hides them and saves the exercise sheet without them (TEACH-001)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Compute 2 + 3.');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('2 + 3 = 5');
+  await page.getByRole('button', { name: 'Solution', exact: true }).click();
+  await expect(editor.locator('[data-solution]')).toHaveText('2 + 3 = 5');
+  await expect(page.getByRole('button', { name: 'Solution', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Hide the solutions' }).click();
+  await expect(editor.locator('[data-solution]')).toBeHidden();
+  const sheet = await saveAs(page, 'Exercise sheet without solutions (.md)');
+  expect(sheet.name).toBe('Untitled document-sheet.md');
+  expect(sheet.data.toString()).toBe('Compute 2 + 3.\n');
+  const key = await saveAs(page, 'Markdown (.md)');
+  expect(key.data.toString()).toContain('::: solution\n\n2 + 3 = 5\n\n:::');
+});

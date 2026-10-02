@@ -315,7 +315,12 @@ class DocxReader {
             break;
           }
           const content = child(el, 'sdtContent');
-          if (content) out.push(...this.readBlocks(content));
+          // TEACH-001: a content control holding solutions.
+          const props = child(el, 'sdtPr');
+          const tag = props ? attr(child(props, 'tag') ?? props, 'val') : null;
+          const alias = props ? attr(child(props, 'alias') ?? props, 'val') : null;
+          const solution = tag === 'pwo:solution' || /^(solution|corrig[eé]|answer)s?$/i.test(alias ?? '');
+          if (content) out.push(...this.readBlocks(content).map((b) => (solution && b.type === 'paragraph' ? { ...b, solution: true } : b)));
           break;
         }
         case 'customXml':

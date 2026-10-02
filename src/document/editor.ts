@@ -18,7 +18,7 @@ import type { PrintSettings } from '../print/settings';
 import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import { sizeInput, type SizeInput } from '../app/size-input';
-import type { EditorView, SyncableDocument, ViewContext } from '../app/views';
+import type { EditorView, SaveVariant, SyncableDocument, ViewContext } from '../app/views';
 import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
@@ -36,6 +36,7 @@ import { askAuthor } from '../app/author';
 import { isHistoryTransaction } from 'prosemirror-history';
 import { ChangePanel } from './change-panel';
 import { trackTransaction, UNTRACKED } from './changes';
+import { withoutSolutions } from './solutions';
 import { CommentPanel } from './comment-panel';
 import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
@@ -102,6 +103,9 @@ export class DocumentEditor implements EditorView {
   private readonly changesPanel: ChangePanel;
   private tracking: Revision | undefined;
   private readonly trackButton: HTMLButtonElement;
+  /** TEACH-001: solutions shown (answer key) or hidden (exercise sheet). */
+  private readonly solutionsButton = button(t('solution.hide'), () => this.toggleSolutions(), { text: '👁', title: t('solution.hideTitle') });
+  private hadSolutions = false;
 
   constructor(
     private readonly doc: RichDocument,
@@ -209,6 +213,8 @@ export class DocumentEditor implements EditorView {
     this.renderNotes();
     this.comments.refresh();
     this.changesPanel.refresh();
+    this.hadSolutions = this.hasSolutions();
+    this.element.style.setProperty('--solution-label', JSON.stringify(t('solution.label')));
     for (const toc of this.tocViews) toc.refresh();
   }
 
@@ -386,6 +392,12 @@ export class DocumentEditor implements EditorView {
     if (tr.docChanged) {
       this.comments.refresh();
       this.changesPanel.refresh();
+      // TEACH-001: the sheet variants appear with the first solution.
+      const has = this.hasSolutions();
+      if (has !== this.hadSolutions) {
+        this.hadSolutions = has;
+        this.ctx.headerChanged?.();
+      }
     }
     else if (tr.selectionSet) this.comments.selectionChanged();
     if (tr.docChanged) {
@@ -530,6 +542,38 @@ export class DocumentEditor implements EditorView {
     return writeDocumentAsync(out, format as TextFormat);
   }
 
+  /** Show or hide the solutions, on screen and in print (TEACH-001). */
+  private toggleSolutions(): void {
+    const hidden = this.element.classList.toggle('hide-solutions');
+    this.solutionsButton.setAttribute('aria-pressed', String(hidden));
+  }
+
+  /** The exercise sheet: copies without the solutions (TEACH-001). */
+  saveVariants(): SaveVariant[] {
+    if (!this.hasSolutions()) return [];
+    return (['odt', 'docx', 'md'] as const).map((format) => ({
+      id: `sheet-${format}`,
+      label: t('solution.sheet', { ext: format }),
+      format,
+      suffix: t('solution.sheetSuffix'),
+      save: () => {
+        const doc = withoutSolutions({ ...this.doc, blocks: this.currentBlocks() });
+        pruneComments(doc);
+        return writeDocumentAsync(doc, format);
+      },
+    }));
+  }
+
+  private hasSolutions(): boolean {
+    let found = false;
+    this.view?.state.doc.descendants((node) => {
+      if (found) return false;
+      if (node.type === schema.nodes.paragraph && node.attrs.solution) found = true;
+      return !found;
+    });
+    return found;
+  }
+
   /** Record the edits as tracked changes, or stop (REV-005). */
   private toggleTracking(): void {
     if (this.tracking) this.tracking = undefined;
@@ -659,6 +703,8 @@ export class DocumentEditor implements EditorView {
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');
     for (const el of Array.from(root.querySelectorAll('.code-cell-bar, .ProseMirror-trailingBreak, .ProseMirror-separator, .column-resize-handle'))) el.remove();
     for (const el of Array.from(root.querySelectorAll<HTMLElement>('.peer-here'))) el.classList.remove('peer-here');
+    // TEACH-001: the exercise sheet is printed without its solutions.
+    if (this.element.classList.contains('hide-solutions')) for (const el of Array.from(root.querySelectorAll('[data-solution]'))) el.remove();
     // Header and footer in the page margins (DOC-024).
     const css = pageSetupCss(this.doc.page, this.doc.meta.title ?? '');
     if (css) root.prepend(h('style', {}, css));
@@ -791,6 +837,9 @@ export class DocumentEditor implements EditorView {
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
       act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`),
       this.trackButton,
+      h('span', { class: 'sep' }),
+      state(t('solution.button'), '✓', (s, d) => setParagraphAttrs({ solution: !paragraphAttr(s, 'solution') })(s, d), () => !!paragraphAttr(this.view.state, 'solution'), t('solution.title')),
+      this.solutionsButton,
       act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
       act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
       act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),

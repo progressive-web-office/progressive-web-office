@@ -92,8 +92,7 @@ group is not a commitment.
 
 ### Teaching
 
-- Exercise sheets and answer keys from one document (blocks marked as
-  "solution" shown or hidden)
+- ✅ Exercise sheets and answer keys from one document (TEACH-001)
 - Random variants: parameterised values (`{{R=rand(1..10)}}`) give each
   student a different version, with its computed answer key
 - Quiz export to Moodle XML and AMC (Auto Multiple Choice)

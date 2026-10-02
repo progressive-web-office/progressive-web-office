@@ -415,6 +415,13 @@ integration is ever needed.
 | IMG-002 | C | — | The system shall offer minimal vector drawing (shapes, lines and arrows, text, freehand), saved as SVG and editable again in documents and presentations. |
 | IMG-003 | S | — | When the user inserts or pastes a picture, the system shall offer to give it a caption (numbered as a figure) and an alternative text, and shall list the pictures without alternative text. |
 
+## 9l. Teaching (TEACH)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| TEACH-001 | S | 0.2.0 | The system shall let the user mark paragraphs of a text document as solutions, shown framed and labelled, hide or show them on screen and in print, and save copies without them (the exercise sheet) in ODT, DOCX and Markdown; solutions shall be kept as Word content controls (tag `pwo:solution`, alias Solution), ODF sections named Solution*n*, and Markdown fenced divs (`::: solution`, `::: {.solution}`). |
+| TEACH-002 | C | — | Random variants: parameterised values give each student a different version of a sheet, with its computed answer key. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.

@@ -696,6 +696,7 @@ export class App {
       choose: (title, message, options, preselected) => this.choose(title, message, options, preselected),
       openLink: (href) => this.openLink(href),
       folderDocuments: () => this.folderDocuments(),
+      headerChanged: () => this.renderHeader(),
     };
   }
 

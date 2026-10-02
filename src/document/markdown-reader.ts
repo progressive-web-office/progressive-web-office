@@ -3,6 +3,7 @@
  * markdown-it. Raw HTML is kept as literal text (MD-003), except `<u>` and
  * `<br>` which map to underline and line breaks.
  */
+import { FENCE_CLOSE, SOLUTION_OPEN } from './solutions';
 import { readCriticComments } from './critic';
 import { parseFrontMatter } from './frontmatter';
 import { fromCsl, type BibEntry } from './bibliography';
@@ -217,7 +218,9 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   if (setup) doc.page = setup;
   if (kept.join('\n').trim()) doc.extras = { ...doc.extras, frontMatter: kept.join('\n') };
   const env: { footnotes?: { list?: { tokens?: Token[] }[] } } = {};
-  const tokens = getParser().parse(text, env);
+  // TEACH-001: fenced div lines (`::: solution`, `:::`) become paragraphs of their own.
+  const fenced = text.replace(/^(:{3,}[^\S\n]*(?:solution|\{\s*\.solution\s*\})?[^\S\n]*)$/gm, '\n$1\n');
+  const tokens = getParser().parse(fenced, env);
   // DOC-022: footnote contents, gathered before the text that refers to them.
   const notes = new Map<number, Run[]>();
   const noteRuns = (id: number): Run[] => notes.get(id) ?? [];
@@ -407,6 +410,16 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
   // REV-004: CriticMarkup comments.
   readCriticComments(doc);
+  // TEACH-001: the paragraphs between `::: solution` and `:::` are solutions.
+  let inSolution = false;
+  const outside: Block[] = [];
+  for (const b of doc.blocks) {
+    const text = b.type === 'paragraph' && b.runs.length && b.runs.every(isTextRun) ? b.runs.map((r) => (r as { text: string }).text).join('').trim() : undefined;
+    if (text !== undefined && SOLUTION_OPEN.test(text)) inSolution = true;
+    else if (text !== undefined && inSolution && FENCE_CLOSE.test(text)) inSolution = false;
+    else outside.push(inSolution && b.type === 'paragraph' ? { ...b, solution: true } : b);
+  }
+  if (outside.length !== doc.blocks.length) doc.blocks = outside.length ? outside : emptyDocument().blocks;
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   if (firstHeading && !doc.meta.title) doc.meta.title = firstHeading.runs.map((r) => ('text' in r ? r.text : '')).join('');
   return doc;

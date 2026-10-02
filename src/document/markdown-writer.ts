@@ -1,4 +1,5 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { solutionSegments } from './solutions';
 import { CriticComments } from './critic';
 import { writeFrontMatter } from './frontmatter';
 import {
@@ -17,6 +18,7 @@ import {
   splitListSegments,
 
   type ListNode,
+  type Block,
   type Paragraph,
   type RichDocument,
   type Run,
@@ -100,6 +102,19 @@ class MarkdownWriter {
 
   write(): string {
     const parts: string[] = [];
+    // TEACH-001: solutions in fenced divs, as in Pandoc and Quarto.
+    for (const segment of solutionSegments(this.doc.blocks)) {
+      const inner = this.parts(segment.blocks);
+      if (segment.solution) parts.push('::: solution', ...inner, ':::');
+      else parts.push(...inner);
+    }
+    // Notes may hold notes' text only, so their definitions are complete now.
+    parts.push(...this.notes);
+    return parts.filter((p) => p !== '').join('\n\n') + '\n';
+  }
+
+  private parts(blocks: Block[]): string[] {
+    const parts: string[] = [];
     let quote: string[] = [];
     let code: string[] = [];
     const flushQuote = (): void => {
@@ -112,7 +127,7 @@ class MarkdownWriter {
       }
       code = [];
     };
-    for (const group of groupBlocks(this.doc.blocks)) {
+    for (const group of groupBlocks(blocks)) {
       const isQuote = group.type === 'paragraph' && group.style === 'quote';
       const isCode = group.type === 'paragraph' && group.style === 'code';
       if (!isQuote) flushQuote();
@@ -145,9 +160,7 @@ class MarkdownWriter {
     }
     flushQuote();
     flushCode();
-    // Notes may hold notes' text only, so their definitions are complete now.
-    parts.push(...this.notes);
-    return parts.filter((p) => p !== '').join('\n\n') + '\n';
+    return parts;
   }
 
   private paragraph(p: Paragraph): string {

@@ -87,7 +87,7 @@ function runsToInline(runs: Run[]): PmNode[] {
 export function paragraphToPm(p: Paragraph): PmNode {
   const layout = Object.fromEntries(LAYOUT_KEYS.map((k) => [k, p[k] ?? null]));
   return schema.nodes.paragraph!.create(
-    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, anchor: p.id ?? null, ...layout },
+    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, anchor: p.id ?? null, solution: !!p.solution, ...layout },
     runsToInline(p.runs),
   );
 }
@@ -175,6 +175,7 @@ export function pmToParagraph(node: PmNode): Paragraph {
     type: 'paragraph',
     style: a.style,
     ...(node.attrs.anchor ? { id: node.attrs.anchor as string } : {}),
+    ...(node.attrs.solution ? { solution: true } : {}),
     ...(a.align ? { align: a.align } : {}),
     ...(a.listOrdered !== null ? { list: { ordered: a.listOrdered, level: a.listLevel } } : {}),
     ...Object.fromEntries(LAYOUT_KEYS.filter((k) => node.attrs[k] !== null).map((k) => [k, node.attrs[k] as number])),

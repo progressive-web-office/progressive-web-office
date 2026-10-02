@@ -44,6 +44,7 @@ import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { citations, formatEntry, writeNames, parseNames, type BibEntry, type Citations } from './bibliography';
 import { anchoredComments, CommentRanges } from './comments';
+import { solutionSegments } from './solutions';
 import { ODF_BIB_FIELDS, ODF_NUMBER_FORMAT, manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from './odf';
 
 const PARA_STYLE: Record<string, string> = {
@@ -193,7 +194,20 @@ class OdtWriter {
     return name;
   }
 
+  /** Solutions in sections named Solution1, Solution2… (TEACH-001), which LibreOffice can hide. */
   private blocks(blocks: Block[]): string {
+    return solutionSegments(blocks)
+      .map((s) => {
+        if (!s.solution) return this.plainBlocks(s.blocks);
+        this.autoStyles.set('Solution', '<style:style style:name="Solution" style:family="section"><style:section-properties fo:background-color="#eef8f0"/></style:style>');
+        return `<text:section text:style-name="Solution" text:name="Solution${++this.solutionCount}">${this.plainBlocks(s.blocks)}</text:section>`;
+      })
+      .join('');
+  }
+
+  private solutionCount = 0;
+
+  private plainBlocks(blocks: Block[]): string {
     let out = '';
     for (const group of groupBlocks(blocks)) {
       if (group.type === 'list') {

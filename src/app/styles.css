@@ -200,6 +200,10 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 .doc-side:not(:has(> :not([hidden]))) { display: none; }
 .doc-comments[hidden], .doc-changes[hidden] { display: none; }
 .doc-comments h2, .doc-changes h2 { font-size: 0.95rem; margin: 8px 0; color: var(--muted); }
+/* TEACH-001: solutions, labelled where they start; hidden in the exercise sheet. */
+.doc-page [data-solution] { background: #eef8f0; border-left: 3px solid #2e8b4e; padding-left: 8px; }
+.doc-page [data-solution]:not(.list-item):not([data-solution] + [data-solution])::before { content: var(--solution-label, 'Solution'); display: block; font: 600 8pt system-ui, sans-serif; color: #1f6b3a; text-transform: uppercase; letter-spacing: 0.04em; }
+.doc-editor.hide-solutions .doc-page [data-solution] { display: none; }
 /* REV-005: tracked changes in the text and in the panel. */
 .doc-page ins.tracked { color: #0a6e2e; text-decoration: underline; text-decoration-color: #0a6e2e; background: rgba(10, 110, 46, 0.08); }
 .doc-page del.tracked { color: #b3261e; text-decoration: line-through; background: rgba(179, 38, 30, 0.06); }

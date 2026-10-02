@@ -27,6 +27,7 @@ function paragraphAttrs(dom: HTMLElement, style: ParagraphStyle): Record<string,
     listOrdered: list === 'ol' ? true : list === 'ul' ? false : null,
     listLevel: Number(dom.dataset.level ?? 0) || 0,
     anchor: dom.dataset.anchor || null,
+    solution: dom.dataset.solution === 'true',
   };
   // Spacing is read back from the editor's own data attributes only (DOC-020).
   for (const k of LAYOUT_KEYS) {
@@ -61,6 +62,7 @@ function paragraphDom(node: PmNode): DOMOutputSpec {
   if (align) attrs['data-align'] = align;
   for (const k of LAYOUT_KEYS) if (node.attrs[k] !== null) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(node.attrs[k]);
   if (style === 'caption') attrs.class = 'caption';
+  if (node.attrs.solution) attrs['data-solution'] = 'true';
   if (listOrdered !== null) {
     attrs.class = `${attrs.class ?? ''} list-item`.trim();
     attrs['data-list'] = listOrdered ? 'ol' : 'ul';
@@ -89,6 +91,8 @@ export const schema = new Schema({
         lineHeight: { default: null },
         /** Cross-reference anchor (DOC-026). */
         anchor: { default: null },
+        /** Part of the answer key (TEACH-001). */
+        solution: { default: false },
       },
       parseDOM: [
         ...STYLES.filter((s) => /^h\d$/.test(s)).map((s) => ({ tag: s, getAttrs: (d: HTMLElement) => paragraphAttrs(d, s) })),

@@ -965,6 +965,13 @@ export const en = {
   'track.deleted': 'Deleted by {author}',
   'track.insertedShort': 'inserted',
   'track.deletedShort': 'deleted',
+  'solution.button': 'Solution',
+  'solution.title': 'Mark the paragraphs as a solution: shown in the answer key, left out of the exercise sheet',
+  'solution.hide': 'Hide the solutions',
+  'solution.hideTitle': 'Hide the solutions (the exercise sheet), on screen and in print',
+  'solution.label': 'Solution',
+  'solution.sheet': 'Exercise sheet without solutions (.{ext})',
+  'solution.sheetSuffix': '-sheet',
 } as const;
 
 export type MessageKey = keyof typeof en;

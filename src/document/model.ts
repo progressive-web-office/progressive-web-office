@@ -158,6 +158,8 @@ export interface ParagraphLayout {
 export interface Paragraph extends ParagraphLayout {
   type: 'paragraph';
   style: ParagraphStyle;
+  /** Part of the answer key, left out of the exercise sheet (TEACH-001). */
+  solution?: boolean;
   /** Anchor of cross-references to this paragraph (DOC-026). */
   id?: string;
   align?: Align;
