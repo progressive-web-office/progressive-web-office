@@ -710,6 +710,7 @@ export class App {
       openLink: (href) => this.openLink(href),
       folderDocuments: () => this.folderDocuments(),
       headerChanged: () => this.renderHeader(),
+      notify: (message) => this.showNotice(message),
     };
   }
 

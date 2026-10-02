@@ -417,6 +417,15 @@ integration is ever needed.
 | REV-004 | S | 0.2.0 | The system shall read and write comments in Markdown with CriticMarkup: the commented text as `{==text==}` followed by `{>>Author: comment<<}`, replies following their comment, a comment without highlighted text being put on the word before it. |
 | REV-005 | S | 0.2.0 | The system shall let the user track changes in a text document: while on, typed text shall be recorded as an insertion and deleted text kept, struck out, as a deletion, each with its author (asked once) and date (deleting tracked inserted text removing it); changes shall be shown in the text and listed in a panel to be accepted or rejected one by one or all at once, and kept in DOCX (`w:ins`, `w:del`/`w:delText`), ODT (`text:tracked-changes`, changed regions) and Markdown (CriticMarkup `{++ ++}`, `{-- --}`); LaTeX exports shall accept them. |
 
+## 9m. Reading and reviewing (REVIEW)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| REVIEW-001 | S | 0.2.0 | The system shall offer a review mode for text documents (toolbar or Ctrl+Alt+R) that lays the document out as pages like a PDF file (page breaks starting new pages), with no change to the text but comments still possible, and the same page controls as the PDF viewer: page number, previous and next, zoom, whole page or width, 1 to 4 pages side by side, and a choice between scrolling the pages and showing one spread at a time without scrolling (also offered by the PDF viewer); the choices shall be remembered. |
+| REVIEW-002 | S | 0.2.0 | While reading a PDF file or reviewing a text document, the system shall turn the pages with single keys outside the fields (j/n/Page Down/Space/→ next, k/p/Page Up/Shift+Space/← previous, g/Home first, G/End last) and offer shortcuts to zoom (+ −), fit the width (w) or the page (h, 0), set the pages side by side (1–4), switch the flow (s), comment (c), go to the next and previous comment (] [), find (/), go full screen (f) and list the shortcuts (?). |
+| REVIEW-003 | S | 0.2.0 | Page by page, the mouse wheel shall turn the pages when the spread has nothing more to scroll. |
+| REVIEW-004 | S | 0.2.0 | The system shall offer a full screen without distractions (f, Esc to leave) showing only the pages, the review bar and the comments. |
+
 ## 9j. Images and drawing (IMG)
 
 | ID | Pri | Phase | Requirement |

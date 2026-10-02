@@ -45,6 +45,7 @@ import { CommentPanel } from './comment-panel';
 import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
 import { editPageSetup, pageSetupCss, zonePreview } from './page-setup';
+import { DocReview } from './review';
 import 'prosemirror-view/style/prosemirror.css';
 import 'prosemirror-tables/style/tables.css';
 import 'prosemirror-gapcursor/style/gapcursor.css';
@@ -177,13 +178,32 @@ export class DocumentEditor implements EditorView {
     this.changesPanel = new ChangePanel(() => this.view, () => this.readOnly);
     this.trackButton = button(t('track.button'), () => this.toggleTracking(), { text: '±', title: t('track.title'), className: 'track-btn' });
     this.trackButton.setAttribute('aria-pressed', 'false');
-    this.element = h(
-      'div',
-      { class: 'doc-editor' },
+    const scroller = h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes);
+    this.element = h('div', { class: 'doc-editor' });
+    // REVIEW-001: read and comment page by page.
+    this.review = new DocReview(
+      {
+        root: this.element,
+        scroller,
+        view: () => this.view,
+        setReviewing: (on) => {
+          this.reviewing = on;
+          this.view.setProps({});
+          this.updateToolbar();
+        },
+        comment: () => this.addComment(),
+        find: () => this.findBar.open(false),
+        notify: (message) => (this.ctx.notify ? this.ctx.notify(message) : window.alert(message)),
+        statusChanged: () => this.ctx.statusChanged(),
+      },
+      () => this.review.toggle(false),
+    );
+    this.element.append(
       this.toolbar(),
+      this.review.bar,
       this.buildTableBar(),
       this.findBar.element,
-      h('div', { class: 'doc-body' }, h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes), h('div', { class: 'doc-side' }, this.changesPanel.element, this.comments.element)),
+      h('div', { class: 'doc-body' }, scroller, h('div', { class: 'doc-side' }, this.changesPanel.element, this.comments.element)),
     );
     for (const strip of [this.headerStrip, this.footerStrip]) {
       strip.addEventListener('click', () => void this.editPageSetup());
@@ -227,7 +247,7 @@ export class DocumentEditor implements EditorView {
           editCitation: (pos, node) => void this.editCitation(pos, node),
           editImage: (pos, node) => void this.describeImage(pos, node),
         }),
-        editable: () => !this.readOnly,
+        editable: () => !this.readOnly && !this.reviewing,
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
         dispatchTransaction: (tr) => this.dispatch(tr),
         handlePaste: (_view, event) => this.onPaste(event),
@@ -259,6 +279,11 @@ export class DocumentEditor implements EditorView {
     this.lastWords = this.words();
     this.element.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && this.writing.focus) this.setWriting({ focus: false });
+      // REVIEW-001: Ctrl+Alt+R enters and leaves the review mode.
+      if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && e.code === 'KeyR') {
+        e.preventDefault();
+        this.review.toggle();
+      }
     });
     this.element.style.setProperty('--solution-label', JSON.stringify(t('solution.label')));
     for (const toc of this.tocViews) toc.refresh();
@@ -436,6 +461,10 @@ export class DocumentEditor implements EditorView {
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
     if (this.writing.typewriter && (tr.docChanged || tr.selectionSet)) this.centerCursor();
+    if (this.review.active) {
+      if (tr.docChanged) this.review.relayout();
+      else if (tr.selectionSet) this.review.reveal(state.selection.head);
+    }
     if (tr.docChanged) {
       this.countWords();
       this.comments.refresh();
@@ -608,6 +637,8 @@ export class DocumentEditor implements EditorView {
       if (r) extra.push(t('read.status', { score: r.score, level: t(`read.${r.level}` as MessageKey) }));
     }
     if (this.tracking) extra.push(t('track.on'));
+    const page = this.review.status();
+    if (page) extra.unshift(page);
     return [t(words === 1 ? 'doc.word' : 'doc.words', { words, characters }), ...extra].join(' · ');
   }
 
@@ -837,6 +868,9 @@ export class DocumentEditor implements EditorView {
 
   /** FILE-017: no edits while read-only (toolbars hidden, document not editable). */
   private readOnly = false;
+  /** REVIEW-001: reading and commenting, the text itself not editable. */
+  private reviewing = false;
+  private review!: DocReview;
 
   setReadOnly(readOnly: boolean): void {
     this.readOnly = readOnly;
@@ -961,6 +995,7 @@ export class DocumentEditor implements EditorView {
   }
 
   destroy(): void {
+    if (this.review.active) this.review.toggle(false);
     this.runner?.destroy();
     this.view.destroy();
     clearTimeout(this.statusTimer);
@@ -1081,6 +1116,7 @@ export class DocumentEditor implements EditorView {
       this.textToolsMenu(),
       this.viewToolsMenu(),
       act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`),
+      act(t('review.mode'), '📖', () => this.review.toggle(true), t('review.modeTitle')),
       this.trackButton,
       h('span', { class: 'sep' }),
       state(t('solution.button'), '✓', (s, d) => setParagraphAttrs({ solution: !paragraphAttr(s, 'solution') })(s, d), () => !!paragraphAttr(this.view.state, 'solution'), t('solution.title')),

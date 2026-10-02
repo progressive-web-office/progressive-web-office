@@ -19,6 +19,11 @@ Open a `.pdf` file to display its pages.
 - **Pages side by side**: 1, 2, 3, 4 or 6 pages per row; with two pages,
   the document reads like an open book. Fitting to the width or to the page
   then applies to the whole row. The choice is kept for the next PDF.
+- **📄 Page by page** shows one page (or one spread) at a time, without
+  scrolling; **📜 Scroll** shows them one after the other. Single-key
+  shortcuts turn the pages (<kbd>j</kbd>/<kbd>k</kbd>, <kbd>Space</kbd>…),
+  ⛶ goes full screen without distractions and ⌨ lists the shortcuts: see
+  [Reading and reviewing](./review).
 - Text can be **selected and copied** (text layer).
 - **Print** opens the PDF (with your changes) in the browser's PDF viewer,
   from which you can print it.

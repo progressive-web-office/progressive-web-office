@@ -55,8 +55,10 @@ group is not a commitment.
 - Form fields (text, check box, list), exported as a fillable PDF
 - Grammar checking with LanguageTool (public or self-hosted instance)
 - Visual comparison of two versions of a document
-- Reading and review mode: clickable outline, focus mode, read aloud
-  (Web Speech)
+- ✅ Review mode: text documents shown as pages like PDF files, page by page
+  or scrolled, the same shortcuts (j/k…), comments, full screen without
+  distractions (REVIEW-001 to REVIEW-004); next: clickable outline, read
+  aloud (Web Speech)
 
 ### Files
 

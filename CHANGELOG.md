@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Review mode for text documents (📖, Ctrl+Alt+R): the document shown as
+  pages like a PDF file, read-only but open to comments, with the review bar
+  of the PDF viewer.
+- Page by page reading without scrolling (one spread at a time) for PDF files
+  and reviewed documents, keyboard shortcuts to turn the pages (j/k, Space,
+  Page Up/Down…), zoom, comment and go from comment to comment, and a full
+  screen without distractions (f).
 - Cell formatting in spreadsheets: bold, italic, underline, text and fill
   colours, borders and alignment, kept in Excel and OpenDocument files and
   printed. The budget, grade book and invoice templates use it.

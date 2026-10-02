@@ -15,25 +15,30 @@ import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
 import { findInPages, type PdfMatch } from './find';
 import type { PdfNote } from './annotations';
 import { askAuthor } from '../app/author';
+import { isTyping, reviewAction, spreadStart, type ReviewAction } from '../review/keys';
+import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
 
 const VIEW_KEY = 'pwo.pdf.view';
 const GAP = 12;
 
-/** The zoom mode and pages per row chosen last (PDF-016). */
-function loadView(): { zoom: PdfZoom; columns: number } {
+/** Pages scrolled one after the other, or shown a spread at a time (REVIEW-001). */
+export type PageFlow = 'scroll' | 'pages';
+
+/** The zoom mode, pages per row and flow chosen last (PDF-016, REVIEW-001). */
+function loadView(): { zoom: PdfZoom; columns: number; flow: PageFlow } {
   try {
-    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as { zoom?: unknown; columns?: unknown };
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as { zoom?: unknown; columns?: unknown; flow?: unknown };
     const zoom = v.zoom === 'page' || v.zoom === 'width' ? v.zoom : 'width';
     const columns = (PAGES_PER_ROW as readonly number[]).includes(v.columns as number) ? (v.columns as number) : 1;
-    return { zoom, columns };
+    return { zoom, columns, flow: v.flow === 'pages' ? 'pages' : 'scroll' };
   } catch {
-    return { zoom: 'width', columns: 1 };
+    return { zoom: 'width', columns: 1, flow: 'scroll' };
   }
 }
 
-function saveView(zoom: PdfZoom, columns: number): void {
+function saveView(zoom: PdfZoom, columns: number, flow: PageFlow): void {
   try {
-    localStorage.setItem(VIEW_KEY, JSON.stringify({ zoom: typeof zoom === 'number' ? 'width' : zoom, columns }));
+    localStorage.setItem(VIEW_KEY, JSON.stringify({ zoom: typeof zoom === 'number' ? 'width' : zoom, columns, flow }));
   } catch {
     /* not kept */
   }
@@ -81,6 +86,11 @@ export class PdfViewer implements EditorView {
   private zoom: PdfZoom = loadView().zoom;
   /** Pages side by side (PDF-016). */
   private columns = loadView().columns;
+  /** REVIEW-001: scroll the pages, or turn them a spread at a time. */
+  private flow: PageFlow = loadView().flow;
+  private readonly flowButton = button(t('review.flow'), () => this.setFlow(this.flow === 'pages' ? 'scroll' : 'pages'), { text: '', className: 'flow-btn' });
+  private readonly fullscreenButton = button(t('review.fullscreen'), () => this.toggleFullscreen(), { text: '⛶', title: t('review.fullscreenTitle'), className: 'icon', pressed: false });
+  private lastWheel = 0;
   private readonly columnsSelect = h(
     'select',
     { 'aria-label': t('pdf.pagesPerRow'), title: t('pdf.pagesPerRow') },
@@ -145,14 +155,37 @@ export class PdfViewer implements EditorView {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         this.openFind();
+        return;
       }
+      if (e.key === 'Escape' && isDistractionFree() && !isTyping(e.target)) {
+        e.preventDefault();
+        this.toggleFullscreen(false);
+        return;
+      }
+      // REVIEW-002: single-key shortcuts, outside the fields.
+      if (isTyping(e.target) || e.defaultPrevented) return;
+      const action = reviewAction(e);
+      if (action && this.review(action)) e.preventDefault();
     });
     this.scroller.addEventListener('scroll', () => this.updateCurrent());
+    // REVIEW-001: page by page, the wheel turns the pages when the spread does not scroll.
+    this.scroller.addEventListener(
+      'wheel',
+      (e) => {
+        if (this.flow !== 'pages' || e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+        const atEnd = e.deltaY > 0 ? this.scroller.scrollTop + this.scroller.clientHeight >= this.scroller.scrollHeight - 2 : this.scroller.scrollTop <= 0;
+        if (!atEnd) return;
+        e.preventDefault();
+        if (e.timeStamp - this.lastWheel < 350) return;
+        this.lastWheel = e.timeStamp;
+        this.turn(e.deltaY > 0 ? 1 : -1);
+      },
+      { passive: false },
+    );
+    this.renderFlowButton();
     this.columnsSelect.value = String(this.columns);
     this.columnsSelect.addEventListener('change', () => {
-      this.columns = Number(this.columnsSelect.value) || 1;
-      saveView(this.zoom, this.columns);
-      void this.layout();
+      this.setColumns(Number(this.columnsSelect.value) || 1);
     });
     this.pageInput.addEventListener('change', () => this.goTo(Number(this.pageInput.value)));
   }
@@ -474,6 +507,9 @@ export class PdfViewer implements EditorView {
       button(t('pdf.fit'), () => this.setZoom('width'), { text: '↔', title: t('pdf.fit') }),
       button(t('pdf.fitPage'), () => this.setZoom('page'), { text: '↕', title: t('pdf.fitPage') }),
       this.columnsSelect,
+      this.flowButton,
+      this.fullscreenButton,
+      button(t('review.help'), () => void showReviewHelp(), { text: '⌨', title: t('review.helpTitle'), className: 'icon' }),
       ...(editable
         ? [
             h('span', { class: 'sep' }),
@@ -495,8 +531,126 @@ export class PdfViewer implements EditorView {
 
   private setZoom(zoom: PdfZoom): void {
     this.zoom = zoom;
-    if (typeof zoom !== 'number') saveView(zoom, this.columns);
+    if (typeof zoom !== 'number') saveView(zoom, this.columns, this.flow);
     void this.layout();
+  }
+
+  // --- review (REVIEW-001..REVIEW-004) ------------------------------------------------
+
+  private setColumns(columns: number): void {
+    this.columns = columns;
+    this.columnsSelect.value = String(columns);
+    saveView(this.zoom, this.columns, this.flow);
+    void this.layout();
+  }
+
+  private setFlow(flow: PageFlow): void {
+    this.flow = flow;
+    saveView(this.zoom, this.columns, this.flow);
+    this.renderFlowButton();
+    this.showSpread();
+    this.goTo(this.current, false);
+  }
+
+  private renderFlowButton(): void {
+    const paged = this.flow === 'pages';
+    this.flowButton.textContent = paged ? `📄 ${t('review.flowPages')}` : `📜 ${t('review.flowScroll')}`;
+    this.flowButton.title = `${t('review.action.flow')} (s)`;
+    this.flowButton.setAttribute('aria-pressed', String(paged));
+  }
+
+  /** Page by page: only the pages of the current spread are shown. */
+  private showSpread(): void {
+    const paged = this.flow === 'pages';
+    this.pagesEl.classList.toggle('paged', paged);
+    const first = spreadStart(this.current, this.columns);
+    for (const p of this.pages) {
+      const shown = !paged || (p.index + 1 >= first && p.index + 1 < first + this.columns);
+      p.el.hidden = !shown;
+      if (shown && paged && !p.rendered) void this.renderPage(p);
+    }
+  }
+
+  /** Turn by one spread (one row of pages). */
+  private turn(dir: number): void {
+    this.goTo(spreadStart(this.current, this.columns) + dir * this.columns, this.flow === 'scroll');
+  }
+
+  private toggleFullscreen(on?: boolean): void {
+    toggleDistractionFree(on, (now) => {
+      this.fullscreenButton.setAttribute('aria-pressed', String(now));
+      if (typeof this.zoom !== 'number') queueMicrotask(() => void this.layout());
+    });
+    this.scroller.focus();
+  }
+
+  /** The pages with annotations, in order. */
+  private annotatedPages(): number[] {
+    return [...new Set([...this.notes.map((n) => n.page), ...this.existing.map((a) => a.page)])].sort((a, b) => a - b).map((p) => p + 1);
+  }
+
+  /** Do a review action; false when it does not apply. */
+  review(action: ReviewAction): boolean {
+    const editable = !this.info.readOnlyReason;
+    switch (action) {
+      case 'next':
+        this.turn(1);
+        return true;
+      case 'prev':
+        this.turn(-1);
+        return true;
+      case 'first':
+        this.goTo(1, false);
+        return true;
+      case 'last':
+        this.goTo(this.doc.numPages, false);
+        return true;
+      case 'zoomIn':
+        this.zoomBy(1);
+        return true;
+      case 'zoomOut':
+        this.zoomBy(-1);
+        return true;
+      case 'fitWidth':
+        this.setZoom('width');
+        return true;
+      case 'fitPage':
+        this.setZoom('page');
+        return true;
+      case 'perRow1':
+      case 'perRow2':
+      case 'perRow3':
+      case 'perRow4':
+        this.setColumns(Number(action.slice(-1)));
+        return true;
+      case 'flow':
+        this.setFlow(this.flow === 'pages' ? 'scroll' : 'pages');
+        return true;
+      case 'comment': {
+        if (!editable) return false;
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed) this.highlightSelection();
+        else this.startNote();
+        return true;
+      }
+      case 'nextComment':
+      case 'prevComment': {
+        const pages = this.annotatedPages();
+        const target = action === 'nextComment' ? pages.find((p) => p > this.current) : pages.reverse().find((p) => p < this.current);
+        if (target) this.goTo(target, false);
+        else this.ctx.notify?.(t('review.noComment'));
+        return true;
+      }
+      case 'find':
+        this.openFind();
+        return true;
+      case 'fullscreen':
+        this.toggleFullscreen();
+        return true;
+      case 'help':
+        showReviewHelp();
+        return true;
+    }
   }
 
   // --- layout & rendering -----------------------------------------------------------------
@@ -799,13 +953,17 @@ export class PdfViewer implements EditorView {
     if (!page) return;
     this.current = page.index + 1;
     this.pageInput.value = String(this.current);
-    if (typeof this.scroller.scrollTo === 'function') this.scroller.scrollTo({ top: page.el.offsetTop - GAP, behavior: smooth ? 'smooth' : 'auto' });
+    if (this.flow === 'pages') {
+      this.showSpread();
+      this.scroller.scrollTop = 0;
+    } else if (typeof this.scroller.scrollTo === 'function') this.scroller.scrollTo({ top: page.el.offsetTop - GAP, behavior: smooth ? 'smooth' : 'auto' });
     this.ctx.statusChanged();
   }
 
   private updateCurrent(): void {
     const mark = this.scroller.scrollTop + this.scroller.clientHeight / 3;
     let current = 1;
+    if (this.flow === 'pages') return;
     for (const p of this.pages) if (p.el.offsetTop <= mark) current = p.index + 1;
     if (current !== this.current) {
       this.current = current;

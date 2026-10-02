@@ -338,6 +338,9 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 .pdf-pages { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px; }
 /* PDF-016: n pages per row, as in a book when there are two. */
 .pdf-pages.spread { display: grid; grid-template-columns: repeat(var(--columns), auto); justify-content: center; align-items: start; }
+.pdf-pages.paged { min-height: 100%; box-sizing: border-box; align-content: center; justify-content: center; }
+.pdf-pages.paged:not(.spread) { justify-content: center; }
+.pdf-page[hidden] { display: none; }
 .pdf-page { position: relative; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); flex: none; }
 .pdf-canvas { position: absolute; inset: 0; }
 .page-input { width: 4em; padding: 4px; text-align: right; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
@@ -860,7 +863,9 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .folder-file:hover { background: var(--sel); }
 .folder-file[aria-current='page'] { background: var(--sel); font-weight: 600; }
 .folder-snippet { margin: 0 0 4px 8px; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
-.folder-reopen { margin-bottom: 12px; }
+.folder-reopen { margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; }
+.folder-reopen .card { flex: 0 1 22rem; }
+.folder-reopen .folder-forget { flex: none; width: 2.25rem; height: 2.25rem; padding: 0; }
 .card.folder { border-left-color: var(--doc); }
 @media (max-width: 700px) {
   .app.with-folder .app-main, .app.with-folder .app-status { margin-left: 0; }
@@ -958,3 +963,34 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .goal-days li { display: grid; grid-template-columns: 6em 1fr 4em; align-items: center; gap: 8px; font-size: 0.85rem; }
 .goal-bar { display: block; height: 10px; min-width: 1px; background: var(--accent); border-radius: 3px; }
 .goal-count { text-align: right; color: var(--muted); }
+
+/* REVIEW-002, REVIEW-004: shortcuts help and full screen without distractions. */
+.review-help table { border-collapse: collapse; }
+.review-help td, .review-help th { padding: 3px 10px 3px 0; text-align: left; vertical-align: top; }
+.review-help kbd { display: inline-block; min-width: 1.2em; padding: 0 4px; border: 1px solid var(--border, #bbb); border-bottom-width: 2px; border-radius: 4px; font: 0.85em ui-monospace, monospace; text-align: center; }
+body.distraction-free .app-header,
+body.distraction-free .app-status,
+body.distraction-free .folder-panel,
+body.distraction-free .ai-panel { display: none !important; }
+
+/* REVIEW-001: review mode of text documents, shown as pages like a PDF file. */
+.doc-editor.reviewing > .toolbar:not(.review-bar), .doc-editor.reviewing > .table-bar { display: none !important; }
+.doc-editor.reviewing > .review-bar:not([hidden]) { display: flex !important; }
+.doc-editor.reviewing .doc-page { caret-color: transparent; }
+.doc-editor.reviewing .doc-scroll { outline: none; }
+.doc-editor.paged { height: 100%; min-height: 0; }
+.doc-editor.paged .doc-body { min-height: 0; flex: 1; align-items: stretch; }
+.doc-editor.paged .doc-scroll { height: 100%; box-sizing: border-box; padding: 16px 0; overflow-x: hidden; overflow-y: auto; background: #525659; }
+.doc-editor.paged .doc-furniture, .doc-editor.paged .doc-notes { display: none; }
+.doc-editor.paged .doc-page {
+  --pages: 1;
+  box-sizing: border-box; max-width: none; min-height: 0; margin: 0;
+  width: calc(var(--pages) * 816px + (var(--pages) - 1) * 24px); height: 1056px;
+  padding: 72px 80px;
+  column-count: var(--pages); column-gap: calc(160px + 24px); column-fill: auto;
+  background: repeating-linear-gradient(to right, #fff 0 816px, transparent 816px 840px);
+  box-shadow: none;
+}
+.doc-editor.paged .doc-page hr.page-break { break-after: column; }
+.doc-editor.paged .doc-page img { max-height: 900px; object-fit: contain; }
+.doc-editor.paged .doc-page table, .doc-editor.paged .doc-page pre { break-inside: avoid; }

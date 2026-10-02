@@ -67,6 +67,8 @@ export interface ViewContext {
   folderDocuments?(): Promise<string[]> | undefined;
   /** What the view offers in the header changed (e.g. its save variants). */
   headerChanged?(): void;
+  /** Show a short message to the user. */
+  notify?(message: string): void;
 }
 
 /** Create a view for existing file bytes. */
