@@ -141,3 +141,47 @@ test('offers several ways to send the invitation (COLLAB-001)', async ({ context
   await expect(big).toBeHidden();
   await expect(invite).toBeVisible();
 });
+
+test('says what it is waiting for, explains what to check, and spots another app in the room (COLLAB-009, COLLAB-010)', async ({ context }) => {
+  const bob = await context.newPage();
+  await localTransport(bob);
+  await bob.clock.install();
+  const errors = await openApp(bob);
+  const base = new URL('./', bob.url()).href;
+  await bob.goto(`${base}#collab=d.room12345678.secretsecretsecret1234`);
+  const bar = bob.locator('.collab-bar');
+  await expect(bar).toContainText('Looking for the others…');
+  await bob.clock.fastForward(25_000);
+  await expect(bar.locator('.collab-help')).toContainText('Nobody found yet');
+
+  // Something else in the room, introducing itself as another app.
+  const other = await context.newPage();
+  await other.goto(base);
+  await other.evaluate(() => {
+    const channel = new BroadcastChannel('pwo-collab-room12345678');
+    const from = 'stranger';
+    channel.onmessage = (e) => {
+      if (e.data.type === 'hello') channel.postMessage({ from, type: 'here', to: e.data.from });
+    };
+    channel.postMessage({ from, type: 'hello' });
+    setTimeout(() => channel.postMessage({ from, type: 'action', ns: 'pwo-hello', data: JSON.stringify({ app: 'something-else', protocol: 1, kind: 'document' }) }), 300);
+  });
+  await bob.clock.fastForward(3_000);
+  await expect(bar).toContainText('Someone joined with another app or another version');
+  await expect(bar.locator('.collab-help')).toContainText('does not speak the same protocol');
+  expect(errors).toEqual([]);
+});
+
+test('keeps the relays and the TURN server of the collaboration (COLLAB-009)', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Settings' });
+  await dialog.getByRole('tab', { name: 'Collaboration' }).click();
+  await dialog.getByLabel('Relays (Nostr)').fill('relay.example.org\nwss://nos.lol');
+  await dialog.getByLabel('TURN server', { exact: true }).fill('turn:turn.example.org:3478');
+  await dialog.getByLabel('TURN user name').fill('ann');
+  await dialog.getByLabel('TURN password').fill('secret');
+  await dialog.getByLabel('TURN password').press('Tab');
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('pwo.collab.network') ?? '{}'));
+  expect(stored).toEqual({ relays: ['wss://relay.example.org', 'wss://nos.lol'], turn: { urls: 'turn:turn.example.org:3478', username: 'ann', credential: 'secret' } });
+});

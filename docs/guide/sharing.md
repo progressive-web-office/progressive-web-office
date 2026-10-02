@@ -78,10 +78,21 @@ downloaded and gives a link and its QR code.
 ## Receive on this device
 
 On the start screen, click **Receive from another device…**: QRShare opens its
-receive screen. Once the file is received, click **Open in
-s-celles.github.io** (the address of Progressive Web Office) in QRShare: the
-file opens directly in a new Progressive Web Office window. Only files coming
-from the QRShare address set in *Advanced* are accepted.
+scanner, which recognises what it is shown — a static QR code (an invitation
+or document link, opened as such), animated QR codes or CIMBAR codes. Once
+the file is received, click **Open in s-celles.github.io** (the address of
+Progressive Web Office) in QRShare: the file opens in a new Progressive Web
+Office window.
+
+What QRShare hands over is checked before it opens:
+
+- only files coming from the QRShare address set in *Advanced* are accepted;
+- the file must be a document, spreadsheet, presentation, PDF, picture, text
+  file or archive this app opens, and its content must be what its name says:
+  a PDF named `report.docx`, a program or an empty file is refused, with an
+  explanation, and never offered for download;
+- a window tells where the file comes from, its name, size and format, and
+  it opens only when you confirm.
 
 You can also download the file from QRShare and open it here (or drop it on
 the window), or — with the app installed — share it from QRShare to

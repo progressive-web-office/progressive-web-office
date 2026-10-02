@@ -79,7 +79,7 @@ async function openSharedFile(app: App): Promise<void> {
   await cache.delete(key);
   const name = decodeURIComponent(res.headers.get('x-file-name') ?? 'shared');
   const blob = await res.blob();
-  await app.openFile(new File([blob], name, { type: blob.type }));
+  await app.openReceived(new File([blob], name, { type: blob.type }), { app: 'system' });
 }
 
 /**
@@ -95,7 +95,8 @@ async function openHandedOffFile(app: App): Promise<void> {
   if (!window.opener) return;
   const [{ receiveFromOpener }, { loadShareSettings, qrshareOrigin }] = await Promise.all([import('../share/handoff'), import('../share/qrshare')]);
   const received = await receiveFromOpener(window as unknown as WindowLike, [qrshareOrigin(loadShareSettings().url)], 60_000);
-  if (received) await app.openFile(received.file);
+  // SHARE-013: checked, and shown with where it comes from, before it is opened.
+  if (received) await app.openReceived(received.file, { app: 'qrshare', origin: received.origin });
 }
 
 function showUpdateBanner(reload: () => void): void {

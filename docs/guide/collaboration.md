@@ -34,6 +34,32 @@ Open the invitation link. Progressive Web Office opens a new document and
 fills it with the shared content as soon as another participant is online.
 The link stays in the address bar: reloading the page rejoins the session.
 
+On another device, scan the QR code of the invitation, for example with
+**Receive from another device…**: QRShare recognises a static QR code (the
+link) as well as animated ones.
+
+## When nobody comes
+
+The bar says where the connection is:
+
+- **Looking for the others…**: the relays are reached, nobody else is there
+  yet;
+- **Waiting for the shared document…**: someone is there, the document is
+  coming;
+- **Cannot reach the servers used to find each other**: no Internet, or a
+  network that blocks the relays.
+
+After 20 seconds without anyone, it explains what to check: the other person
+must have the page of the link open; some networks (company, school, mobile
+data) block direct connections between browsers — try the same Wi-Fi
+network, or set a **TURN server** in [Settings](./settings) › Collaboration,
+where you can also set your own relays. Without a network, use
+[synchronisation without a network](./offline-sync).
+
+Participants introduce themselves when they meet (application, protocol
+version, kind of document): if another app or another version joins, the bar
+warns that its changes are not trusted — reload the page on both sides.
+
 ## Who is here
 
 Each participant gets a friendly name such as *Swift Crimson Falcon*, written

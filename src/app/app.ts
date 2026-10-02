@@ -143,6 +143,28 @@ export class App {
   }
 
   /** Open a user-provided file (picker, drop, file handler, recent list). */
+  /**
+   * SHARE-013: a file handed over by another app is checked first (a file this
+   * app opens, whose content is what its name says); one from QRShare is
+   * opened once the user has seen where it comes from and what it is.
+   */
+  async openReceived(file: File, from: { app: 'qrshare'; origin: string } | { app: 'system' }): Promise<void> {
+    if (file.size > MAX_ARCHIVE_SIZE) return this.showError(t('error.tooLarge', { name: file.name, limit: MAX_ARCHIVE_SIZE / 1024 / 1024 }));
+    const [{ inspectReceived }, bytes] = await Promise.all([import('../share/gate'), readFileBytes(file)]);
+    const check = inspectReceived(file.name, bytes);
+    const what = (f?: string): string => (!f ? '' : f === 'archive' ? t('received.archive') : formatLabel(f as DocumentFormat));
+    if (!check.ok) {
+      return this.showError(t(`received.${check.reason}` as MessageKey, { name: file.name, format: what(check.format) }));
+    }
+    if (from.app === 'qrshare') {
+      const mb = file.size >= 1024 * 1024;
+      const size = new Intl.NumberFormat(getLocale(), { style: 'unit', unit: mb ? 'megabyte' : 'kilobyte', maximumFractionDigits: mb ? 1 : 0 }).format(mb ? file.size / 1024 / 1024 : Math.max(1, file.size / 1024));
+      const ok = await this.confirmDialog(t('received.title'), t('received.confirm', { origin: from.origin, name: file.name, size, format: what(check.format) }), t('common.open'));
+      if (!ok) return;
+    }
+    await this.openFile(file);
+  }
+
   async openFile(file: File): Promise<void> {
     // FILE-021: an archive is opened as a folder, its files read one at a time.
     const limit = /\.zip$/i.test(file.name) ? MAX_ARCHIVE_SIZE : MAX_FILE_SIZE;

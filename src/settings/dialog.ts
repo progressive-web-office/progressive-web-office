@@ -12,9 +12,10 @@ import { loadReading, saveReading, type ReadingSettings } from '../review/settin
 import { PAGES_PER_ROW } from '../pdf/fit';
 import { loadTypography, saveTypography } from '../document/typography';
 import { loadPrintSettings, PAPER_SIZES, savePrintSettings, type Paper } from '../print/settings';
+import { loadCollabNetwork, parseRelays, saveCollabNetwork } from '../collab/network';
 
-export type SettingsCategory = 'general' | 'reading' | 'writing' | 'printing';
-export const CATEGORIES: SettingsCategory[] = ['general', 'reading', 'writing', 'printing'];
+export type SettingsCategory = 'general' | 'reading' | 'writing' | 'printing' | 'collab';
+export const CATEGORIES: SettingsCategory[] = ['general', 'reading', 'writing', 'printing', 'collab'];
 
 export interface SettingsHooks {
   /** The interface language changed. */
@@ -105,11 +106,38 @@ function printingPanel(): HTMLElement[] {
   ];
 }
 
+/** COLLAB-009: relays and TURN server of the real-time collaboration. */
+function collabPanel(): HTMLElement[] {
+  const n = loadCollabNetwork();
+  const relays = h('textarea', { rows: '3', spellcheck: 'false', placeholder: 'wss://relay.example.org' });
+  relays.value = n.relays.join('\n');
+  const turn = h('input', { type: 'text', spellcheck: 'false', placeholder: 'turn:turn.example.org:3478', value: n.turn?.urls ?? '' });
+  const user = h('input', { type: 'text', autocomplete: 'off', value: n.turn?.username ?? '' });
+  const password = h('input', { type: 'password', autocomplete: 'off', value: n.turn?.credential ?? '' });
+  const save = (): void => {
+    const urls = turn.value.trim();
+    saveCollabNetwork({
+      relays: parseRelays(relays.value),
+      ...(urls ? { turn: { urls, ...(user.value.trim() ? { username: user.value.trim() } : {}), ...(password.value ? { credential: password.value } : {}) } } : {}),
+    });
+  };
+  for (const el of [relays, turn, user, password]) el.addEventListener('change', save);
+  return [
+    h('p', { class: 'hint' }, t('settings.collabHint')),
+    field(t('settings.relays'), relays, t('settings.relaysHint')),
+    field(t('settings.turn'), turn, t('settings.turnHint')),
+    field(t('settings.turnUser'), user),
+    field(t('settings.turnPassword'), password),
+    h('p', { class: 'hint' }, t('settings.collabNext')),
+  ];
+}
+
 const PANELS: Record<SettingsCategory, (hooks: SettingsHooks) => HTMLElement[]> = {
   general: generalPanel,
   reading: readingPanel,
   writing: writingPanel,
   printing: printingPanel,
+  collab: collabPanel,
 };
 
 /** Open the settings window on a category. */

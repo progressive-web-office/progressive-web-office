@@ -10,6 +10,16 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- What QRShare or the share sheet hands over is checked before it opens: a
+  file the app opens, whose content is what its name says, shown with where
+  it comes from (QRShare address, name, size, format) and opened only when
+  confirmed.
+- *Receive from another device* opens QRShare's scanner that recognises a
+  static QR code (an invitation link) as well as animated ones.
+- The collaboration bar tells where the connection is (relays unreachable,
+  looking for the others, receiving the document) and what to check after 20
+  seconds alone; relays and a TURN server can be set in the settings;
+  participants introduce themselves and another app or version is flagged.
 - A click on the name of the open file renames it, keeping its extension;
   in a folder or an archive the file is renamed there.
 - Settings window (⚙), by category: general (language, theme, your name,

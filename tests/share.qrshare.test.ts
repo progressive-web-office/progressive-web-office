@@ -18,14 +18,14 @@ describe('SHARE-002/SHARE-005 QRShare URLs', () => {
   });
 
   it('ignores an existing hash in the configured URL', () => {
-    expect(receiveUrl('https://example.org/qr/#/about', 'prefer-airgap')).toBe('https://example.org/qr/#/receive/qr?policy=prefer-airgap');
+    expect(receiveUrl('https://example.org/qr/#/about', 'prefer-airgap')).toBe('https://example.org/qr/#/scan/auto?policy=prefer-airgap');
     expect(prepareTransferUrl('https://example.org/qr/')).toBe('https://example.org/qr/#/create/url');
   });
 
   it('builds the handoff and receive-with-return routes (SHARE-007, SHARE-008)', () => {
     expect(handoffSendUrl('https://example.org/qr/', 'any')).toBe('https://example.org/qr/#/send?handoff=1&policy=any');
     expect(receiveUrl('https://example.org/qr/', 'airgap', 'https://pwo.example/app/?handoff=qrshare')).toBe(
-      'https://example.org/qr/#/receive/qr?policy=airgap&return=https%3A%2F%2Fpwo.example%2Fapp%2F%3Fhandoff%3Dqrshare',
+      'https://example.org/qr/#/scan/auto?policy=airgap&return=https%3A%2F%2Fpwo.example%2Fapp%2F%3Fhandoff%3Dqrshare',
     );
   });
 });
@@ -89,7 +89,7 @@ describe('SHARE-012 QRShare handoff protocol v2', () => {
   it('asks for a send mode and for the file back in the same window', () => {
     expect(handoffSendUrl('https://example.org/qr/', 'airgap', 'animated-qr')).toBe('https://example.org/qr/#/send?handoff=1&policy=airgap&mode=animated-qr');
     expect(receiveUrl('https://example.org/qr/', 'airgap', 'https://pwo.example/app/', true)).toBe(
-      'https://example.org/qr/#/receive/qr?policy=airgap&return=https%3A%2F%2Fpwo.example%2Fapp%2F&reply=opener',
+      'https://example.org/qr/#/scan/auto?policy=airgap&return=https%3A%2F%2Fpwo.example%2Fapp%2F&reply=opener',
     );
   });
 

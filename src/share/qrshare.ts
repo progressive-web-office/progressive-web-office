@@ -56,10 +56,14 @@ export function sendTextUrl(url: string, text: string, policy: SendPolicy): stri
   return `${base(url)}#/send?${new URLSearchParams({ data: text, policy }).toString()}`;
 }
 
-/** QRShare's receive screen; `returnUrl` lets QRShare hand the received file back (SHARE-008). */
+/**
+ * QRShare's scanner that recognises what it sees (SHARE-005): a static QR code
+ * (an invitation link…), animated QR codes or CIMBAR codes. `returnUrl` lets
+ * QRShare hand the received file back (SHARE-008).
+ */
 export function receiveUrl(url: string, policy: SendPolicy, returnUrl?: string, replyToOpener = false): string {
   // SHARE-012: `reply=opener` asks QRShare to send the file back to this window.
-  return `${base(url)}#/receive/qr?policy=${policy}${returnUrl ? `&return=${encodeURIComponent(returnUrl)}` : ''}${returnUrl && replyToOpener ? '&reply=opener' : ''}`;
+  return `${base(url)}#/scan/auto?policy=${policy}${returnUrl ? `&return=${encodeURIComponent(returnUrl)}` : ''}${returnUrl && replyToOpener ? '&reply=opener' : ''}`;
 }
 
 /** QRShare's transfer chooser waiting for a file handed over with postMessage (SHARE-007). */

@@ -30,7 +30,19 @@ interface Transport {
   room: CollabRoom;
   selfId: string;
   leave(): void;
+  /** Relays reached, to tell "no network" from "nobody else yet" (COLLAB-009). */
+  relays?(): { open: number; total: number };
 }
+
+/** COLLAB-010: what peers tell each other first, to be sure they speak the same protocol about the same kind of document. */
+const PROTOCOL = 1;
+interface Hello {
+  app: string;
+  protocol: number;
+  kind: string;
+}
+/** Seconds without anyone before the bar explains what to check. */
+const HELP_AFTER = 20;
 
 async function connect(link: CollabLink): Promise<Transport> {
   let local = false;
@@ -45,11 +57,19 @@ async function connect(link: CollabLink): Promise<Transport> {
     const room = localRoom(link.room, selfId);
     return { room, selfId, leave: () => room.leave() };
   }
-  // Peers find each other through public Nostr relays; the secret encrypts the
-  // connection set-up, then everything flows directly between browsers.
-  const { joinRoom, selfId } = await import('trystero');
-  const room = joinRoom({ appId: APP_ID, password: link.secret }, link.room);
-  return { room: room as unknown as CollabRoom, selfId, leave: () => void room.leave() };
+  // Peers find each other through Nostr relays (public ones unless set in the
+  // settings); the secret encrypts the connection set-up, then everything flows
+  // directly between browsers, or through the TURN server of the settings.
+  const [trystero, { loadCollabNetwork, trysteroOptions }] = await Promise.all([import('trystero'), import('./network')]);
+  const { joinRoom, selfId } = trystero;
+  // Exported by the Nostr strategy, not declared in the package's types.
+  const getRelaySockets = (trystero as unknown as { getRelaySockets?: () => Record<string, WebSocket> }).getRelaySockets ?? (() => ({}));
+  const room = joinRoom({ appId: APP_ID, password: link.secret, ...trysteroOptions(loadCollabNetwork()) }, link.room);
+  const relays = (): { open: number; total: number } => {
+    const sockets = Object.values(getRelaySockets() as Record<string, WebSocket>);
+    return { open: sockets.filter((s) => s.readyState === WebSocket.OPEN).length, total: sockets.length };
+  };
+  return { room: room as unknown as CollabRoom, selfId, leave: () => void room.leave(), relays };
 }
 
 export class Collaboration {
@@ -59,6 +79,12 @@ export class Collaboration {
   private lastCursor = '';
   private cursorTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly onSelection = (): void => this.cursorMoved();
+  private readonly startedAt = Date.now();
+  private readonly ticker: ReturnType<typeof setInterval>;
+  private readonly help = h('p', { class: 'collab-help', hidden: true });
+  /** Peers that said they are another app, another protocol or another kind of document. */
+  private readonly strangers = new Set<string>();
+  private sendHello: ((data: string) => unknown) | undefined;
 
   private constructor(
     readonly link: CollabLink,
@@ -77,9 +103,19 @@ export class Collaboration {
       button(t('collab.invite'), () => void this.invite(), { title: t('collab.inviteTitle') }),
       button(t('collab.versions'), () => this.showVersions(), { title: t('collab.versionsTitle') }),
       button(t('collab.leave'), () => host.onLeave(), { title: t('collab.leaveTitle') }),
+      this.help,
     );
     session.on('participants', () => this.renderPeople());
-    session.on('peers', () => this.renderState());
+    session.on('peers', () => {
+      this.hello();
+      this.renderState();
+    });
+    // COLLAB-010: say who we are, and check who the others are.
+    const [send, receive] = transport.room.makeAction<string>('pwo-hello');
+    this.sendHello = send;
+    receive((data, peerId) => this.checkHello(data, peerId));
+    this.hello();
+    this.ticker = setInterval(() => this.renderState(), 2000);
     document.addEventListener('selectionchange', this.onSelection);
     this.renderPeople();
     this.renderState();
@@ -139,10 +175,38 @@ export class Collaboration {
     this.adapter.showPeers?.(this.others().map((p) => ({ name: p.user.name, color: p.user.color, cursor: p.cursor })));
   }
 
+  private hello(): void {
+    const hello: Hello = { app: APP_ID, protocol: PROTOCOL, kind: this.link.kind };
+    void this.sendHello?.(JSON.stringify(hello));
+  }
+
+  private checkHello(data: string, peerId: string): void {
+    let hello: Partial<Hello> = {};
+    try {
+      hello = JSON.parse(data) as Partial<Hello>;
+    } catch {
+      /* not a hello */
+    }
+    if (hello.app === APP_ID && hello.protocol === PROTOCOL && hello.kind === this.link.kind) this.strangers.delete(peerId);
+    else this.strangers.add(peerId);
+    this.renderState();
+  }
+
+  /** COLLAB-009: where the connection is, and what to check when nobody comes. */
   private renderState(): void {
     const n = this.others().length;
-    this.state.textContent = !this.binding.isReady ? t('collab.waiting') : n ? t('collab.connected', { n }) : t('collab.alone');
-    this.bar.classList.toggle('waiting', !this.binding.isReady);
+    const relays = this.transport.relays?.();
+    const offline = !!relays && relays.total > 0 && relays.open === 0;
+    let text: string;
+    if (this.strangers.size) text = t('collab.incompatible');
+    else if (this.binding.isReady) text = n ? t('collab.connected', { n }) : offline ? t('collab.noRelay') : t('collab.alone');
+    else if (n || this.session.peerCount) text = t('collab.waiting');
+    else text = offline ? t('collab.noRelay') : t('collab.searching');
+    this.state.textContent = text;
+    this.bar.classList.toggle('waiting', !this.binding.isReady || offline || this.strangers.size > 0);
+    const late = (Date.now() - this.startedAt) / 1000 > HELP_AFTER && !n && !this.session.peerCount;
+    this.help.hidden = !late && !this.strangers.size;
+    this.help.textContent = this.strangers.size ? t('collab.incompatibleHelp') : late ? t(offline ? 'collab.noRelayHelp' : 'collab.nobodyHelp') : '';
   }
 
   private renderPeople(): void {
@@ -287,6 +351,7 @@ export class Collaboration {
   }
 
   destroy(): void {
+    clearInterval(this.ticker);
     clearTimeout(this.cursorTimer);
     document.removeEventListener('selectionchange', this.onSelection);
     this.adapter.showPeers?.([]);

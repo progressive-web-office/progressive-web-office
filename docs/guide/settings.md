@@ -35,6 +35,15 @@ For example, to read two whole pages side by side, page by page: 2 pages,
 - **Typography as you type**: curly quotes, dashes, ellipsis and French
   no-break spaces (for the documents opened next).
 
+## Collaboration
+
+How the participants of a [real-time collaboration](./collaboration) find
+each other and connect: **relays** (Nostr, one `wss://` address per line;
+empty: public relays) and a **TURN server** with its user name and password,
+for networks that block direct connections between browsers. They are used by
+the next sessions. The password is kept in this browser like the other
+settings.
+
 ## Printing
 
 The defaults of the print preview: paper, orientation and margins.

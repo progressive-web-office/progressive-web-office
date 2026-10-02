@@ -55,7 +55,9 @@ test('sends a small text document to QRShare with the chosen policy (SHARE-002, 
   await page.getByRole('button', { name: 'Receive from another device…' }).click();
   const receiveUrl = new URL((await receive).url());
   expect(receiveUrl.origin + receiveUrl.pathname).toBe('https://s-celles.github.io/QRShare/');
-  const receiveParams = new URLSearchParams(receiveUrl.hash.replace(/^#\/receive\/qr\?/, ''));
+  // SHARE-005: QRShare's scanner recognises a static code (a link) as well as animated ones.
+  expect(receiveUrl.hash.startsWith('#/scan/auto?')).toBe(true);
+  const receiveParams = new URLSearchParams(receiveUrl.hash.replace(/^#\/scan\/auto\?/, ''));
   expect(receiveParams.get('policy')).toBe('airgap');
   // SHARE-008: QRShare is told where to hand the received file back.
   expect(receiveParams.get('return')).toBe(new URL('./?handoff=qrshare', page.url()).href);
@@ -116,16 +118,16 @@ test('falls back after a delay when QRShare cannot be checked and does not answe
   await expect(page.getByRole('alert')).toContainText('QRShare did not answer');
 });
 
-test('opens a file handed back by QRShare, and only from QRShare (SHARE-008)', async ({ page, context }) => {
+test('opens a file handed back by QRShare, only from QRShare and only a real document (SHARE-008, SHARE-013)', async ({ page, context }) => {
   const errors = await openApp(page);
   const pwo = new URL('./?handoff=qrshare', page.url()).href;
   // Play QRShare's "Open in …" button from its origin.
-  const handBack = async (origin: string): Promise<string> => {
+  const handBack = async (origin: string, file = { name: 'received.md', text: '# Received\n\nFrom QRShare.\n' }): Promise<string> => {
     const qrshare = await context.newPage();
     await context.route(`${origin}/**`, (route) => route.fulfill({ contentType: 'text/html', body: '<title>sender</title>' }));
     await qrshare.goto(`${origin}/QRShare/`);
     const popup = context.waitForEvent('page');
-    const result = qrshare.evaluate(async (url) => {
+    const result = qrshare.evaluate(async ({ url, file }) => {
       const win = window.open(url, '_blank')!;
       const origin = new URL(url).origin;
       return new Promise<string>((resolve) => {
@@ -133,17 +135,21 @@ test('opens a file handed back by QRShare, and only from QRShare (SHARE-008)', a
         addEventListener('message', (e) => {
           if (e.source !== win || e.origin !== origin || e.data?.type !== 'qrshare-handoff') return;
           if (e.data.action === 'ready') {
-            const data = new TextEncoder().encode('# Received\n\nFrom QRShare.\n').buffer;
-            win.postMessage({ type: 'qrshare-handoff', version: 1, action: 'file', name: 'received.md', mimeType: 'text/markdown', data }, origin, [data]);
+            const data = new TextEncoder().encode(file.text).buffer;
+            win.postMessage({ type: 'qrshare-handoff', version: 1, action: 'file', name: file.name, mimeType: 'application/octet-stream', data }, origin, [data]);
           } else if (e.data.action === 'received') {
             resolve('sent');
           }
         });
       });
-    }, pwo);
+    }, { url: pwo, file });
     const opened = await popup;
     const outcome = await result;
-    if (outcome === 'sent') {
+    if (outcome === 'sent' && file.name === 'received.md') {
+      // SHARE-013: where it comes from and what it is, before it opens.
+      const confirm = opened.getByRole('dialog', { name: 'A file received through QRShare' });
+      await expect(confirm).toContainText('QRShare (https://s-celles.github.io) hands over “received.md”');
+      await confirm.getByRole('button', { name: 'Open' }).click();
       await expect(opened.locator('.doc-page h1')).toHaveText('Received');
       await expect(opened.locator('.doc-name')).toHaveText('received.md');
       expect(new URL(opened.url()).search).toBe('');
@@ -151,6 +157,10 @@ test('opens a file handed back by QRShare, and only from QRShare (SHARE-008)', a
     return outcome;
   };
   expect(await handBack('https://s-celles.github.io')).toBe('sent');
+  // SHARE-013: a file whose content is not what its name says is not opened, even from QRShare.
+  expect(await handBack('https://s-celles.github.io', { name: 'report.docx', text: '%PDF-1.7\n1 0 obj\n<<>>\nendobj\n' })).toBe('sent');
+  const last = context.pages().at(-1)!;
+  await expect(last.getByRole('alert')).toContainText('“report.docx” is not what its name says');
   // Any other origin is ignored.
   expect(await handBack('https://evil.example')).toBe('timeout');
   expect(errors).toEqual([]);
