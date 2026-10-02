@@ -458,7 +458,7 @@ test('keeps a version at each save and opens an older one (FILE-025)', async ({ 
   await save();
   await page.keyboard.type(' Second part.');
   await save();
-  await page.getByRole('button', { name: 'Versions' }).click();
+  await page.getByRole('button', { name: 'History' }).click();
   const dialog = page.getByRole('dialog', { name: /^Versions of/ });
   await expect(dialog.getByRole('listitem')).toHaveCount(2);
   // A named version of the current state.
@@ -469,4 +469,25 @@ test('keeps a version at each save and opens an older one (FILE-025)', async ({ 
   await expect(dialog.getByRole('listitem').first()).toContainText('Before review');
   await dialog.getByRole('listitem').last().getByRole('button', { name: 'Open' }).click();
   await expect(editor).toHaveText('First draft.');
+});
+
+test('corrects the typography as you type and transforms text (DOC-031, DOC-032)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.getByRole('button', { name: 'Document properties' }).click();
+  const props = page.getByRole('dialog');
+  await props.getByLabel('Language').fill('fr');
+  await props.getByRole('button', { name: 'OK' }).click();
+  await editor.click();
+  await page.keyboard.type('Il dit "oui"! Voir : la suite... 1--2');
+  await expect(editor.locator('p').first()).toHaveText('Il dit « oui » ! Voir : la suite… 1–2');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('le moteur tourne');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('vite.');
+  await page.keyboard.press('Control+a');
+  await page.getByLabel('Text', { exact: true }).selectOption({ label: 'Join broken lines' });
+  // The first line does not end a sentence either: all are joined.
+  await expect(editor.locator('p')).toHaveText(['Il dit «\u00a0oui\u00a0»\u202f! Voir\u00a0: la suite… 1–2 le moteur tourne vite.']);
+  await page.getByLabel('Text', { exact: true }).selectOption({ label: 'UPPERCASE' });
+  await expect(editor.locator('p')).toHaveText(['IL DIT «\u00a0OUI\u00a0»\u202f! VOIR\u00a0: LA SUITE… 1–2 LE MOTEUR TOURNE VITE.']);
 });

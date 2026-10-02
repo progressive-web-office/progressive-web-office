@@ -15,7 +15,7 @@ import { redo, undo } from 'prosemirror-history';
 import { applyDocumentParts, documentParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { documentTools, type AgentTool } from '../ai/tools';
 import type { PrintSettings } from '../print/settings';
-import { t, type MessageKey } from '../i18n';
+import { getLocale, t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import { sizeInput, type SizeInput } from '../app/size-input';
 import type { EditorView, SaveVariant, SyncableDocument, ViewContext } from '../app/views';
@@ -37,6 +37,7 @@ import { isHistoryTransaction } from 'prosemirror-history';
 import { ChangePanel } from './change-panel';
 import { trackTransaction, UNTRACKED } from './changes';
 import { withoutSolutions } from './solutions';
+import { TRANSFORMS, transformText, typographyRules, type TransformId } from './text-tools';
 import { CommentPanel } from './comment-panel';
 import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
@@ -72,6 +73,24 @@ const STYLES: [ParagraphStyle, MessageKey][] = [
 /** Transactions coming from other participants: not "changes" of this user. */
 const REMOTE = 'pwo-remote';
 
+const TYPOGRAPHY_KEY = 'pwo.typography';
+
+function loadTypography(): boolean {
+  try {
+    return localStorage.getItem(TYPOGRAPHY_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+function saveTypography(on: boolean): void {
+  try {
+    localStorage.setItem(TYPOGRAPHY_KEY, on ? 'on' : 'off');
+  } catch {
+    /* not kept */
+  }
+}
+
 export class DocumentEditor implements EditorView {
   readonly element: HTMLElement;
   private readonly page: HTMLElement;
@@ -103,6 +122,9 @@ export class DocumentEditor implements EditorView {
   private readonly changesPanel: ChangePanel;
   private tracking: Revision | undefined;
   private readonly trackButton: HTMLButtonElement;
+  /** DOC-031: typography as you type (kept for the next documents). */
+  private typography = loadTypography();
+  private readonly textTools = h('select', { 'aria-label': t('text.tools'), title: t('text.toolsTitle'), class: 'text-tools' });
   /** TEACH-001: solutions shown (answer key) or hidden (exercise sheet). */
   private readonly solutionsButton = button(t('solution.hide'), () => this.toggleSolutions(), { text: '👁', title: t('solution.hideTitle') });
   private hadSolutions = false;
@@ -167,7 +189,11 @@ export class DocumentEditor implements EditorView {
       {
         state: EditorState.create({
           doc: blocksToPm(doc.blocks),
-          plugins: basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
+          plugins: [
+            // DOC-031: typography as you type, in the document's language.
+            typographyRules({ enabled: () => this.typography, lang: () => this.lang() }),
+            ...basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
+          ],
         }),
         nodeViews: nodeViews({
           resolve: (key) => this.resolve(key),
@@ -561,6 +587,40 @@ export class DocumentEditor implements EditorView {
     return writeDocumentAsync(out, format as TextFormat);
   }
 
+  /** The document's language, else the interface's. */
+  private lang(): string {
+    return this.doc.meta.language || getLocale();
+  }
+
+  /** "Text" menu: typography as you type, and transforms of the selection or the document (DOC-031, DOC-032). */
+  private textToolsMenu(): HTMLSelectElement {
+    const select = this.textTools;
+    const fill = (): void => {
+      select.replaceChildren(
+        h('option', { value: '' }, t('text.tools')),
+        h('option', { value: 'typography' }, `${this.typography ? '✓ ' : ''}${t('text.typography')}`),
+        ...TRANSFORMS.map((id) => h('option', { value: id }, t(`text.${id}` as MessageKey))),
+      );
+    };
+    fill();
+    select.addEventListener('change', () => {
+      const value = select.value;
+      select.value = '';
+      if (value === 'typography') {
+        this.typography = !this.typography;
+        saveTypography(this.typography);
+        fill();
+      } else if (value && !this.readOnly) {
+        this.command((state, dispatch) => {
+          dispatch?.(transformText(state, value as TransformId, this.lang()).scrollIntoView());
+          return true;
+        });
+      }
+      this.refocus();
+    });
+    return select;
+  }
+
   /** Show or hide the solutions, on screen and in print (TEACH-001). */
   private toggleSolutions(): void {
     const hidden = this.element.classList.toggle('hide-solutions');
@@ -882,6 +942,7 @@ export class DocumentEditor implements EditorView {
       act(t('para.button'), '¶', () => void this.editParagraph()),
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
+      this.textToolsMenu(),
       act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`),
       this.trackButton,
       h('span', { class: 'sep' }),

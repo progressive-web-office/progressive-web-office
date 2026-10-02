@@ -208,6 +208,27 @@ expression (replacements can then use `$1`, `$2`… for the captured groups).
 *Replace all* is a single step that <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes.
 <kbd>Esc</kbd> closes the bar.
 
+### Typography and text tools
+
+While you type, the app follows the typography of the document's language
+(set in the document properties, else the interface language):
+
+- `"` gives curly quotes (`« … »` with no-break spaces in French, `“ … ”` in
+  English, `„ … “` in German) and `'` an apostrophe `’`;
+- `--` gives an en dash `–`, a third `-` an em dash `—`, `...` an ellipsis `…`;
+- in French, a no-break space goes before `; ! ?` (narrow) and `:`, except
+  in web addresses and times (`12:30`).
+
+<kbd>Backspace</kbd> right after a correction undoes it. Code is never
+changed. **Text → Typography as you type** turns this off or on.
+
+The **Text** menu also transforms the selection, or the whole document when
+nothing is selected, keeping its formatting: curly or straight quotes,
+French spacing, dashes and ellipsis, remove double spaces, remove invisible
+characters, **join broken lines** (text pasted from a PDF: lines that do not
+end a sentence are joined, a word cut with a hyphen is put back together),
+sentence case, title case, upper and lower case.
+
 ### Typing shortcuts
 
 At the start of a line, type:

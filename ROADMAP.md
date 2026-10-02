@@ -67,10 +67,7 @@ group is not a commitment.
 
 ### Writing aids
 
-- Typography as you type: French spacing before `; : ! ?` and inside
-  `« »`, curly quotes per language, `--` to dashes, `...` to an ellipsis;
-  text transforms (straighten quotes, remove double spaces and stray
-  characters, join broken lines, sentence and title case)
+- ✅ Typography as you type (DOC-031) and text transforms (DOC-032)
 - Readability: per-paragraph difficulty (Flesch and Kandel-Moles for French,
   Gunning-Fog, Coleman-Liau, ARI) shown in the margin
 - Writing goals and statistics: a word target per document, words written

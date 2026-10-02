@@ -77,7 +77,7 @@ you before closing the tab in that case.
 ## Versions
 
 Each time you save a document (to a file, a folder, Nextcloud or a Git
-repository), the app keeps a copy of it in this browser: **🕘 Versions** lists
+repository), the app keeps a copy of it in this browser: **🕘 History** lists
 them, newest first (the last 30 per document, an unchanged save adds none).
 There you can:
 
