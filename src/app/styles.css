@@ -1046,3 +1046,10 @@ body.distraction-free .ai-panel { display: none !important; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail { color: inherit; opacity: 0.85; }
 .cm-completionInfo { background: var(--surface); color: var(--text); border: 1px solid var(--border); white-space: pre-wrap; max-width: 28em; max-height: 18em; overflow: auto; font-size: 0.85rem; }
 .code-cell-output .spinner, .collab-bar .spinner { margin-right: 0.4em; }
+
+/* CODE-008: what the TypeScript language service says. */
+.cm-ts-info { max-width: 32em; padding: 6px 8px; font-size: 0.85rem; }
+.cm-ts-info code { display: block; white-space: pre-wrap; font-family: ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace; color: var(--text); }
+.cm-ts-info p { margin: 6px 0 0; white-space: pre-wrap; color: var(--muted); }
+.cm-tooltip-lint { background: var(--surface); color: var(--text); }
+.cm-diagnostic { padding: 4px 8px; font-size: 0.85rem; white-space: pre-wrap; }

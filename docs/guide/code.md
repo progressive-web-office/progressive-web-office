@@ -40,7 +40,10 @@ plt.title("Damped signal")
 The code editor of a cell highlights the code, indents it (<kbd>Tab</kbd>),
 closes brackets and quotes, and **completes as you type**: keywords,
 built-in functions, the names of the cell, and for JavaScript the standard
-objects and their members (`Math.floor`, `JSON.stringify`…).
+objects and their members (`Math.floor`, `JSON.stringify`…). JavaScript cells
+are understood by the TypeScript language service: the members of a value
+after a dot (`words.flatMap` for an array), signatures and documentation,
+syntax errors underlined.
 <kbd>Ctrl</kbd>+<kbd>Space</kbd> opens the list, <kbd>↑</kbd> <kbd>↓</kbd>
 choose, <kbd>Enter</kbd> inserts, <kbd>Esc</kbd> closes it.
 

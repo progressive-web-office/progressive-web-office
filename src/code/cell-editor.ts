@@ -9,7 +9,7 @@ import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from '@codemirror/view';
 import type { CodeLang } from '../document/model';
 import { highlighter } from '../files/text-view';
-import { completionSupport, pythonSources, scriptGlobals, type SmartComplete } from './completion';
+import { completionSupport, pythonSources, type SmartComplete } from './completion';
 
 const theme = EditorView.theme({
   '&': { backgroundColor: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '6px', minHeight: '16rem', maxHeight: '60vh' },
@@ -74,6 +74,7 @@ async function loadLanguage(lang: CodeLang, complete?: SmartComplete): Promise<E
     const [{ python }, sources] = await Promise.all([import('@codemirror/lang-python'), pythonSources(complete)]);
     return [python(), completionSupport(sources)];
   }
-  const [{ javascript }, globals] = await Promise.all([import('@codemirror/lang-javascript'), scriptGlobals()]);
-  return [javascript(), globals, completionSupport()];
+  // CODE-008: the TypeScript language service, for JavaScript cells (modules, top-level await).
+  const [{ javascript }, { scriptIntelligence }] = await Promise.all([import('@codemirror/lang-javascript'), import('./ts-language')]);
+  return [javascript(), ...(await scriptIntelligence('cell.mjs'))];
 }

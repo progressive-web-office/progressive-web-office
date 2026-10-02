@@ -79,11 +79,13 @@ line, **Delete** removes the comment. Combined with a ZIP archive, this
 lets you comment the files of an archive and download it with the
 comments.
 
-Python, JavaScript and TypeScript files (and the other languages that know
-their keywords) are completed as you type: keywords, snippets, the names of
-the file, and for JavaScript and TypeScript the standard objects and their
-members. It is not a full type checker: TypeScript is completed like
-JavaScript, without its types.
+Source files are completed as you type: keywords, snippets and the names of
+the file. **TypeScript and JavaScript** files are understood by the
+TypeScript language service: completions know the types (the members of an
+object after a dot, the browser and JavaScript APIs), with their signature and
+documentation; TypeScript type errors are underlined (JavaScript: syntax
+errors only); hovering a name shows its type. The service (a few megabytes) is
+loaded the first time such a file is opened, then kept for offline use.
 
 ## Pictures
 

@@ -81,3 +81,38 @@ test('completes with the names known by the running interpreter (CODE-007)', asy
   await page.keyboard.type('voltage_');
   await expect(popup(page).getByRole('option', { name: /^voltage_drop/ })).toBeVisible({ timeout: 30_000 });
 });
+
+test('knows the types of TypeScript and JavaScript: completions, errors, types under the pointer (CODE-008)', async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors = await openApp(page);
+  await openFile(page, 'shapes.ts', 'interface Circle {\n  radius: number;\n  /** The colour, as a CSS name. */\n  colour: string;\n}\nconst c: Circle = { radius: 2, colour: "red" };\nconst n: number = "three";\n', 'text/plain');
+  const code = page.getByRole('textbox', { name: 'Content of shapes.ts' });
+  await expect(code.locator('.tok-keyword').first()).toHaveText('interface');
+  // A type error is underlined.
+  await expect(code.locator('.cm-lintRange-error')).toHaveCount(1, { timeout: 60_000 });
+  // The members of a typed value, with their documentation.
+  await code.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('c.');
+  const list = popup(page);
+  await expect(list.getByRole('option', { name: /^colour/ })).toBeVisible({ timeout: 30_000 });
+  await expect(list.getByRole('option', { name: /^radius/ })).toBeVisible();
+  await expect(list.getByRole('option')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  // The type of what is under the pointer.
+  await code.getByText('Circle', { exact: true }).last().hover();
+  await expect(page.locator('.cm-tooltip-hover .cm-ts-info')).toContainText('interface Circle');
+
+  // A JavaScript cell is completed by the same service.
+  page.once('dialog', (d) => void d.accept());
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'New document' }).click();
+  await page.getByRole('textbox', { name: 'Document' }).click();
+  await page.getByRole('button', { name: 'Insert code cell' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Insert code cell' });
+  await dialog.getByLabel('Language').selectOption('javascript');
+  await dialog.getByLabel('Code').click();
+  await page.keyboard.type('const words = ["a", "b"];\nwords.fla');
+  await expect(list.getByRole('option', { name: /^flatMap/ })).toBeVisible({ timeout: 30_000 });
+  expect(errors).toEqual([]);
+});

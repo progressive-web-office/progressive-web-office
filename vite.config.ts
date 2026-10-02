@@ -169,13 +169,19 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,wasm,bcmap,pfb,ttf}'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        // The Python runtime (~13 MB) is cached on first use instead (CODE-002).
-        globIgnores: ['pyodide/**'],
+        // The Python runtime (~13 MB) and the TypeScript language service (~4 MB)
+        // are cached on first use instead (CODE-002, CODE-008).
+        globIgnores: ['pyodide/**', 'assets/ts.worker-*.js', 'assets/lib.*.d-*.js'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes('/pyodide/') && url.origin === self.location.origin,
             handler: 'CacheFirst',
             options: { cacheName: 'pyodide-runtime', expiration: { maxEntries: 16 } },
+          },
+          {
+            urlPattern: ({ url }) => url.origin === self.location.origin && /\/assets\/(ts\.worker-|lib\..+\.d-)[\w-]+\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: { cacheName: 'ts-service', expiration: { maxEntries: 120 } },
           },
           {
             urlPattern: ({ url }) => url.href.startsWith('https://cdn.jsdelivr.net/pyodide/'),

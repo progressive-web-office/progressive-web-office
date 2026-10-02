@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The TypeScript language service for TypeScript and JavaScript files and
+  JavaScript cells: typed completions with documentation, errors underlined,
+  types under the pointer; loaded on first use, then kept offline.
 - Code completion: in code cells (now a real code editor with highlighting,
   indentation and closing brackets) and in source files — keywords,
   built-ins, names of the code, JavaScript/TypeScript standard objects; in

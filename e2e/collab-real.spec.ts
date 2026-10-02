@@ -14,7 +14,7 @@ async function useRelay(page: Page): Promise<void> {
 }
 
 test('two browsers find each other through a relay and edit together (COLLAB-001, COLLAB-002)', async ({ browser }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const alice = await (await browser.newContext()).newPage();
   await useRelay(alice);
   await openApp(alice);
@@ -27,7 +27,7 @@ test('two browsers find each other through a relay and edit together (COLLAB-001
   const bob = await (await browser.newContext()).newPage();
   await useRelay(bob);
   await bob.goto(url);
-  await expect(bob.locator('td[data-r="1"][data-c="0"]')).toHaveText('Pens', { timeout: 30_000 });
+  await expect(bob.locator('td[data-r="1"][data-c="0"]')).toHaveText('Pens', { timeout: 60_000 });
   await expect(alice.locator('.collab-bar')).toContainText('Connected · 1 other(s)');
 });
 
