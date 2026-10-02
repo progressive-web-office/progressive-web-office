@@ -69,3 +69,30 @@ describe('FILE-018 built-in templates', () => {
     expect(value('grades', [9, 4])).toBe(5);
   });
 });
+
+describe('FILE-018 examples with plots', () => {
+  it.each(['en', 'fr'] as const)('lab (%s): Python cells with their output and figures already drawn', async (lang) => {
+    const lab = doc('lab', lang);
+    const cells = runs(lab).filter(isCodeCellRun);
+    expect(cells.map((c) => c.lang)).toEqual(['python', 'python', 'python', 'python', 'python', 'python']);
+    expect(cells[0]!.cell).toContain('np.polyfit');
+    expect(cells[0]!.output?.text).toMatch(/R = 47\.0 Ω/);
+    expect(cells.filter((c) => c.output?.images?.length)).toHaveLength(5);
+    for (const c of cells) for (const key of c.output?.images ?? []) expect(lab.resources.get(key)?.mediaType).toBe('image/png');
+    expect(cells[5]!.cell).toContain('sp.dsolve');
+    expect(cells[5]!.output?.text).toContain('E - E*exp(-t/(C*R))');
+    // The figures stay with the document when it is saved.
+    const back = await readDocument('mdz', writeDocument(lab, 'mdz'));
+    expect(runs(back).filter(isCodeCellRun).filter((c) => c.output?.images?.length)).toHaveLength(5);
+  });
+
+  it('measurements: scientific functions and charts drawn from the data', () => {
+    const built = byId('measurements').build('fr') as Extract<Built, { kind: 'spreadsheet' }>;
+    const charts = built.wb.sheets.flatMap((s) => s.charts ?? []);
+    expect(charts.map((c) => c.type).sort()).toEqual(['line', 'scatter']);
+    const calc = new Calculator(built.wb);
+    for (const [si, sheet] of built.wb.sheets.entries()) for (const [key] of sheet.cells) expect(isError(calc.value(si, key.split(',').map(Number) as [number, number]))).toBe(false);
+    const formulas = built.wb.sheets.flatMap((s) => [...s.cells.values()].map((c) => c.formula ?? '')).join(' ');
+    for (const fn of ['EXP(', 'SIN(', 'SLOPE(', 'INTERCEPT(', 'RSQ(', 'STDEV(']) expect(formulas).toContain(fn);
+  });
+});

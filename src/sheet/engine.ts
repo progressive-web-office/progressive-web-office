@@ -25,6 +25,31 @@ class FormulaError extends Error {
 
 // --- coercion -----------------------------------------------------------------
 
+/** SHEET-024: functions of one number. */
+const MATH: Record<string, (x: number) => number> = {
+  EXP: Math.exp,
+  LN: Math.log,
+  LOG10: Math.log10,
+  SIN: Math.sin,
+  COS: Math.cos,
+  TAN: Math.tan,
+  ASIN: Math.asin,
+  ACOS: Math.acos,
+  ATAN: Math.atan,
+  SINH: Math.sinh,
+  COSH: Math.cosh,
+  TANH: Math.tanh,
+  DEGREES: (x) => (x * 180) / Math.PI,
+  RADIANS: (x) => (x * Math.PI) / 180,
+  SIGN: Math.sign,
+};
+
+/** A result outside the real numbers (log of 0, asin of 2…) is #NUM!. */
+function finite(x: number): number {
+  if (!Number.isFinite(x)) throw new FormulaError(err('#NUM!'));
+  return x;
+}
+
 export function toNumber(v: Value): number {
   if (isError(v)) throw new FormulaError(v);
   if (v === null || v === '') return 0;
@@ -447,6 +472,78 @@ export class Calculator {
       }
       case 'PI':
         return Math.PI;
+      // SHEET-024: mathematics and trigonometry.
+      case 'EXP':
+      case 'LN':
+      case 'LOG10':
+      case 'SIN':
+      case 'COS':
+      case 'TAN':
+      case 'ASIN':
+      case 'ACOS':
+      case 'ATAN':
+      case 'SINH':
+      case 'COSH':
+      case 'TANH':
+      case 'DEGREES':
+      case 'RADIANS':
+      case 'SIGN': {
+        need(1, 1);
+        return finite(MATH[name]!(n(0)));
+      }
+      case 'LOG': {
+        need(1, 2);
+        const base = args.length > 1 ? n(1) : 10;
+        return finite(Math.log(n(0)) / Math.log(base));
+      }
+      case 'ATAN2': {
+        need(2, 2);
+        const [x, y] = [n(0), n(1)];
+        if (x === 0 && y === 0) throw new FormulaError(DIV0);
+        return Math.atan2(y, x);
+      }
+      // SHEET-024: statistics and linear regression.
+      case 'VAR':
+      case 'VARP':
+      case 'STDEV':
+      case 'STDEVP': {
+        const xs = this.numbers(args, si);
+        const sample = !name.endsWith('P');
+        if (xs.length < (sample ? 2 : 1)) throw new FormulaError(DIV0);
+        const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+        const v = xs.reduce((a, b) => a + (b - mean) ** 2, 0) / (xs.length - (sample ? 1 : 0));
+        return name.startsWith('STDEV') ? Math.sqrt(v) : v;
+      }
+      case 'SUMSQ':
+        return this.numbers(args, si).reduce((a, b) => a + b * b, 0);
+      case 'SLOPE':
+      case 'INTERCEPT':
+      case 'RSQ':
+      case 'CORREL': {
+        need(2, 2);
+        // SLOPE(known_y, known_x); CORREL(array1, array2).
+        const ys = this.rangeArg(args[0], si).flat();
+        const xs = this.rangeArg(args[1], si).flat();
+        if (ys.length !== xs.length) throw new FormulaError(NA);
+        const pairs = ys.flatMap((y, i) => (typeof y === 'number' && typeof xs[i] === 'number' ? [[xs[i] as number, y] as const] : []));
+        if (pairs.length < 2) throw new FormulaError(DIV0);
+        const mx = pairs.reduce((a, [x]) => a + x, 0) / pairs.length;
+        const my = pairs.reduce((a, [, y]) => a + y, 0) / pairs.length;
+        let sxy = 0;
+        let sxx = 0;
+        let syy = 0;
+        for (const [x, y] of pairs) {
+          sxy += (x - mx) * (y - my);
+          sxx += (x - mx) ** 2;
+          syy += (y - my) ** 2;
+        }
+        if (sxx === 0 || ((name === 'RSQ' || name === 'CORREL') && syy === 0)) throw new FormulaError(DIV0);
+        const slope = sxy / sxx;
+        if (name === 'SLOPE') return slope;
+        if (name === 'INTERCEPT') return my - slope * mx;
+        const r = sxy / Math.sqrt(sxx * syy);
+        return name === 'RSQ' ? r * r : r;
+      }
       case 'CONCAT':
       case 'CONCATENATE':
         return this.values(args, si).map(toText).join('');

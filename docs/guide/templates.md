@@ -45,6 +45,21 @@ formatting, footnotes, a table of contents, an equation numbered and
 referenced, a captioned table, a Mermaid diagram, a Python code cell and
 citations with their list of references. Change anything to try it.
 
+**Lab report with Python plots** mixes text, equations and Python cells
+(numpy, matplotlib, SymPy): a least-squares fit with error bars, damped
+oscillations, a Bode plot, a histogram of repeated measurements, a field map
+and a differential equation solved symbolically. The output and figures are
+already there when it opens; **⏩** runs every cell again in the browser.
+
+**Measurements and charts** is a workbook: a damped signal computed by
+formulas (`EXP`, `SIN`) from two parameters you can change, with its line
+chart, and a linear fit of measurements (`SLOPE`, `INTERCEPT`, `RSQ`,
+`STDEV`) with its scatter chart.
+
+The cells of the lab report are Python files in `src/templates/lab/<lang>/`;
+after changing them, `just template-figures` (Python with numpy, matplotlib
+and SymPy) runs them again and stores their output and figures.
+
 ## Template files
 
 Template files made by LibreOffice, Word, Excel or PowerPoint (`.ott`,

@@ -77,6 +77,38 @@ describe('SHEET-006 formula evaluation', () => {
     expect(f('TRIM("  a  b ")')).toBe('a b');
   });
 
+  it('SHEET-024 implements mathematical and trigonometric functions', () => {
+    expect(f('EXP(1)')).toBeCloseTo(Math.E);
+    expect(f('LN(EXP(2))')).toBeCloseTo(2);
+    expect(f('LOG10(1000)')).toBeCloseTo(3);
+    expect(f('LOG(8,2)')).toBeCloseTo(3);
+    expect(f('LOG(100)')).toBeCloseTo(2);
+    expect(f('SIN(PI()/2)+COS(0)+TAN(0)')).toBeCloseTo(2);
+    expect(f('DEGREES(ASIN(1))')).toBeCloseTo(90);
+    expect(f('DEGREES(ACOS(0))+DEGREES(ATAN(1))')).toBeCloseTo(135);
+    expect(f('DEGREES(ATAN2(-1,0))')).toBeCloseTo(180); // ATAN2(x, y), as in spreadsheets
+    expect(f('RADIANS(180)')).toBeCloseTo(Math.PI);
+    expect(f('SINH(0)+COSH(0)+TANH(0)')).toBeCloseTo(1);
+    expect(f('SIGN(-3)')).toBe(-1);
+    expect(f('LN(0)')).toEqual({ error: '#NUM!' });
+    expect(f('ASIN(2)')).toEqual({ error: '#NUM!' });
+  });
+
+  it('SHEET-024 implements statistics and linear regression', () => {
+    const cells = { A1: '1', A2: '2', A3: '3', A4: '4', B1: '3.1', B2: '4.9', B3: '7.2', B4: '8.8' };
+    expect(f('VAR(A1:A4)', cells)).toBeCloseTo(5 / 3);
+    expect(f('VARP(A1:A4)', cells)).toBeCloseTo(1.25);
+    expect(f('STDEV(A1:A4)', cells)).toBeCloseTo(Math.sqrt(5 / 3));
+    expect(f('STDEVP(A1:A4)', cells)).toBeCloseTo(Math.sqrt(1.25));
+    expect(f('SUMSQ(A1:A4)', cells)).toBe(30);
+    expect(f('SLOPE(B1:B4,A1:A4)', cells)).toBeCloseTo(1.94);
+    expect(f('INTERCEPT(B1:B4,A1:A4)', cells)).toBeCloseTo(1.15);
+    expect(f('RSQ(B1:B4,A1:A4)', cells)).toBeCloseTo(0.9957, 3);
+    expect(f('CORREL(A1:A4,B1:B4)', cells)).toBeCloseTo(Math.sqrt(0.99566), 3);
+    expect(f('STDEV(A1)', cells)).toEqual({ error: '#DIV/0!' });
+    expect(f('SLOPE(B1:B3,A1:A4)', cells)).toEqual({ error: '#N/A' });
+  });
+
   it('references other sheets', () => {
     expect(calc({ A1: "='Data sheet'!B2*2" }, 'A1', { 'Data sheet': { B2: '21' } })).toBe(42);
     expect(calc({ A1: '=Other!A1' }, 'A1', { Other: { A1: '5' } })).toBe(5);

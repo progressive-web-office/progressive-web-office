@@ -9,6 +9,7 @@ import { getCell, newWorkbook, setInput, type Workbook } from '../sheet/model';
 import { applyCellStyle } from '../sheet/ops';
 import { contentSlide, DEFAULT_SIZE, textShape, titleSlide, type Presentation, type Slide } from '../slides/model';
 import { DOCUMENT_TEXTS, LABELS, type DocumentTexts, type TemplateLang } from './content';
+import { labMarkdown } from './lab';
 
 export type Built = { kind: 'document'; doc: RichDocument } | { kind: 'spreadsheet'; wb: Workbook } | { kind: 'presentation'; pres: Presentation };
 
@@ -36,6 +37,68 @@ function documentFrom(text: keyof DocumentTexts, after?: (doc: RichDocument, lan
     after?.(doc, lang);
     return { kind: 'document', doc };
   };
+}
+
+/** The lab report example: Python cells with their figures already drawn. */
+function lab(lang: TemplateLang): Built {
+  const doc = readMarkdown(labMarkdown(lang));
+  if (doc.extras) delete doc.extras.frontMatter;
+  return { kind: 'document', doc };
+}
+
+/** Measurements: a signal and a linear fit computed by formulas, with their charts (SHEET-024). */
+function measurements(lang: TemplateLang): Workbook {
+  const fr = lang === 'fr';
+  const wb = newWorkbook();
+  const signal = wb.sheets[0]!;
+  signal.name = fr ? 'Signal' : 'Signal';
+  setInput(signal, 'A1', 't (s)');
+  setInput(signal, 'B1', fr ? 'x (amorti)' : 'x (damped)');
+  setInput(signal, 'C1', fr ? 'enveloppe' : 'envelope');
+  setInput(signal, 'E1', fr ? 'Amortissement' : 'Damping');
+  setInput(signal, 'F1', '0.3');
+  setInput(signal, 'E2', fr ? 'Fréquence (Hz)' : 'Frequency (Hz)');
+  setInput(signal, 'F2', '1');
+  for (let i = 0; i <= 50; i++) {
+    const r = i + 2;
+    setInput(signal, `A${r}`, String(i / 10));
+    setInput(signal, `B${r}`, `=EXP(-$F$1*A${r})*SIN(2*PI()*$F$2*A${r})`);
+    setInput(signal, `C${r}`, `=EXP(-$F$1*A${r})`);
+  }
+  for (const cell of signal.cells.values()) if (cell.formula) cell.numFmt = '0.000';
+  signal.colWidths = new Map([[4, 130]]);
+  signal.freeze = { rows: 1, cols: 0 };
+  applyCellStyle(wb, 0, { r1: 0, c1: 0, r2: 0, c2: 2 }, { bold: true, fill: '#d9e2f3' });
+  applyCellStyle(wb, 0, { r1: 0, c1: 5, r2: 1, c2: 5 }, { fill: '#fff2cc', border: true });
+  signal.charts = [{ type: 'line', title: fr ? 'Oscillations amorties' : 'Damped oscillations', range: 'A1:C52', headers: true, anchor: { row: 4, col: 4 }, width: 520, height: 300 }];
+
+  const ohm = { name: fr ? 'Loi d’Ohm' : 'Ohm’s law', cells: new Map() } as Workbook['sheets'][number];
+  wb.sheets.push(ohm);
+  const I = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const U = [0.47, 0.99, 1.38, 1.9, 2.31, 2.86, 3.27, 3.78, 4.2, 4.71];
+  setInput(ohm, 'A1', 'I (mA)');
+  setInput(ohm, 'B1', 'U (V)');
+  I.forEach((v, k) => {
+    setInput(ohm, `A${k + 2}`, String(v));
+    setInput(ohm, `B${k + 2}`, String(U[k]));
+  });
+  const results: [string, string, string][] = [
+    [fr ? 'R (Ω) = pente' : 'R (Ω) = slope', '=SLOPE(B2:B11,A2:A11)*1000', '0.0'],
+    ['U0 (V)', '=INTERCEPT(B2:B11,A2:A11)', '0.000'],
+    ['R²', '=RSQ(B2:B11,A2:A11)', '0.0000'],
+    [fr ? 'Écart-type des résidus (V)' : 'Residual std. dev. (V)', '=SQRT((1-F3)*STDEV(B2:B11)^2*9/8)', '0.000'],
+  ];
+  results.forEach(([label, formula, fmt], k) => {
+    setInput(ohm, `E${k + 1}`, label);
+    setInput(ohm, `F${k + 1}`, formula);
+    getCell(ohm, `F${k + 1}`)!.numFmt = fmt;
+  });
+  ohm.colWidths = new Map([[4, 190]]);
+  applyCellStyle(wb, 1, { r1: 0, c1: 0, r2: 0, c2: 1 }, { bold: true, fill: '#d9e2f3' });
+  applyCellStyle(wb, 1, { r1: 0, c1: 4, r2: 3, c2: 5 }, { border: true });
+  applyCellStyle(wb, 1, { r1: 0, c1: 5, r2: 0, c2: 5 }, { bold: true, fill: '#e2efda' });
+  ohm.charts = [{ type: 'scatter', title: fr ? 'U en fonction de I' : 'U against I', range: 'A1:B11', headers: true, anchor: { row: 6, col: 4 }, width: 460, height: 280 }];
+  return wb;
 }
 
 const textOf = (p: Paragraph): string => p.runs.map((r) => (isTextRun(r) ? r.text : '')).join('');
@@ -247,4 +310,6 @@ export const TEMPLATES: Template[] = [
   { id: 'talk', kind: 'presentation', icon: '🎤', name: 'tpl.talk', description: 'tpl.talkDesc', build: (lang) => ({ kind: 'presentation', pres: talk(lang) }) },
   { id: 'race-signs', kind: 'presentation', icon: '🏁', name: 'tpl.signs', description: 'tpl.signsDesc', build: (lang) => ({ kind: 'presentation', pres: raceSigns(lang) }) },
   { id: 'tour', kind: 'document', example: true, icon: '🧭', name: 'tpl.tour', description: 'tpl.tourDesc', build: documentFrom('tour') },
+  { id: 'lab', kind: 'document', example: true, icon: '🧪', name: 'tpl.lab', description: 'tpl.labDesc', build: lab },
+  { id: 'measurements', kind: 'spreadsheet', example: true, icon: '📈', name: 'tpl.measurements', description: 'tpl.measurementsDesc', build: (lang) => ({ kind: 'spreadsheet', wb: measurements(lang) }) },
 ];

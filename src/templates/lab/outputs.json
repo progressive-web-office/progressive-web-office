@@ -1,0 +1,86 @@
+{
+  "en": [
+    {
+      "cell": "1-fit.py",
+      "text": "R = 47.0 Ω, U0 = -0.014 V\n",
+      "figures": [
+        "26da93f9b1f1f6d2.png"
+      ]
+    },
+    {
+      "cell": "2-damped.py",
+      "text": "",
+      "figures": [
+        "7ddb190577eea447.png"
+      ]
+    },
+    {
+      "cell": "3-bode.py",
+      "text": "At fc: G = -3.01 dB, φ = -45°\n",
+      "figures": [
+        "30f2c061098176e3.png"
+      ]
+    },
+    {
+      "cell": "4-stats.py",
+      "text": "g = 9.804 ± 0.003 m/s² (s = 0.045)\n",
+      "figures": [
+        "9a16db50f088d8fb.png"
+      ]
+    },
+    {
+      "cell": "5-field.py",
+      "text": "",
+      "figures": [
+        "dde44f33ca832b0e.png"
+      ]
+    },
+    {
+      "cell": "6-symbolic.py",
+      "text": "Eq(u(t), E - E*exp(-t/(C*R)))\nTime to reach 99 %: 2*C*R*log(10)\nIntegral: sqrt(pi)\n",
+      "figures": []
+    }
+  ],
+  "fr": [
+    {
+      "cell": "1-fit.py",
+      "text": "R = 47.0 Ω, U0 = -0.014 V\n",
+      "figures": [
+        "aef4706775eea987.png"
+      ]
+    },
+    {
+      "cell": "2-damped.py",
+      "text": "",
+      "figures": [
+        "bb145d0588d6fd12.png"
+      ]
+    },
+    {
+      "cell": "3-bode.py",
+      "text": "À fc : G = -3.01 dB, φ = -45°\n",
+      "figures": [
+        "30f2c061098176e3.png"
+      ]
+    },
+    {
+      "cell": "4-stats.py",
+      "text": "g = 9.804 ± 0.003 m/s² (s = 0.045)\n",
+      "figures": [
+        "b04ef4b1db57fdb0.png"
+      ]
+    },
+    {
+      "cell": "5-field.py",
+      "text": "",
+      "figures": [
+        "dde44f33ca832b0e.png"
+      ]
+    },
+    {
+      "cell": "6-symbolic.py",
+      "text": "Eq(u(t), E - E*exp(-t/(C*R)))\nDurée pour atteindre 99 % : 2*C*R*log(10)\nIntégrale : sqrt(pi)\n",
+      "figures": []
+    }
+  ]
+}

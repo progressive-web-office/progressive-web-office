@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Examples with plots: a lab report with Python cells (fit with error bars,
+  damped oscillations, Bode plot, histogram, field map, SymPy) whose output
+  and figures are already drawn, and a workbook of measurements with line
+  and scatter charts.
+- Spreadsheet functions: `EXP`, `LN`, `LOG`, `LOG10`, trigonometric and
+  hyperbolic functions, `DEGREES`, `RADIANS`, `SIGN`, `SUMSQ`, `VAR`,
+  `VARP`, `STDEV`, `STDEVP`, `SLOPE`, `INTERCEPT`, `RSQ`, `CORREL`.
 - Review mode for text documents (📖, Ctrl+Alt+R): the document shown as
   pages like a PDF file, read-only but open to comments, with the review bar
   of the PDF viewer.
@@ -68,6 +75,7 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- The review bar of text documents was shown outside the review mode.
 - Pictures linked from a Markdown note opened from a folder or an archive
   (relative paths with spaces or accents, `<img>` tags, `![[name]]` embeds)
   are shown, kept as links when the note is saved back and included in the

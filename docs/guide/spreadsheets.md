@@ -46,7 +46,9 @@ Operators: `+ - * / ^`, `%`, `&` (text concatenation), comparisons
 
 | Category | Functions |
 |----------|-----------|
-| Math | `SUM`, `PRODUCT`, `AVERAGE`, `MEDIAN`, `MIN`, `MAX`, `ROUND`, `ROUNDUP`, `ROUNDDOWN`, `INT`, `ABS`, `SQRT`, `POWER`, `MOD`, `PI` |
+| Math | `SUM`, `PRODUCT`, `SUMSQ`, `AVERAGE`, `MEDIAN`, `MIN`, `MAX`, `ROUND`, `ROUNDUP`, `ROUNDDOWN`, `INT`, `ABS`, `SIGN`, `SQRT`, `POWER`, `MOD`, `PI`, `EXP`, `LN`, `LOG`, `LOG10` |
+| Trigonometry | `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATAN`, `ATAN2` (x, y), `SINH`, `COSH`, `TANH`, `DEGREES`, `RADIANS` (angles in radians) |
+| Statistics | `VAR`, `VARP`, `STDEV`, `STDEVP`, `SLOPE`, `INTERCEPT`, `RSQ`, `CORREL` (`SLOPE(known_y, known_x)`) |
 | Counting | `COUNT`, `COUNTA`, `COUNTBLANK`, `COUNTIF`, `SUMIF` |
 | Logic | `IF`, `IFERROR`, `AND`, `OR`, `NOT`, `ISBLANK`, `ISNUMBER`, `ISTEXT` |
 | Text | `CONCAT`, `CONCATENATE`, `LEN`, `UPPER`, `LOWER`, `TRIM`, `LEFT`, `RIGHT`, `MID` |

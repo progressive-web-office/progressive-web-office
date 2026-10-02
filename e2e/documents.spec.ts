@@ -64,7 +64,7 @@ test('opens templates and examples from the gallery (FILE-018)', async ({ page }
   await page.getByRole('button', { name: 'Templates and examples' }).click();
   const gallery = page.getByRole('dialog', { name: 'New from a template' });
   await expect(gallery.getByRole('region', { name: 'Spreadsheets' })).toBeVisible();
-  await gallery.getByRole('button', { name: 'Report' }).click();
+  await gallery.getByRole('button', { name: 'Report', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Document' });
   await expect(editor).toContainText('Table 1: Measurements of the three tests');
   await expect(page.locator('.doc-name, .file-name').first()).toContainText('Report');
@@ -128,4 +128,29 @@ test('opens a template file as a new document and saves template files (FILE-020
   await expect(page.getByRole('textbox', { name: 'Document' })).toContainText('Letterhead of the lab');
   await expect(page.getByRole('alert')).toContainText('New document from a template');
   await expect(page.locator('header')).toContainText('letterhead.odt');
+});
+
+test('opens the examples with plots: a lab report with Python figures and a workbook of measurements (FILE-018, SHEET-024)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Lab report with Python plots' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await expect(editor).toContainText('R = 47.0 Ω');
+  const figures = editor.locator('.code-cell img');
+  await expect(figures).toHaveCount(5);
+  for (let i = 0; i < 5; i++) await expect.poll(() => figures.nth(i).evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(300);
+  await expect(editor).toContainText('E - E*exp(-t/(C*R))');
+  if (process.env.SCREENSHOTS) {
+    await figures.nth(2).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'test-results/lab.png', fullPage: false });
+  }
+
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Measurements and charts' }).click();
+  await expect(page.getByRole('figure', { name: /Damped oscillations/ })).toBeVisible();
+  await page.getByRole('tab', { name: 'Ohm’s law' }).click();
+  await expect(page.getByRole('figure', { name: /U against I/ })).toBeVisible();
+  await expect(page.locator('td[data-r="0"][data-c="5"]')).toHaveText('46.8');
+  expect(errors).toEqual([]);
 });

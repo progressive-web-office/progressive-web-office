@@ -74,6 +74,10 @@ docs-dev:
 icons:
     CHROMIUM_PATH="${CHROMIUM_PATH:-}" node scripts/render-icons.mjs
 
+# Run the Python cells of the lab example again and store their output and figures
+template-figures:
+    python3 scripts/template-figures.py
+
 # Everything to run before committing
 check: typecheck test build docs
 

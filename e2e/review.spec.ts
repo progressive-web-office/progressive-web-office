@@ -55,8 +55,9 @@ test('reviews a text document page by page and comments it (REVIEW-001..REVIEW-0
   await openFile(page, 'long.md', `# Report\n\n${paragraphs.join('\n\n')}\n`, 'text/markdown');
   const editor = page.getByRole('textbox', { name: 'Document' });
   await expect(editor).toContainText('Paragraph 60.');
-  await page.getByRole('button', { name: 'Review', exact: true }).click();
   const bar = page.getByRole('toolbar', { name: 'Review' });
+  await expect(bar).toBeHidden();
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
   await expect(bar).toBeVisible();
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeHidden();
   await expect(editor).toHaveAttribute('contenteditable', 'false');
@@ -101,5 +102,6 @@ test('reviews a text document page by page and comments it (REVIEW-001..REVIEW-0
   await bar.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
   await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await expect(bar).toBeHidden();
   expect(errors).toEqual([]);
 });

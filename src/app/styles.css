@@ -975,6 +975,7 @@ body.distraction-free .ai-panel { display: none !important; }
 
 /* REVIEW-001: review mode of text documents, shown as pages like a PDF file. */
 .doc-editor.reviewing > .toolbar:not(.review-bar), .doc-editor.reviewing > .table-bar { display: none !important; }
+.review-bar[hidden] { display: none !important; }
 .doc-editor.reviewing > .review-bar:not([hidden]) { display: flex !important; }
 .doc-editor.reviewing .doc-page { caret-color: transparent; }
 .doc-editor.reviewing .doc-scroll { outline: none; }
