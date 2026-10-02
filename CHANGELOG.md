@@ -10,6 +10,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- A click on the name of the open file renames it, keeping its extension;
+  in a folder or an archive the file is renamed there.
 - Settings window (⚙), by category: general (language, theme, your name,
   formats of new files), reading and review (pages side by side, zoom,
   page by page, open PDF files or documents in review mode, remember the

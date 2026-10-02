@@ -1129,6 +1129,15 @@ export const en = {
   'settings.docReview': 'Open text documents in review mode',
   'settings.typographyHint': 'Curly quotes, dashes, ellipsis and French spaces while typing; for the documents opened next.',
   'settings.printingHint': 'The defaults of the print preview.',
+  'file.rename': 'Rename',
+  'file.renameTitle': 'click to rename the file (its extension is kept)',
+  'file.renameLabel': 'Rename {name}',
+  'file.renameInput': 'New name of the file (without its extension)',
+  'file.extensionKept': 'The extension is kept',
+  'file.renameInvalid': 'This name cannot be used for a file.',
+  'file.renameReadOnly': 'The folder is read-only: the file cannot be renamed.',
+  'file.renameExists': 'A file named {name} already exists here.',
+  'file.renamed': 'Renamed to {name}.',
 } as const;
 
 export type MessageKey = keyof typeof en;

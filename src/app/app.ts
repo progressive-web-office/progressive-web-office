@@ -16,6 +16,7 @@ import {
 import { isTemplate, isTemplateBase, TEMPLATE_FORMATS, templateExtension, templateMimeType, toTemplate, type TemplateBase } from '../core/template-format';
 import { defaultFormat, FORMAT_FAMILIES, loadFormatFamily, saveFormatFamily, type FormatFamily } from '../core/format-preference';
 import { pickFile, readFileBytes, replaceExtension, saveFile } from '../storage/file-io';
+import { renamedKeepingExtension, splitExtension } from '../core/filename';
 import type { AssistantPanel } from '../ai/panel';
 import type { GitAccount } from '../git/accounts';
 import type { GitRepo } from '../git/types';
@@ -915,7 +916,7 @@ export class App {
     ];
     if (doc) {
       items.push(
-        h('span', { class: 'doc-name', title: doc.source ? `${t('git.source', { repo: doc.source.repo.name, branch: doc.source.branch })} — ${doc.source.path}` : formatLabel(doc.format) }, doc.name),
+        this.docNameElement(doc),
         doc.source ? h('span', { class: 'doc-source' }, `${doc.source.repo.name} · ${doc.source.branch}`) : null,
         doc.grist ? h('span', { class: 'doc-source' }, `Grist · ${new URL(doc.grist.account.serverUrl).host}`) : null,
         doc.dav ? h('span', { class: 'doc-source', title: doc.dav.path }, `☁ ${new URL(doc.dav.account.url).host}`) : null,
@@ -1220,6 +1221,82 @@ export class App {
     this.root.classList.remove('with-folder');
     if (this.current) delete this.current.folderPath;
     this.renderHeader();
+  }
+
+  /**
+   * FILE-026: the name of the open file; a click renames it, keeping its
+   * extension (the file of a folder or an archive is renamed there).
+   */
+  private docNameElement(doc: OpenDocument): HTMLElement {
+    const where = doc.source ? `${t('git.source', { repo: doc.source.repo.name, branch: doc.source.branch })} — ${doc.source.path}` : formatLabel(doc.format);
+    // A file of a repository, Grist or a server keeps the name it has there.
+    if (doc.source || doc.grist || doc.dav) return h('span', { class: 'doc-name', title: where }, doc.name);
+    const name = button(t('file.rename'), () => this.startRename(name), { text: doc.name, className: 'doc-name', title: `${where} — ${t('file.renameTitle')}` });
+    name.setAttribute('aria-label', t('file.renameLabel', { name: doc.name }));
+    return name;
+  }
+
+  private startRename(nameButton: HTMLElement): void {
+    const doc = this.current;
+    if (!doc) return;
+    const { stem, ext } = splitExtension(doc.name);
+    const input = h('input', { type: 'text', class: 'doc-rename', value: stem, 'aria-label': t('file.renameInput'), size: String(Math.max(8, stem.length + 2)) });
+    const form = h('form', { class: 'doc-rename-form' }, input, ext ? h('span', { class: 'doc-ext', title: t('file.extensionKept') }, ext) : null);
+    let done = false;
+    const finish = (apply: boolean): void => {
+      if (done) return;
+      done = true;
+      if (apply && input.value.trim() !== stem) void this.renameCurrent(input.value);
+      else this.renderHeader();
+    };
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      finish(true);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', () => finish(true));
+    nameButton.replaceWith(form);
+    input.focus();
+    input.select();
+  }
+
+  /** Rename the open file to `typed` plus its extension. */
+  async renameCurrent(typed: string): Promise<void> {
+    const doc = this.current;
+    if (!doc) return;
+    const name = renamedKeepingExtension(doc.name, typed);
+    if (!name) {
+      this.showError(t('file.renameInvalid'));
+      return this.renderHeader();
+    }
+    if (doc.folderPath && this.folder) {
+      const provider = this.folder.provider;
+      if (!provider.capabilities.write) {
+        this.showError(t('file.renameReadOnly'));
+        return this.renderHeader();
+      }
+      const from = doc.folderPath;
+      const to = from.includes('/') ? `${from.slice(0, from.lastIndexOf('/'))}/${name}` : name;
+      try {
+        if ((await provider.list(from.includes('/') ? from.slice(0, from.lastIndexOf('/')) : '')).some((e) => e.name === name)) throw new Error(t('file.renameExists', { name }));
+        await provider.move(from, to);
+      } catch (err) {
+        this.showError((err as Error).message);
+        return this.renderHeader();
+      }
+      await this.folderChanged({ type: 'rename', path: from, to, kind: 'file' });
+      await this.folder.refresh();
+      this.folder.setCurrent(to);
+    } else {
+      doc.name = name;
+      this.renderHeader();
+    }
+    this.showNotice(t('file.renamed', { name }));
   }
 
   /** A file renamed, moved or deleted in the explorer: follow the open document (FOLDER-004). */

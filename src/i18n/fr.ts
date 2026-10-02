@@ -1131,4 +1131,13 @@ export const fr: Record<MessageKey, string> = {
   'settings.docReview': 'Ouvrir les documents texte en mode correction',
   'settings.typographyHint': 'Guillemets, tirets, points de suspension et espaces françaises à la frappe ; pour les documents ouverts ensuite.',
   'settings.printingHint': 'Les valeurs par défaut de l’aperçu avant impression.',
+  'file.rename': 'Renommer',
+  'file.renameTitle': 'cliquez pour renommer le fichier (son extension est conservée)',
+  'file.renameLabel': 'Renommer {name}',
+  'file.renameInput': 'Nouveau nom du fichier (sans son extension)',
+  'file.extensionKept': 'L’extension est conservée',
+  'file.renameInvalid': 'Ce nom ne peut pas être utilisé pour un fichier.',
+  'file.renameReadOnly': 'Le dossier est en lecture seule : le fichier ne peut pas être renommé.',
+  'file.renameExists': 'Un fichier nommé {name} existe déjà ici.',
+  'file.renamed': 'Renommé en {name}.',
 };

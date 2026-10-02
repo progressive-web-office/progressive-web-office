@@ -74,6 +74,19 @@ save; otherwise the file is downloaded.
 A dot (●) next to the file name indicates unsaved changes; the browser warns
 you before closing the tab in that case.
 
+## Renaming the file
+
+Click the file name at the top of the window to rename it. Only the name is
+edited: the extension is shown beside it and kept (typing it again does not
+double it). <kbd>Enter</kbd> (or a click elsewhere) renames, <kbd>Esc</kbd>
+cancels.
+
+- A file of the open [folder or archive](./folders) is renamed there; the
+  folder panel, and the links of other notes to it, follow.
+- Another file takes the new name the next time it is saved.
+- A file of a Git repository, Grist or a Nextcloud / WebDAV server keeps the
+  name it has there.
+
 ## Versions
 
 Each time you save a document (to a file, a folder, Nextcloud or a Git

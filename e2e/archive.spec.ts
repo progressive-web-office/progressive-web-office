@@ -143,3 +143,43 @@ test('shows the pictures of a note of a folder and keeps them on export; Save as
   expect(saved).not.toContain('data:image');
   expect(errors).toEqual([]);
 });
+
+test('renames the open file with a click on its name, keeping the extension (FILE-026)', async ({ page }) => {
+  const errors = await openApp(page);
+  // A file on its own: the new name is used to save it.
+  await openFile(page, 'notes.md', '# Notes\n', 'text/markdown');
+  await page.getByRole('button', { name: 'Rename notes.md' }).click();
+  const input = page.getByRole('textbox', { name: 'New name of the file (without its extension)' });
+  await expect(input).toHaveValue('notes');
+  await expect(page.locator('.doc-ext')).toHaveText('.md');
+  await input.fill('CR TP 1');
+  await input.press('Enter');
+  await expect(page.getByRole('button', { name: 'Rename CR TP 1.md' })).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  expect((await download).suggestedFilename()).toBe('CR TP 1.md');
+  // Escape keeps the name.
+  await page.getByRole('button', { name: 'Rename CR TP 1.md' }).click();
+  await input.fill('other');
+  await input.press('Escape');
+  await expect(page.getByRole('button', { name: 'Rename CR TP 1.md' })).toBeVisible();
+
+  // A file of an archive is renamed in the archive.
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await openFile(page, 'work.zip', Buffer.from(zipSync({ 'a/report.md': strToU8('# Report\n'), 'a/other.docx': strToU8('x') })), 'application/zip');
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'a', exact: true }).click();
+  await panel.getByRole('button', { name: 'report.md' }).click();
+  await page.getByRole('button', { name: 'Rename report.md' }).click();
+  await input.fill('final.md');
+  await input.press('Enter');
+  await expect(page.getByRole('status').or(page.getByRole('alert')).filter({ hasText: 'Renamed to final.md' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'final.md' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'report.md' })).toHaveCount(0);
+  const archive = page.waitForEvent('download');
+  await panel.getByRole('button', { name: 'Download the archive with its changes' }).click();
+  const chunks: Buffer[] = [];
+  for await (const c of await (await archive).createReadStream()) chunks.push(c as Buffer);
+  expect(Object.keys(unzipSync(new Uint8Array(Buffer.concat(chunks)))).sort()).toEqual(['a/final.md', 'a/other.docx']);
+  expect(errors).toEqual([]);
+});

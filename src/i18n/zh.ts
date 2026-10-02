@@ -1131,4 +1131,13 @@ export const zh: Record<MessageKey, string> = {
   'settings.docReview': '以审阅模式打开文本文档',
   'settings.typographyHint': '输入时使用弯引号、破折号、省略号和法语空格；适用于之后打开的文档。',
   'settings.printingHint': '打印预览的默认值。',
+  'file.rename': '重命名',
+  'file.renameTitle': '点击重命名文件（保留扩展名）',
+  'file.renameLabel': '重命名 {name}',
+  'file.renameInput': '文件的新名称（不含扩展名）',
+  'file.extensionKept': '扩展名将保留',
+  'file.renameInvalid': '此名称不能用作文件名。',
+  'file.renameReadOnly': '文件夹为只读：无法重命名文件。',
+  'file.renameExists': '此处已存在名为 {name} 的文件。',
+  'file.renamed': '已重命名为 {name}。',
 };

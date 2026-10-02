@@ -107,6 +107,12 @@ button:disabled { opacity: 0.5; cursor: default; }
   background: var(--accent); color: var(--accent-contrast); font-weight: 700;
 }
 .doc-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
+/* FILE-026: the name is a button that renames the file. */
+button.doc-name { background: transparent; border-color: transparent; padding: 2px 6px; font-size: inherit; color: inherit; cursor: text; }
+button.doc-name:hover { border-color: var(--border); background: var(--sel); }
+.doc-rename-form { display: inline-flex; align-items: baseline; min-width: 0; max-width: 50vw; font-weight: 600; }
+.doc-rename { font: inherit; padding: 2px 6px; min-width: 6rem; max-width: 100%; }
+.doc-ext { color: var(--muted); padding-left: 2px; }
 .modified { color: var(--accent); }
 .header-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
 
