@@ -84,7 +84,7 @@ test('works on a folder: tree, search, links, saving in place and master documen
   await panel.getByLabel('Search the folder').fill('');
 
   // The master document: sub-documents, and Ctrl+click on a relative link.
-  await panel.getByRole('button', { name: 'main.md' }).click();
+  await panel.getByRole('navigation', { name: 'Documents of the folder' }).getByRole('button', { name: 'main.md' }).click();
   const editor = page.getByRole('textbox', { name: 'Document' });
   await expect(editor.locator('div.include')).toHaveCount(2);
   await editor.getByRole('link', { name: 'the first chapter' }).click({ modifiers: ['Control'] });
@@ -99,7 +99,7 @@ test('works on a folder: tree, search, links, saving in place and master documen
   await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('chapters/one.md'))).toContain('A PID regulator. Tuned.');
 
   // Assembling the master document gives one file with its chapters.
-  await panel.getByRole('button', { name: 'main.md' }).click();
+  await panel.getByRole('navigation', { name: 'Documents of the folder' }).getByRole('button', { name: 'main.md' }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Assemble…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Assemble…' });
@@ -154,4 +154,29 @@ test('keeps documents in the browser storage (FOLDER-006)', async ({ page }) => 
   await dialog.getByLabel('Browser storage').check();
   await dialog.getByRole('button', { name: 'Open' }).click();
   await expect(panel.getByRole('button', { name: 'Draft.md' })).toBeVisible();
+});
+
+test('follows links between Markdown notes, shows backlinks and keeps links on rename (FOLDER-005)', async ({ page }) => {
+  await fakeFolder(page, {
+    'index.md': '# Index\n\nSee [[Control]] and [[Missing note]].\n',
+    'notes/Control.md': '# Control\n\nA PID regulator.\n',
+  });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'index.md' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await editor.getByRole('link', { name: 'Control' }).click({ modifiers: ['Control'] });
+  await expect(page.locator('.doc-page h1')).toHaveText('Control');
+  await expect(panel.getByRole('heading', { name: 'Linked from (1)' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'index.md' }).last()).toBeVisible();
+  // Renaming the note updates the link in index.md.
+  page.once('dialog', (d) => void d.accept('Regulation.md'));
+  await panel.getByRole('button', { name: 'Rename (F2)' }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('index.md'))).toContain('[[Regulation]]');
+  // A link to a missing note creates it.
+  await panel.getByRole('button', { name: 'index.md' }).first().click();
+  page.once('dialog', (d) => void d.accept());
+  await editor.getByRole('link', { name: 'Missing note' }).click({ modifiers: ['Control'] });
+  await expect(page.locator('.doc-page h1')).toHaveText('Missing note');
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.has('Missing note.md'))).toBe(true);
 });

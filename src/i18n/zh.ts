@@ -745,4 +745,10 @@ export const zh: Record<MessageKey, string> = {
   'ro.editCopyTitle': '创建可编辑的副本，另存为新文件',
   'ro.copySuffix': '（副本）',
   'ro.cannotSave': '此文档为只读：请选择“编辑”，或使用“另存为”保留副本。',
+  'vault.noFolder': '请打开此笔记所在的文件夹（📁）以跟随笔记之间的链接。',
+  'vault.create': '文件夹中没有笔记“{name}”。要创建吗？',
+  'vault.linksUpdated': '已更新 {n} 篇笔记中的链接。',
+  'vault.backlinks': '链接到此处的笔记',
+  'vault.backlinksCount': '反向链接（{n}）',
+  'vault.noBacklinks': '尚无笔记链接到此笔记。',
 };

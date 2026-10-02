@@ -32,6 +32,7 @@ import {
   type MathRun,
 } from './model';
 import { toCsl } from './bibliography';
+import { EMBED, WIKI, wikiLink } from './wiki-links';
 
 export interface MarkdownWriteOptions {
   /**
@@ -235,7 +236,9 @@ class MarkdownWriter {
     };
 
     for (const run of runs) {
-      const wanted: Mark[] = !isTextRun(run) ? [] : MARK_ORDER.filter((m) => (m === 'link' ? !!run.link : !!run[m]));
+      // FOLDER-005: wiki links are written as [[note#heading|alias]], not as Markdown links.
+      const wiki = isTextRun(run) && run.link?.startsWith(WIKI) ? run : undefined;
+      const wanted: Mark[] = !isTextRun(run) ? [] : MARK_ORDER.filter((m) => (m === 'link' ? !!run.link && !wiki : !!run[m]));
       // Keep the longest common prefix of open marks (same link target).
       let keep = 0;
       while (
@@ -285,6 +288,10 @@ class MarkdownWriter {
         out += `[^${n}]`;
         continue;
       }
+      if (isImageRun(run) && run.title === EMBED && run.src) {
+        out += `![[${run.src}]]`;
+        continue;
+      }
       if (isImageRun(run)) {
         const url = run.image ? (this.opts.imageUrl ? this.opts.imageUrl(run.image) : this.dataUri(run.image)) : (run.src ?? '');
         out += `![${escapeInline(run.alt ?? '')}](${url.replace(/[()\s]/g, encodeURIComponent)})`;
@@ -308,7 +315,9 @@ class MarkdownWriter {
         }
         open.push(m);
       }
-      out += run.code
+      out += wiki
+        ? wikiLink(wiki.link!.slice(WIKI.length), text)
+        : run.code
         ? text.split('\n').map(codeSpan).join('\\\n')
         : escapeInline(text).replace(/\n/g, '\\\n');
       pendingSpace = trail;

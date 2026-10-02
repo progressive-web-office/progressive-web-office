@@ -62,6 +62,8 @@ export async function openView(
   bytes: Uint8Array,
   ctx: ViewContext,
   fileName = 'document',
+  /** Pictures referenced by a Markdown note, read from its folder (FOLDER-005). */
+  resolveImage?: import('../document/markdown-reader').MarkdownReadOptions['resolveImage'],
 ): Promise<EditorView> {
   switch (format) {
     case 'docx':
@@ -74,6 +76,7 @@ export async function openView(
       const doc = await readDocument(format, bytes, {
         chooseEntry: (candidates, preselected) =>
           ctx.choose(t('mdz.chooseTitle'), t('mdz.chooseMessage'), candidates, preselected),
+        ...(resolveImage ? { resolveImage } : {}),
       });
       return new DocumentEditor(doc, ctx);
     }

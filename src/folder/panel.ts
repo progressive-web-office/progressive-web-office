@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { Explorer, listFiles, type Entry, type ExplorerChange, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
 import type { FolderIndex, SearchHit } from './search';
+import { isNote, NoteVault } from './vault';
 
 /** Files the app opens, by extension. */
 export const OPENABLE = /\.(docx|odt|odm|md|markdown|mdz|tex|xlsx|ods|csv|tsv|pptx|odp|pdf)$/i;
@@ -31,6 +32,9 @@ export const iconOf = (path: string): string => ICONS.find(([re]) => re.test(pat
 export class FolderPanel {
   readonly element: HTMLElement;
   readonly explorer: Explorer;
+  /** Links between the folder's Markdown notes (FOLDER-005). */
+  readonly vault: NoteVault;
+  private readonly backlinks: HTMLElement;
   private readonly results: HTMLElement;
   private readonly search: HTMLInputElement;
   private paths: string[] = [];
@@ -41,6 +45,8 @@ export class FolderPanel {
     private readonly index: FolderIndex,
     private readonly hooks: FolderPanelHooks,
   ) {
+    this.vault = new NoteVault(provider);
+    this.backlinks = h('section', { class: 'folder-backlinks', 'aria-label': t('vault.backlinks'), hidden: true });
     this.explorer = new Explorer({
       provider,
       strings: {
@@ -83,6 +89,7 @@ export class FolderPanel {
       this.search,
       this.results,
       this.explorer.element,
+      this.backlinks,
     );
   }
 
@@ -103,6 +110,24 @@ export class FolderPanel {
 
   setCurrent(path: string | undefined): void {
     this.explorer.setCurrent(path);
+    if (!path) this.backlinks.hidden = true;
+  }
+
+  /** The notes linking to the open note (FOLDER-005). */
+  async showBacklinks(path: string): Promise<void> {
+    if (!isNote(path)) {
+      this.backlinks.hidden = true;
+      return;
+    }
+    this.vault.clear();
+    const from = await this.vault.backlinks(path, this.paths.filter(isNote));
+    this.backlinks.hidden = false;
+    this.backlinks.replaceChildren(
+      h('h3', {}, t('vault.backlinksCount', { n: from.length })),
+      from.length
+        ? h('ul', { role: 'list' }, ...from.map((p) => h('li', {}, button(p, () => this.hooks.open(p), { className: 'folder-file', icon: '↩' }))))
+        : h('p', { class: 'hint' }, t('vault.noBacklinks')),
+    );
   }
 
   private async runSearch(): Promise<void> {

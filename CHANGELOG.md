@@ -75,6 +75,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   presentation read-only (toolbars hidden, no changes, Save refused) with a
   banner offering Edit and Edit a copy; documents of a read-only folder
   always open read-only, editable only as a copy.
+- Linked Markdown notes in folders: `[[note]]`, `[[note#heading]]` and
+  `[[note|text]]` links (Ctrl+click, by name or front matter alias, a missing
+  note created on demand), `![[picture]]` embeds and pictures of the folder
+  shown in notes, backlinks in the folder panel, and links updated when a
+  note is renamed. The explorer's selection follows the open document.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

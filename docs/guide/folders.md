@@ -48,6 +48,23 @@ searched, and Save downloads a copy.
 
 Hidden folders (`.git`…) and `node_modules` are left out.
 
+## Linked notes
+
+A folder of Markdown notes works as a set of linked notes:
+
+- `[[Note]]` links to the note `Note.md` (in the same folder first, then
+  anywhere in the folder, then by one of its `aliases:` in the front matter);
+  `[[Note#Heading]]` goes to a heading, `[[Note|shown text]]` shows another
+  text. <kbd>Ctrl</kbd>+click follows the link; a link to a note that does
+  not exist yet offers to create it.
+- `![[picture.png]]` shows a picture of the folder; `![[Note]]` is kept as a
+  link to that note.
+- The panel lists the notes **linked from** the open note (backlinks).
+- Renaming a note in the panel updates the `[[links]]` to it in the other
+  notes.
+- The YAML front matter of each note (tags, aliases, any key) is kept as it
+  is.
+
 ## Master documents
 
 A **master document** gathers **sub-documents** — the chapters of a thesis,

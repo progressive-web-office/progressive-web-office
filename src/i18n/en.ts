@@ -743,6 +743,12 @@ export const en = {
   'ro.editCopyTitle': 'Make an editable copy, saved as a new file',
   'ro.copySuffix': ' (copy)',
   'ro.cannotSave': 'This document is read-only: choose Edit, or Save as to keep a copy.',
+  'vault.noFolder': 'Open the folder of this note (📁) to follow its links between notes.',
+  'vault.create': 'There is no note “{name}” in the folder. Create it?',
+  'vault.linksUpdated': 'Links updated in {n} notes.',
+  'vault.backlinks': 'Notes linking here',
+  'vault.backlinksCount': 'Linked from ({n})',
+  'vault.noBacklinks': 'No note links to this one yet.',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -148,14 +148,14 @@ export class App {
   }
 
   /** Detect the format and show the matching editor; returns the format on success. */
-  private async openBytes(name: string, bytes: Uint8Array, source?: RepoSource): Promise<DocumentFormat | null> {
+  private async openBytes(name: string, bytes: Uint8Array, source?: RepoSource, resolveImage?: import('../document/markdown-reader').MarkdownReadOptions['resolveImage']): Promise<DocumentFormat | null> {
     try {
       const format = detectFormat(name, bytes);
       if (!format) {
         this.showError(t('error.unsupported', { name }));
         return null;
       }
-      const view = await openView(format, bytes, this.viewContext(), name);
+      const view = await openView(format, bytes, this.viewContext(), name, resolveImage);
       const doc: OpenDocument = { name, format, kind: formatKind(format), view };
       if (source) doc.source = source;
       this.setDocument(doc);
@@ -977,6 +977,19 @@ export class App {
   private async folderChanged(change: import('../fs').ExplorerChange): Promise<void> {
     const doc = this.current;
     const { isInside } = await import('../fs');
+    // FOLDER-005: links to a renamed note follow it.
+    if (this.folder && change.to && change.kind === 'file' && /\.(md|markdown)$/i.test(change.path)) {
+      const notes = this.folder.files().filter((p) => /\.(md|markdown)$/i.test(p));
+      this.folder.vault.clear();
+      const skip = doc?.folderPath && this.dirty ? doc.folderPath : undefined;
+      const changed = await this.folder.vault.renameLinks(change.path, change.to, notes, skip);
+      if (changed.length) this.showNotice(t('vault.linksUpdated', { n: changed.length }));
+      if (doc?.folderPath && changed.includes(doc.folderPath) && !this.dirty) {
+        const path = doc.folderPath;
+        delete doc.folderPath;
+        await this.openFromFolder(path);
+      }
+    }
     if (!doc?.folderPath || !isInside(doc.folderPath, change.path)) return;
     if (change.type === 'remove') {
       delete doc.folderPath;
@@ -1023,10 +1036,12 @@ export class App {
       const { readBytes } = await import('../fs');
       const bytes = await readBytes(folder.provider, path).catch(() => undefined);
       if (!bytes) return this.showError(t('folder.missing', { path }));
-      if (!(await this.openBytes(basename(path), bytes))) return;
+      const images = /\.(md|markdown)$/i.test(path) ? await this.noteImages(path, new TextDecoder().decode(bytes)) : undefined;
+      if (!(await this.openBytes(basename(path), bytes, undefined, images && ((src) => images.get(src))))) return;
       if (this.current) this.current.folderPath = path;
       if (this.current && !folder.provider.capabilities.write) this.setReadOnly(true, true);
       folder.setCurrent(path);
+      void folder.showBacklinks(path);
       this.renderHeader();
       if (query) this.current?.view.find?.(query);
     });
@@ -1056,12 +1071,66 @@ export class App {
 
   /** A link relative to the open document, opened from the folder (FOLDER-003). */
   private openLink(href: string): boolean {
+    if (href.startsWith('wiki:')) {
+      void this.openWikiLink(href.slice('wiki:'.length).replace(/^!/, ''));
+      return true;
+    }
     const folder = this.folder;
     if (!folder || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('#') || href.startsWith('//')) return false;
     const from = this.current?.folderPath ?? '';
     const target = decodeURI(href.replace(/[#?].*$/, ''));
     void import('../document/master').then(({ resolvePath }) => this.openFromFolder(resolvePath(from, target)));
     return true;
+  }
+
+  /** FOLDER-005: follow `[[note#heading]]`; a missing note can be created. */
+  private async openWikiLink(ref: string): Promise<void> {
+    const folder = this.folder;
+    if (!folder) return this.showNotice(t('vault.noFolder'));
+    const hash = ref.indexOf('#');
+    const target = hash >= 0 ? ref.slice(0, hash) : ref;
+    const heading = hash >= 0 ? ref.slice(hash + 1) : '';
+    const from = this.current?.folderPath ?? '';
+    const notes = folder.files().filter((p) => /\.(md|markdown)$/i.test(p));
+    let path = target ? await folder.vault.resolve(target, notes, from) : from;
+    if (!path) {
+      if (!window.confirm(t('vault.create', { name: target }))) return;
+      const { join, dirname } = await import('../fs');
+      path = join(target.includes('/') ? '' : dirname(from), `${target}.md`);
+      await folder.provider.write(path, new Blob([`# ${target.split('/').pop()}\n`]));
+      await folder.refresh();
+    }
+    await this.openFromFolder(path, heading || undefined);
+  }
+
+  /** Pictures referenced by a note (`![](img.png)`, `![[img.png]]`), read from the folder. */
+  private async noteImages(path: string, text: string): Promise<Map<string, { data: Uint8Array; mediaType: string; name: string }>> {
+    const folder = this.folder;
+    const out = new Map<string, { data: Uint8Array; mediaType: string; name: string }>();
+    if (!folder) return out;
+    const [{ readBytes, resolve, listFiles }, { mediaTypeForName }] = await Promise.all([import('../fs'), import('../document/model')]);
+    const refs = new Set<string>();
+    for (const m of text.matchAll(/!\[[^\]]*\]\(([^)\s]+)/g)) if (!/^[a-z]+:/i.test(m[1]!)) refs.add(decodeURI(m[1]!));
+    for (const m of text.matchAll(/!\[\[([^\]|#]+\.(?:png|jpe?g|gif|svg|webp|bmp|avif))/gi)) refs.add(m[1]!.trim());
+    if (!refs.size) return out;
+    let all: string[] | undefined;
+    for (const ref of refs) {
+      let target: string | undefined;
+      try {
+        target = resolve(path, ref);
+      } catch {
+        target = undefined;
+      }
+      let bytes = target ? await readBytes(folder.provider, target).catch(() => undefined) : undefined;
+      if (!bytes && !ref.includes('/')) {
+        // An embed names a picture anywhere in the folder.
+        all ??= await listFiles(folder.provider);
+        const found = all.find((p) => p.split('/').pop()!.toLowerCase() === ref.toLowerCase());
+        if (found) bytes = await readBytes(folder.provider, found).catch(() => undefined);
+      }
+      if (bytes) out.set(ref, { data: bytes, mediaType: mediaTypeForName(ref), name: ref.split('/').pop()! });
+    }
+    return out;
   }
 
   /** The folder's documents, relative to the open document (to include them, DOC-028). */

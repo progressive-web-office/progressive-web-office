@@ -8,6 +8,7 @@ import { writeLatex } from './latex-writer';
 import { readMarkdown } from './markdown-reader';
 import { writeMarkdown } from './markdown-writer';
 import { readMdz, type MdzReadOptions } from './mdz-reader';
+import type { MarkdownReadOptions } from './markdown-reader';
 import { writeMdz } from './mdz-writer';
 import { collectDiagrams, collectMath, type RenderedDiagram, type RichDocument, type WriteOptions } from './model';
 import { readOdt } from './odt-reader';
@@ -15,14 +16,14 @@ import { writeOdt } from './odt-writer';
 
 export type TextFormat = Extract<DocumentFormat, 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip'>;
 
-export async function readDocument(format: TextFormat, bytes: Uint8Array, opts: MdzReadOptions = {}): Promise<RichDocument> {
+export async function readDocument(format: TextFormat, bytes: Uint8Array, opts: MdzReadOptions & MarkdownReadOptions = {}): Promise<RichDocument> {
   switch (format) {
     case 'docx':
       return readDocx(bytes);
     case 'odt':
       return readOdt(bytes);
     case 'md':
-      return readMarkdown(new TextDecoder().decode(bytes));
+      return readMarkdown(new TextDecoder().decode(bytes), opts);
     case 'mdz':
       return readMdz(bytes, opts);
     case 'tex':

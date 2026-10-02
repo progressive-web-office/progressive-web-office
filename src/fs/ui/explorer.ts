@@ -150,8 +150,14 @@ export class Explorer {
   /** Mark the entry being edited by the host. */
   setCurrent(path: string | undefined): void {
     this.current = path;
+    // The open entry is also the one the toolbar acts on.
+    if (path) this.selected = { name: basename(path), path, kind: 'file' };
+    for (const r of this.tree.querySelectorAll('.fs-selected')) r.classList.remove('fs-selected');
     for (const b of this.tree.querySelectorAll<HTMLElement>('[data-path]')) {
-      if (b.dataset.path === path) b.setAttribute('aria-current', 'page');
+      if (b.dataset.path === path) {
+        b.setAttribute('aria-current', 'page');
+        b.classList.add('fs-selected');
+      }
       else b.removeAttribute('aria-current');
     }
   }

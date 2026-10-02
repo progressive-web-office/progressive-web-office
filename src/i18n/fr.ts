@@ -745,4 +745,10 @@ export const fr: Record<MessageKey, string> = {
   'ro.editCopyTitle': 'Créer une copie modifiable, enregistrée comme un nouveau fichier',
   'ro.copySuffix': ' (copie)',
   'ro.cannotSave': 'Ce document est en lecture seule : choisissez Modifier, ou Enregistrer sous pour garder une copie.',
+  'vault.noFolder': 'Ouvrez le dossier de cette note (📁) pour suivre ses liens vers d’autres notes.',
+  'vault.create': 'Il n’y a pas de note « {name} » dans le dossier. La créer ?',
+  'vault.linksUpdated': 'Liens mis à jour dans {n} notes.',
+  'vault.backlinks': 'Notes qui pointent ici',
+  'vault.backlinksCount': 'Liée depuis ({n})',
+  'vault.noBacklinks': 'Aucune note ne pointe encore vers celle-ci.',
 };

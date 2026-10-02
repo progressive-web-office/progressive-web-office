@@ -5,6 +5,7 @@
  */
 import { parseFrontMatter } from './frontmatter';
 import { fromCsl, type BibEntry } from './bibliography';
+import { wikiRuns } from './wiki-links';
 import footnotePlugin from 'markdown-it-footnote';
 import MarkdownItCallable, { type MarkdownIt, type StateBlock, type StateInline, type Token } from 'markdown-it';
 import {
@@ -538,4 +539,6 @@ function crossReferences(blocks: Block[]): void {
       return out;
     });
   for (const p of allParagraphs(blocks)) p.runs = cites(p.runs);
+  // FOLDER-005: [[wiki links]] and ![[embeds]] between notes.
+  for (const p of allParagraphs(blocks)) p.runs = wikiRuns(p.runs);
 }
