@@ -10,6 +10,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Sort a spreadsheet range (⇅ *Sort…*) by a column, ascending or
+  descending, with a header row detected and kept in place.
 - Page numbering styles in text documents: `1, 2, 3`, roman numerals or
   letters, a chosen first number, no header and footer on a title page, and
   ready-made footers (`1`, `1/10`, `- 1 -`, `Page 1 of 10`). Printed, and

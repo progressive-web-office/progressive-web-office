@@ -29,7 +29,8 @@ group is not a commitment.
 ### Spreadsheet
 
 - Cell formatting (number formats, fonts, borders, fills), freeze panes
-- Sort and filter, fill handle, conditional formatting, data validation
+- ✅ Sort (SHEET-016); filter, fill handle, conditional formatting, data
+  validation
 - About a hundred more functions
 - Executable notebooks: code cells (Python/JavaScript) that read and write
   the cells of an open workbook

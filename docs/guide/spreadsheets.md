@@ -68,6 +68,21 @@ function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`
 - The format list applies a number format (decimals, thousands separator,
   percent, dates, currency) to the selection.
 
+## Sorting
+
+**⇅** (*Sort…*) sorts the rows of the selection, or, when a single cell is
+selected, of the block of filled cells around it. Choose the column to sort
+by and the order. When the first row looks like a header (text above
+numbers), it is ticked as one and stays in place; untick it otherwise.
+
+- Rows move as a whole within the sorted range; cells outside it do not
+  move.
+- Numbers come before text, text is sorted without regard to case or
+  accents, and empty cells always go last.
+- Values are compared as computed: a formula cell sorts by its result, and
+  its relative references follow its row, as when copying.
+- One <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the sort.
+
 ## Charts
 
 1. Select the data — or just click inside a block of data: the whole block is
