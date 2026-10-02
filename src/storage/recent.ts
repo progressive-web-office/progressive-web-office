@@ -5,7 +5,7 @@
 import type { DocumentFormat } from '../core/format';
 
 const DB_NAME = 'pwo';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 export const MAX_RECENT = 12;
 /** Larger files are not kept in the recent list (storage quota). */
 export const MAX_RECENT_SIZE = 25 * 1024 * 1024;
@@ -43,6 +43,8 @@ function db(): Promise<IDBDatabase> {
       const d = req.result;
       if (!d.objectStoreNames.contains('recent')) d.createObjectStore('recent', { keyPath: 'id' });
       if (!d.objectStoreNames.contains('drafts')) d.createObjectStore('drafts', { keyPath: 'id' });
+      // FOLDER-001: the last opened folder (a directory handle).
+      if (!d.objectStoreNames.contains('folders')) d.createObjectStore('folders', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -57,7 +59,7 @@ function request<T>(req: IDBRequest<T>): Promise<T> {
   });
 }
 
-async function store(name: 'recent' | 'drafts', mode: IDBTransactionMode): Promise<IDBObjectStore> {
+async function store(name: 'recent' | 'drafts' | 'folders', mode: IDBTransactionMode): Promise<IDBObjectStore> {
   return (await db()).transaction(name, mode).objectStore(name);
 }
 
@@ -110,4 +112,30 @@ export async function loadDraft(): Promise<Draft | undefined> {
 
 export async function clearDraft(): Promise<void> {
   await request((await store('drafts', 'readwrite')).delete('current'));
+}
+
+/** Remember the folder opened last, to offer it again (FOLDER-001). */
+export async function rememberFolder(handle: FileSystemDirectoryHandle): Promise<void> {
+  try {
+    await request((await store('folders', 'readwrite')).put({ id: 'last', name: handle.name, handle }));
+  } catch {
+    /* no storage: nothing to offer next time */
+  }
+}
+
+export async function lastFolder(): Promise<FileSystemDirectoryHandle | undefined> {
+  try {
+    const rec = (await request((await store('folders', 'readonly')).get('last'))) as { handle?: FileSystemDirectoryHandle } | undefined;
+    return rec?.handle;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function forgetFolder(): Promise<void> {
+  try {
+    await request((await store('folders', 'readwrite')).delete('last'));
+  } catch {
+    /* nothing stored */
+  }
 }

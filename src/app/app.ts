@@ -40,6 +40,8 @@ interface OpenDocument {
   grist?: GristSource;
   /** Opened from or saved to Nextcloud / WebDAV: Save writes it back (DAV-003). */
   dav?: CloudSource;
+  /** Path in the open folder: Save writes it back there (FOLDER-001). */
+  folderPath?: string;
 }
 
 interface CloudSource {
@@ -90,6 +92,8 @@ export class App {
   private unregisterAgentTools: (() => void) | null = null;
   /** Real-time collaboration session on the open document (COLLAB-001). */
   private collab: import('../collab/ui').Collaboration | null = null;
+  /** The open folder and its side panel (FOLDER-001). */
+  private folder: import('../folder/panel').FolderPanel | null = null;
 
   constructor(
     private readonly root: HTMLElement,
@@ -101,6 +105,10 @@ export class App {
     this.alert = h('div', { class: 'app-alert', role: 'alert', hidden: true });
     this.busy = h('div', { class: 'app-busy', role: 'status', hidden: true }, t('app.working'));
     root.replaceChildren(this.header, this.alert, this.main, this.statusBar, this.busy);
+    // Side panels (folder, assistant) start under the header, which wraps on narrow screens.
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(() => root.style.setProperty('--header-h', `${this.header.offsetHeight}px`)).observe(this.header);
+    }
     root.classList.add('app');
     root.dataset.dropLabel = t('start.drop');
     this.installDropZone();
@@ -397,6 +405,7 @@ export class App {
     if (!format && doc.source) return this.commitToRepository();
     if (!format && doc.grist) return this.saveToGrist();
     if (!format && doc.dav) return this.saveToCloud();
+    if (doc.folderPath && this.folder?.folder.writable) return this.saveToFolder(format);
     const target = format ?? doc.format;
     try {
       const bytes = await doc.view.save(target);
@@ -553,6 +562,7 @@ export class App {
 
   close(): void {
     if (!this.confirmDiscard()) return;
+    this.folder?.setCurrent(undefined);
     this.leaveCollaboration();
     this.current?.view.destroy();
     this.current = null;
@@ -582,6 +592,8 @@ export class App {
         this.collab?.cursorMoved();
       },
       choose: (title, message, options, preselected) => this.choose(title, message, options, preselected),
+      openLink: (href) => this.openLink(href),
+      folderDocuments: () => this.folderDocuments(),
     };
   }
 
@@ -692,6 +704,7 @@ export class App {
           button(t('start.newSpreadsheet'), () => void this.newDocument('spreadsheet'), { className: 'card sheet', icon: '📊' }),
           button(t('start.newPresentation'), () => void this.newDocument('presentation'), { className: 'card pres', icon: '📽️' }),
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open', icon: '📂' }),
+          button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
           button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
           button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
           button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
@@ -714,6 +727,7 @@ export class App {
     );
     this.renderStart?.(recent);
     void this.offerDraft(recent);
+    void this.offerLastFolder(recent);
     this.renderHeader();
     this.renderStatus();
   }
@@ -790,6 +804,8 @@ export class App {
       );
     }
     const actions = h('nav', { class: 'header-actions', 'aria-label': t('file.actions') });
+    if (this.folder) actions.append(button(t('folder.panel'), () => this.toggleFolderPanel(), { text: '📁', className: 'icon', title: t('folder.toggleTitle', { name: this.folder.folder.name }), pressed: this.root.classList.contains('with-folder') }));
+    if (doc?.view.masterDocument?.()?.blocks.some((b) => b.type === 'include')) actions.append(button(t('master.export'), () => void this.exportAssembled(), { title: t('master.exportTitle') }));
     actions.append(
       button(t('file.open'), () => void this.pickAndOpen(), { title: t('file.openTitle') }),
       button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }),
@@ -827,6 +843,162 @@ export class App {
       );
     }
     this.header.replaceChildren(...items.filter((n): n is Node => n !== null), actions);
+  }
+
+  // --- folder mode (FOLDER-001..FOLDER-003) and master documents (DOC-028) ------
+
+  /** Open a local folder as a project: its documents in a side panel. */
+  async openFolder(): Promise<void> {
+    const { pickFolder } = await import('../storage/folder');
+    let folder;
+    try {
+      folder = await pickFolder();
+    } catch (err) {
+      this.showError(t('folder.error', { message: (err as Error).message }));
+      return;
+    }
+    if (folder) await this.setFolder(folder);
+  }
+
+  private async setFolder(folder: import('../storage/folder').ProjectFolder): Promise<void> {
+    const [{ FolderPanel }, { FolderIndex }, { rememberFolder }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent')]);
+    this.folder?.element.remove();
+    const index = new FolderIndex(folder, async (name, bytes) => {
+      const format = detectFormat(name, bytes);
+      if (!format || formatKind(format) !== 'document') return undefined;
+      const { readDocument } = await import('../document/io');
+      return readDocument(format as import('../document/io').TextFormat, bytes);
+    });
+    this.folder = new FolderPanel(folder, index, { open: (path, query) => void this.openFromFolder(path, query), close: () => this.closeFolder() });
+    this.root.append(this.folder.element);
+    this.root.classList.add('with-folder');
+    await this.withBusy(() => this.folder!.refresh());
+    if (folder.handle) void rememberFolder(folder.handle);
+    this.renderHeader();
+  }
+
+  private closeFolder(): void {
+    this.folder?.element.remove();
+    this.folder = null;
+    this.root.classList.remove('with-folder');
+    if (this.current) delete this.current.folderPath;
+    this.renderHeader();
+  }
+
+  private toggleFolderPanel(): void {
+    this.root.classList.toggle('with-folder');
+    this.renderHeader();
+  }
+
+  /** On the start screen: reopen the folder opened last (permission is asked again). */
+  private async offerLastFolder(recent: HTMLElement): Promise<void> {
+    const { lastFolder } = await import('../storage/recent');
+    const handle = await lastFolder();
+    if (!handle || this.current || !recent.isConnected) return;
+    const reopen = button(t('folder.reopen', { name: handle.name }), () => {
+      void (async () => {
+        const { HandleFolder } = await import('../storage/folder');
+        const folder = await HandleFolder.reopen(handle);
+        if (folder) await this.setFolder(folder);
+        else this.showError(t('folder.denied', { name: handle.name }));
+      })();
+    }, { className: 'card folder', icon: '📁' });
+    recent.before(h('div', { class: 'start-actions folder-reopen' }, reopen));
+  }
+
+  /** Open a document of the folder; `query` shows its first match. */
+  async openFromFolder(path: string, query?: string): Promise<void> {
+    const folder = this.folder;
+    if (!folder) return;
+    if (this.current?.folderPath === path) {
+      if (query) this.current.view.find?.(query);
+      return;
+    }
+    if (!this.confirmDiscard()) return;
+    await this.withBusy(async () => {
+      const bytes = await folder.folder.read(path);
+      if (!bytes) return this.showError(t('folder.missing', { path }));
+      if (!(await this.openBytes(basename(path), bytes))) return;
+      if (this.current) this.current.folderPath = path;
+      folder.setCurrent(path);
+      this.renderHeader();
+      if (query) this.current?.view.find?.(query);
+    });
+  }
+
+  /** Save into the folder, in place or next to it in another format. */
+  private async saveToFolder(format?: DocumentFormat): Promise<void> {
+    const doc = this.current;
+    const folder = this.folder;
+    if (!doc?.view.save || !doc.folderPath || !folder) return;
+    const target = format ?? doc.format;
+    const path = format ? replaceExtension(doc.folderPath, fileExtension(target)) : doc.folderPath;
+    try {
+      await folder.folder.write(path, await doc.view.save(target));
+      doc.folderPath = path;
+      doc.name = basename(path);
+      doc.format = target;
+      this.dirty = false;
+      this.discardDraft();
+      if (format) await folder.refresh();
+      folder.setCurrent(path);
+      this.renderHeader();
+    } catch (err) {
+      this.showError(t('error.save', { message: (err as Error).message }));
+    }
+  }
+
+  /** A link relative to the open document, opened from the folder (FOLDER-003). */
+  private openLink(href: string): boolean {
+    const folder = this.folder;
+    if (!folder || /^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('#') || href.startsWith('//')) return false;
+    const from = this.current?.folderPath ?? '';
+    const target = decodeURI(href.replace(/[#?].*$/, ''));
+    void import('../document/master').then(({ resolvePath }) => this.openFromFolder(resolvePath(from, target)));
+    return true;
+  }
+
+  /** The folder's documents, relative to the open document (to include them, DOC-028). */
+  private folderDocuments(): Promise<string[]> | undefined {
+    const folder = this.folder;
+    if (!folder) return undefined;
+    const from = (this.current?.folderPath ?? '').split('/').slice(0, -1);
+    return Promise.resolve(
+      folder
+        .files()
+        .filter((p) => /\.(docx|odt|odm|md|markdown|mdz|tex)$/i.test(p) && p !== this.current?.folderPath)
+        .map((p) => {
+          const parts = p.split('/');
+          let common = 0;
+          while (common < from.length && common < parts.length - 1 && from[common] === parts[common]) common++;
+          return [...Array(from.length - common).fill('..'), ...parts.slice(common)].join('/');
+        }),
+    );
+  }
+
+  /** Assemble a master document with its sub-documents and save it as one file (DOC-028). */
+  async exportAssembled(): Promise<void> {
+    const doc = this.current;
+    const master = doc?.view.masterDocument?.();
+    if (!doc || !master) return;
+    const formats = saveFormatsFor('document', loadFormatFamily()).filter((f) => f !== 'mdz');
+    const labels = formats.map((f) => formatLabel(f));
+    const choice = await this.choose(t('master.export'), t('master.exportMessage'), labels, labels[0]!, t('file.save'));
+    if (!choice) return;
+    const format = formats[labels.indexOf(choice)]!;
+    await this.withBusy(async () => {
+      const [{ assemble }, { readDocument, writeDocumentAsync }] = await Promise.all([import('../document/master'), import('../document/io')]);
+      const folder = this.folder?.folder;
+      const { doc: assembled, missing } = await assemble(master, doc.folderPath ?? doc.name, async (path) => {
+        const bytes = await folder?.read(path);
+        const fmt = bytes ? detectFormat(path, bytes) : null;
+        return bytes && fmt && formatKind(fmt) === 'document' ? readDocument(fmt as import('../document/io').TextFormat, bytes) : undefined;
+      });
+      const bytes = await writeDocumentAsync(assembled, format as import('../document/io').TextFormat);
+      const name = replaceExtension(doc.name.replace(/(\.[^.]+)$/, '-assembled$1'), fileExtension(format));
+      await saveFile(bytes, name, format);
+      if (missing.length) this.showError(t('master.missing', { files: missing.join(', ') }));
+    });
   }
 
   /** About window (UI-012). */

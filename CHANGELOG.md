@@ -51,6 +51,16 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   pandoc citations with `references:` in Markdown; read back from these
   formats, from Zotero and Mendeley citations in Word files and from
   `thebibliography`.
+- Folder mode: *Open a folder* lists the documents of a local folder in a
+  side panel; Save writes back into the folder (Chromium; read-only
+  elsewhere), *Search the folder* finds a word in all its documents and opens
+  them at the match, Ctrl+click follows relative links between documents,
+  and the folder is offered again on the start screen.
+- Master documents: 📄 includes a sub-document of the folder, *Assemble…*
+  saves the master document with its sub-documents as one file, numbering,
+  cross-references and bibliography running on across chapters. Kept as
+  OpenDocument linked sections (`.odm` opens too), Word sub-documents, LaTeX
+  `\include` and Markdown `{{#include …}}`.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF
@@ -182,6 +192,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Clearer wording for saving the AI assistant's API key.
 
 ### Fixed
+
+- Side panels (assistant, folder) no longer cover the second line of the
+  header when it wraps on narrow windows.
 
 - Equation editor on phones and tablets: MathLive's virtual keyboard was shown
   behind the modal dialog and could not be used; it now opens above it, docked

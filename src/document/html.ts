@@ -136,6 +136,8 @@ function blocksToDomInner(
       frag.append(tableToDom(group, doc, resolveImage));
     } else if (group.type === 'toc') {
       frag.append(tocElement(blocks, group.levels ?? 3, doc));
+    } else if (group.type === 'include') {
+      frag.append(includeElement(group.src, doc));
     } else if (group.type === 'bibliography') {
       frag.append(bibliographyElement(cites ?? citations([], undefined), cites?.numeric ?? true, doc));
     } else if (group.type === 'rule') {
@@ -551,6 +553,11 @@ export function domToBlocks(
       if (keys.length) open(ctx).runs.push(el.dataset.locator ? { cite: keys, locator: el.dataset.locator } : { cite: keys });
       return;
     }
+    if (el.dataset?.include !== undefined && el.classList.contains('include')) {
+      flush();
+      if (el.dataset.include) blocks.push({ type: 'include', src: el.dataset.include });
+      return;
+    }
     if (el.dataset?.bibliography !== undefined && el.classList.contains('bibliography')) {
       flush();
       blocks.push({ type: 'bibliography' });
@@ -770,4 +777,13 @@ export function refElement(id: string, label: string, doc: Document = document):
   a.textContent = label;
   if (label === '??') a.classList.add('broken');
   return a;
+}
+
+/** A sub-document of a master document, by its path (DOC-028). */
+export function includeElement(src: string, doc: Document = document): HTMLElement {
+  const div = doc.createElement('div');
+  div.className = 'include';
+  div.dataset.include = src;
+  div.textContent = `📄 ${src}`;
+  return div;
 }

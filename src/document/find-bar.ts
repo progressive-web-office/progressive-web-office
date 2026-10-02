@@ -71,6 +71,15 @@ export class FindBar {
     this.search();
   }
 
+  /** Open the bar on `query` and go to its first match (FOLDER-002). */
+  openWith(query: string): void {
+    this.find.value = query;
+    this.element.hidden = false;
+    this.replaceRow.hidden = true;
+    this.search();
+    this.go(1);
+  }
+
   close(): void {
     this.element.hidden = true;
     const view = this.view();

@@ -30,6 +30,8 @@ export interface ViewHooks {
   /** Current citation numbers and texts (DOC-027). */
   citations(): Citations;
   editCitation(pos: number, node: PmNode): void;
+  /** Open a sub-document from the folder; false without a folder (DOC-028). */
+  openInclude(src: string): boolean;
 }
 
 /** The code cell element of a node view, with its position (for running cells in order). */
@@ -260,6 +262,54 @@ class CiteView extends AtomView {
   }
 }
 
+/** A sub-document of a master document: its path and an Open button (DOC-028). */
+class IncludeView implements NodeView {
+  dom: HTMLElement;
+  constructor(
+    private node: PmNode,
+    private readonly hooks: ViewHooks,
+  ) {
+    this.dom = document.createElement('div');
+    this.dom.className = 'include';
+    this.dom.contentEditable = 'false';
+    this.render();
+  }
+
+  private render(): void {
+    const src = this.node.attrs.src as string;
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.textContent = t('master.openSub');
+    open.title = t('master.openSubTitle', { src });
+    open.addEventListener('click', () => {
+      if (!this.hooks.openInclude(src)) open.title = t('master.noFolder');
+    });
+    const label = document.createElement('span');
+    label.className = 'include-src';
+    label.textContent = `📄 ${src}`;
+    const hint = document.createElement('span');
+    hint.className = 'include-hint';
+    hint.textContent = t('master.subHint');
+    this.dom.dataset.include = src;
+    this.dom.replaceChildren(label, hint, open);
+  }
+
+  update(node: PmNode): boolean {
+    if (node.type !== this.node.type) return false;
+    this.node = node;
+    this.render();
+    return true;
+  }
+
+  stopEvent(e: Event): boolean {
+    return !!(e.target as HTMLElement).closest?.('button');
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+}
+
 /** The list of cited references, rebuilt after every change (DOC-027). */
 class BibliographyView implements NodeView {
   dom: HTMLElement;
@@ -365,6 +415,7 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     xref: (node, view, getPos) => new XrefView(node, view, getPos, hooks),
     cite: (node, view, getPos) => new CiteView(node, view, getPos, hooks),
     bibliography: () => new BibliographyView(hooks),
+    include: (node) => new IncludeView(node, hooks),
     image: (node) => new ImageView(node, hooks),
   };
 }

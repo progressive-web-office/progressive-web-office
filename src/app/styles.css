@@ -745,3 +745,40 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .bib-dialog .bib-paste { width: 100%; font-family: ui-monospace, monospace; }
 .bib-dialog .bib-import { margin: 6px 0; }
 .cite-dialog input[type='search'], .cite-dialog input[type='text'] { width: 100%; }
+
+/* --- Folder mode (FOLDER-001..FOLDER-003) -------------------------------------- */
+:root { --folder-w: min(280px, 85vw); }
+.app.with-folder .app-main, .app.with-folder .app-status { margin-left: var(--folder-w); }
+.app:not(.with-folder) .folder-panel { display: none; }
+.folder-panel {
+  position: fixed; left: 0; top: var(--header-h); bottom: 0; width: var(--folder-w); z-index: 19;
+  display: flex; flex-direction: column; gap: 6px; padding: 8px; box-sizing: border-box;
+  background: var(--surface); border-right: 1px solid var(--border); overflow: hidden;
+}
+.folder-head { display: flex; align-items: center; gap: 4px; }
+.folder-head h2 { flex: 1; margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-readonly { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.folder-search { width: 100%; box-sizing: border-box; }
+.folder-tree, .folder-results { flex: 1; min-height: 0; overflow: auto; }
+.folder-tree[hidden], .folder-results[hidden] { display: none; }
+.folder-tree ul, .folder-results ul { list-style: none; margin: 0; padding: 0 0 0 12px; }
+.folder-tree > ul, .folder-results > ul { padding-left: 0; }
+.folder-tree summary { cursor: pointer; padding: 2px 4px; white-space: nowrap; }
+.folder-file { display: block; width: 100%; text-align: left; border: none; background: transparent; padding: 3px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folder-file[data-icon]::before { content: attr(data-icon) ' ' / ''; }
+.folder-file:hover { background: var(--sel); }
+.folder-file[aria-current='page'] { background: var(--sel); font-weight: 600; }
+.folder-snippet { margin: 0 0 4px 8px; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+.folder-reopen { margin-bottom: 12px; }
+.card.folder { border-left-color: var(--doc); }
+@media (max-width: 700px) {
+  .app.with-folder .app-main, .app.with-folder .app-status { margin-left: 0; }
+  .folder-panel { box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2); }
+}
+@media print { .folder-panel { display: none !important; } .app.with-folder .app-main { margin-left: 0; } }
+
+/* Sub-documents of a master document (DOC-028) */
+.doc-page div.include { display: flex; align-items: center; gap: 8px; margin: 8pt 0; padding: 8px 12px; border: 1px dashed #8a94a3; border-radius: 6px; background: #f6f8fb; }
+.doc-page div.include .include-src { font-weight: 600; }
+.doc-page div.include .include-hint { flex: 1; color: #6b7685; font-size: 0.85em; }
+.doc-page div.include.ProseMirror-selectednode { outline: 2px solid var(--accent); }

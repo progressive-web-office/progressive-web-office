@@ -99,7 +99,8 @@ function detectZipFormat(bytes: Uint8Array): DocumentFormat | null {
     return null;
   }
   const mimetype = readZipText(zip, 'mimetype')?.trim();
-  if (mimetype === MIME_TYPES.odt) return 'odt';
+  // An OpenDocument master document (.odm) is a text document with linked sections (DOC-028).
+  if (mimetype === MIME_TYPES.odt || mimetype === 'application/vnd.oasis.opendocument.text-master') return 'odt';
   if (mimetype === MIME_TYPES.ods) return 'ods';
   if (mimetype === MIME_TYPES.odp) return 'odp';
   if (mimetype === MIME_TYPES.mdz) return 'mdz';

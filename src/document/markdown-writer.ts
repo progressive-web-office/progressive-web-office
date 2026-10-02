@@ -121,6 +121,9 @@ class MarkdownWriter {
         }
       } else if (group.type === 'table') {
         parts.push(this.table(group));
+      } else if (group.type === 'include') {
+        // DOC-028: mdBook's include syntax.
+        parts.push(`{{#include ${group.src}}}`);
       } else if (group.type === 'bibliography') {
         // pandoc puts the list of references here.
         parts.push('<div id="refs"></div>');

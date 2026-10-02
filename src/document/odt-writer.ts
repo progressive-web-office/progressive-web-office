@@ -55,6 +55,7 @@ class OdtWriter {
   private readonly textNames = new Map<string, string>();
   private noteCount = 0;
   private tocCount = 0;
+  private includeCount = 0;
   private listStyles: string[] = [];
   private pictures = new Map<string, string>();
   private tableCount = 0;
@@ -171,6 +172,11 @@ class OdtWriter {
         out += this.toc(group.levels ?? 3);
       } else if (group.type === 'bibliography') {
         out += this.bibliography();
+      } else if (group.type === 'include') {
+        // DOC-028: a linked section, as in LibreOffice master documents (paths are relative to the package).
+        const n = ++this.includeCount;
+        const filter = /\.odt$/i.test(group.src) ? ' text:filter-name="writer8"' : '';
+        out += `<text:section text:name="Include${n}" text:protected="true"><text:section-source xlink:href="../${esc(encodeURI(group.src))}" xlink:type="simple"${filter}/><text:p text:style-name="Standard">${esc(group.src)}</text:p></text:section>`;
       } else {
         if (group.page) {
           this.autoStyles.set('PageBreak', '<style:style style:name="PageBreak" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-after="page"/></style:style>');

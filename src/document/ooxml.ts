@@ -31,6 +31,7 @@ export const REL = {
   slideMaster: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster',
   notesSlide: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide',
   coreProps: 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties',
+  subDocument: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/subDocument',
   customXml: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml',
   customXmlProps: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXmlProps',
   extendedProps: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties',

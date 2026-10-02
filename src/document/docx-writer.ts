@@ -212,6 +212,11 @@ class DocxWriter {
         out += this.toc(group.levels ?? 3);
       } else if (group.type === 'bibliography') {
         out += this.bibliography();
+      } else if (group.type === 'include') {
+        // DOC-028: a sub-document of a master document, linked by path.
+        const rid = this.nextRid();
+        this.rels.push({ id: rid, type: REL.subDocument, target: group.src, external: true });
+        out += `<w:p><w:subDoc r:id="${rid}"/></w:p>`;
       } else if (group.page) {
         out += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
       } else {

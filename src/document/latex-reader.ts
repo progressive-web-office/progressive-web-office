@@ -27,7 +27,7 @@ const ARITY: Record<string, [boolean, number]> = {
   thanks: [false, 1], phantom: [false, 1], hyperref: [true, 1], newpage: [false, 0], clearpage: [false, 0],
   fancyhead: [true, 1], fancyfoot: [true, 1], lhead: [false, 1], chead: [false, 1], rhead: [false, 1], lfoot: [false, 1], cfoot: [false, 1], rfoot: [false, 1],
   fancyhf: [true, 1], pageref: [false, 1],
-  captionof: [true, 2], citep: [true, 1], citet: [true, 1], parencite: [true, 1], autocite: [true, 1], textcite: [true, 1], footcite: [true, 1], citeauthor: [false, 1], bibliography: [false, 1], addbibresource: [true, 1], bibliographystyle: [false, 1], bibitem: [true, 1], autoref: [false, 1], cref: [false, 1], Cref: [false, 1], nameref: [false, 1], vref: [false, 1],
+  include: [false, 1], input: [false, 1], captionof: [true, 2], citep: [true, 1], citet: [true, 1], parencite: [true, 1], autocite: [true, 1], textcite: [true, 1], footcite: [true, 1], citeauthor: [false, 1], bibliography: [false, 1], addbibresource: [true, 1], bibliographystyle: [false, 1], bibitem: [true, 1], autoref: [false, 1], cref: [false, 1], Cref: [false, 1], nameref: [false, 1], vref: [false, 1],
 };
 
 const FANCY = new Set(['fancyhead', 'fancyfoot', 'lhead', 'chead', 'rhead', 'lfoot', 'cfoot', 'rfoot']);
@@ -652,6 +652,15 @@ class Builder {
           this.blocks.push({ type: 'bibliography' });
         }
         return;
+      case 'include':
+      case 'input': {
+        // DOC-028: chapters of a master document (inlined when read from a project archive).
+        const src = (args[0] ?? '').trim();
+        if (!src) return;
+        this.flush();
+        this.blocks.push({ type: 'include', src: /\.[a-z]+$/i.test(src) ? src : `${src}.tex` });
+        return;
+      }
       case 'printbibliography':
         this.flush();
         this.blocks.push({ type: 'bibliography' });

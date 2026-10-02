@@ -218,9 +218,17 @@ class DocxReader {
     const out: Block[] = [];
     for (const el of children(container)) {
       switch (el.localName) {
-        case 'p':
+        case 'p': {
+          // DOC-028: a sub-document of a master document.
+          const sub = child(el, 'subDoc');
+          const rel = sub ? this.rels.get(attr(sub, 'id') ?? '') : undefined;
+          if (rel) {
+            out.push({ type: 'include', src: decodeURI(rel.target.replace(/^file:\/+/, '')) });
+            break;
+          }
           out.push(...withPageBreaks(this.readParagraph(el), el));
           break;
+        }
         case 'tbl':
           out.push(this.readTable(el));
           break;

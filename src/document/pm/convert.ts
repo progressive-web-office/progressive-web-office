@@ -102,6 +102,7 @@ export function blockToPm(b: Block): PmNode {
   if (b.type === 'table') return tableToPm(b);
   if (b.type === 'toc') return schema.nodes.toc!.create({ levels: b.levels ?? 3 });
   if (b.type === 'bibliography') return schema.nodes.bibliography!.create();
+  if (b.type === 'include') return schema.nodes.include!.create({ src: b.src });
   return schema.nodes.horizontal_rule!.create({ page: !!b.page });
 }
 
@@ -192,6 +193,7 @@ function pmToBlock(node: PmNode): Block {
     return header ? { type: 'table', rows, header } : { type: 'table', rows };
   }
   if (node.type.name === 'bibliography') return { type: 'bibliography' };
+  if (node.type.name === 'include') return { type: 'include', src: node.attrs.src as string };
   if (node.type.name === 'toc') return node.attrs.levels === 3 ? { type: 'toc' } : { type: 'toc', levels: node.attrs.levels as number };
   if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : { type: 'rule' };
   return pmToParagraph(node);

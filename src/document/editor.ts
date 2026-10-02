@@ -153,11 +153,21 @@ export class DocumentEditor implements EditorView {
           xref: () => this.crossRefs(),
           gotoAnchor: (id) => this.gotoAnchor(id),
           citations: () => this.citations(),
+          openInclude: (src) => this.ctx.openLink?.(src) ?? false,
           editCitation: (pos, node) => void this.editCitation(pos, node),
         }),
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
         dispatchTransaction: (tr) => this.dispatch(tr),
         handlePaste: (_view, event) => this.onPaste(event),
+        // FOLDER-003: Ctrl+click follows a link (a relative one from the open folder).
+        handleClick: (view, pos, event) => {
+          if (!(event.ctrlKey || event.metaKey)) return false;
+          const mark = schema.marks.link!.isInSet(view.state.doc.resolve(pos).marks());
+          const href = (event.target as HTMLElement).closest?.('a[href]:not(.xref)')?.getAttribute('href') ?? (mark?.attrs.href as string | undefined);
+          if (!href || href.startsWith('#')) return false;
+          if (!this.ctx.openLink?.(href) && isSafeUrl(href)) window.open(href, '_blank', 'noopener');
+          return true;
+        },
         handleDrop: (_view, event) => this.onDrop(event as DragEvent),
       },
     );
@@ -466,6 +476,27 @@ export class DocumentEditor implements EditorView {
     return writeDocumentAsync(this.doc, format as TextFormat);
   }
 
+  /** FOLDER-002: show the first match of a search from the folder panel. */
+  find(query: string): void {
+    this.findBar.openWith(query);
+  }
+
+  /** DOC-028: the document, its sub-documents as include blocks. */
+  masterDocument(): RichDocument {
+    return { ...this.doc, blocks: this.currentBlocks() };
+  }
+
+  /** DOC-028: include a document of the folder (or a path) after the current block. */
+  private async insertInclude(): Promise<void> {
+    const docs = await this.ctx.folderDocuments?.();
+    let src: string | null;
+    if (docs?.length) src = await this.ctx.choose(t('master.include'), t('master.includeMessage'), docs, docs[0]!);
+    else src = window.prompt(t('master.includePrompt'), 'chapter1.md');
+    if (!src?.trim()) return this.refocus();
+    this.command(insertBlockAfter(schema.nodes.include!.create({ src: src.trim() })));
+    this.refocus();
+  }
+
   agentTools(): AgentTool[] {
     return documentTools({
       doc: this.doc,
@@ -663,6 +694,7 @@ export class DocumentEditor implements EditorView {
       act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),
       act(t('bib.cite'), '❝', () => void this.editCitation(), t('bib.citeTitle')),
       act(t('bib.title_'), '📚', () => void this.editReferences(), t('bib.buttonTitle')),
+      act(t('master.include'), '📄', () => void this.insertInclude(), t('master.includeTitle')),
       act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
       act(t('common.insertImage'), '🖼', () => void this.pickImage()),
       act(t('doc.insertTable'), '▦', () => this.command(insertTable()), t('doc.insertTableTitle')),

@@ -207,7 +207,16 @@ export interface Bibliography {
   type: 'bibliography';
 }
 
-export type Block = Paragraph | Table | Rule | Toc | Bibliography;
+/**
+ * A sub-document of a master document (DOC-028): its path, relative to the
+ * master document; its content is assembled on export.
+ */
+export interface Include {
+  type: 'include';
+  src: string;
+}
+
+export type Block = Paragraph | Table | Rule | Toc | Bibliography | Include;
 
 /** The bibliography of a document (DOC-027). */
 export interface References {

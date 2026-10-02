@@ -276,12 +276,21 @@ class OdtReader {
             out.push(levels === 3 ? { type: 'toc' } : { type: 'toc', levels });
             break;
           }
-          case 'section':
+          case 'section': {
+            // DOC-028: a linked section is a sub-document of a master document.
+            const source = child(el, 'section-source');
+            const href = source ? (source.getAttributeNS(ODF_NS.xlink, 'href') ?? attr(source, 'href')) : null;
+            if (href && !/^[a-z]+:/i.test(href)) {
+              out.push({ type: 'include', src: decodeURI(href.replace(/^\.\.\//, '')) });
+              break;
+            }
+            out.push(...this.readBlocks(el, listStyle, depth));
+            break;
+          }
           case 'index-body':
           case 'illustration-index':
           case 'table-index':
           case 'alphabetical-index':
-          case 'bibliography':
             out.push(...this.readBlocks(child(el, 'index-body') ?? el, listStyle, depth));
             break;
           default:

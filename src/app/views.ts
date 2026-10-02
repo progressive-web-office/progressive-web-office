@@ -34,6 +34,10 @@ export interface EditorView {
   collab?(): import('../collab/parts').CollabAdapter;
   /** Tools for AI agents working on this document (AI-001, AI-006). */
   agentTools?(): AgentTool[];
+  /** Show the first match of a search (FOLDER-002). */
+  find?(query: string): void;
+  /** The document with its sub-documents as `include` blocks, to assemble (DOC-028). */
+  masterDocument?(): import('../document/model').RichDocument | undefined;
   destroy(): void;
 }
 
@@ -44,6 +48,10 @@ export interface ViewContext {
   statusChanged(): void;
   /** Ask the user to pick one option; resolves to null when cancelled. */
   choose(title: string, message: string, options: string[], preselected: string): Promise<string | null>;
+  /** Open a link relative to the document from its folder; false when it is not such a link (FOLDER-003). */
+  openLink?(href: string): boolean;
+  /** Documents of the open folder, relative to this document (DOC-028). */
+  folderDocuments?(): Promise<string[]> | undefined;
 }
 
 /** Create a view for existing file bytes. */

@@ -31,6 +31,7 @@ export default defineConfig({
           { text: 'Presentations', link: '/guide/presentations' },
           { text: 'PDF', link: '/guide/pdf' },
           { text: 'Printing', link: '/guide/printing' },
+          { text: 'Folders and master documents', link: '/guide/folders' },
           { text: 'Git repositories', link: '/guide/git' },
           { text: 'Nextcloud / WebDAV', link: '/guide/cloud' },
           { text: 'Grist', link: '/guide/grist' },

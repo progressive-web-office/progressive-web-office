@@ -378,6 +378,13 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
     }
   }
   crossReferences(blocks);
+  // DOC-028: `{{#include chapter.md}}` alone on a line is a sub-document.
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i]!;
+    if (b.type !== 'paragraph' || b.list || b.style !== 'normal') continue;
+    const m = /^\{\{#include\s+([^}\s]+)\s*\}\}$/.exec(runsText(b.runs).trim());
+    if (m && b.runs.every(isTextRun)) blocks[i] = { type: 'include', src: m[1]! };
+  }
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   if (firstHeading && !doc.meta.title) doc.meta.title = firstHeading.runs.map((r) => ('text' in r ? r.text : '')).join('');

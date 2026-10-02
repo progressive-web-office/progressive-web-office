@@ -114,6 +114,16 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'nav.toc', getAttrs: (d: HTMLElement) => ({ levels: Number(d.dataset.levels) || 3 }) }],
       toDOM: (n) => ['nav', { class: 'toc', 'data-levels': String(n.attrs.levels) }],
     },
+    /** A sub-document of a master document (DOC-028). */
+    include: {
+      group: 'block',
+      atom: true,
+      selectable: true,
+      draggable: true,
+      attrs: { src: { default: '' } },
+      parseDOM: [{ tag: 'div.include[data-include]', getAttrs: (d: HTMLElement) => ({ src: d.dataset.include }) }],
+      toDOM: (n) => ['div', { class: 'include', 'data-include': n.attrs.src as string }, `📄 ${n.attrs.src as string}`],
+    },
     /** The list of cited references (DOC-027). */
     bibliography: {
       group: 'block',

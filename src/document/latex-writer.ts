@@ -157,6 +157,10 @@ class LatexWriter {
       } else if (group.type === 'bibliography') {
         // DOC-027: BibTeX builds the list from references.bib.
         if (this.doc.references?.entries.length) out.push(`\\bibliographystyle{${this.authorYear ? 'plainnat' : 'plain'}}\n\\bibliography{references}`);
+      } else if (group.type === 'include') {
+        // DOC-028: a .tex chapter is included; other sub-documents are assembled on export.
+        const name = group.src.replace(/\.tex$/i, '');
+        out.push(/\.tex$/i.test(group.src) ? `\\include{${name}}` : `% ${escapeLatex(group.src)}\n\\input{${name.replace(/\.[^./]+$/, '')}}`);
       } else if (group.type === 'rule') {
         out.push(group.page ? '\\newpage' : '\\noindent\\rule{\\linewidth}{0.4pt}');
       } else if (group.style === 'quote') {
