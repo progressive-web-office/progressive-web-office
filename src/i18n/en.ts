@@ -948,6 +948,11 @@ export const en = {
   'pdf.noteOn': 'Note, page {n}',
   'pdf.pageShort': 'p. {n}',
   'pdf.goToPage': 'Show',
+  'textfile.review': 'Comment the line',
+  'textfile.reviewPrompt': 'Comment on line {line}:',
+  'textfile.reviews': 'Review comments',
+  'textfile.reviewOn': 'Comment on line {line}',
+  'textfile.lineShort': 'line {line}',
 } as const;
 
 export type MessageKey = keyof typeof en;

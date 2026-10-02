@@ -126,3 +126,18 @@ describe('FILE-022 text files: encoding and colouring', async () => {
     expect(await languageOf('stats.r')!.load()).toBeTruthy();
   });
 });
+
+describe('FILE-024 review comments in source files', async () => {
+  const { reviewComments, reviewLine } = await import('../src/files/review');
+  it('writes a comment of the language and reads it back', () => {
+    expect(reviewLine({ line: '#' }, 'Ann (prof)', 'Use a loop\nhere', '    ')).toBe('    # REVIEW(Ann prof): Use a loop here');
+    expect(reviewLine({ block: { open: '/*', close: '*/' } }, 'Bob', 'Free this')).toBe('/* REVIEW(Bob): Free this */');
+    expect(reviewLine({ block: { open: '<!--', close: '-->' } }, 'Bob', 'Alt text')).toBe('<!-- REVIEW(Bob): Alt text -->');
+    const code = 'int main() {\n  // REVIEW(Ann): Check argc\n  /* REVIEW(Bob): Free this */\n  return 0;\n}\n<!-- REVIEW(Cy): Fine -->';
+    expect(reviewComments(code)).toEqual([
+      { line: 2, author: 'Ann', text: 'Check argc' },
+      { line: 3, author: 'Bob', text: 'Free this' },
+      { line: 6, author: 'Cy', text: 'Fine' },
+    ]);
+  });
+});

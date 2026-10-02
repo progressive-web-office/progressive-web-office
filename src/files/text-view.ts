@@ -6,13 +6,40 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, LanguageSupport, syntaxHighlighting, type Language, type StreamLanguage } from '@codemirror/language';
 import { gotoLine, highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
-import { Compartment, EditorSelection, EditorState, type Extension } from '@codemirror/state';
-import { drawSelection, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view';
+import { Compartment, EditorSelection, EditorState, RangeSetBuilder, type Extension } from '@codemirror/state';
+import { Decoration, drawSelection, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { highlightCode, tagHighlighter, tags } from '@lezer/highlight';
 import { button, h } from '../app/dom';
 import type { EditorView as PwoView, ViewContext } from '../app/views';
 import { t } from '../i18n';
 import { languageOf } from './languages';
+import { reviewComments, reviewLine, type CommentTokens } from './review';
+import { askAuthor } from '../app/author';
+
+/** FILE-024: lines holding a review comment stand out. */
+const reviewLines = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = this.build(view);
+    }
+    update(u: ViewUpdate): void {
+      if (u.docChanged || u.viewportChanged) this.decorations = this.build(u.view);
+    }
+    build(view: EditorView): DecorationSet {
+      const b = new RangeSetBuilder<Decoration>();
+      for (const { from, to } of view.visibleRanges) {
+        for (let pos = from; pos <= to; ) {
+          const line = view.state.doc.lineAt(pos);
+          if (line.text.includes('REVIEW(')) b.add(line.from, line.from, Decoration.line({ class: 'cm-review' }));
+          pos = line.to + 1;
+        }
+      }
+      return b.finish();
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
 import './files.css';
 
 export interface DecodedText {
@@ -82,6 +109,10 @@ export class TextView implements PwoView {
   private readonly readOnly = new Compartment();
   private readonly wrapping = new Compartment();
   private parserLanguage: Language | undefined;
+  /** FILE-024: the review comments of the file. */
+  private readonly reviews = h('aside', { class: 'code-reviews', 'aria-label': t('textfile.reviews'), hidden: true });
+  private reviewTimer: ReturnType<typeof setTimeout> | undefined;
+  private readOnlyMode = false;
 
   constructor(
     bytes: Uint8Array,
@@ -103,9 +134,10 @@ export class TextView implements PwoView {
         info,
         h('label', { class: 'code-wrap' }, wrap, ` ${t('textfile.wrap')}`),
         button(t('textfile.goToLine'), () => gotoLine(this.view), { text: '↧', className: 'icon' }),
+        button(t('textfile.review'), () => this.addReview(), { text: '💬', className: 'icon', title: `${t('textfile.review')} (Ctrl+Alt+M)` }),
       ),
       h('p', { id: 'code-hint', class: 'sr-only' }, t('textfile.hint')),
-      host,
+      h('div', { class: 'code-main' }, host, this.reviews),
     );
     const extensions: Extension[] = [
       lineNumbers(),
@@ -119,18 +151,24 @@ export class TextView implements PwoView {
       highlightSelectionMatches(),
       search({ top: true }),
       syntaxHighlighting(highlighter),
-      keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, ...foldKeymap, indentWithTab]),
+      keymap.of([{ key: 'Mod-Alt-m', run: () => (this.addReview(), true) }, ...defaultKeymap, ...historyKeymap, ...searchKeymap, ...foldKeymap, indentWithTab]),
+      reviewLines,
       theme,
       this.language.of([]),
       this.readOnly.of(EditorState.readOnly.of(false)),
       this.wrapping.of([]),
       EditorView.contentAttributes.of({ 'aria-label': t('textfile.label', { name: fileName }), 'aria-describedby': 'code-hint' }),
       EditorView.updateListener.of((u) => {
-        if (u.docChanged) this.ctx.changed();
+        if (u.docChanged) {
+          this.ctx.changed();
+          clearTimeout(this.reviewTimer);
+          this.reviewTimer = setTimeout(() => this.renderReviews(), 200);
+        }
         if (u.docChanged || u.selectionSet) this.ctx.statusChanged();
       }),
     ];
     this.view = new EditorView({ state: EditorState.create({ doc: this.decoded.text, extensions }), parent: host });
+    this.renderReviews();
     // The grammar is loaded on its own: the text shows at once, coloured when it arrives.
     void entry
       ?.load()
@@ -145,6 +183,54 @@ export class TextView implements PwoView {
     return encodeText(this.view.state.doc.toString(), this.decoded);
   }
 
+  /** A review comment above the line of the cursor, in the language's comment syntax (FILE-024). */
+  private addReview(): void {
+    if (this.readOnlyMode) return;
+    const state = this.view.state;
+    const line = state.doc.lineAt(state.selection.main.head);
+    const text = window.prompt(t('textfile.reviewPrompt', { line: line.number }), '')?.trim();
+    if (!text) return this.view.focus();
+    const author = askAuthor(t('comment.yourName')) || t('comment.anonymous');
+    const tokens = (state.languageDataAt<CommentTokens>('commentTokens', line.from)[0] ?? {}) as CommentTokens;
+    const indent = /^\s*/.exec(line.text)![0];
+    const insert = `${reviewLine(tokens, author, text, indent)}\n`;
+    this.view.dispatch({ changes: { from: line.from, insert }, selection: { anchor: line.from + insert.length + indent.length } });
+    this.view.focus();
+  }
+
+  private renderReviews(): void {
+    const list = reviewComments(this.view.state.doc.toString());
+    this.reviews.hidden = !list.length;
+    this.reviews.replaceChildren(
+      ...(list.length ? [h('h2', {}, t('textfile.reviews'))] : []),
+      ...list.map((c) =>
+        h(
+          'article',
+          { class: 'comment-card', 'aria-label': t('textfile.reviewOn', { line: c.line }) },
+          h('p', { class: 'comment-meta' }, h('strong', {}, c.author || t('comment.anonymous')), ` · ${t('textfile.lineShort', { line: c.line })}`),
+          h('p', { class: 'comment-text' }, c.text),
+          h(
+            'div',
+            { class: 'comment-actions' },
+            button(t('pdf.goToPage'), () => {
+              const line = this.view.state.doc.line(Math.min(c.line + 1, this.view.state.doc.lines));
+              this.view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+              this.view.focus();
+            }),
+            ...(this.readOnlyMode
+              ? []
+              : [
+                  button(t('comment.delete'), () => {
+                    const line = this.view.state.doc.line(c.line);
+                    this.view.dispatch({ changes: { from: line.from, to: Math.min(line.to + 1, this.view.state.doc.length) } });
+                  }, { className: 'danger' }),
+                ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   status(): string {
     const { state } = this.view;
     const head = state.selection.main.head;
@@ -157,6 +243,8 @@ export class TextView implements PwoView {
   }
 
   setReadOnly(readOnly: boolean): void {
+    this.readOnlyMode = readOnly;
+    this.renderReviews();
     this.view.dispatch({ effects: this.readOnly.reconfigure(EditorState.readOnly.of(readOnly)) });
   }
 
@@ -189,6 +277,7 @@ export class TextView implements PwoView {
   }
 
   destroy(): void {
+    clearTimeout(this.reviewTimer);
     this.view.destroy();
   }
 }

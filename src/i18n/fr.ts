@@ -950,4 +950,9 @@ export const fr: Record<MessageKey, string> = {
   'pdf.noteOn': 'Note, page {n}',
   'pdf.pageShort': 'p. {n}',
   'pdf.goToPage': 'Afficher',
+  'textfile.review': 'Commenter la ligne',
+  'textfile.reviewPrompt': 'Commentaire sur la ligne {line} :',
+  'textfile.reviews': 'Commentaires de relecture',
+  'textfile.reviewOn': 'Commentaire sur la ligne {line}',
+  'textfile.lineShort': 'ligne {line}',
 };

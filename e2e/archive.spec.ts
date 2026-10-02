@@ -82,3 +82,26 @@ test('opens a source file on its own and saves it under its name (FILE-022)', as
   const d = await download;
   expect(d.suggestedFilename()).toBe('hello.py');
 });
+
+test('comments lines of a source file in its own comment syntax (FILE-024)', async ({ page }) => {
+  await openApp(page);
+  await openFile(page, 'sum.py', 'def total(xs):\n    s = 0\n    for x in xs:\n        s += x\n    return s\n', 'text/x-python');
+  const code = page.getByRole('textbox', { name: 'Content of sum.py' });
+  await expect(code.locator('.tok-keyword').first()).toHaveText('def');
+  await code.locator('.cm-line').nth(2).click();
+  const answers = ['Use sum(xs)', 'Prof'];
+  page.on('dialog', (d) => void d.accept(answers.shift()));
+  await page.getByRole('button', { name: 'Comment the line' }).click();
+  await expect(code.locator('.cm-line').nth(2)).toHaveText('    # REVIEW(Prof): Use sum(xs)');
+  await expect(code.locator('.cm-review')).toHaveCount(1);
+  const panel = page.getByRole('complementary', { name: 'Review comments' });
+  await expect(panel.getByRole('article', { name: 'Comment on line 3' })).toContainText('Use sum(xs)');
+  const download = page.waitForEvent('download');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  const chunks: Buffer[] = [];
+  for await (const c of await (await download).createReadStream()) chunks.push(c as Buffer);
+  expect(Buffer.concat(chunks).toString()).toContain('    for x in xs:'.replace('for', '# REVIEW(Prof): Use sum(xs)\n    for'));
+  await panel.getByRole('button', { name: 'Delete' }).click();
+  await expect(panel).toBeHidden();
+});
+

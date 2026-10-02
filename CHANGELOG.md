@@ -29,6 +29,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   and many more) open in a code editor with syntax colouring, line numbers,
   folding and search, built on CodeMirror. They are saved under their own
   name, keeping their line ends.
+- Review comments on lines of source files, written in the code as comments
+  of its language (`# REVIEW(Prof): …`) and listed in a panel.
 - Pictures open in a viewer, fitted to the window or at their own size.
 - Autofilter in spreadsheets: ▾ buttons in the headings of a table to choose
   the values shown in each column; the filter and the rows it hides are kept

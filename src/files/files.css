@@ -15,7 +15,14 @@
 .code-view { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .code-toolbar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .code-info { color: var(--muted); font-size: 0.875rem; }
-.code-host { flex: 1; min-height: 0; border-top: 1px solid var(--border); }
+.code-main { flex: 1; min-height: 0; display: flex; border-top: 1px solid var(--border); }
+.code-host { flex: 1; min-width: 0; min-height: 0; }
+/* FILE-024: review comments in the code, and their list. */
+.code-host .cm-review { background: rgba(255, 196, 0, 0.22); box-shadow: inset 3px 0 #d9a400; }
+.code-reviews { flex: none; width: 17rem; overflow: auto; padding: 8px 10px; background: var(--bg); border-left: 1px solid var(--border); box-sizing: border-box; font-size: 0.875rem; }
+.code-reviews[hidden] { display: none; }
+.code-reviews h2 { font-size: 0.95rem; margin: 4px 0 8px; color: var(--muted); }
+@media (max-width: 800px) { .code-main { flex-direction: column; } .code-reviews { width: auto; max-height: 35vh; border-left: 0; border-top: 1px solid var(--border); } }
 .code-host .cm-editor { height: 100%; }
 .tok-comment { color: var(--tok-comment); font-style: italic; }
 .tok-string { color: var(--tok-string); }

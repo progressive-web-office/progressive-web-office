@@ -58,6 +58,27 @@ keeping their byte order mark and their line ends (LF or CRLF).
 
 Printing a source file prints its text with line numbers and colours.
 
+### Review comments
+
+**💬 Comment the line** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>) asks
+for a comment and writes it above the line of the cursor, as a comment of
+the file's language, with your name:
+
+```python
+    # REVIEW(Prof): Use sum(xs)
+    for x in xs:
+```
+
+```c
+  // REVIEW(Prof): Check argc first
+```
+
+The comments stay in the file, so any editor shows them. They are
+highlighted and listed in the **Review comments** panel: **Show** goes to the
+line, **Delete** removes the comment. Combined with a ZIP archive, this
+lets you comment the files of an archive and download it with the
+comments.
+
 ## Pictures
 
 A picture is shown fitted to the window; **Actual size** shows it at its own

@@ -950,4 +950,9 @@ export const zh: Record<MessageKey, string> = {
   'pdf.noteOn': '第 {n} 页的便笺',
   'pdf.pageShort': '第 {n} 页',
   'pdf.goToPage': '显示',
+  'textfile.review': '批注此行',
+  'textfile.reviewPrompt': '第 {line} 行的批注：',
+  'textfile.reviews': '审阅批注',
+  'textfile.reviewOn': '第 {line} 行的批注',
+  'textfile.lineShort': '第 {line} 行',
 };
