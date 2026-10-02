@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { SANDBOX_BOOTSTRAP } from './src/code/sandbox-html.ts';
+import { runtimeDependencies } from './src/app/dependencies.ts';
 
 /** Hash of the code sandbox bootstrap, the only inline script the policy allows (CODE-003). */
 const SANDBOX_HASH = `'sha256-${createHash('sha256').update(SANDBOX_BOOTSTRAP).digest('base64')}'`;
@@ -115,6 +116,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(PKG.version),
     __GIT_COMMIT__: JSON.stringify(gitCommit()),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+    // UI-017: the open-source components and their installed versions.
+    __DEPENDENCIES__: JSON.stringify(runtimeDependencies(import.meta.dirname)),
   },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
   worker: { format: 'es' },

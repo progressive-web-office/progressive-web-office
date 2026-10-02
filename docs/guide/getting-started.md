@@ -88,8 +88,10 @@ the git commit of the build, whether the app is installed and works offline,
 and links to this documentation, the source code, the changelog and the
 problem tracker. Its **QR code** opens the app on another device: scan it with
 a phone camera. Click it to show it full screen, which is easier to scan from
-a distance or on a projector. When reporting a problem, **Copy details** copies the version
-and browser information to paste into the report.
+a distance or on a projector. **Open-source components** lists the libraries
+the app is built with, with their exact versions, licences and project
+pages. When reporting a problem, **Copy details** copies the version, the
+browser information and the component versions to paste into the report.
 
 ## Limits
 

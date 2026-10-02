@@ -811,4 +811,7 @@ export const zh: Record<MessageKey, string> = {
   'sync.result.refused': '已拒绝',
   'sync.result.rejected': '已驳回',
   'sync.restart': '以此副本开始历史',
+  'about.dependencies': '组件',
+  'about.dependenciesCount': '开源组件（{n}）',
+  'about.component': '组件',
 };

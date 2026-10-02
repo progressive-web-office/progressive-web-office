@@ -811,4 +811,7 @@ export const fr: Record<MessageKey, string> = {
   'sync.result.refused': 'refusé',
   'sync.result.rejected': 'rejeté',
   'sync.restart': 'Démarrer l’historique depuis cette copie',
+  'about.dependencies': 'Composants',
+  'about.dependenciesCount': 'Composants libres ({n})',
+  'about.component': 'Composant',
 };

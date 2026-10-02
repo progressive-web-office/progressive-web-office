@@ -638,6 +638,10 @@ td.peer::after {
 .about-qr { display: block; margin: 0 auto 4px; background: #fff; border-radius: 4px; image-rendering: pixelated; }
 .about-qr-figure .mono { word-break: break-all; }
 .about-links { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; padding: 0; margin: 16px 0 8px; }
+.about-deps { margin: 8px 0; }
+.about-deps summary { cursor: pointer; }
+.about-deps table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 6px; }
+.about-deps th, .about-deps td { text-align: left; padding: 2px 8px 2px 0; border-bottom: 1px solid var(--border); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .about-dialog .dialog-actions .hint { margin-right: auto; }
 

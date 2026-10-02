@@ -809,6 +809,9 @@ export const en = {
   'sync.result.refused': 'refused',
   'sync.result.rejected': 'rejected',
   'sync.restart': 'Start the history from this copy',
+  'about.dependencies': 'Components',
+  'about.dependenciesCount': 'Open-source components ({n})',
+  'about.component': 'Component',
 } as const;
 
 export type MessageKey = keyof typeof en;

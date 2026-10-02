@@ -262,6 +262,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-015 | C | — | On a phone, the system shall dock a contextual toolbar above the on-screen keyboard with the essential commands for the selection, the other commands under "More", and offer a full-screen writing mode. |
 | UI-014 | S | 0.0.14 | On a narrow screen (phone), the system shall keep the header on one line, with Save visible and the other file actions in a menu, and lay out each editing toolbar as a single row that scrolls horizontally, so that the document stays visible above the on-screen keyboard. |
 | UI-016 | M | 0.0.14 | The system shall let the user type any font size from 1 to 999 pt (rounded to the half point) in text documents and presentations, with the usual sizes offered as suggestions and the arrow keys stepping through them and beyond; in a presentation, a size typed while editing a text box shall apply to the selected text only. |
+| UI-017 | S | 0.0.14 | The About window shall list the open-source components the application ships with (its runtime dependencies), each with the exact version installed at build time, its licence and a link to its project page, and the copied details for a problem report shall include these versions. |
 
 ## 9. Quality (QA)
 

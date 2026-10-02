@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The About window lists the open-source components of the build with
+  their exact versions, licences and project pages; **Copy details**
+  includes the versions in the report.
 - Any font size can be typed (1 to 999 pt) in text documents and
   presentations; the usual sizes are suggested, and the arrow keys step
   through them and beyond (by 20 % past the largest). In a presentation, a

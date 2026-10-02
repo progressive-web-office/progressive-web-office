@@ -29,10 +29,27 @@ export function debugReport(): string {
     navigator.userAgent,
     `${t('about.language')}: ${document.documentElement.lang || navigator.language}`,
     `${t('about.installed')}: ${installed() ? t('about.yes') : t('about.no')} · ${t('about.offline')}: ${offlineReady() ? t('about.yes') : t('about.no')}`,
+    `${t('about.dependencies')}: ${BUILD.dependencies.map((d) => `${d.name}@${d.version}`).join(', ')}`,
   ].join('\n');
 }
 
 const link = (href: string, text: string): HTMLAnchorElement => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+
+/** The open-source components of this build, with their versions and licences (UI-017). */
+function dependencyList(): HTMLElement {
+  const deps = BUILD.dependencies;
+  return h(
+    'details',
+    { class: 'about-deps' },
+    h('summary', {}, t('about.dependenciesCount', { n: deps.length })),
+    h(
+      'table',
+      {},
+      h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, t('about.component')), h('th', { scope: 'col' }, t('about.version')), h('th', { scope: 'col' }, t('about.license')))),
+      h('tbody', {}, ...deps.map((d) => h('tr', {}, h('td', {}, d.url ? link(d.url, d.name) : d.name), h('td', { class: 'mono' }, d.version), h('td', {}, d.license)))),
+    ),
+  );
+}
 
 /** The content of the About window for the app published at `appUrl`. */
 export function aboutContent(appUrl: string): HTMLElement {
@@ -79,6 +96,7 @@ export function aboutContent(appUrl: string): HTMLElement {
       h('li', {}, link(`${SOURCE_URL}/issues/new`, t('about.report'))),
       h('li', {}, link(`${docs}requirements`, t('about.requirements'))),
     ),
+    dependencyList(),
     h('p', { class: 'hint' }, t('about.privacy')),
     h('p', { class: 'hint' }, t('about.credits')),
   );
