@@ -245,10 +245,12 @@ export interface DocumentMeta {
   language?: string;
   /** Licence, preferably an SPDX identifier such as `CC-BY-4.0`. */
   license?: string;
+  /** Stable identifier (a UUID) of a document synchronised offline (COLLAB-008); not shown in the properties dialog. */
+  identifier?: string;
 }
 
 /** Fields of DocumentMeta in display order. */
-export const META_FIELDS = ['title', 'author', 'date', 'subject', 'description', 'keywords', 'language', 'license'] as const;
+export const META_FIELDS = ['title', 'author', 'date', 'subject', 'description', 'keywords', 'language', 'license', 'identifier'] as const;
 
 /** Drop empty values (empty strings, empty keyword lists). */
 export function cleanMeta(meta: DocumentMeta): DocumentMeta {

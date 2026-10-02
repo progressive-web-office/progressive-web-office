@@ -27,6 +27,7 @@ const KEYS: Record<string, keyof DocumentMeta> = {
   language: 'language',
   license: 'license',
   licence: 'license',
+  identifier: 'identifier',
 };
 
 function unquote(value: string): string | null {
@@ -128,6 +129,7 @@ export function writeFrontMatter(meta: DocumentMeta, extra = ''): string {
   if (m.keywords) lines.push(`keywords: [${m.keywords.map(scalar).map((k) => (k.includes(',') && !k.startsWith('"') ? JSON.stringify(k) : k)).join(', ')}]`);
   put('lang', m.language);
   put('license', m.license);
+  put('identifier', m.identifier);
   if (extra.trim()) lines.push(extra.replace(/\s+$/, ''));
   return lines.length ? `---\n${lines.join('\n')}\n---\n\n` : '';
 }

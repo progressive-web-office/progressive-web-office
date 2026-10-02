@@ -3,7 +3,10 @@ import { button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
 import { cleanMeta, META_FIELDS, type DocumentMeta } from './model';
 
-const LABELS: Record<(typeof META_FIELDS)[number], MessageKey> = {
+/** Fields shown in the dialog (the identifier is kept, not edited). */
+const FIELDS = META_FIELDS.filter((f): f is Exclude<(typeof META_FIELDS)[number], 'identifier'> => f !== 'identifier');
+
+const LABELS: Record<(typeof FIELDS)[number], MessageKey> = {
   title: 'meta.title',
   author: 'meta.author',
   date: 'meta.date',
@@ -14,7 +17,7 @@ const LABELS: Record<(typeof META_FIELDS)[number], MessageKey> = {
   license: 'meta.license',
 };
 
-const HINTS: Partial<Record<(typeof META_FIELDS)[number], MessageKey>> = {
+const HINTS: Partial<Record<(typeof FIELDS)[number], MessageKey>> = {
   date: 'meta.dateHint',
   keywords: 'meta.keywordsHint',
   language: 'meta.languageHint',
@@ -27,7 +30,7 @@ export function editProperties(host: HTMLElement, meta: DocumentMeta): Promise<D
     const dialog = h('dialog', { class: 'dialog properties-dialog', 'aria-labelledby': 'props-title' });
     const inputs = new Map<string, HTMLInputElement | HTMLTextAreaElement>();
     const form = h('form', { class: 'properties-form' });
-    for (const field of META_FIELDS) {
+    for (const field of FIELDS) {
       const value = field === 'keywords' ? (meta.keywords ?? []).join(', ') : (meta[field] ?? '');
       const id = `prop-${field}`;
       const input = field === 'description' ? h('textarea', { id, rows: 3 }) : h('input', { id, type: 'text', spellcheck: field === 'title' || field === 'subject' ? 'true' : 'false' });
@@ -53,6 +56,7 @@ export function editProperties(host: HTMLElement, meta: DocumentMeta): Promise<D
           keywords: get('keywords').split(','),
           language: get('language'),
           license: get('license'),
+          identifier: meta.identifier,
         }),
       );
     };

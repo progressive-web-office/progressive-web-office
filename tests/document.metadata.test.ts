@@ -115,3 +115,14 @@ describe('DOC-017 metadata in every format', () => {
     expect(back).toMatchObject({ title: 'Rapport annuel', author: 'Ada Lovelace', date: '2026-09-30', subject: 'Bilan', keywords: ['bilan', 'énergie', 'a', 'b'], language: 'fr' });
   });
 });
+
+describe('COLLAB-008 document identifier', () => {
+  const ID = '0f8c2b1e-5d4a-4c3b-9a21-7e6f5d4c3b2a';
+  for (const format of ['md', 'docx', 'odt'] as const) {
+    it(`${format}: the identifier survives a round-trip`, async () => {
+      const back = await readDocument(format, writeDocument(docWith({ ...META, identifier: ID }), format));
+      expect(back.meta.identifier).toBe(ID);
+      expect(back.meta.title).toBe(META.title);
+    });
+  }
+});

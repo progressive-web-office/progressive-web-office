@@ -98,6 +98,7 @@ export function readCoreProps(zip: ZipEntries): DocumentMeta {
     description: get('description'),
     keywords: get('keywords')?.split(/[,;]/),
     language: get('language'),
+    identifier: get('identifier'),
   });
 }
 
@@ -115,6 +116,7 @@ export function coreXml(meta: DocumentMeta, esc: (s: string) => string): string 
     el('cp:keywords', m.keywords?.join(', ')) +
     el('dc:description', m.description) +
     el('dc:language', m.language) +
+    el('dc:identifier', m.identifier) +
     `<dcterms:created xsi:type="dcterms:W3CDTF">${isoTimestamp(m.date, true) ?? now}</dcterms:created>` +
     `<dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>` +
     '</cp:coreProperties>'

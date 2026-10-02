@@ -79,6 +79,7 @@ export function metaXml(meta: DocumentMeta): string {
     el('dc:language', m.language) +
     `<meta:creation-date>${isoTimestamp(m.date, false) ?? now}</meta:creation-date><dc:date>${now}</dc:date>` +
     (m.license ? `<meta:user-defined meta:name="License">${esc(m.license)}</meta:user-defined>` : '') +
+    (m.identifier ? `<meta:user-defined meta:name="Identifier">${esc(m.identifier)}</meta:user-defined>` : '') +
     '</office:meta></office:document-meta>'
   );
 }
@@ -90,7 +91,9 @@ export function readOdfMeta(zip: ZipEntries): DocumentMeta {
   const doc = parseXml(text);
   const all = (ns: string, name: string): string[] => Array.from(doc.getElementsByTagNameNS(ns, name)).map((e) => e.textContent?.trim() ?? '').filter(Boolean);
   const get = (ns: string, name: string): string | undefined => all(ns, name)[0];
-  const license = Array.from(doc.getElementsByTagNameNS(ODF_NS.meta, 'user-defined')).find((e) => /^licen[cs]e$/i.test(e.getAttributeNS(ODF_NS.meta, 'name') ?? ''))?.textContent?.trim();
+  const userDefined = (re: RegExp): string | undefined =>
+    Array.from(doc.getElementsByTagNameNS(ODF_NS.meta, 'user-defined')).find((e) => re.test(e.getAttributeNS(ODF_NS.meta, 'name') ?? ''))?.textContent?.trim();
+  const license = userDefined(/^licen[cs]e$/i);
   const keywords = all(ODF_NS.meta, 'keyword');
   return cleanMeta({
     title: get(ODF_NS.dc, 'title'),
@@ -101,6 +104,7 @@ export function readOdfMeta(zip: ZipEntries): DocumentMeta {
     ...(keywords.length ? { keywords } : {}),
     language: get(ODF_NS.dc, 'language'),
     license,
+    identifier: userDefined(/^identifier$/i),
   });
 }
 
