@@ -19,7 +19,7 @@ changelog.
 | 10 | 0.0.11 | Git repositories: GitHub and GitLab browse, open, commit | ✅ |
 | 11 | 0.0.12 | Device-to-device exchange with QRShare (Web Share, share target) | ✅ |
 | 12 | 0.0.13 | AI assistant (Claude) with document tools; WebMCP tools for external agents | ✅ |
-| 13 | 0.0.14 | QRShare app handoff (send and receive files between the two apps in the browser); light/dark/system theme; document properties and Markdown front matter; Mermaid diagrams; sandboxed Python/JavaScript code cells; Grist connector; choice of AI provider (Claude, OpenAI, Mistral, Albert, Ollama, OpenAI-compatible); Nextcloud / WebDAV; spreadsheet charts; real-time collaboration (documents, spreadsheets) with presence and shared versions; ProseMirror word processor (find/replace, character and paragraph formatting, page breaks, footnotes, table of contents, header/footer, tables with merged cells) | ⏳ |
+| 13 | 0.0.14 | QRShare app handoff (send and receive files between the two apps in the browser); light/dark/system theme; document properties and Markdown front matter; Mermaid diagrams; sandboxed Python/JavaScript code cells; Grist connector; choice of AI provider (Claude, OpenAI, Mistral, Albert, Ollama, OpenAI-compatible); Nextcloud / WebDAV; spreadsheet charts; real-time collaboration (documents, spreadsheets) with presence and shared versions; ProseMirror word processor (find/replace, character and paragraph formatting, page breaks, footnotes, table of contents, header/footer, tables with merged cells, captions and cross-references, citations and bibliography, master documents); folder mode (side panel, search across documents, links between documents) | ⏳ |
 
 ## Planned
 
@@ -37,16 +37,16 @@ group is not a commitment.
 ### Word processor
 
 - Named paragraph and character styles beyond headings
-- Cross-references with automatic numbering of figures, tables and
-  equations ("see figure 3", "equation (2)")
-- Bibliography from BibTeX / CSL, written as `\cite` in LaTeX and as
-  fields in Word
-- Master documents: a master document assembles sub-documents (chapters)
-  edited separately, possibly by different people in collaboration, with
-  continuous numbering, a global table of contents and cross-references
-  across sub-documents; read and written as ODF master documents (`.odm`,
-  linked sections), Word sub-documents, LaTeX `\include` / `\input` and a
-  Markdown include syntax; exported as one assembled DOCX, ODT, LaTeX or PDF
+- Page numbering styles: `1`, `1/10`, `Page 1 of 10`, `- 1 -`, roman
+  numerals (`i`, `ii`) for front matter, a chosen starting number, no number
+  on the first page
+- Document templates: a gallery of starters (letter, report, thesis,
+  exercise sheet, minutes…), the user's own templates kept in the browser or
+  in a folder, and the template formats `.ott`, `.dotx`, `.potx`, `.ots`,
+  `.xltx`
+- Master documents, next steps: numbering and table of contents running
+  across sub-documents while editing, cross-references to targets in other
+  sub-documents
 - Mail merge: a document combined with a CSV file or a workbook gives N
   documents or one PDF
 - Form fields (text, check box, list), exported as a fillable PDF
@@ -59,6 +59,21 @@ group is not a commitment.
 
 - Comments and track changes (ODF and DOCX), on top of real-time
   collaboration
+- Asynchronous collaboration without a network: the document as a CRDT,
+  merged between devices (at least one fully offline) by passes of animated
+  QR codes through QRShare (state vector, then only the missing updates),
+  with signed frames, trusted peers and an import log; a `collab-core`
+  module independent of PWO, for other applications too
+
+### Images and drawing
+
+- Minimal photo editing: crop, rotate, resize, brightness / contrast,
+  blur or pixelate a region, annotations (arrows, text, highlights)
+- Minimal vector drawing: shapes, lines and arrows, text, freehand, layers;
+  saved as SVG and kept editable in documents and slides
+- Caption images easily: a caption and alt text when inserting or pasting a
+  picture, numbered as figures (cross-references), and a check for pictures
+  without alt text
 
 ### Presentations
 
@@ -88,8 +103,18 @@ group is not a commitment.
 
 - Real-file corpus (Word and LibreOffice documents) with an automatic
   fidelity report in CI; preserve unknown content on save
-- Folder mode: open a local directory (File System Access API) as a
-  project, with links between documents and global search
+- File explorer: a storage-independent module (`src/fs/`, a
+  `StorageProvider` interface: list, read, write, mkdir, move, remove) with
+  providers for local folders (File System Access API), the browser's
+  private storage (OPFS), WebDAV / Nextcloud and Git repositories; create,
+  rename, move and delete files and folders; designed to be extracted as a
+  library shared with QRShare
+- Read-only opening: open any document read-only (viewing without
+  accidental edits, files from a read-only folder or link), with a visible
+  banner and "Edit a copy"
+- Obsidian vaults: a folder of Markdown notes with YAML front matter
+  (tags, aliases, any key kept), `[[wiki links]]`, `[[note#heading]]`,
+  `[[note|alias]]`, `![[embeds]]`, backlinks, and links that follow renames
 - Crash recovery from an operation log in IndexedDB, beyond autosave
 - TextBundle import; upstream MDZ collaboration
 
