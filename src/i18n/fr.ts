@@ -882,4 +882,8 @@ export const fr: Record<MessageKey, string> = {
   'slides.size.Letter': 'Papier Letter',
   'slides.size.custom': 'Format personnalisé',
   'slides.orientation': 'Orientation',
+  'sheet.textColor': 'Couleur du texte',
+  'sheet.fillColor': 'Couleur de remplissage',
+  'sheet.border': 'Bordures',
+  'sheet.clearFormat': 'Effacer la mise en forme (Ctrl+Espace)',
 };

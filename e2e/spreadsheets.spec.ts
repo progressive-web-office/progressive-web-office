@@ -74,3 +74,29 @@ test('freezes the first row and column, which stay in view while scrolling (SHEE
   const xlsx = unzipSync(new Uint8Array((await saveAs(page, 'Excel workbook (.xlsx)')).data));
   expect(strFromU8(xlsx['xl/worksheets/sheet1.xml']!)).toContain('<pane xSplit="1" ySplit="1" topLeftCell="B2" activePane="bottomRight" state="frozen"/>');
 });
+
+test('formats cells: bold, colours, alignment, borders, kept in the file (SHEET-014)', async ({ page }) => {
+  await openApp(page);
+  await openFile(page, 'scores.csv', 'Name,Score\nChloé,12\nalice,17\n', 'text/csv');
+  await page.locator('td[data-r="0"][data-c="0"]').click();
+  await page.locator('td[data-r="0"][data-c="1"]').click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Bold' }).click();
+  await page.getByLabel('Fill colour').fill('#ffff00');
+  await page.getByRole('button', { name: 'Align center' }).click();
+  await page.getByRole('button', { name: 'Borders' }).click();
+  const header = page.locator('td[data-r="0"][data-c="0"]');
+  await expect(header).toHaveCSS('font-weight', '700');
+  await expect(header).toHaveCSS('text-align', 'center');
+  await expect(page.getByRole('button', { name: 'Bold' })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('td[data-r="1"][data-c="1"]').click();
+  await page.keyboard.press('Control+i');
+  await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveCSS('font-style', 'italic');
+  await expect(header).toHaveCSS('background-color', 'rgb(255, 255, 0)');
+
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const xlsx = unzipSync(new Uint8Array((await saveAs(page, 'Excel workbook (.xlsx)')).data));
+  const styles = strFromU8(xlsx['xl/styles.xml']!);
+  expect(styles).toContain('<b/>');
+  expect(styles).toContain('<fgColor rgb="FFFFFF00"/>');
+  expect(styles).toContain('<alignment horizontal="center"/>');
+});

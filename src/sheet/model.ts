@@ -14,6 +14,34 @@ export interface Cell {
   formula?: string;
   /** Number format code (e.g. `0.00`, `0%`, `yyyy-mm-dd`). */
   numFmt?: string;
+  /** Character and cell formatting (SHEET-014). */
+  style?: CellStyle;
+}
+
+/** Formatting of a cell (SHEET-014); colours are `#rrggbb`. */
+export interface CellStyle {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  color?: string;
+  fill?: string;
+  align?: 'left' | 'center' | 'right';
+  /** A thin border on the four sides. */
+  border?: boolean;
+}
+
+/** Drop unset values; undefined when nothing is left. */
+export function cleanCellStyle(style: CellStyle | undefined): CellStyle | undefined {
+  if (!style) return undefined;
+  const out: CellStyle = {};
+  if (style.bold) out.bold = true;
+  if (style.italic) out.italic = true;
+  if (style.underline) out.underline = true;
+  if (style.color && /^#[0-9a-f]{6}$/i.test(style.color)) out.color = style.color.toLowerCase();
+  if (style.fill && /^#[0-9a-f]{6}$/i.test(style.fill)) out.fill = style.fill.toLowerCase();
+  if (style.align === 'left' || style.align === 'center' || style.align === 'right') out.align = style.align;
+  if (style.border) out.border = true;
+  return Object.keys(out).length ? out : undefined;
 }
 
 export type ChartType = 'column' | 'bar' | 'line' | 'pie' | 'scatter';

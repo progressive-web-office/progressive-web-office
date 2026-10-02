@@ -4,7 +4,7 @@ import { writeZip } from '../core/zip';
 import { APP_XML, coreXml, NS, REL } from '../document/ooxml';
 import { parseKey, refName } from './address';
 import { Calculator } from './engine';
-import { isError, type Sheet, type Workbook } from './model';
+import { isError, type CellStyle, type Sheet, type Workbook } from './model';
 import { BUILTIN_FORMATS, pxToWidth } from './xlsx-reader';
 import { chartXml, CT_CHART, CT_DRAWING, drawingXml, REL_DRAWING } from './chart-ooxml';
 
@@ -36,23 +36,41 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     }
     return i;
   };
-  // Number formats -> style indexes (0 = default).
+  // Number formats and cell formatting (SHEET-014) -> style indexes (0 = default).
   const builtinIds = new Map(Object.entries(BUILTIN_FORMATS).map(([id, code]) => [code, Number(id)]));
   const customFormats: { id: number; code: string }[] = [];
-  const xfs: number[] = [0];
+  const DEFAULT_FONT = '<font><sz val="11"/><name val="Calibri"/><family val="2"/></font>';
+  const fonts = [DEFAULT_FONT];
+  const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
+  const borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>'];
+  const indexOf = (list: string[], xml: string): number => {
+    const i = list.indexOf(xml);
+    return i >= 0 ? i : list.push(xml) - 1;
+  };
+  const argb = (hex: string): string => `FF${hex.slice(1).toUpperCase()}`;
+  const xfs: string[] = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'];
   const styleOf = new Map<string, number>();
-  const style = (fmt: string | undefined): number => {
-    if (!fmt) return 0;
-    let s = styleOf.get(fmt);
+  const style = (fmt: string | undefined, look: CellStyle | undefined): number => {
+    if (!fmt && !look) return 0;
+    const key = `${fmt ?? ''}|${JSON.stringify(look ?? {})}`;
+    let s = styleOf.get(key);
     if (s === undefined) {
-      let id = builtinIds.get(fmt);
+      let id = fmt ? builtinIds.get(fmt) : 0;
       if (id === undefined) {
         id = 164 + customFormats.length;
-        customFormats.push({ id, code: fmt });
+        customFormats.push({ id, code: fmt! });
       }
+      const font = look && (look.bold || look.italic || look.underline || look.color)
+        ? indexOf(fonts, `<font>${look.bold ? '<b/>' : ''}${look.italic ? '<i/>' : ''}${look.underline ? '<u/>' : ''}<sz val="11"/>${look.color ? `<color rgb="${argb(look.color)}"/>` : ''}<name val="Calibri"/><family val="2"/></font>`)
+        : 0;
+      const fill = look?.fill ? indexOf(fills, `<fill><patternFill patternType="solid"><fgColor rgb="${argb(look.fill)}"/><bgColor indexed="64"/></patternFill></fill>`) : 0;
+      const side = (name: string): string => `<${name} style="thin"><color auto="1"/></${name}>`;
+      const border = look?.border ? indexOf(borders, `<border>${side('left')}${side('right')}${side('top')}${side('bottom')}<diagonal/></border>`) : 0;
+      const apply = `${id ? ' applyNumberFormat="1"' : ''}${font ? ' applyFont="1"' : ''}${fill ? ' applyFill="1"' : ''}${border ? ' applyBorder="1"' : ''}${look?.align ? ' applyAlignment="1"' : ''}`;
+      const xf = `<xf numFmtId="${id}" fontId="${font}" fillId="${fill}" borderId="${border}" xfId="0"${apply}`;
       s = xfs.length;
-      xfs.push(id);
-      styleOf.set(fmt, s);
+      xfs.push(look?.align ? `${xf}><alignment horizontal="${look.align}"/></xf>` : `${xf}/>`);
+      styleOf.set(key, s);
     }
     return s;
   };
@@ -62,7 +80,7 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     for (const [key, cell] of sheet.cells) {
       const [r, c] = parseKey(key);
       const ref = refName(r, c);
-      const s = style(cell.numFmt);
+      const s = style(cell.numFmt, cell.style);
       const sAttr = s ? ` s="${s}"` : '';
       let xml: string;
       if (cell.formula !== undefined) {
@@ -79,6 +97,9 @@ export function writeXlsx(wb: Workbook): Uint8Array {
         xml = `<c r="${ref}"${sAttr} t="b"><v>${cell.value ? 1 : 0}</v></c>`;
       } else if (typeof cell.value === 'string') {
         xml = `<c r="${ref}"${sAttr} t="s"><v>${sst(cell.value)}</v></c>`;
+      } else if (sAttr) {
+        // An empty cell that only carries formatting (SHEET-014).
+        xml = `<c r="${ref}"${sAttr}/>`;
       } else {
         continue;
       }
@@ -141,11 +162,11 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     (customFormats.length
       ? `<numFmts count="${customFormats.length}">${customFormats.map((f) => `<numFmt numFmtId="${f.id}" formatCode="${esc(f.code)}"/>`).join('')}</numFmts>`
       : '') +
-    '<fonts count="1"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font></fonts>' +
-    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
-    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    `<fonts count="${fonts.length}">${fonts.join('')}</fonts>` +
+    `<fills count="${fills.length}">${fills.join('')}</fills>` +
+    `<borders count="${borders.length}">${borders.join('')}</borders>` +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    `<cellXfs count="${xfs.length}">${xfs.map((id) => `<xf numFmtId="${id}" fontId="0" fillId="0" borderId="0" xfId="0"${id ? ' applyNumberFormat="1"' : ''}/>`).join('')}</cellXfs>` +
+    `<cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs>` +
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
     '</styleSheet>';
 

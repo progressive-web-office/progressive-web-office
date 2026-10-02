@@ -262,6 +262,9 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 .grid td.frz-r.frz-c, .grid thead th.frz-c { z-index: 3; }
 .grid .frz-last-r { border-bottom: 2px solid var(--muted); }
 .grid .frz-last-c { border-right: 2px solid var(--muted); }
+/* SHEET-014: cell formatting (the selection stays visible over a fill). */
+.grid td.filled { background: var(--fill); }
+.grid td.bordered { box-shadow: inset 0 0 0 1px var(--text); }
 .grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid td.bool { text-align: center; }
 .grid td.err { color: var(--danger); text-align: center; }

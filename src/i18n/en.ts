@@ -880,6 +880,10 @@ export const en = {
   'slides.size.Letter': 'Letter paper',
   'slides.size.custom': 'Custom size',
   'slides.orientation': 'Orientation',
+  'sheet.textColor': 'Text colour',
+  'sheet.fillColor': 'Fill colour',
+  'sheet.border': 'Borders',
+  'sheet.clearFormat': 'Clear formatting (Ctrl+Space)',
 } as const;
 
 export type MessageKey = keyof typeof en;

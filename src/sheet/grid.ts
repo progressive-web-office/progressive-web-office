@@ -7,12 +7,12 @@ import type { EditorView, ViewContext } from '../app/views';
 import { cellKey, colName, refName } from './address';
 import { Calculator, formatGeneral } from './engine';
 import { writeWorkbook, type SheetFormat } from './io';
-import { cellInput, getCell, isError, setInput, usedSize, type Chart, type Workbook } from './model';
+import { cellInput, getCell, isError, setInput, usedSize, type CellStyle, type Chart, type Workbook } from './model';
 import { chartData, parseRange, renderChartSvg } from './chart';
 import { formatValue } from './number-format';
 import { fillWithMath, typesetMath } from '../math/inline';
 import { partsWorkbook, workbookParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
-import { addSheet, clearRange, copyRange, deleteCells, deleteSheet, guessHeader, insertCells, pasteText, renameSheet, sortRange, type Range } from './ops';
+import { addSheet, applyCellStyle, clearCellStyle, clearRange, copyRange, deleteCells, deleteSheet, guessHeader, insertCells, pasteText, renameSheet, sortRange, type Range } from './ops';
 import { chooseSort } from './sort-dialog';
 
 const ROW_H = 24;
@@ -34,6 +34,31 @@ const FORMATS = (): [string, string][] => [
   ['"$"#,##0.00', t('sheet.fmt.dollar')],
 ];
 
+/**
+ * Show the formatting of a cell (SHEET-014); a fill without a text colour
+ * keeps dark text, readable in dark mode. `print` sets colours and borders
+ * inline, outside the grid's style sheet.
+ */
+function applyLook(td: HTMLElement, look: CellStyle, print = false): void {
+  if (look.bold) td.style.fontWeight = 'bold';
+  if (look.italic) td.style.fontStyle = 'italic';
+  if (look.underline) td.style.textDecoration = 'underline';
+  if (look.color) td.style.color = look.color;
+  if (look.fill) {
+    if (print) td.style.backgroundColor = look.fill;
+    else {
+      td.classList.add('filled');
+      td.style.setProperty('--fill', look.fill);
+    }
+    if (!look.color) td.style.color = '#000000';
+  }
+  if (look.align) td.style.textAlign = look.align;
+  if (look.border) {
+    if (print) td.style.border = '1px solid #000000';
+    else td.classList.add('bordered');
+  }
+}
+
 export class SheetEditor implements EditorView {
   readonly element: HTMLElement;
   private readonly calc: Calculator;
@@ -54,6 +79,10 @@ export class SheetEditor implements EditorView {
 
   private readonly nameBox = h('span', { class: 'name-box', 'aria-label': t('sheet.selectedCell'), role: 'status' });
   private readonly formulaInput = h('input', { class: 'formula-input', type: 'text', 'aria-label': t('sheet.cellContent'), spellcheck: 'false', autocomplete: 'off' });
+  /** Cell formatting buttons (SHEET-014): bold, italic, underline, border, alignments. */
+  private readonly lookButtons = new Map<string, HTMLButtonElement>();
+  private readonly textColor = h('input', { type: 'color', value: '#c00000', 'aria-label': t('sheet.textColor'), title: t('sheet.textColor') });
+  private readonly fillColor = h('input', { type: 'color', value: '#ffff00', 'aria-label': t('sheet.fillColor'), title: t('sheet.fillColor') });
   private readonly formatSelect = h('select', { 'aria-label': t('sheet.numberFormat'), title: t('sheet.numberFormat') }, ...FORMATS().map(([v, l]) => h('option', { value: v }, l)));
   private readonly viewport = h('div', { class: 'grid-viewport', tabindex: '0', role: 'grid', 'aria-label': t('sheet.label') });
   private readonly table = h('table', { class: 'grid' });
@@ -189,6 +218,7 @@ export class SheetEditor implements EditorView {
           const v = cell ? this.calc.value(si, [r, c]) : null;
           const td = h('td', { class: typeof v === 'number' ? 'num' : undefined });
           if (cell) fillWithMath(td, formatValue(v, cell.numFmt));
+          if (cell?.style) applyLook(td, cell.style, true);
           tr.append(td);
         }
         body.append(tr);
@@ -317,9 +347,10 @@ export class SheetEditor implements EditorView {
         if (cell) {
           const v = this.calc.value(this.si, [r, c]);
           if (fillWithMath(td, formatValue(v, cell.numFmt))) hasMath = true;
-          if (typeof v === 'number') td.className = 'num';
-          else if (typeof v === 'boolean') td.className = 'bool';
-          else if (isError(v)) td.className = 'err';
+          if (typeof v === 'number') td.classList.add('num');
+          else if (typeof v === 'boolean') td.classList.add('bool');
+          else if (isError(v)) td.classList.add('err');
+          if (cell.style) applyLook(td, cell.style);
         }
         tr.append(td);
       }
@@ -351,6 +382,9 @@ export class SheetEditor implements EditorView {
     const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
     if (document.activeElement !== this.formulaInput) this.formulaInput.value = cellInput(cell);
     this.formatSelect.value = FORMATS().some(([v]) => v === (cell?.numFmt ?? '')) ? (cell?.numFmt ?? '') : '';
+    // SHEET-014: the toolbar shows the formatting of the active cell.
+    const look = cell?.style ?? {};
+    for (const [key, b] of this.lookButtons) b.setAttribute('aria-pressed', String(key.startsWith('align:') ? look.align === key.slice(6) : !!look[key as 'bold']));
     this.renderPeers();
     this.ctx.statusChanged();
   }
@@ -755,6 +789,16 @@ export class SheetEditor implements EditorView {
       } else if (e.key === 'Home') {
         e.preventDefault();
         this.select(0, 0);
+      } else if (k === 'b' || k === 'i' || k === 'u') {
+        // SHEET-014: character formatting of the selection.
+        e.preventDefault();
+        this.toggleLook(({ b: 'bold', i: 'italic', u: 'underline' } as const)[k]);
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        this.commitEdit();
+        this.snapshot();
+        clearCellStyle(this.wb, this.si, this.range());
+        this.changed();
       }
       return;
     }
@@ -814,11 +858,63 @@ export class SheetEditor implements EditorView {
       }),
       h('span', { class: 'sep' }),
       this.formatSelect,
+      ...this.lookTools(),
       act(t('sheet.autoSum'), 'Σ', () => this.autoSum()),
       act(t('sheet.insertChart'), '📊', () => void this.insertChart()),
       act(t('sort.button'), '⇅', () => void this.sort()),
       this.freezeButton,
     );
+  }
+
+  /** Change the formatting of the selection (SHEET-014). */
+  private setLook(patch: Partial<Record<keyof CellStyle, unknown>>): void {
+    this.commitEdit();
+    this.snapshot();
+    applyCellStyle(this.wb, this.si, this.range(), patch);
+    this.changed();
+  }
+
+  /** Toggle a formatting of the selection, following the active cell. */
+  private toggleLook(key: 'bold' | 'italic' | 'underline' | 'border'): void {
+    const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
+    this.setLook({ [key]: !cell?.style?.[key] });
+  }
+
+  private lookTools(): HTMLElement[] {
+    const toggle = (key: 'bold' | 'italic' | 'underline' | 'border', label: string, text: string): HTMLButtonElement => {
+      const b = button(label, () => this.toggleLook(key), { text, title: label, pressed: false });
+      this.lookButtons.set(key, b);
+      return b;
+    };
+    const align = (value: 'left' | 'center' | 'right', label: string, text: string): HTMLButtonElement => {
+      const b = button(label, () => {
+        const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
+        this.setLook({ align: cell?.style?.align === value ? undefined : value });
+      }, { text, title: label, pressed: false });
+      this.lookButtons.set(`align:${value}`, b);
+      return b;
+    };
+    this.textColor.addEventListener('change', () => this.setLook({ color: this.textColor.value }));
+    this.fillColor.addEventListener('change', () => this.setLook({ fill: this.fillColor.value }));
+    return [
+      h('span', { class: 'sep' }),
+      toggle('bold', t('common.bold'), 'B'),
+      toggle('italic', t('common.italic'), 'I'),
+      toggle('underline', t('common.underline'), 'U'),
+      h('label', { class: 'color-pick', title: t('sheet.textColor') }, 'A', this.textColor),
+      h('label', { class: 'color-pick fill', title: t('sheet.fillColor') }, '▧', this.fillColor),
+      toggle('border', t('sheet.border'), '▦'),
+      align('left', t('common.alignLeft'), '⇤'),
+      align('center', t('common.alignCenter'), '↔'),
+      align('right', t('common.alignRight'), '⇥'),
+      button(t('sheet.clearFormat'), () => {
+        this.commitEdit();
+        this.snapshot();
+        clearCellStyle(this.wb, this.si, this.range());
+        this.changed();
+      }, { text: '⌫', title: t('sheet.clearFormat') }),
+      h('span', { class: 'sep' }),
+    ];
   }
 
   private structural(fn: () => void): void {

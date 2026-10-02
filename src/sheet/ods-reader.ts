@@ -4,11 +4,13 @@ import { attr, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText } from '../core/zip';
 import { lengthToPx, ODF_NS } from '../document/odf';
 import { cellKey } from './address';
-import { dateToSerial, type Cell, type Sheet, type Workbook } from './model';
+import { cleanCellStyle, dateToSerial, type Cell, type CellStyle, type Sheet, type Workbook } from './model';
 import { ofToExcel } from './openformula';
 
 /** Safety caps for repeated rows/cells holding content. */
 const MAX_REPEAT_CONTENT = 10_000;
+/** Repeats beyond which formatted empty cells or rows are dropped (SHEET-014). */
+const MAX_REPEAT_FORMAT = 64;
 
 /** Text of a <text:p> (handles text:s, text:tab, text:line-break, spans). */
 function paragraphText(p: Element): string {
@@ -104,6 +106,14 @@ export function readOds(bytes: Uint8Array): Workbook {
   const dataStyles = new Map<string, string>();
   const cellStyles = new Map<string, string>();
   const colWidths = new Map<string, number>();
+  // SHEET-014: cell formatting of each cell style, and their parents.
+  const looks = new Map<string, CellStyle>();
+  const parents = new Map<string, string>();
+  const lookOf = (name: string | null, depth = 0): CellStyle | undefined => {
+    if (!name || depth > 8) return undefined;
+    const parent = parents.get(name);
+    return cleanCellStyle({ ...(parent ? lookOf(parent, depth + 1) : {}), ...looks.get(name) });
+  };
   for (const d of docs) {
     for (const el of Array.from(d.getElementsByTagNameNS(ODF_NS.number, '*'))) {
       if (!el.localName.endsWith('-style')) continue;
@@ -117,6 +127,11 @@ export function readOds(bytes: Uint8Array): Workbook {
       if (!name) continue;
       const ds = attr(st, 'data-style-name');
       if (ds) cellStyles.set(name, ds);
+      if (attr(st, 'family') === 'table-cell') {
+        looks.set(name, readLook(st));
+        const parent = attr(st, 'parent-style-name');
+        if (parent) parents.set(name, parent);
+      }
       const colProps = children(st, 'table-column-properties')[0];
       const w = colProps ? lengthToPx(attr(colProps, 'column-width')) : undefined;
       if (w) colWidths.set(name, Math.round(w));
@@ -148,7 +163,8 @@ export function readOds(bytes: Uint8Array): Workbook {
         if (el.localName === 'table-row') {
           const repeat = Number(attr(el, 'number-rows-repeated') ?? 1) || 1;
           const cells = readRow(el);
-          if (cells.length) {
+          const formatOnly = cells.every(([, cell]) => cell.value === null && cell.formula === undefined);
+          if (cells.length && !(formatOnly && repeat > MAX_REPEAT_FORMAT)) {
             for (let i = 0; i < Math.min(repeat, MAX_REPEAT_CONTENT); i++) {
               for (const [c, cell] of cells) sheet.cells.set(cellKey(row + i, c), { ...cell });
             }
@@ -171,7 +187,9 @@ export function readOds(bytes: Uint8Array): Workbook {
           if (chart) (sheet.charts ??= []).push(chart);
         }
         const cell = readCell(cellEl);
-        if (cell) for (let i = 0; i < Math.min(repeat, MAX_REPEAT_CONTENT); i++) out.push([c + i, { ...cell }]);
+        // A formatted empty cell repeated across the sheet is not worth keeping one by one.
+        const formatOnly = cell && cell.value === null && cell.formula === undefined;
+        if (cell && !(formatOnly && repeat > MAX_REPEAT_FORMAT)) for (let i = 0; i < Math.min(repeat, MAX_REPEAT_CONTENT); i++) out.push([c + i, { ...cell }]);
         c += repeat;
       }
       return out;
@@ -212,6 +230,8 @@ export function readOds(bytes: Uint8Array): Workbook {
         default:
           cell = paras.length ? { value: paras.join('\n') } : undefined;
       }
+      const look = lookOf(attr(el, 'style-name'));
+      if (look) (cell ??= { value: null }).style = look;
       if (formulaAttr) {
         cell ??= { value: null };
         cell.formula = ofToExcel(formulaAttr);
@@ -242,4 +262,29 @@ function readFrozenPanes(zip: ReturnType<typeof readZip>, sheets: Sheet[]): void
     const rows = value('VerticalSplitMode') === 2 ? value('VerticalSplitPosition') : 0;
     if (rows > 0 || cols > 0) sheet.freeze = { rows: Math.max(0, rows), cols: Math.max(0, cols) };
   }
+}
+
+/** Formatting of an ODF table-cell style (SHEET-014). */
+function readLook(st: Element): CellStyle {
+  const cellProps = children(st, 'table-cell-properties')[0];
+  const para = children(st, 'paragraph-properties')[0];
+  const text = children(st, 'text-properties')[0];
+  const look: CellStyle = {};
+  const bg = cellProps ? attr(cellProps, 'background-color') : null;
+  if (bg && /^#[0-9a-f]{6}$/i.test(bg)) look.fill = bg;
+  const border = cellProps ? [attr(cellProps, 'border'), attr(cellProps, 'border-left'), attr(cellProps, 'border-top')].find((b) => b && b !== 'none') : undefined;
+  if (border) look.border = true;
+  const align = para ? attr(para, 'text-align') : null;
+  if (align === 'center') look.align = 'center';
+  else if (align === 'end' || align === 'right') look.align = 'right';
+  else if (align === 'start' || align === 'left') look.align = 'left';
+  if (text) {
+    if (attr(text, 'font-weight') === 'bold' || Number(attr(text, 'font-weight')) >= 600) look.bold = true;
+    if (attr(text, 'font-style') === 'italic') look.italic = true;
+    const u = attr(text, 'text-underline-style');
+    if (u && u !== 'none') look.underline = true;
+    const color = attr(text, 'color');
+    if (color && /^#[0-9a-f]{6}$/i.test(color) && color.toLowerCase() !== '#000000') look.color = color;
+  }
+  return look;
 }

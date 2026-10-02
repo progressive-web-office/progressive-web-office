@@ -2,7 +2,7 @@
 import { cellKey, parseKey } from './address';
 import { formatValue } from './number-format';
 import { shiftFormula, tokenize, refText, translateFormula, type RefToken } from './formula';
-import { isError, parseInput, newSheet, type Cell, type Value, type Workbook } from './model';
+import { cleanCellStyle, isError, parseInput, newSheet, type Cell, type CellStyle, type Value, type Workbook } from './model';
 import type { Calculator } from './engine';
 
 export interface Range {
@@ -222,4 +222,30 @@ export function guessHeader(wb: Workbook, si: number, calc: Calculator, range: R
     }
   }
   return otherBelow;
+}
+
+/**
+ * Change the formatting of a range (SHEET-014): keys of `patch` set to a
+ * value are applied, keys set to false or undefined are removed. Empty
+ * cells are created to hold a style and dropped when it goes.
+ */
+export function applyCellStyle(wb: Workbook, si: number, range: Range, patch: Partial<Record<keyof CellStyle, unknown>>): void {
+  const sheet = wb.sheets[si]!;
+  for (let r = range.r1; r <= range.r2; r++) {
+    for (let c = range.c1; c <= range.c2; c++) {
+      const key = cellKey(r, c);
+      const cell = sheet.cells.get(key) ?? { value: null };
+      const style = cleanCellStyle({ ...cell.style, ...(patch as CellStyle) });
+      const next: Cell = { ...cell };
+      if (style) next.style = style;
+      else delete next.style;
+      if (next.value === null && next.formula === undefined && !next.style && !next.numFmt) sheet.cells.delete(key);
+      else sheet.cells.set(key, next);
+    }
+  }
+}
+
+/** Remove the formatting of a range, keeping values and number formats. */
+export function clearCellStyle(wb: Workbook, si: number, range: Range): void {
+  applyCellStyle(wb, si, range, { bold: false, italic: false, underline: false, color: undefined, fill: undefined, align: undefined, border: false });
 }

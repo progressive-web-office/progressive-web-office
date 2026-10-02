@@ -5,7 +5,7 @@ import { readZip, readZipText, type ZipEntries } from '../core/zip';
 import { readRels } from '../document/ooxml';
 import { cellKey, parseRef } from './address';
 import { translateFormula } from './formula';
-import type { Cell, Sheet, Workbook } from './model';
+import { cleanCellStyle, type Cell, type CellStyle, type Sheet, type Workbook } from './model';
 
 /** Built-in number formats (ECMA-376 Part 1, 18.8.30), dates shown as ISO. */
 export const BUILTIN_FORMATS: Record<number, string> = {
@@ -53,7 +53,7 @@ function text(el: Element): string {
 
 class XlsxReader {
   private strings: string[] = [];
-  private styles: (string | undefined)[] = [];
+  private styles: { numFmt?: string; style?: CellStyle }[] = [];
 
   constructor(private readonly zip: ZipEntries) {}
 
@@ -98,11 +98,39 @@ class XlsxReader {
     const doc = parseXml(xml);
     const custom = new Map<number, string>();
     for (const f of descendants(doc, 'numFmt')) custom.set(Number(attr(f, 'numFmtId')), attr(f, 'formatCode') ?? '');
+    // SHEET-014: fonts, fills and borders, by index.
+    const rgb = (el: Element | undefined): string | undefined => {
+      const v = el ? attr(el, 'rgb') : null;
+      return v && /^[0-9a-f]{8}$/i.test(v) ? `#${v.slice(2).toLowerCase()}` : undefined;
+    };
+    const on = (el: Element | undefined): boolean => !!el && !/^(0|false)$/.test(attr(el, 'val') ?? '');
+    const list = (name: string, item: string): Element[] => {
+      const group = descendants(doc, name)[0];
+      return group ? children(group, item) : [];
+    };
+    const fonts = list('fonts', 'font').map((f): CellStyle => {
+      const u = child(f, 'u');
+      const color = rgb(child(f, 'color'));
+      return cleanCellStyle({ bold: on(child(f, 'b')), italic: on(child(f, 'i')), underline: !!u && attr(u, 'val') !== 'none', ...(color && color !== '#000000' ? { color } : {}) }) ?? {};
+    });
+    const fills = list('fills', 'fill').map((f): CellStyle => {
+      const p = child(f, 'patternFill');
+      const color = p && attr(p, 'patternType') === 'solid' ? rgb(child(p, 'fgColor')) : undefined;
+      return color ? { fill: color } : {};
+    });
+    const borders = list('borders', 'border').map((b): CellStyle => (['left', 'right', 'top', 'bottom'].some((side) => { const e = child(b, side); return !!e && !!attr(e, 'style') && attr(e, 'style') !== 'none'; }) ? { border: true } : {}));
     const cellXfs = descendants(doc, 'cellXfs')[0];
     if (!cellXfs) return;
     this.styles = children(cellXfs, 'xf').map((xf) => {
       const id = Number(attr(xf, 'numFmtId') ?? 0);
-      return id === 0 ? undefined : (custom.get(id) ?? BUILTIN_FORMATS[id]);
+      const align = attr(child(xf, 'alignment') ?? xf, 'horizontal');
+      const look = cleanCellStyle({
+        ...fonts[Number(attr(xf, 'fontId') ?? 0)],
+        ...fills[Number(attr(xf, 'fillId') ?? 0)],
+        ...borders[Number(attr(xf, 'borderId') ?? 0)],
+        ...(align === 'left' || align === 'center' || align === 'right' ? { align } : {}),
+      });
+      return { numFmt: id === 0 ? undefined : (custom.get(id) ?? BUILTIN_FORMATS[id]), ...(look ? { style: look } : {}) };
     });
   }
 
@@ -174,9 +202,10 @@ class XlsxReader {
       if (formula) cell.formula = stripFn(formula);
     }
     const s = attr(c, 's');
-    const fmt = s !== null ? this.styles[Number(s)] : undefined;
-    if (fmt && typeof value === 'number') cell.numFmt = fmt;
-    if (cell.value === null && !cell.formula) return undefined;
+    const xf = s !== null ? this.styles[Number(s)] : undefined;
+    if (xf?.numFmt && typeof value === 'number') cell.numFmt = xf.numFmt;
+    if (xf?.style) cell.style = xf.style;
+    if (cell.value === null && !cell.formula && !cell.style) return undefined;
     return cell;
   }
 }

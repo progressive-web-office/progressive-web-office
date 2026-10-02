@@ -882,4 +882,8 @@ export const zh: Record<MessageKey, string> = {
   'slides.size.Letter': 'Letter 纸',
   'slides.size.custom': '自定义大小',
   'slides.orientation': '方向',
+  'sheet.textColor': '文字颜色',
+  'sheet.fillColor': '填充颜色',
+  'sheet.border': '边框',
+  'sheet.clearFormat': '清除格式（Ctrl+空格）',
 };

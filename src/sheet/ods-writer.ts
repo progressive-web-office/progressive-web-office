@@ -5,7 +5,7 @@ import { MIME_TYPES } from '../core/format';
 import { manifestXml, metaXml, ODF_XMLNS, pxToIn } from '../document/odf';
 import { parseKey } from './address';
 import { Calculator, formatGeneral } from './engine';
-import { isError, serialToDate, usedSize, type Cell, type Value, type Workbook } from './model';
+import { isError, serialToDate, usedSize, type Cell, type CellStyle, type Value, type Workbook } from './model';
 import { isDateFormat } from './number-format';
 import { excelToOf } from './openformula';
 import { chartFrameXml, chartObjectXml, CHART_MIME } from './chart-odf';
@@ -97,20 +97,48 @@ function settingsXml(wb: Workbook): string | undefined {
   );
 }
 
+/** Cell formatting as ODF style properties (SHEET-014). */
+function lookXml(look: CellStyle | undefined): string {
+  if (!look) return '';
+  const cellProps = [look.fill ? `fo:background-color="${look.fill}"` : '', look.border ? 'fo:border="0.06pt solid #000000"' : '', look.align ? 'style:text-align-source="fix"' : ''].filter(Boolean);
+  const text = [
+    look.bold ? 'fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"' : '',
+    look.italic ? 'fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic"' : '',
+    look.underline ? 'style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"' : '',
+    look.color ? `fo:color="${look.color}"` : '',
+  ].filter(Boolean);
+  return (
+    (cellProps.length ? `<style:table-cell-properties ${cellProps.join(' ')}/>` : '') +
+    (look.align ? `<style:paragraph-properties fo:text-align="${{ left: 'start', center: 'center', right: 'end' }[look.align]}"/>` : '') +
+    (text.length ? `<style:text-properties ${text.join(' ')}/>` : '')
+  );
+}
+
 export function writeOds(wb: Workbook): Uint8Array {
   const calc = new Calculator(wb);
   const formats = new Map<string, string>(); // fmt -> cell style name
   const styles: string[] = [];
   const colStyles = new Map<number, string>(); // px -> style name
 
-  const cellStyle = (fmt: string | undefined): string => {
-    if (!fmt) return '';
-    let name = formats.get(fmt);
+  const dataStyles = new Map<string, string>(); // fmt -> data style name
+  const cellStyle = (fmt: string | undefined, look: CellStyle | undefined): string => {
+    if (!fmt && !look) return '';
+    const key = `${fmt ?? ''}|${JSON.stringify(look ?? {})}`;
+    let name = formats.get(key);
     if (!name) {
-      const n = formats.size + 1;
-      name = `ce${n}`;
-      formats.set(fmt, name);
-      styles.push(dataStyle(`N${n}`, fmt), `<style:style style:name="${name}" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="N${n}"/>`);
+      name = `ce${formats.size + 1}`;
+      formats.set(key, name);
+      let data = '';
+      if (fmt) {
+        let ds = dataStyles.get(fmt);
+        if (!ds) {
+          ds = `N${dataStyles.size + 1}`;
+          dataStyles.set(fmt, ds);
+          styles.push(dataStyle(ds, fmt));
+        }
+        data = ` style:data-style-name="${ds}"`;
+      }
+      styles.push(`<style:style style:name="${name}" style:family="table-cell" style:parent-style-name="Default"${data}>${lookXml(look)}</style:style>`);
     }
     return ` table:style-name="${name}"`;
   };
@@ -206,7 +234,7 @@ export function writeOds(wb: Workbook): Uint8Array {
         const v = cell.formula !== undefined ? calc.value(si, [r, c]) : cell.value;
         const formula = cell.formula !== undefined ? ` table:formula="${esc(excelToOf(cell.formula))}"` : '';
         const text = display(v);
-        rowXml += `<table:table-cell${cellStyle(cell.numFmt)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
+        rowXml += `<table:table-cell${cellStyle(cell.numFmt, cell.style)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
       }
       if (gap) rowXml += `<table:table-cell${gap > 1 ? ` table:number-columns-repeated="${gap}"` : ''}/>`;
       body += `<table:table-row>${rowXml}</table:table-row>`;
