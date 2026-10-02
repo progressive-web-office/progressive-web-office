@@ -949,6 +949,8 @@ export const fr: Record<MessageKey, string> = {
   'pdf.highlightTitle': 'Surligner le texte sélectionné (un commentaire peut être ajouté)',
   'pdf.note': 'Note',
   'pdf.noteTitle': 'Ajouter une note : cliquez à l’endroit voulu sur la page',
+  'pdf.reviewHint': 'Sélectionnez du texte puis appuyez sur c (ou 🖍 Surligner) pour le surligner et écrire un commentaire ; sans sélection, c (ou 💬 Note) puis un clic place une note. Les annotations sont enregistrées dans le fichier PDF.',
+  'pdf.reviewReadOnly': 'Ce fichier PDF ne peut pas être modifié : ses pages se lisent mais ne s’annotent pas.',
   'pdf.selectToHighlight': 'Sélectionnez d’abord le texte à surligner.',
   'pdf.noteText': 'Commentaire',
   'pdf.highlightOn': 'Surlignage, page {n}',

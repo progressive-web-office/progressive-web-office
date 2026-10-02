@@ -999,3 +999,7 @@ body.distraction-free .ai-panel { display: none !important; }
 .doc-editor.paged .doc-page hr.page-break { break-after: column; }
 .doc-editor.paged .doc-page img { max-height: 900px; object-fit: contain; }
 .doc-editor.paged .doc-page table, .doc-editor.paged .doc-page pre { break-inside: avoid; }
+
+/* REVIEW-005: correcting a PDF file: the annotation tools and their panel in front. */
+.pdf-viewer.reviewing .pdf-form-tool { display: none; }
+.pdf-review-hint { color: var(--muted); font-size: 0.9rem; }

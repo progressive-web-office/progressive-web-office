@@ -24,8 +24,16 @@ The pages of the review mode are a screen layout (US Letter, the width of
 the editor's page): they do not always match the pages of the printed
 document.
 
-PDF files are always shown this way: the same review bar is part of the PDF
-viewer, where comments are highlights and notes (see [PDF](./pdf)).
+## Review mode of PDF files
+
+PDF files are always shown as pages, with the same bar. **📖 Review mode**
+(or <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd>), first in the PDF toolbar,
+puts the correction tools in front: **🖍 Highlight** and **💬 Note** stay in
+the bar, the form and signature tools are hidden and the annotations panel
+is shown (it explains how to annotate while it is empty). Select text and
+press <kbd>c</kbd> to highlight it and write a comment; without a selection,
+<kbd>c</kbd> then a click places a note. The annotations are saved in the PDF
+file (see [PDF](./pdf)).
 
 ## Page by page or scrolled
 

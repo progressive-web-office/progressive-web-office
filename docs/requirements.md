@@ -426,6 +426,7 @@ integration is ever needed.
 | REVIEW-002 | S | 0.2.0 | While reading a PDF file or reviewing a text document, the system shall turn the pages with single keys outside the fields (k/n/Page Down/Space/→ next, j/p/Page Up/Shift+Space/← previous, g/Home first, G/End last) and offer shortcuts to zoom (+ −), fit the width (w) or the page (h, 0), set the pages side by side (1–4), switch the flow (s), comment (c), go to the next and previous comment (] [), find (/), go full screen (f) and list the shortcuts (?). |
 | REVIEW-003 | S | 0.2.0 | Page by page, the mouse wheel shall turn the pages when the spread has nothing more to scroll. |
 | REVIEW-004 | S | 0.2.0 | The system shall offer a full screen without distractions (f, Esc to leave) showing only the pages, the review bar and the comments. |
+| REVIEW-005 | S | 0.2.0 | The PDF viewer shall offer the same review mode button and shortcut (Ctrl+Alt+R): the highlight and note tools named in the toolbar, the form and signature tools hidden, and the annotations panel shown, explaining how to annotate while it is empty. |
 
 ## 9j. Images and drawing (IMG)
 

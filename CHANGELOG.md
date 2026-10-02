@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Review mode for PDF files too (📖 Review mode, Ctrl+Alt+R, or *correction*
+  in the command palette): highlight and note tools named, form tools
+  hidden, the annotations panel shown with how to annotate.
 - The command palette shows the keyboard shortcut of each command that has
   one, and lists the review mode (also for read-only documents) and the
   review actions with their keys; it is wider, in three columns (command,

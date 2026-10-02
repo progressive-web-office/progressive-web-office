@@ -15,7 +15,7 @@ import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
 import { findInPages, type PdfMatch } from './find';
 import type { PdfNote } from './annotations';
 import { askAuthor } from '../app/author';
-import { isTyping, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
+import { isTyping, REVIEW_KEYWORDS, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
 
 const VIEW_KEY = 'pwo.pdf.view';
@@ -91,6 +91,9 @@ export class PdfViewer implements EditorView {
   private readonly flowButton = button(t('review.flow'), () => this.setFlow(this.flow === 'pages' ? 'scroll' : 'pages'), { text: '', className: 'flow-btn' });
   private readonly fullscreenButton = button(t('review.fullscreen'), () => this.toggleFullscreen(), { text: '⛶', title: t('review.fullscreenTitle'), className: 'icon', pressed: false });
   private lastWheel = 0;
+  /** REVIEW-005: correcting a PDF, its annotation tools and their panel in front. */
+  private reviewing = false;
+  private readonly reviewButton = button(t('review.mode'), () => this.setReviewing(!this.reviewing), { text: `📖 ${t('review.mode')}`, title: t('review.modeTitle'), pressed: false, className: 'review-toggle' });
   private readonly columnsSelect = h(
     'select',
     { 'aria-label': t('pdf.pagesPerRow'), title: t('pdf.pagesPerRow') },
@@ -155,6 +158,11 @@ export class PdfViewer implements EditorView {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         this.openFind();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.altKey && !e.shiftKey && e.code === 'KeyR') {
+        e.preventDefault();
+        this.setReviewing(!this.reviewing);
         return;
       }
       if (e.key === 'Escape' && isDistractionFree() && !isTyping(e.target)) {
@@ -363,10 +371,23 @@ export class PdfViewer implements EditorView {
     }
   }
 
+  /** REVIEW-005: the review mode of a PDF file. */
+  setReviewing(on: boolean): void {
+    this.reviewing = on;
+    this.element.classList.toggle('reviewing', on);
+    this.reviewButton.setAttribute('aria-pressed', String(on));
+    this.renderNotesPanel();
+    this.scroller.focus();
+    this.ctx.statusChanged();
+  }
+
   private renderNotesPanel(focus?: PdfNote): void {
     const total = this.notes.length + this.existing.length;
-    this.notesPanel.hidden = !total;
-    if (!total) return this.notesPanel.replaceChildren();
+    this.notesPanel.hidden = !total && !this.reviewing;
+    if (!total) {
+      // While correcting, the empty panel says how to annotate.
+      return this.notesPanel.replaceChildren(...(this.reviewing ? [h('h2', {}, t('pdf.annotations')), h('p', { class: 'pdf-review-hint' }, t(this.info.readOnlyReason ? 'pdf.reviewReadOnly' : 'pdf.reviewHint'))] : []));
+    }
     const fmt = (iso?: string): string => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '');
     const own = this.notes.map((note) => {
       const area = h('textarea', { rows: '2', 'aria-label': t('pdf.noteText'), placeholder: t('pdf.noteText') });
@@ -495,6 +516,8 @@ export class PdfViewer implements EditorView {
     return h(
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('pdf.label') },
+      this.reviewButton,
+      h('span', { class: 'sep' }),
       button(t('pdf.prev'), () => this.goTo(this.current - 1), { text: '◀', title: t('pdf.prevTitle') }),
       this.pageInput,
       h('span', { class: 'page-total' }, `/ ${this.doc.numPages}`),
@@ -513,11 +536,11 @@ export class PdfViewer implements EditorView {
       ...(editable
         ? [
             h('span', { class: 'sep' }),
-            button(t('pdf.sign'), () => void this.addSignature(), { text: t('pdf.signText'), title: t('pdf.signTitle') }),
-            button(t('pdf.addText'), () => this.addText(), { text: t('pdf.addTextText'), title: t('pdf.addTextTitle') }),
-            h('span', { class: 'sep' }),
-            button(t('pdf.highlight'), () => this.highlightSelection(), { text: '🖍', title: t('pdf.highlightTitle') }),
-            button(t('pdf.note'), () => this.startNote(), { text: '💬', title: t('pdf.noteTitle') }),
+            button(t('pdf.sign'), () => void this.addSignature(), { text: t('pdf.signText'), title: t('pdf.signTitle'), className: 'pdf-form-tool' }),
+            button(t('pdf.addText'), () => this.addText(), { text: t('pdf.addTextText'), title: t('pdf.addTextTitle'), className: 'pdf-form-tool' }),
+            h('span', { class: 'sep pdf-form-tool' }),
+            button(t('pdf.highlight'), () => this.highlightSelection(), { text: `🖍 ${t('pdf.highlight')}`, title: `${t('pdf.highlightTitle')} (c)` }),
+            button(t('pdf.note'), () => this.startNote(), { text: `💬 ${t('pdf.note')}`, title: t('pdf.noteTitle') }),
           ]
         : []),
     );
@@ -590,8 +613,11 @@ export class PdfViewer implements EditorView {
   }
 
   /** UI-018: the review actions, with their keys, in the command palette. */
-  commands(): ReturnType<typeof reviewCommands> {
-    return reviewCommands((a) => t(`review.action.${a}` as MessageKey), t('pdf.label'), (a) => void this.review(a));
+  commands(): import('../app/palette').PaletteCommand[] {
+    const toggle = this.reviewing
+      ? { label: t('review.leaveTitle'), where: t('pdf.label'), keys: ['Ctrl+Alt+R'], run: () => this.setReviewing(false) }
+      : { label: t('review.mode'), where: t('pdf.label'), keys: ['Ctrl+Alt+R'], keywords: REVIEW_KEYWORDS, run: () => this.setReviewing(true) };
+    return [toggle, ...reviewCommands((a) => t(`review.action.${a}` as MessageKey), t('pdf.label'), (a) => void this.review(a))];
   }
 
   /** Do a review action; false when it does not apply. */

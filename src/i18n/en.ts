@@ -947,6 +947,8 @@ export const en = {
   'pdf.highlightTitle': 'Highlight the selected text (a comment can be added)',
   'pdf.note': 'Note',
   'pdf.noteTitle': 'Add a note: click where it goes on the page',
+  'pdf.reviewHint': 'Select text, then press c (or 🖍 Highlight) to highlight it and write a comment; without a selection, c (or 💬 Note) then a click places a note. Annotations are saved in the PDF file.',
+  'pdf.reviewReadOnly': 'This PDF file cannot be changed: its pages can be read, not annotated.',
   'pdf.selectToHighlight': 'Select the text to highlight first.',
   'pdf.noteText': 'Comment',
   'pdf.highlightOn': 'Highlight, page {n}',

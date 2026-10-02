@@ -124,3 +124,28 @@ test('finds the review mode and its shortcuts in the command palette, also read-
   await page.keyboard.press('Escape');
   expect(errors).toEqual([]);
 });
+
+test.describe('review mode of a PDF file, in French (REVIEW-005, UI-018)', () => {
+  test.use({ locale: 'fr-FR' });
+  test('enters the review mode from its button and from the palette', async ({ page }) => {
+    await page.goto('./');
+    const chooser = page.waitForEvent('filechooser');
+    await page.locator('.header-actions').getByRole('button', { name: 'Ouvrir', exact: true }).click();
+    await (await chooser).setFiles({ name: 'rapport.pdf', mimeType: 'application/pdf', buffer: await pdf(3) });
+    const toolbar = page.getByRole('toolbar', { name: 'PDF' });
+    await toolbar.getByRole('button', { name: 'Mode correction' }).click();
+    const notes = page.getByRole('complementary', { name: 'Annotations' });
+    await expect(notes).toContainText('Sélectionnez du texte');
+    await expect(toolbar.getByRole('button', { name: 'Ajouter une signature' })).toBeHidden();
+    await expect(toolbar.getByRole('button', { name: 'Surligner' })).toContainText('Surligner');
+    await page.keyboard.press('Control+Alt+r');
+    await expect(notes).toBeHidden();
+    // "corr" finds it in the palette.
+    await page.keyboard.press('Control+Shift+P');
+    const palette = page.getByRole('dialog', { name: 'Commandes' });
+    await palette.getByRole('combobox').fill('corr');
+    await expect(palette.getByRole('option').first()).toContainText('Mode correction');
+    await page.keyboard.press('Enter');
+    await expect(notes).toBeVisible();
+  });
+});

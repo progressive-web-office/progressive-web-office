@@ -949,6 +949,8 @@ export const zh: Record<MessageKey, string> = {
   'pdf.highlightTitle': '高亮所选文本（可添加批注）',
   'pdf.note': '便笺',
   'pdf.noteTitle': '添加便笺：在页面上单击放置位置',
+  'pdf.reviewHint': '选择文本后按 c（或 🖍 高亮）进行高亮并写评论；未选择时按 c（或 💬 批注）再点击即可放置批注。批注保存在 PDF 文件中。',
+  'pdf.reviewReadOnly': '此 PDF 文件无法修改：只能阅读，不能批注。',
   'pdf.selectToHighlight': '请先选择要高亮的文本。',
   'pdf.noteText': '批注',
   'pdf.highlightOn': '第 {n} 页的高亮',
