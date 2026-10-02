@@ -62,7 +62,8 @@ group is not a commitment.
 
 - ✅ ZIP archives opened as folders, nested archives included (FILE-021);
   source and text files in a code editor (FILE-022); pictures (FILE-023)
-- Next: comments on lines of source files, PDF annotations
+- ✅ PDF annotations: highlights and notes (PDF-018)
+- Next: comments on lines of source files
 
 ### Review and collaboration
 

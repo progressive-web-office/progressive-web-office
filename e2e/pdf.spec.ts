@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { PDFDocument, StandardFonts } from '@pdfme/pdf-lib';
+import { PDFDocument, PDFName, StandardFonts } from '@pdfme/pdf-lib';
 import { openApp, openFile, saveAs } from './helpers';
 
 async function samplePdf(): Promise<Buffer> {
@@ -24,6 +24,48 @@ async function download(page: import('@playwright/test').Page): Promise<Buffer> 
   for await (const c of stream) chunks.push(c as Buffer);
   return Buffer.concat(chunks);
 }
+
+test('highlights text and adds notes saved as PDF annotations (PDF-018)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'sample.pdf', await samplePdf(), 'application/pdf');
+  const span = page.locator('.pdf-page').first().locator('.textLayer span', { hasText: 'Hello page 1' });
+  await expect(span).toBeVisible();
+  await span.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+  });
+  page.once('dialog', (d) => void d.accept('Prof'));
+  await page.getByRole('button', { name: 'Highlight', exact: true }).click();
+  const panel = page.getByRole('complementary', { name: 'Annotations' });
+  const card = panel.getByRole('article', { name: 'Highlight, page 1' });
+  await expect(card).toContainText('Prof');
+  await card.getByRole('textbox', { name: 'Comment' }).fill('Say more.');
+  await expect(page.locator('.pdf-highlight').first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Note', exact: true }).click();
+  await page.locator('.pdf-page').nth(1).click({ position: { x: 100, y: 100 } });
+  await panel.getByRole('article', { name: 'Note, page 2' }).getByRole('textbox', { name: 'Comment' }).fill('Good.');
+  await expect(page.locator('.pdf-page').nth(1).locator('.pdf-note-icon')).toBeVisible();
+
+  const saved = await download(page);
+  const doc = await PDFDocument.load(saved);
+  const kinds = (i: number): string[] => {
+    const annots = doc.getPage(i).node.Annots();
+    if (!annots) return [];
+    return annots.asArray().map((ref) => String((doc.context.lookup(ref) as import('@pdfme/pdf-lib').PDFDict).get(PDFName.of('Subtype'))));
+  };
+  expect(kinds(0)).toContain('/Highlight');
+  expect(kinds(1)).toEqual(['/Text']);
+
+  // Reopened, the annotations are listed with their comments.
+  await openFile(page, 'annotated.pdf', saved, 'application/pdf');
+  await expect(panel.getByRole('article')).toHaveCount(2);
+  await expect(panel).toContainText('Say more.');
+  await expect(panel).toContainText('Good.');
+  expect(errors).toEqual([]);
+});
 
 test('finds text in the pages (PDF-017)', async ({ page }) => {
   const errors = await openApp(page);

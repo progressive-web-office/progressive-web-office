@@ -13,6 +13,7 @@ import {
   rgb,
   StandardFonts,
 } from '@pdfme/pdf-lib';
+import { writeAnnotations, type PdfNote } from './annotations';
 
 export type FieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'list' | 'other';
 
@@ -51,6 +52,8 @@ export interface PdfEdits {
   values: Record<string, string | boolean | string[]>;
   stamps: Stamp[];
   flatten: boolean;
+  /** Highlights and notes (PDF-018). */
+  notes?: PdfNote[];
 }
 
 async function load(bytes: Uint8Array): Promise<{ doc: PDFDocument; encrypted: boolean }> {
@@ -148,6 +151,7 @@ export async function applyEdits(bytes: Uint8Array, edits: PdfEdits): Promise<Ui
       page.drawText(stamp.text, { x: stamp.x, y: stamp.y + stamp.height * 0.2, size: stamp.size, font, color: rgb(0, 0, 0) });
     }
   }
+  if (edits.notes?.length) writeAnnotations(doc, edits.notes);
   if (edits.flatten) form.flatten();
   return doc.save();
 }

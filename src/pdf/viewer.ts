@@ -13,6 +13,8 @@ import { applyEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from
 import { captureSignature } from './signature-pad';
 import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
 import { findInPages, type PdfMatch } from './find';
+import type { PdfNote } from './annotations';
+import { askAuthor } from '../app/author';
 
 const VIEW_KEY = 'pwo.pdf.view';
 const GAP = 12;
@@ -97,6 +99,11 @@ export class PdfViewer implements EditorView {
   private texts: Promise<string[][]> | undefined;
   private matches: PdfMatch[] = [];
   private matchIndex = -1;
+  /** PDF-018: highlights and notes added, and those already in the file. */
+  private notes: PdfNote[] = [];
+  private placingNote = false;
+  private readonly notesPanel = h('aside', { class: 'pdf-notes-panel', 'aria-label': t('pdf.annotations'), hidden: true });
+  private existing: { page: number; kind: string; author: string; text: string }[] = [];
   /** The text spans of each rendered page, with their texts. */
   private readonly textDivs = new Map<number, { divs: HTMLElement[]; strs: string[] }>();
 
@@ -131,7 +138,9 @@ export class PdfViewer implements EditorView {
         this.closeFind();
       }
     });
-    this.element = h('div', { class: 'pdf-viewer' }, this.toolbar(), this.findBar, notice, this.scroller);
+    this.element = h('div', { class: 'pdf-viewer' }, this.toolbar(), this.findBar, notice, h('div', { class: 'pdf-body' }, this.scroller, this.notesPanel));
+    this.pagesEl.addEventListener('click', (e) => this.placeNote(e));
+    void this.loadExistingNotes();
     this.element.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
@@ -178,8 +187,8 @@ export class PdfViewer implements EditorView {
 
   /** Save with the form fields still editable, for later changes (PDF-009). */
   async save(): Promise<Uint8Array> {
-    if (!Object.keys(this.values).length && !this.stamps.length) return this.bytes;
-    return applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: false });
+    if (!Object.keys(this.values).length && !this.stamps.length && !this.notes.length) return this.bytes;
+    return applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: false, notes: this.notes });
   }
 
   /** "Flattened PDF": a copy whose filled fields become part of the page (PDF-010). */
@@ -191,7 +200,7 @@ export class PdfViewer implements EditorView {
         label: t('pdf.saveFlattened'),
         format: 'pdf',
         suffix: t('pdf.flattenedSuffix'),
-        save: () => applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: true }),
+        save: () => applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: true, notes: this.notes }),
       },
     ];
   }
@@ -208,6 +217,155 @@ export class PdfViewer implements EditorView {
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
     this.release();
+  }
+
+  // --- annotations (PDF-018) ------------------------------------------------------------
+
+  /** Comments already in the file, listed in the panel. */
+  private async loadExistingNotes(): Promise<void> {
+    const kinds = new Set(['Text', 'Highlight', 'Underline', 'StrikeOut', 'Squiggly', 'FreeText', 'Ink', 'Square', 'Circle']);
+    const found: typeof this.existing = [];
+    for (let i = 0; i < this.doc.numPages; i++) {
+      const annots = (await (await this.doc.getPage(i + 1)).getAnnotations()) as { subtype?: string; contentsObj?: { str?: string }; titleObj?: { str?: string } }[];
+      for (const a of annots) {
+        if (!a.subtype || !kinds.has(a.subtype)) continue;
+        const text = a.contentsObj?.str?.trim() ?? '';
+        if (text || a.subtype !== 'Ink') found.push({ page: i, kind: a.subtype, author: a.titleObj?.str ?? '', text });
+      }
+    }
+    this.existing = found;
+    this.renderNotesPanel();
+  }
+
+  private signature(): Pick<PdfNote, 'author' | 'date'> {
+    const author = askAuthor(t('comment.yourName'));
+    return { ...(author ? { author } : {}), date: new Date().toISOString() };
+  }
+
+  /** Highlight the selected text of the pages. */
+  private highlightSelection(): void {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) {
+      window.alert(t('pdf.selectToHighlight'));
+      return;
+    }
+    const byPage = new Map<number, [number, number, number, number][]>();
+    for (let i = 0; i < sel.rangeCount; i++) {
+      for (const r of Array.from(sel.getRangeAt(i).getClientRects())) {
+        if (r.width < 1 || r.height < 1) continue;
+        const page = this.pages.find((p) => {
+          const b = p.el.getBoundingClientRect();
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          return cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom;
+        });
+        if (!page?.viewport) continue;
+        const b = page.el.getBoundingClientRect();
+        const [x1, y1] = page.viewport.convertToPdfPoint(r.left - b.left, r.bottom - b.top) as [number, number];
+        const [x2, y2] = page.viewport.convertToPdfPoint(r.right - b.left, r.top - b.top) as [number, number];
+        const box: [number, number, number, number] = [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)];
+        const list = byPage.get(page.index) ?? [];
+        // Rectangles of one line repeated by nested elements are kept once.
+        if (!list.some((o) => Math.abs(o[0] - box[0]) < 1 && Math.abs(o[1] - box[1]) < 1 && Math.abs(o[2] - box[2]) < 1)) list.push(box);
+        byPage.set(page.index, list);
+      }
+    }
+    if (!byPage.size) return;
+    const sign = this.signature();
+    let last: PdfNote | undefined;
+    for (const [page, boxes] of byPage) {
+      last = { kind: 'highlight', page, boxes, text: '', ...sign };
+      this.notes.push(last);
+    }
+    sel.removeAllRanges();
+    this.notesChanged(last);
+  }
+
+  private startNote(): void {
+    this.placingNote = true;
+    this.element.classList.add('placing-note');
+    this.ctx.statusChanged();
+  }
+
+  /** The click that places a note on a page. */
+  private placeNote(e: MouseEvent): void {
+    if (!this.placingNote) return;
+    const el = (e.target as HTMLElement).closest<HTMLElement>('.pdf-page');
+    const page = el ? this.pages[Number(el.dataset.page) - 1] : undefined;
+    if (!page?.viewport) return;
+    e.preventDefault();
+    this.placingNote = false;
+    this.element.classList.remove('placing-note');
+    const b = page.el.getBoundingClientRect();
+    const [x, y] = page.viewport.convertToPdfPoint(e.clientX - b.left, e.clientY - b.top) as [number, number];
+    const note: PdfNote = { kind: 'note', page: page.index, boxes: [[x, y - 20, x + 20, y]], text: '', ...this.signature() };
+    this.notes.push(note);
+    this.notesChanged(note);
+  }
+
+  private notesChanged(focus?: PdfNote): void {
+    this.ctx.changed();
+    for (const p of this.pages) if (p.rendered) this.renderNoteLayer(p);
+    this.renderNotesPanel(focus);
+  }
+
+  private renderNoteLayer(page: PageShell): void {
+    const layer = page.el.querySelector<HTMLElement>('.pdf-note-layer');
+    if (!layer || !page.viewport) return;
+    layer.replaceChildren();
+    for (const note of this.notes) {
+      if (note.page !== page.index) continue;
+      if (note.kind === 'highlight') {
+        for (const [x1, y1, x2, y2] of note.boxes) {
+          const mark = h('div', { class: 'pdf-highlight', title: note.text });
+          this.place(mark, this.rect(page.viewport, [x1, y1, x2 - x1, y2 - y1]));
+          layer.append(mark);
+        }
+      } else {
+        const [x1, y1, x2, y2] = note.boxes[0]!;
+        const icon = h('div', { class: 'pdf-note-icon', title: note.text || t('pdf.note') }, '💬');
+        this.place(icon, this.rect(page.viewport, [x1, y1, x2 - x1, y2 - y1]));
+        layer.append(icon);
+      }
+    }
+  }
+
+  private renderNotesPanel(focus?: PdfNote): void {
+    const total = this.notes.length + this.existing.length;
+    this.notesPanel.hidden = !total;
+    if (!total) return this.notesPanel.replaceChildren();
+    const fmt = (iso?: string): string => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '');
+    const own = this.notes.map((note) => {
+      const area = h('textarea', { rows: '2', 'aria-label': t('pdf.noteText'), placeholder: t('pdf.noteText') });
+      area.value = note.text;
+      area.addEventListener('input', () => {
+        note.text = area.value;
+        this.ctx.changed();
+      });
+      area.addEventListener('change', () => this.notesChanged());
+      const card = h(
+        'article',
+        { class: `pdf-note-card ${note.kind}`, 'aria-label': t(note.kind === 'highlight' ? 'pdf.highlightOn' : 'pdf.noteOn', { n: note.page + 1 }) },
+        h('p', { class: 'comment-meta' }, h('strong', {}, note.author || t('comment.anonymous')), ` · ${t('pdf.pageShort', { n: note.page + 1 })} · ${fmt(note.date)}`),
+        area,
+        h('div', { class: 'comment-actions' }, button(t('pdf.goToPage'), () => this.goTo(note.page + 1)), button(t('comment.delete'), () => {
+          this.notes.splice(this.notes.indexOf(note), 1);
+          this.notesChanged();
+        }, { className: 'danger' })),
+      );
+      if (note === focus) queueMicrotask(() => area.focus());
+      return card;
+    });
+    const theirs = this.existing.map((a) =>
+      h(
+        'article',
+        { class: 'pdf-note-card existing', 'aria-label': t('pdf.noteOn', { n: a.page + 1 }) },
+        h('p', { class: 'comment-meta' }, h('strong', {}, a.author || t('comment.anonymous')), ` · ${t('pdf.pageShort', { n: a.page + 1 })}`),
+        a.text ? h('p', { class: 'comment-text' }, a.text) : '',
+        h('div', { class: 'comment-actions' }, button(t('pdf.goToPage'), () => this.goTo(a.page + 1))),
+      ),
+    );
+    this.notesPanel.replaceChildren(h('h2', {}, t('pdf.annotations')), ...own, ...theirs);
   }
 
   // --- text search (PDF-017) -----------------------------------------------------------
@@ -321,6 +479,9 @@ export class PdfViewer implements EditorView {
             h('span', { class: 'sep' }),
             button(t('pdf.sign'), () => void this.addSignature(), { text: t('pdf.signText'), title: t('pdf.signTitle') }),
             button(t('pdf.addText'), () => this.addText(), { text: t('pdf.addTextText'), title: t('pdf.addTextTitle') }),
+            h('span', { class: 'sep' }),
+            button(t('pdf.highlight'), () => this.highlightSelection(), { text: '🖍', title: t('pdf.highlightTitle') }),
+            button(t('pdf.note'), () => this.startNote(), { text: '💬', title: t('pdf.noteTitle') }),
           ]
         : []),
     );
@@ -407,7 +568,9 @@ export class PdfViewer implements EditorView {
     textLayer.style.setProperty('--scale-factor', String(viewport.scale));
     const formLayer = h('div', { class: 'pdf-form-layer' });
     const stampLayer = h('div', { class: 'pdf-stamp-layer' });
-    page.el.replaceChildren(canvas, textLayer, formLayer, stampLayer);
+    const noteLayer = h('div', { class: 'pdf-note-layer' });
+    page.el.replaceChildren(canvas, noteLayer, textLayer, formLayer, stampLayer);
+    this.renderNoteLayer(page);
     const context = canvas.getContext('2d');
     if (!context) return;
     try {

@@ -44,6 +44,19 @@ Two ways to save a filled form:
   when the form is final. The open document is not affected; you can keep
   editing it and save it normally.
 
+## Annotating
+
+- **🖍 Highlight**: select text on a page, then click 🖍. The highlight
+  appears in the **Annotations** panel, where you can type a comment.
+- **💬 Note**: click 💬, then click on the page where the note goes, and type
+  its comment in the panel.
+
+Annotations are signed with your name (asked the first time) and the date.
+**Delete** removes one before saving; **Show** goes to its page. **Save**
+writes them as standard PDF annotations (highlight and note), which other
+PDF readers show with their author and comment. The annotations already in a
+PDF, from other readers too, are listed in the panel with their comments.
+
 ## Signing
 
 1. Click **✍ Sign**.

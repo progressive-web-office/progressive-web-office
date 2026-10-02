@@ -937,6 +937,17 @@ export const en = {
   'pdf.findClose': 'Close the search',
   'pdf.findCount': '{n} of {total}',
   'pdf.findNone': 'Not found',
+  'pdf.annotations': 'Annotations',
+  'pdf.highlight': 'Highlight',
+  'pdf.highlightTitle': 'Highlight the selected text (a comment can be added)',
+  'pdf.note': 'Note',
+  'pdf.noteTitle': 'Add a note: click where it goes on the page',
+  'pdf.selectToHighlight': 'Select the text to highlight first.',
+  'pdf.noteText': 'Comment',
+  'pdf.highlightOn': 'Highlight, page {n}',
+  'pdf.noteOn': 'Note, page {n}',
+  'pdf.pageShort': 'p. {n}',
+  'pdf.goToPage': 'Show',
 } as const;
 
 export type MessageKey = keyof typeof en;

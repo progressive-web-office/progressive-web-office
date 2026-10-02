@@ -5,34 +5,12 @@
 import type { Node as PmNode } from 'prosemirror-model';
 import { TextSelection } from 'prosemirror-state';
 import type { EditorView as PmView } from 'prosemirror-view';
+import { askAuthor } from '../app/author';
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import { initialsOf, newCommentId } from './comments';
 import type { DocComment, RichDocument } from './model';
 import { schema } from './pm/schema';
-
-const AUTHOR_KEY = 'pwo.comments.author';
-const COLLAB_KEY = 'pwo.collab.identity';
-
-/** The name comments are signed with: chosen once, else the collaboration name. */
-export function commentAuthor(): string {
-  try {
-    const own = localStorage.getItem(AUTHOR_KEY);
-    if (own) return own;
-    const collab = JSON.parse(localStorage.getItem(COLLAB_KEY) ?? 'null') as { name?: string } | null;
-    return collab?.name ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function saveAuthor(name: string): void {
-  try {
-    localStorage.setItem(AUTHOR_KEY, name);
-  } catch {
-    /* private mode: asked again next time */
-  }
-}
 
 /** Where each comment's text is in the editor. */
 export function commentRanges(doc: PmNode): Map<string, { from: number; to: number; quote: string }> {
@@ -201,11 +179,7 @@ export class CommentPanel {
   }
 
   private signature(): Pick<DocComment, 'author' | 'initials' | 'date'> {
-    let author = commentAuthor();
-    if (!author) {
-      author = window.prompt(t('comment.yourName'), '')?.trim() ?? '';
-      if (author) saveAuthor(author);
-    }
+    const author = askAuthor(t('comment.yourName'));
     return { ...(author ? { author, initials: initialsOf(author) } : {}), date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') };
   }
 
