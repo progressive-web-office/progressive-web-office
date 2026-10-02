@@ -32,6 +32,12 @@ where you want. The templates are written in the language of the interface
 **Talk**: a title slide, an outline, content slides with bullets and speaker
 notes.
 
+**Race signs**: start, arrows (right, left, straight on), kilometre marks,
+water station and finish, each on an A4 landscape page, in letters several
+centimetres high and high-contrast colours. Print one slide per page and
+laminate them. Turn them to portrait with the orientation list; the text
+sizes follow.
+
 ## Examples
 
 **A tour of the word processor** shows what a text document can hold:

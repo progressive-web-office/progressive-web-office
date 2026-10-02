@@ -225,6 +225,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | PRES-010 | S | 0.0.5 | The system shall preserve slide speaker notes text when reading and writing. |
 | PRES-011 | C | — | Slide transitions and animations. |
 | PRES-012 | W | — | Embedded video/audio, SmartArt, charts editing, legacy `.ppt`. |
+| PRES-013 | S | 0.0.14 | The system shall let the user choose the slide size (16:9, 4:3, A4, Letter) and orientation (landscape, portrait) of a presentation, moving and resizing shapes and text sizes with the slides (undoable), keep the size in ODP and PPTX (with the orientation declared in ODP), and print in the orientation of the slides by default. |
 
 ## 7. PDF (PDF)
 

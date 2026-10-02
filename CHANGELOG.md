@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Slide size and orientation in presentations: 16:9, 4:3, A4 or Letter,
+  landscape or portrait; shapes and text follow, and printing uses the
+  orientation of the slides.
+- A *Race signs* template: start, arrows, kilometre marks, water station and
+  finish in very large letters, one A4 page each.
 - Template files: `.ott`, `.ots`, `.otp`, `.dotx`, `.xltx` and `.potx` open as
   new, untitled documents (saving never changes the template), and *Save
   as… › Save as template file* writes them.

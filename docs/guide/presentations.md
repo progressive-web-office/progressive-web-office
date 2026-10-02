@@ -23,6 +23,15 @@ Presentation** (`.odp`) files.
 | 🗑 | delete the current slide |
 | **▶ Present** (<kbd>F5</kbd>) | start the slideshow from the current slide |
 
+**Slide size and orientation.** The two lists next to the slide buttons set
+the size of all the slides (widescreen 16:9, standard 4:3, A4 or Letter
+paper) and their orientation (landscape or portrait). Shapes move and resize
+with the slides, and text sizes follow, so that what fitted still fits;
+<kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the change. A4 and Letter suit slides
+meant to be printed, such as posters and signs: printing then uses the
+orientation of the slides. The size is kept in OpenDocument and PowerPoint
+files.
+
 ## Shapes
 
 - **T** text box, **▭** rectangle, **◯** ellipse, **🖼** image.
