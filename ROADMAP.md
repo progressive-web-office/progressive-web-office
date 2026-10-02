@@ -28,7 +28,8 @@ group is not a commitment.
 
 ### Spreadsheet
 
-- Cell formatting (number formats, fonts, borders, fills), freeze panes
+- Cell formatting (number formats, fonts, borders, fills); ✅ freeze panes
+  (SHEET-017)
 - ✅ Sort (SHEET-016); filter, fill handle, conditional formatting, data
   validation
 - About a hundred more functions

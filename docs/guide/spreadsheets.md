@@ -68,6 +68,13 @@ function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`
 - The format list applies a number format (decimals, thousands separator,
   percent, dates, currency) to the selection.
 
+## Freezing rows and columns
+
+**❄** (*Freeze panes*) keeps the rows above and the columns left of the
+active cell in view while the rest scrolls; from A1, it freezes the first
+row. A thicker line marks the edge. Press it again to unfreeze. Frozen
+panes are kept in Excel and OpenDocument files.
+
 ## Sorting
 
 **⇅** (*Sort…*) sorts the rows of the selection, or, when a single cell is
