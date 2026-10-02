@@ -1,5 +1,5 @@
 /** Application shell: start screen, header toolbar, file open/save flow. */
-import { getLocale, LOCALES, setLocale, t, type Locale } from '../i18n';
+import { getLocale, LOCALES, setLocale, t, type Locale, type MessageKey } from '../i18n';
 import {
   detectFormat,
   fileExtension,
@@ -846,6 +846,7 @@ export class App {
     if (doc?.view.collab && (doc.kind === 'document' || doc.kind === 'spreadsheet')) {
       actions.append(button(t('collab.start'), () => (this.collab ? this.leaveCollaboration() : void this.startCollaboration()), { title: this.collab ? t('collab.leaveTitle') : t('collab.startTitle'), text: '👥', className: 'icon', pressed: !!this.collab }));
     }
+    actions.append(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
     actions.append(this.themeButton());
     actions.append(button(t('about.open'), () => void this.showAbout(), { title: t('about.openTitle'), text: '?', className: 'icon' }));
     if (doc) {
@@ -869,6 +870,89 @@ export class App {
     actions.addEventListener('change', () => this.header.classList.remove('more-open'));
     this.header.classList.remove('more-open');
     this.header.replaceChildren(...items.filter((n): n is Node => n !== null), actions);
+  }
+
+  // --- documents on a server (SHARE-011) -----------------------------------------
+
+  /** Open a document kept on a server, read-only. */
+  async openRemote(link: import('../share/remote').RemoteLink): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    await this.withBusy(async () => {
+      const { fetchRemote, RemoteError } = await import('../share/remote');
+      try {
+        const file = await fetchRemote(link);
+        if (!(await this.openBytes(file.name, file.bytes))) return;
+        this.setReadOnly(true, true);
+        this.showNotice(t(link.sha256 ? 'remote.openedPinned' : 'remote.opened', { host: new URL(link.url).host }));
+      } catch (err) {
+        const kind = err instanceof RemoteError ? err.kind : 'network';
+        this.showError(t(`remote.error.${kind}` as MessageKey, { message: (err as Error).message, host: new URL(link.url).host }));
+      }
+    });
+  }
+
+  /** Make a link that opens a document of a server read-only, with its QR code. */
+  async createServerLink(): Promise<void> {
+    const [{ encodeRemoteLink, fetchRemote, RemoteError }, { zoomableQr }] = await Promise.all([import('../share/remote'), import('./qr')]);
+    const address = h('input', { type: 'url', class: 'remote-address', 'aria-label': t('remote.address'), placeholder: 'https://example.org/report.odt', spellcheck: 'false' });
+    const pin = h('input', { type: 'checkbox', checked: true });
+    const result = h('div', { class: 'remote-result', 'aria-live': 'polite' });
+    const dialog = h('dialog', { class: 'dialog remote-dialog', 'aria-labelledby': 'remote-title' });
+    const close = (): void => {
+      dialog.close();
+      dialog.remove();
+    };
+    const create = async (): Promise<void> => {
+      result.replaceChildren(h('p', { class: 'hint' }, t('remote.checking')));
+      try {
+        const file = await fetchRemote({ url: address.value });
+        const link = encodeRemoteLink(location.origin + location.pathname, { url: address.value, ...(pin.checked ? { sha256: file.sha256 } : {}) });
+        const field = h('input', { type: 'text', readonly: true, class: 'share-link', value: link, 'aria-label': t('remote.link'), spellcheck: 'false' });
+        result.replaceChildren(
+          h('p', {}, t('remote.ready', { name: file.name, size: `${Math.ceil(file.bytes.length / 1024)} KB` })),
+          field,
+          h(
+            'div',
+            { class: 'dialog-actions' },
+            button(t('share.copyLink'), () => void navigator.clipboard?.writeText(link).then(() => this.showNotice(t('share.linkCopied')))),
+            button(t('remote.try'), () => window.open(link, '_blank', 'noopener')),
+          ),
+          zoomableQr(() => this.root, link, t('remote.qrAlt'), 180, 'remote-qr'),
+        );
+      } catch (err) {
+        const kind = err instanceof RemoteError ? err.kind : 'network';
+        let host = '';
+        try {
+          host = new URL(address.value).host;
+        } catch {
+          /* not an address */
+        }
+        result.replaceChildren(h('p', { class: 'error', role: 'alert' }, t(`remote.error.${kind}` as MessageKey, { message: (err as Error).message, host })));
+      }
+    };
+    address.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        void create();
+      }
+    });
+    dialog.append(
+      h('h2', { id: 'remote-title' }, t('remote.title')),
+      h('p', {}, t('remote.intro')),
+      address,
+      h('label', { class: 'check' }, pin, ` ${t('remote.pin')}`),
+      h('p', { class: 'hint' }, t('remote.cors')),
+      h('div', { class: 'dialog-actions' }, button(t('common.close'), close), button(t('remote.create'), () => void create(), { className: 'primary' })),
+      result,
+    );
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      close();
+    });
+    this.root.append(dialog);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    address.focus();
   }
 
   // --- read-only documents (FILE-017) -----------------------------------------------

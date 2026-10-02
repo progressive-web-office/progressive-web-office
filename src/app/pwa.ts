@@ -42,6 +42,17 @@ async function openLinkedDocument(app: App): Promise<void> {
     else app.notifyError(t('share.linkInvalid'));
     return;
   }
+  if (location.hash.startsWith('#url=')) {
+    // SHARE-011: a document kept on a server, shown read-only. The address stays, so a reload shows it again.
+    const { decodeRemoteLink } = await import('../share/remote');
+    try {
+      const link = decodeRemoteLink(location.hash);
+      if (link) await app.openRemote(link);
+    } catch (err) {
+      app.notifyError(t('remote.error.address', { message: (err as Error).message }));
+    }
+    return;
+  }
   if (!location.hash.startsWith('#doc=')) return;
   const { decodeDocumentLink } = await import('../share/link');
   const linked = decodeDocumentLink(location.hash);

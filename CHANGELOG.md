@@ -80,6 +80,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   note created on demand), `![[picture]]` embeds and pictures of the folder
   shown in notes, backlinks in the folder panel, and links updated when a
   note is renamed. The explorer's selection follows the open document.
+- Links to a document on a server: 🔗 checks a web address and makes a link
+  (and QR code) that opens the document read-only, optionally pinned to that
+  version by its SHA-256 fingerprint, a changed file being refused.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

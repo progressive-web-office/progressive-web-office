@@ -56,6 +56,25 @@ Office, ready to edit and save.
 Opening a damaged (cut) link shows an error; the address is cleaned up once
 the document is open, so reloading the page does not reopen it.
 
+## Link to a document on a server
+
+To let people **read** a document without sending them the file, put the file
+on a web server and share a link to it: 🔗 (*Link to a file on a server*, in
+**⋯** on a phone) asks for the address of the file, checks that it can be
+downloaded and gives a link and its QR code.
+
+- The link opens the document **read-only**; *Edit a copy* turns it into an
+  untitled copy on the reader's device.
+- *Only this version* (on by default) puts the file's SHA-256 fingerprint in
+  the link: if the file on the server changes, the link refuses to show it,
+  so that readers see exactly what you shared.
+- The file is downloaded by the reader's browser, straight from your server;
+  its address stays in the part of the link after `#`, which browsers do not
+  send to the server of Progressive Web Office.
+- The server must let other sites read the file (CORS). GitHub Pages and raw
+  GitHub files do; for Nextcloud or your own server, allow it for the file.
+  Only `https://` addresses are accepted, and files up to 50 MB.
+
 ## Receive on this device
 
 On the start screen, click **Receive from another device…**: QRShare opens its
