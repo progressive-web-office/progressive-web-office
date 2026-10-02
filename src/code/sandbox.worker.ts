@@ -12,6 +12,13 @@ interface RunRequest {
   lang: 'python' | 'javascript';
   code: string;
 }
+interface CompleteRequest {
+  type: 'complete';
+  id: number;
+  code: string;
+  line: number;
+  column: number;
+}
 interface FileReply {
   type: 'file';
   id: number;
@@ -133,6 +140,51 @@ async function runPython(id: number, code: string): Promise<Output> {
   return { text: out.join(''), images };
 }
 
+// --- completion (CODE-007) -------------------------------------------------------
+
+/** jedi's completions, with the interpreter's names (variables of earlier cells, imported modules). */
+const COMPLETE = `
+def _pwo_complete(code, line, column):
+    import json
+    import __main__
+    import jedi
+    try:
+        found = jedi.Interpreter(code, [__main__.__dict__]).complete(line, column)
+    except Exception:
+        return "[]"
+    out = []
+    for i, c in enumerate(found[:80]):
+        item = {"name": c.name, "type": c.type}
+        if i < 12:
+            try:
+                signatures = c.get_signatures()
+                if signatures:
+                    item["signature"] = signatures[0].to_string()
+                doc = c.docstring(raw=True)
+                if doc:
+                    item["doc"] = doc[:800]
+            except Exception:
+                pass
+        out.append(item)
+    return json.dumps(out)
+`;
+
+let jedi: Promise<boolean> | undefined;
+
+/** Completions from the running interpreter; null when Python was not started (it is not started for this). */
+async function completePython(code: string, line: number, column: number): Promise<unknown[] | null> {
+  if (!python) return null;
+  const py = await python;
+  jedi ??= py
+    .loadPackagesFromImports('import jedi')
+    .then(() => py.runPythonAsync(COMPLETE))
+    .then(() => true, () => false);
+  if (!(await jedi)) return null;
+  // JSON strings are valid Python string literals.
+  const result = await py.runPythonAsync(`_pwo_complete(${JSON.stringify(code)}, ${line | 0}, ${column | 0})`);
+  return JSON.parse(String(result)) as unknown[];
+}
+
 function describe(value: unknown): string {
   const proxy = value as PyProxyLike & { toString(): string };
   const text = proxy.toString();
@@ -188,7 +240,15 @@ interface Output {
 let queue: Promise<unknown> = Promise.resolve();
 
 scope.addEventListener('message', (event: MessageEvent) => {
-  const message = event.data as RunRequest | FileReply;
+  const message = event.data as RunRequest | FileReply | CompleteRequest;
+  if (message.type === 'complete') {
+    // Not queued after the cells: while one runs, completion simply waits.
+    void completePython(message.code, message.line, message.column).then(
+      (items) => scope.postMessage({ type: 'completions', id: message.id, items }),
+      () => scope.postMessage({ type: 'completions', id: message.id, items: null }),
+    );
+    return;
+  }
   if (message.type === 'file') {
     const w = waiting.get(message.id);
     waiting.delete(message.id);

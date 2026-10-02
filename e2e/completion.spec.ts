@@ -1,0 +1,83 @@
+import { expect, test } from '@playwright/test';
+import { openApp, openFile } from './helpers';
+
+const popup = (page: import('@playwright/test').Page) => page.locator('.cm-tooltip-autocomplete');
+
+test('completes Python and JavaScript in source files (CODE-007)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'sum.py', 'def total(values):\n    return sum(values)\n', 'text/x-python');
+  const code = page.getByRole('textbox', { name: 'Content of sum.py' });
+  await expect(code.locator('.tok-keyword').first()).toHaveText('def');
+  await code.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('\npri');
+  await expect(popup(page).getByRole('option', { name: /^print/ })).toBeVisible();
+  // CodeMirror ignores Enter for a moment after the list changes (no accidental choice).
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('(tot');
+  await expect(popup(page).getByRole('option', { name: /^total/ })).toBeVisible();
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Enter');
+  // The bracket was closed for us.
+  await expect(code.locator('.cm-line').last()).toHaveText('print(total)');
+
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  page.once('dialog', (d) => void d.accept());
+  await openFile(page, 'calc.js', 'const r = 2;\n', 'text/javascript');
+  const js = page.getByRole('textbox', { name: 'Content of calc.js' });
+  await expect(js.locator('.tok-keyword').first()).toHaveText('const');
+  await js.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('Math.fl');
+  await expect(popup(page).getByRole('option', { name: /^floor/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('completes the code of a cell (CODE-007)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New document' }).click();
+  await page.getByRole('textbox', { name: 'Document' }).click();
+  await page.getByRole('button', { name: 'Insert code cell' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Insert code cell' });
+  const code = dialog.getByLabel('Code');
+  await code.click();
+  await page.keyboard.type('imp');
+  await expect(popup(page).getByRole('option', { name: /^import/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await dialog.getByLabel('Language').selectOption('javascript');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('JSON.str');
+  await expect(popup(page).getByRole('option', { name: /^stringify/ })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+/** jedi comes from the Pyodide CDN (see code-cells.spec.ts for PYODIDE_PACKAGES). */
+test('completes with the names known by the running interpreter (CODE-007)', async ({ page }) => {
+  const local = process.env.PYODIDE_PACKAGES;
+  test.skip(!local && !process.env.CI, 'needs PYODIDE_PACKAGES or network access to the Pyodide CDN');
+  test.setTimeout(180_000);
+  if (local) {
+    const { readFileSync } = await import('node:fs');
+    await page.route('https://cdn.jsdelivr.net/pyodide/**', (route) => {
+      const name = new URL(route.request().url()).pathname.split('/').pop()!;
+      route.fulfill({ body: readFileSync(`${local}/${name}`), headers: { 'Access-Control-Allow-Origin': '*' } });
+    });
+  }
+  await openApp(page);
+  await openFile(page, 'nb.md', '```python {run}\nvoltage_drop = 3.2\nimport statistics\n```\n\nNext.\n');
+  const cell = page.locator('.doc-page .code-cell');
+  await cell.getByRole('button', { name: 'Run cell' }).click();
+  await page.getByRole('dialog', { name: 'Run the code of this document?' }).getByRole('button', { name: 'Run' }).click();
+  await expect(cell.locator('.code-cell-output')).toHaveCount(0, { timeout: 150_000 }).catch(() => undefined);
+  await expect(cell.getByRole('button', { name: 'Run cell' })).toBeEnabled({ timeout: 150_000 });
+  await page.getByText('Next.').click();
+  await page.getByRole('button', { name: 'Insert code cell' }).click();
+  const code = page.getByRole('dialog', { name: 'Insert code cell' }).getByLabel('Code');
+  await code.click();
+  await page.keyboard.type('statistics.me');
+  await expect(popup(page).getByRole('option', { name: /^mean/ })).toBeVisible({ timeout: 60_000 });
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('voltage_');
+  await expect(popup(page).getByRole('option', { name: /^voltage_drop/ })).toBeVisible({ timeout: 30_000 });
+});

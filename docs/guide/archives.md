@@ -79,6 +79,12 @@ line, **Delete** removes the comment. Combined with a ZIP archive, this
 lets you comment the files of an archive and download it with the
 comments.
 
+Python, JavaScript and TypeScript files (and the other languages that know
+their keywords) are completed as you type: keywords, snippets, the names of
+the file, and for JavaScript and TypeScript the standard objects and their
+members. It is not a full type checker: TypeScript is completed like
+JavaScript, without its types.
+
 ## Pictures
 
 A picture is shown fitted to the window; **Actual size** shows it at its own

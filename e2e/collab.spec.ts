@@ -151,6 +151,8 @@ test('says what it is waiting for, explains what to check, and spots another app
   await bob.goto(`${base}#collab=d.room12345678.secretsecretsecret1234`);
   const bar = bob.locator('.collab-bar');
   await expect(bar).toContainText('Looking for the others…');
+  // UI-019: a spinner while waiting.
+  await expect(bar.locator('.spinner')).toBeVisible();
   await bob.clock.fastForward(25_000);
   await expect(bar.locator('.collab-help')).toContainText('Nobody found yet');
 

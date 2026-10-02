@@ -509,7 +509,8 @@ export class DocumentEditor implements EditorView {
     if (this.readOnly) return;
     const { editCell } = await import('../code/ui');
     const current = node?.attrs as { cell: string; lang: 'python' | 'javascript'; output: unknown } | undefined;
-    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : undefined);
+    // CODE-007: the interpreter of the document's cells completes with what it knows, once running.
+    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : undefined, (code, line, column) => this.runner?.complete(code, line, column) ?? Promise.resolve(null));
     if (!value) return;
     // Changing the code makes the previous output stale.
     const unchanged = current && current.cell === value.code && current.lang === value.lang;

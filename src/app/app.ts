@@ -119,7 +119,7 @@ export class App {
     this.statusBar = h('footer', { class: 'app-status', 'aria-live': 'polite' });
     this.alert = h('div', { class: 'app-alert', role: 'alert', hidden: true });
     this.roBanner = h('div', { class: 'readonly-banner', role: 'status', hidden: true });
-    this.busy = h('div', { class: 'app-busy', role: 'status', hidden: true }, t('app.working'));
+    this.busy = h('div', { class: 'app-busy', role: 'status', hidden: true }, h('span', { class: 'spinner', 'aria-hidden': 'true' }), t('app.working'));
     root.replaceChildren(this.header, this.alert, this.roBanner, this.main, this.statusBar, this.busy);
     // Side panels (folder, assistant) start under the header, which wraps on narrow screens.
     if (typeof ResizeObserver === 'function') {

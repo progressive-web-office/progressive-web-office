@@ -35,6 +35,22 @@ plt.plot(t, np.exp(-0.3 * t) * np.sin(2 * np.pi * t))
 plt.title("Damped signal")
 ```
 
+## Completion
+
+The code editor of a cell highlights the code, indents it (<kbd>Tab</kbd>),
+closes brackets and quotes, and **completes as you type**: keywords,
+built-in functions, the names of the cell, and for JavaScript the standard
+objects and their members (`Math.floor`, `JSON.stringify`…).
+<kbd>Ctrl</kbd>+<kbd>Space</kbd> opens the list, <kbd>↑</kbd> <kbd>↓</kbd>
+choose, <kbd>Enter</kbd> inserts, <kbd>Esc</kbd> closes it.
+
+Once Python has run a cell of the document, its completions come from the
+running interpreter (jedi): the **variables, functions and modules of the
+earlier cells** are known, a module's members are listed after a dot
+(`statistics.mean`, `np.linspace`), with each function's **signature** and
+**documentation** beside the list. Python is not started only to complete:
+before the first run, the completion knows the language and the cell.
+
 ## Safety
 
 A document can come from anyone, so its code is treated as untrusted:

@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Code completion: in code cells (now a real code editor with highlighting,
+  indentation and closing brackets) and in source files — keywords,
+  built-ins, names of the code, JavaScript/TypeScript standard objects; in
+  Python cells, once Python has run, the interpreter's names (variables of
+  earlier cells, module members) with signatures and documentation.
+- A spinner while waiting: the collaboration looking for the others or
+  receiving the document, a code cell running, a long operation.
 - Real-time collaboration between devices that cannot connect directly (a
   company network and mobile data, for example): after 15 seconds alone,
   the session also goes through the relays, encrypted with the secret of the

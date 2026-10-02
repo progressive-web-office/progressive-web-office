@@ -1,4 +1,5 @@
 /** Code cell controls and dialogs (CODE-001, CODE-004). */
+import type { SmartComplete } from './completion';
 import { t } from '../i18n';
 import { button, h } from '../app/dom';
 import type { CodeLang } from '../document/model';
@@ -39,7 +40,8 @@ export function setCellStatus(cell: HTMLElement, text: string): void {
   }
   output.classList.remove('error');
   output.classList.add('pending');
-  output.textContent = text;
+  // UI-019: a spinner while the cell waits or runs.
+  output.replaceChildren(h('span', { class: 'spinner', 'aria-hidden': 'true' }), text);
   cell.querySelector(':scope > .code-cell-figures')?.remove();
 }
 
@@ -64,23 +66,24 @@ function modal(host: HTMLElement, titleId: string): { dialog: HTMLDialogElement;
   };
 }
 
-/** Insert or edit a cell. Resolves to null when cancelled. */
-export function editCell(host: HTMLElement, initial?: CellValue): Promise<CellValue | null> {
+/**
+ * Insert or edit a cell. Resolves to null when cancelled. `complete` gives
+ * the completions of the running interpreter (CODE-007).
+ */
+export async function editCell(host: HTMLElement, initial?: CellValue, complete?: SmartComplete): Promise<CellValue | null> {
+  const { createCellEditor } = await import('./cell-editor');
   return new Promise((resolve) => {
     const m = modal(host, 'code-title');
     const lang = h('select', { 'aria-label': t('code.language') }, ...(['python', 'javascript'] as CodeLang[]).map((l) => h('option', { value: l }, LANG_LABEL[l])));
     lang.value = initial?.lang ?? 'python';
-    const source = h('textarea', { class: 'code-source', rows: '14', wrap: 'off', spellcheck: 'false', 'aria-label': t('code.source') });
-    source.value = initial?.code ?? '';
-    // Tab inserts spaces instead of leaving the field (Python indentation).
-    source.addEventListener('keydown', (e) => {
-      if (e.key !== 'Tab' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
-      e.preventDefault();
-      source.setRangeText('    ', source.selectionStart, source.selectionEnd, 'end');
-    });
+    const source = h('div', { class: 'code-source' });
+    const editor = createCellEditor(source, { doc: initial?.code ?? '', lang: lang.value as CodeLang, label: t('code.source'), ...(complete ? { complete } : {}) });
+    lang.addEventListener('change', () => editor.setLanguage(lang.value as CodeLang));
     const finish = (ok: boolean): void => {
+      const code = editor.value().replace(/\s+$/, '');
+      editor.destroy();
       m.close();
-      resolve(ok ? { lang: lang.value as CodeLang, code: source.value.replace(/\s+$/, '') } : null);
+      resolve(ok ? { lang: lang.value as CodeLang, code } : null);
     };
     m.dialog.append(
       h('h2', { id: 'code-title' }, initial ? t('code.editTitle') : t('code.insertTitle')),
@@ -99,7 +102,7 @@ export function editCell(host: HTMLElement, initial?: CellValue): Promise<CellVa
       finish(false);
     });
     m.show();
-    setTimeout(() => source.focus(), 0);
+    setTimeout(() => editor.focus(), 0);
   });
 }
 

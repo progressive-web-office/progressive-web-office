@@ -114,6 +114,8 @@ export class Collaboration {
   readonly bar: HTMLElement;
   private readonly people = h('ul', { class: 'collab-people', 'aria-label': t('collab.people') });
   private readonly state = h('span', { class: 'collab-state', role: 'status', 'aria-live': 'polite' });
+  /** UI-019: shown while looking for the others or receiving the document. */
+  private readonly spinner = h('span', { class: 'spinner', 'aria-hidden': 'true', hidden: true });
   private lastCursor = '';
   private cursorTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly onSelection = (): void => this.cursorMoved();
@@ -136,6 +138,7 @@ export class Collaboration {
       'section',
       { class: 'collab-bar', 'aria-label': t('collab.title') },
       h('span', { class: 'collab-icon', 'aria-hidden': 'true' }, '👥'),
+      this.spinner,
       this.state,
       this.people,
       button(t('collab.invite'), () => void this.invite(), { title: t('collab.inviteTitle') }),
@@ -247,6 +250,8 @@ export class Collaboration {
     else if (n || this.session.peerCount) text = t('collab.waiting');
     else text = offline ? t('collab.noRelay') : t('collab.searching');
     this.state.textContent = text;
+    // Waiting for someone, or for the document: a spinner says it is still going on.
+    this.spinner.hidden = !!this.strangers.size || offline || n > 0;
     this.bar.classList.toggle('waiting', !this.binding.isReady || offline || this.strangers.size > 0);
     const late = (Date.now() - this.startedAt) / 1000 > HELP_AFTER && !n && !this.session.peerCount;
     this.help.hidden = !late && !this.strangers.size;

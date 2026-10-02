@@ -53,6 +53,28 @@ export class CodeRunner {
     );
   }
 
+  /**
+   * CODE-007: completions of the running Python interpreter (null when it is
+   * not running: it is not started only for this, nor waited for long).
+   */
+  complete(code: string, line: number, column: number, timeoutMs = 2500): Promise<import('./completion').SmartItem[] | null> {
+    if (!this.ready || !this.frame) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      const id = ++this.nextId;
+      const timer = setTimeout(() => {
+        this.completions.delete(id);
+        resolve(null);
+      }, timeoutMs);
+      this.completions.set(id, (items) => {
+        clearTimeout(timer);
+        resolve(items);
+      });
+      this.post({ type: 'complete', id, code, line, column });
+    });
+  }
+
+  private readonly completions = new Map<number, (items: import('./completion').SmartItem[] | null) => void>();
+
   /** Stop whatever is running: the sandbox is destroyed and restarted on the next run. */
   stop(reason = 'Stopped.'): void {
     this.frame?.remove();
@@ -105,7 +127,7 @@ export class CodeRunner {
 
   private handle(e: MessageEvent): void {
     if (!this.frame || e.source !== this.frame.contentWindow) return;
-    const m = e.data as { type: string; id: number; name?: string; text?: string; error?: boolean; images?: ArrayBuffer[]; message?: string };
+    const m = e.data as { type: string; id: number; name?: string; text?: string; error?: boolean; images?: ArrayBuffer[]; message?: string; items?: unknown };
     switch (m.type) {
       case 'ready':
         this.readyResolve?.();
@@ -120,6 +142,12 @@ export class CodeRunner {
         const p = this.pending.get(m.id);
         this.pending.delete(m.id);
         p?.resolve({ text: m.text ?? '', error: m.error, images: (m.images ?? []).map((b) => new Uint8Array(b)) });
+        break;
+      }
+      case 'completions': {
+        const done = this.completions.get(m.id);
+        this.completions.delete(m.id);
+        done?.(Array.isArray(m.items) ? (m.items as import('./completion').SmartItem[]) : null);
         break;
       }
       case 'fatal':

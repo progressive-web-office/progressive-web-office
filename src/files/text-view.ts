@@ -172,9 +172,12 @@ export class TextView implements PwoView {
     // The grammar is loaded on its own: the text shows at once, coloured when it arrives.
     void entry
       ?.load()
-      .then((lang) => {
+      .then(async (lang) => {
         this.parserLanguage = lang instanceof LanguageSupport ? lang.language : (lang as StreamLanguage<unknown>);
-        this.view.dispatch({ effects: this.language.reconfigure(lang) });
+        // CODE-007: completion; the standard objects for JavaScript and TypeScript.
+        const { completionSupport, scriptGlobals } = await import('../code/completion');
+        const extra = /JavaScript|TypeScript/.test(entry.name) ? [await scriptGlobals()] : [];
+        this.view.dispatch({ effects: this.language.reconfigure([lang, ...extra, completionSupport()]) });
       })
       .catch(() => undefined);
   }

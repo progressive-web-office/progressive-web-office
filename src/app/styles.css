@@ -594,7 +594,7 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .print-document .code-cell-source { background: #f3f3f3; }
 .print-document .code-cell-figures img { max-width: 100%; height: auto; }
 .code-dialog { width: min(820px, calc(100vw - 32px)); max-width: none; }
-.code-source { display: block; width: 100%; min-height: 240px; margin: 8px 0; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.9rem; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); tab-size: 4; }
+.code-source { display: block; width: 100%; margin: 8px 0; font-size: 0.9rem; }
 .code-lang-label { display: inline-flex; gap: 8px; align-items: center; }
 iframe.code-sandbox { display: none; }
 
@@ -1029,3 +1029,20 @@ body.distraction-free .ai-panel { display: none !important; }
   .settings-field { grid-template-columns: 1fr; }
   .settings-field .hint { grid-column: 1; }
 }
+
+/* UI-019: a spinner while waiting (working, looking for the others, receiving a document). */
+.spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pwo-spin 0.8s linear infinite; vertical-align: -0.15em; flex: none; }
+.spinner[hidden] { display: none; }
+@keyframes pwo-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+.app-busy { display: flex; align-items: center; gap: 8px; }
+.app-busy[hidden] { display: none; }
+
+/* CODE-007: the completion list in both themes. */
+.cm-tooltip { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18); }
+.cm-tooltip.cm-tooltip-autocomplete > ul { font-family: ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace; max-height: 16em; }
+.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: #fff; }
+.cm-completionDetail { color: var(--muted); font-style: normal; margin-left: 0.6em; }
+.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail { color: inherit; opacity: 0.85; }
+.cm-completionInfo { background: var(--surface); color: var(--text); border: 1px solid var(--border); white-space: pre-wrap; max-width: 28em; max-height: 18em; overflow: auto; font-size: 0.85rem; }
+.code-cell-output .spinner, .collab-bar .spinner { margin-right: 0.4em; }
