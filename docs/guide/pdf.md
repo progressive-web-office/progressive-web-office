@@ -11,6 +11,11 @@ Open a `.pdf` file to display its pages.
 - **◀ ▶** or the page box: navigate (the current page follows scrolling).
 - **− / +**: zoom; **↔**: fit to width (default); **↕**: whole page, its
   height and width in view.
+- **🔍 Find** (<kbd>Ctrl</kbd>+<kbd>F</kbd>): type a word; the matches are
+  highlighted, the current one in orange, with their count. <kbd>Enter</kbd>
+  and <kbd>Shift</kbd>+<kbd>Enter</kbd> (or ▼ ▲) go to the next and previous
+  ones; case and accents are ignored. A scanned PDF without text layer has
+  nothing to find.
 - **Pages side by side**: 1, 2, 3, 4 or 6 pages per row; with two pages,
   the document reads like an open book. Fitting to the width or to the page
   then applies to the whole row. The choice is kept for the next PDF.

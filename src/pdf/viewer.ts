@@ -12,6 +12,7 @@ import type { EditorView, SaveVariant, ViewContext } from '../app/views';
 import { applyEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from './forms';
 import { captureSignature } from './signature-pad';
 import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
+import { findInPages, type PdfMatch } from './find';
 
 const VIEW_KEY = 'pwo.pdf.view';
 const GAP = 12;
@@ -89,6 +90,15 @@ export class PdfViewer implements EditorView {
   private values: Record<string, string | boolean | string[]> = {};
   private stamps: Stamp[] = [];
   private resizeObserver: ResizeObserver | undefined;
+  /** PDF-017: text search. */
+  private readonly findInput = h('input', { type: 'search', class: 'pdf-find-input', 'aria-label': t('pdf.findLabel'), placeholder: t('pdf.findLabel') });
+  private readonly findCount = h('span', { class: 'pdf-find-count', 'aria-live': 'polite' });
+  private readonly findBar = h('div', { class: 'toolbar pdf-find', role: 'search', hidden: true });
+  private texts: Promise<string[][]> | undefined;
+  private matches: PdfMatch[] = [];
+  private matchIndex = -1;
+  /** The text spans of each rendered page, with their texts. */
+  private readonly textDivs = new Map<number, { divs: HTMLElement[]; strs: string[] }>();
 
   constructor(
     private readonly bytes: Uint8Array,
@@ -100,7 +110,34 @@ export class PdfViewer implements EditorView {
     this.scroller.append(this.pagesEl);
     const reason = { encrypted: t('pdf.encrypted'), xfa: t('pdf.xfa'), unreadable: t('pdf.formError') };
     const notice = info.readOnlyReason ? h('div', { class: 'pdf-notice', role: 'note' }, info.readOnlyCode ? reason[info.readOnlyCode] : info.readOnlyReason) : null;
-    this.element = h('div', { class: 'pdf-viewer' }, this.toolbar(), notice, this.scroller);
+    this.findBar.append(
+      this.findInput,
+      this.findCount,
+      button(t('pdf.findPrev'), () => this.nextMatch(-1), { text: '▲', className: 'icon' }),
+      button(t('pdf.findNext'), () => this.nextMatch(1), { text: '▼', className: 'icon' }),
+      button(t('pdf.findClose'), () => this.closeFind(), { text: '✕', className: 'icon' }),
+    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    this.findInput.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void this.search(this.findInput.value), 200);
+    });
+    this.findInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.nextMatch(e.shiftKey ? -1 : 1);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.closeFind();
+      }
+    });
+    this.element = h('div', { class: 'pdf-viewer' }, this.toolbar(), this.findBar, notice, this.scroller);
+    this.element.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        this.openFind();
+      }
+    });
     this.scroller.addEventListener('scroll', () => this.updateCurrent());
     this.columnsSelect.value = String(this.columns);
     this.columnsSelect.addEventListener('change', () => {
@@ -173,6 +210,93 @@ export class PdfViewer implements EditorView {
     this.release();
   }
 
+  // --- text search (PDF-017) -----------------------------------------------------------
+
+  private openFind(): void {
+    this.findBar.hidden = false;
+    this.findInput.focus();
+    this.findInput.select();
+  }
+
+  private closeFind(): void {
+    this.findBar.hidden = true;
+    this.matches = [];
+    this.matchIndex = -1;
+    for (const page of this.textDivs.keys()) this.highlight(page);
+    this.scroller.focus();
+  }
+
+  /** FOLDER-002: show the first match of a search from the folder panel. */
+  find(query: string): void {
+    this.findBar.hidden = false;
+    this.findInput.value = query;
+    void this.search(query);
+  }
+
+  private pageTexts(): Promise<string[][]> {
+    this.texts ??= Promise.all(
+      Array.from({ length: this.doc.numPages }, async (_, i) => {
+        const content = await (await this.doc.getPage(i + 1)).getTextContent();
+        return content.items.map((item) => ('str' in item ? item.str : '')).filter((_, k) => 'str' in content.items[k]!);
+      }),
+    );
+    return this.texts;
+  }
+
+  private async search(query: string): Promise<void> {
+    const pages = await this.pageTexts();
+    if (query !== this.findInput.value) return;
+    this.matches = findInPages(pages, query);
+    // The first match from the page shown.
+    const from = this.matches.findIndex((m) => m.page >= this.current - 1);
+    this.matchIndex = this.matches.length ? Math.max(0, from) : -1;
+    this.showMatch();
+  }
+
+  private nextMatch(dir: number): void {
+    if (!this.matches.length) return;
+    this.matchIndex = (this.matchIndex + dir + this.matches.length) % this.matches.length;
+    this.showMatch();
+  }
+
+  private showMatch(): void {
+    const q = this.findInput.value.trim();
+    this.findCount.textContent = q ? (this.matches.length ? t('pdf.findCount', { n: this.matchIndex + 1, total: this.matches.length }) : t('pdf.findNone')) : '';
+    for (const page of this.textDivs.keys()) this.highlight(page);
+    const m = this.matches[this.matchIndex];
+    if (m && m.page !== this.current - 1) this.goTo(m.page + 1, false);
+    else this.revealCurrent();
+  }
+
+  private revealCurrent(): void {
+    this.scroller.querySelector('mark.pdf-hit.current')?.scrollIntoView({ block: 'center', inline: 'nearest' });
+  }
+
+  /** Marks around the matches of a rendered page's text. */
+  private highlight(page: number): void {
+    const layer = this.textDivs.get(page);
+    if (!layer) return;
+    const len = this.findInput.value.trim().length;
+    const current = this.matches[this.matchIndex];
+    layer.divs.forEach((div, item) => {
+      const text = layer.strs[item] ?? '';
+      const hits = this.matches.filter((m) => m.page === page && m.item === item);
+      if (!hits.length) {
+        if (div.querySelector('mark')) div.textContent = text;
+        return;
+      }
+      const parts: (string | HTMLElement)[] = [];
+      let at = 0;
+      for (const m of hits) {
+        parts.push(text.slice(at, m.offset), h('mark', { class: `pdf-hit${m === current ? ' current' : ''}` }, text.slice(m.offset, m.offset + len)));
+        at = m.offset + len;
+      }
+      parts.push(text.slice(at));
+      div.replaceChildren(...parts);
+    });
+    if (current?.page === page) this.revealCurrent();
+  }
+
   // --- toolbar ------------------------------------------------------------------------
 
   private toolbar(): HTMLElement {
@@ -188,6 +312,7 @@ export class PdfViewer implements EditorView {
       button(t('pdf.zoomOut'), () => this.zoomBy(-1), { text: '−', title: t('pdf.zoomOut') }),
       this.zoomLabel,
       button(t('pdf.zoomIn'), () => this.zoomBy(1), { text: '+', title: t('pdf.zoomIn') }),
+      button(t('pdf.find'), () => this.openFind(), { text: '🔍', title: `${t('pdf.find')} (Ctrl+F)` }),
       button(t('pdf.fit'), () => this.setZoom('width'), { text: '↔', title: t('pdf.fit') }),
       button(t('pdf.fitPage'), () => this.setZoom('page'), { text: '↕', title: t('pdf.fitPage') }),
       this.columnsSelect,
@@ -232,6 +357,7 @@ export class PdfViewer implements EditorView {
     this.pagesEl.classList.toggle('spread', this.columns > 1);
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
     this.pages = [];
+    this.textDivs.clear();
     const shells: HTMLElement[] = [];
     for (let i = 0; i < this.doc.numPages; i++) {
       const proxy = i === 0 ? first : await this.doc.getPage(i + 1);
@@ -291,7 +417,10 @@ export class PdfViewer implements EditorView {
         viewport,
         transform: ratio !== 1 ? [ratio, 0, 0, ratio, 0, 0] : undefined,
       }).promise;
-      await new pdfjs.TextLayer({ textContentSource: page.proxy.streamTextContent(), container: textLayer, viewport }).render();
+      const layer = new pdfjs.TextLayer({ textContentSource: page.proxy.streamTextContent(), container: textLayer, viewport });
+      await layer.render();
+      this.textDivs.set(page.index, { divs: layer.textDivs, strs: layer.textContentItemsStr });
+      this.highlight(page.index);
     } catch (err) {
       if ((err as Error).name !== 'RenderingCancelledException') console.warn('PDF page rendering failed', err);
     }

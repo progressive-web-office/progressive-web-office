@@ -930,6 +930,13 @@ export const en = {
   'filter.values': 'Values shown',
   'filter.clear': 'Show all',
   'filter.apply': 'Apply',
+  'pdf.find': 'Find',
+  'pdf.findLabel': 'Find in the document',
+  'pdf.findPrev': 'Previous match',
+  'pdf.findNext': 'Next match',
+  'pdf.findClose': 'Close the search',
+  'pdf.findCount': '{n} of {total}',
+  'pdf.findNone': 'Not found',
 } as const;
 
 export type MessageKey = keyof typeof en;

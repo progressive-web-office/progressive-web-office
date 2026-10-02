@@ -108,7 +108,7 @@ group is not a commitment.
 - Direct PDF export (no print dialog), PDF/A and tagged (accessible) PDF
 - Local electronic signatures and signature verification (WebCrypto,
   basic PAdES)
-- Text search in PDF
+- ✅ Text search in PDF (PDF-017)
 
 ### Files and fidelity
 

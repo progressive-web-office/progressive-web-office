@@ -932,4 +932,11 @@ export const fr: Record<MessageKey, string> = {
   'filter.values': 'Valeurs affichées',
   'filter.clear': 'Tout afficher',
   'filter.apply': 'Appliquer',
+  'pdf.find': 'Rechercher',
+  'pdf.findLabel': 'Rechercher dans le document',
+  'pdf.findPrev': 'Résultat précédent',
+  'pdf.findNext': 'Résultat suivant',
+  'pdf.findClose': 'Fermer la recherche',
+  'pdf.findCount': '{n} sur {total}',
+  'pdf.findNone': 'Introuvable',
 };

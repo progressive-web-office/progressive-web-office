@@ -932,4 +932,11 @@ export const zh: Record<MessageKey, string> = {
   'filter.values': '显示的值',
   'filter.clear': '全部显示',
   'filter.apply': '应用',
+  'pdf.find': '查找',
+  'pdf.findLabel': '在文档中查找',
+  'pdf.findPrev': '上一个',
+  'pdf.findNext': '下一个',
+  'pdf.findClose': '关闭查找',
+  'pdf.findCount': '第 {n} 个，共 {total} 个',
+  'pdf.findNone': '未找到',
 };

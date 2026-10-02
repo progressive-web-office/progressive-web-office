@@ -25,6 +25,28 @@ async function download(page: import('@playwright/test').Page): Promise<Buffer> 
   return Buffer.concat(chunks);
 }
 
+test('finds text in the pages (PDF-017)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'sample.pdf', await samplePdf(), 'application/pdf');
+  await expect(page.locator('.pdf-page').first().locator('.textLayer')).toContainText('Hello page 1');
+  await page.locator('.pdf-scroll').focus();
+  await page.keyboard.press('Control+f');
+  const input = page.getByRole('searchbox', { name: 'Find in the document' });
+  await expect(input).toBeFocused();
+  await input.fill('PAGE');
+  await expect(page.locator('.pdf-find-count')).toHaveText('1 of 3');
+  await expect(page.locator('.pdf-page').first().locator('mark.pdf-hit.current')).toHaveText('page');
+  await input.press('Enter');
+  await input.press('Enter');
+  await expect(page.locator('.pdf-find-count')).toHaveText('3 of 3');
+  await expect(page.locator('.pdf-page').nth(2).locator('mark.pdf-hit.current')).toHaveText('page');
+  await input.fill('nowhere');
+  await expect(page.locator('.pdf-find-count')).toHaveText('Not found');
+  await input.press('Escape');
+  await expect(page.locator('mark.pdf-hit')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('fits the whole page and shows pages side by side (PDF-016)', async ({ page }) => {
   await openApp(page);
   await openFile(page, 'sample.pdf', await samplePdf(), 'application/pdf');

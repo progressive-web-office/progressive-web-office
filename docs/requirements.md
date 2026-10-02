@@ -250,6 +250,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | PDF-014 | C | — | The system shall remember the user's signature in browser storage, only after explicit consent. |
 | PDF-015 | M | 0.0.4 | If a PDF is encrypted or uses XFA forms, then the system shall display it read-only and explain why it cannot be filled. |
 | PDF-016 | S | 0.2.0 | The system shall let the user fit the PDF pages to the width of the view or show whole pages (fit to the height and the width), and show 1, 2, 3, 4 or 6 pages side by side, the fit applying to the whole row; the choice shall be kept for the next PDF. |
+| PDF-017 | S | 0.2.0 | The system shall find a text in the pages of a PDF (Ctrl+F), ignoring case and accents, highlight every match and the current one, show their count, and go to the next and previous matches. |
 | PDF-007 | W | — | General PDF content editing; cryptographic digital signatures (PAdES / certificates). |
 
 ## 8. User interface & accessibility (UI)

@@ -14,7 +14,7 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   colours, borders and alignment, kept in Excel and OpenDocument files and
   printed. The budget, grade book and invoice templates use it.
 - PDF viewer: fit the whole page (its height) and show 2 or more pages
-  side by side.
+  side by side; find text in the pages (Ctrl+F).
 - Comments in text documents: comment the selection or the word at the
   cursor (Ctrl+Alt+M), reply, resolve and delete, with the threads beside
   the page. Comments are kept in Word (with replies and resolved state),
