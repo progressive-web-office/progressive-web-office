@@ -156,15 +156,24 @@ the header.
 
 ▤ opens the header and footer: each has a left, a centre and a right part.
 *Insert* adds a field where the cursor is: **page number**, **page count**,
-**title** (from the document properties ⓘ) or **date**; *“Page 1 of N” in
-the footer* fills the footer's centre for you. The header and footer are
-shown above and below the page (click them to change them) and printed on
-every page.
+**title** (from the document properties ⓘ) or **date**. *Page number in
+the footer* fills the footer's centre with a ready-made number: `1`,
+`1/10`, `- 1 -` or `Page 1 of 10`. The header and footer are shown above
+and below the page (click them to change them) and printed on every page.
+
+**Page numbering** sets the style of the numbers (`1, 2, 3`, `i, ii, iii`,
+`I, II, III`, `a, b, c` or `A, B, C`), the number of the first page (for a
+document that continues another one), and can leave the first page without
+header and footer, for a title page.
 
 They are kept as real headers and footers in Word and OpenDocument files
 (with page fields that the application updates), with `fancyhdr` in LaTeX,
 and as `header-left: …`, `footer-center: …` keys in the front matter of a
-Markdown file.
+Markdown file. The numbering is kept in Word (`w:pgNumType`, a different
+first page), OpenDocument (the page style's number format, a *First Page*
+page style), LaTeX (`\pagenumbering`, `\setcounter{page}`,
+`\thispagestyle{empty}`) and Markdown (`page-numbering`, `page-start`,
+`first-page-hidden`).
 
 ### Find and replace
 

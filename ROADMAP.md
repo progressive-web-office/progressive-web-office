@@ -40,9 +40,7 @@ group is not a commitment.
 - Editing modes, switchable per document: visual (WYSIWYG), source
   (Markdown or LaTeX text with highlighting, side-by-side preview) and
   reading (no toolbar, larger text)
-- Page numbering styles: `1`, `1/10`, `Page 1 of 10`, `- 1 -`, roman
-  numerals (`i`, `ii`) for front matter, a chosen starting number, no number
-  on the first page
+- ✅ Page numbering styles (DOC-029, 0.0.14)
 - Document templates: a gallery of starters (letter, report, thesis,
   exercise sheet, minutes…), the user's own templates kept in the browser or
   in a folder, and the template formats `.ott`, `.dotx`, `.potx`, `.ots`,
