@@ -3,7 +3,7 @@ import { readChartFrame } from './chart-odf';
 import { attr, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText } from '../core/zip';
 import { lengthToPx, ODF_NS } from '../document/odf';
-import { cellKey } from './address';
+import { cellKey, parseRef } from './address';
 import { cleanCellStyle, dateToSerial, type Cell, type CellStyle, type Sheet, type Workbook } from './model';
 import { ofToExcel } from './openformula';
 
@@ -245,10 +245,49 @@ export function readOds(bytes: Uint8Array): Workbook {
   }
   if (!sheets.length) sheets.push({ name: 'Sheet1', cells: new Map() });
   readFrozenPanes(zip, sheets);
+  readFilters(doc, sheets);
   return { sheets };
 }
 
 /** Frozen panes from settings.xml (SHEET-017). */
+/** A cell address of a range address, "Sheet1.A1" or "'My sheet'.$A$1". */
+function odfCell(text: string): { sheet: string; row: number; col: number } | undefined {
+  const m = /^\$?(?:'((?:[^']|'')*)'|([^.']*))\.(\$?[A-Za-z]{1,3}\$?\d+)$/.exec(text);
+  const ref = m ? parseRef(m[3]!.replace(/\$/g, '')) : undefined;
+  return m && ref ? { sheet: m[1] !== undefined ? m[1].replace(/''/g, "'") : m[2]!, row: ref.row, col: ref.col } : undefined;
+}
+
+/** Split a range address on the colon outside quotes. */
+function splitRange(text: string): [string, string] | undefined {
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "'") quoted = !quoted;
+    else if (text[i] === ':' && !quoted) return [text.slice(0, i), text.slice(i + 1)];
+  }
+  return undefined;
+}
+
+/** Autofilters: database ranges showing filter buttons (SHEET-018). */
+function readFilters(doc: Document, sheets: Sheet[]): void {
+  for (const db of descendants(doc, 'database-range')) {
+    if (attr(db, 'display-filter-buttons') !== 'true') continue;
+    const parts = splitRange(attr(db, 'target-range-address') ?? '');
+    const start = parts && odfCell(parts[0]);
+    const end = parts && odfCell(parts[1].startsWith('.') ? `${start?.sheet ?? ''}${parts[1]}` : parts[1]);
+    const sheet = start && sheets.find((s) => s.name === start.sheet);
+    if (!start || !end || !sheet || sheet.filter) continue;
+    const range = { r1: Math.min(start.row, end.row), c1: Math.min(start.col, end.col), r2: Math.max(start.row, end.row), c2: Math.max(start.col, end.col) };
+    const columns: Record<number, string[]> = {};
+    for (const cond of descendants(db, 'filter-condition')) {
+      if ((attr(cond, 'operator') ?? '=') !== '=') continue;
+      const items = children(cond, 'filter-set-item').map((el) => attr(el, 'value') ?? '');
+      const col = range.c1 + (Number(attr(cond, 'field-number') ?? 0) || 0);
+      columns[col] = items.length ? items : [attr(cond, 'value') ?? ''];
+    }
+    sheet.filter = { range, columns };
+  }
+}
+
 function readFrozenPanes(zip: ReturnType<typeof readZip>, sheets: Sheet[]): void {
   const text = readZipText(zip, 'settings.xml');
   if (!text) return;

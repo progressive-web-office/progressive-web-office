@@ -3,7 +3,8 @@ import { escapeXml as esc } from '../core/xml';
 import { writeZip } from '../core/zip';
 import { MIME_TYPES } from '../core/format';
 import { manifestXml, metaXml, ODF_XMLNS, pxToIn } from '../document/odf';
-import { parseKey } from './address';
+import { parseKey, quoteSheet, refName } from './address';
+import { hiddenRows } from './filter';
 import { Calculator, formatGeneral } from './engine';
 import { isError, serialToDate, usedSize, type Cell, type CellStyle, type Value, type Workbook } from './model';
 import { isDateFormat } from './number-format';
@@ -114,6 +115,25 @@ function lookXml(look: CellStyle | undefined): string {
   );
 }
 
+const odfAddress = (sheet: string, r: number, c: number): string => `${quoteSheet(sheet)}.${refName(r, c)}`;
+
+/** The autofilters, as anonymous database ranges (SHEET-018). */
+function databaseRanges(wb: Workbook): string {
+  const ranges = wb.sheets.flatMap((sheet, si) => {
+    const f = sheet.filter;
+    if (!f) return [];
+    const conditions = Object.entries(f.columns).map(([c, values]) => {
+      const field = Number(c) - f.range.c1;
+      const items = values.map((v) => `<table:filter-set-item table:value="${esc(v)}"/>`).join('');
+      return `<table:filter-condition table:field-number="${field}" table:value="${esc(values[0] ?? '')}" table:operator="="${items ? `>${items}</table:filter-condition>` : '/>'}`;
+    });
+    const filter = !conditions.length ? '' : `<table:filter>${conditions.length > 1 ? `<table:filter-and>${conditions.join('')}</table:filter-and>` : conditions[0]}</table:filter>`;
+    const target = `${odfAddress(sheet.name, f.range.r1, f.range.c1)}:${odfAddress(sheet.name, f.range.r2, f.range.c2)}`;
+    return [`<table:database-range table:name="__Anonymous_Sheet_DB__${si}" table:target-range-address="${esc(target)}" table:display-filter-buttons="true">${filter}</table:database-range>`];
+  });
+  return ranges.length ? `<table:database-ranges>${ranges.join('')}</table:database-ranges>` : '';
+}
+
 export function writeOds(wb: Workbook): Uint8Array {
   const calc = new Calculator(wb);
   const formats = new Map<string, string>(); // fmt -> cell style name
@@ -203,6 +223,8 @@ export function writeOds(wb: Workbook): Uint8Array {
       const [r] = parseKey(key);
       if (!byRow.has(r)) byRow.set(r, new Map());
     }
+    // SHEET-018: rows hidden by the filter.
+    const hidden = hiddenRows(wb, si, calc);
     let body = '';
     let emptyRun = 0;
     const flushEmpty = (): void => {
@@ -210,7 +232,7 @@ export function writeOds(wb: Workbook): Uint8Array {
       emptyRun = 0;
     };
     for (let r = 0; r < rows; r++) {
-      const rowCells = byRow.get(r);
+      const rowCells = byRow.get(r) ?? (hidden.has(r) ? new Map<number, Cell>() : undefined);
       if (!rowCells) {
         emptyRun++;
         continue;
@@ -237,7 +259,8 @@ export function writeOds(wb: Workbook): Uint8Array {
         rowXml += `<table:table-cell${cellStyle(cell.numFmt, cell.style)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
       }
       if (gap) rowXml += `<table:table-cell${gap > 1 ? ` table:number-columns-repeated="${gap}"` : ''}/>`;
-      body += `<table:table-row>${rowXml}</table:table-row>`;
+      if (!rowXml) rowXml = `<table:table-cell table:number-columns-repeated="${cols}"/>`;
+      body += `<table:table-row${hidden.has(r) ? ' table:visibility="filter"' : ''}>${rowXml}</table:table-row>`;
     }
     flushEmpty();
     return `<table:table table:name="${esc(sheet.name)}">${columns}${body}</table:table>`;
@@ -249,7 +272,7 @@ export function writeOds(wb: Workbook): Uint8Array {
     '<office:automatic-styles><style:style style:name="co0" style:family="table-column"><style:table-column-properties style:column-width="0.8925in"/></style:style>' +
     styles.join('') +
     '</office:automatic-styles>' +
-    `<office:body><office:spreadsheet>${tables.join('')}</office:spreadsheet></office:body></office:document-content>`;
+    `<office:body><office:spreadsheet>${tables.join('')}${databaseRanges(wb)}</office:spreadsheet></office:body></office:document-content>`;
 
   const stylesXml =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +

@@ -2,7 +2,8 @@
 import { escapeXml as esc } from '../core/xml';
 import { writeZip } from '../core/zip';
 import { APP_XML, coreXml, NS, REL } from '../document/ooxml';
-import { parseKey, refName } from './address';
+import { parseKey, quoteSheet, refName } from './address';
+import { hiddenRows } from './filter';
 import { Calculator } from './engine';
 import { isError, type CellStyle, type Sheet, type Workbook } from './model';
 import { BUILTIN_FORMATS, pxToWidth } from './xlsx-reader';
@@ -21,6 +22,27 @@ function sheetViews(sheet: Sheet, selected: boolean): string {
       : '';
   if (!selected && !pane) return '';
   return `<sheetViews><sheetView workbookViewId="0"${selected ? ' tabSelected="1"' : ''}${pane ? `>${pane}</sheetView>` : '/>'}</sheetViews>`;
+}
+
+const rangeRef = (r: { r1: number; c1: number; r2: number; c2: number }, abs = false): string => `${refName(r.r1, r.c1, abs, abs)}:${refName(r.r2, r.c2, abs, abs)}`;
+
+/** The sheet's autofilter, its chosen values by column (SHEET-018). */
+function autoFilterXml(sheet: Sheet): string {
+  const f = sheet.filter;
+  if (!f) return '';
+  const columns = Object.entries(f.columns)
+    .map(([c, values]) => {
+      const blank = values.includes('');
+      const items = values.filter((v) => v !== '').map((v) => `<filter val="${esc(v)}"/>`).join('');
+      return `<filterColumn colId="${Number(c) - f.range.c1}"><filters${blank ? ' blank="1"' : ''}>${items}</filters></filterColumn>`;
+    })
+    .join('');
+  return `<autoFilter ref="${rangeRef(f.range)}"${columns ? `>${columns}</autoFilter>` : '/>'}`;
+}
+
+function filterNames(wb: Workbook): string {
+  const names = wb.sheets.flatMap((s, i) => (s.filter ? [`<definedName name="_xlnm._FilterDatabase" localSheetId="${i}" hidden="1">${esc(quoteSheet(s.name))}!${rangeRef(s.filter.range, true)}</definedName>`] : []));
+  return names.length ? `<definedNames>${names.join('')}</definedNames>` : '';
 }
 
 export function writeXlsx(wb: Workbook): Uint8Array {
@@ -106,9 +128,11 @@ export function writeXlsx(wb: Workbook): Uint8Array {
       if (!rows.has(r)) rows.set(r, []);
       rows.get(r)!.push([c, xml]);
     }
+    // SHEET-018: rows hidden by the filter.
+    const hidden = hiddenRows(wb, si, calc);
     const data = [...rows.entries()]
       .sort((a, b) => a[0] - b[0])
-      .map(([r, cells]) => `<row r="${r + 1}">${cells.sort((a, b) => a[0] - b[0]).map(([, x]) => x).join('')}</row>`)
+      .map(([r, cells]) => `<row r="${r + 1}"${hidden.has(r) ? ' hidden="1"' : ''}>${cells.sort((a, b) => a[0] - b[0]).map(([, x]) => x).join('')}</row>`)
       .join('');
     const cols = sheet.colWidths?.size
       ? `<cols>${[...sheet.colWidths.entries()]
@@ -120,7 +144,7 @@ export function writeXlsx(wb: Workbook): Uint8Array {
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${NS.r}">` +
       sheetViews(sheet, si === 0) +
-      `<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData>${sheet.charts?.length ? '<drawing r:id="rId1"/>' : ''}</worksheet>`
+      `<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData>${autoFilterXml(sheet)}${sheet.charts?.length ? '<drawing r:id="rId1"/>' : ''}</worksheet>`
     );
   });
 
@@ -145,7 +169,10 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${NS.r}">` +
     '<bookViews><workbookView/></bookViews><sheets>' +
     wb.sheets.map((s, i) => `<sheet name="${esc(s.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') +
-    '</sheets><calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>';
+    '</sheets>' +
+    // SHEET-018: Excel names the range of each autofilter.
+    filterNames(wb) +
+    '<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>';
 
   const n = wb.sheets.length;
   const workbookRels =

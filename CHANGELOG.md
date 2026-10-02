@@ -13,6 +13,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Cell formatting in spreadsheets: bold, italic, underline, text and fill
   colours, borders and alignment, kept in Excel and OpenDocument files and
   printed. The budget, grade book and invoice templates use it.
+- Autofilters are kept in Excel and OpenDocument spreadsheets: their range,
+  the values chosen in each column and the rows they hide.
 
 ### Fixed
 

@@ -69,6 +69,8 @@ export interface Sheet {
   charts?: Chart[];
   /** Rows above and columns left of the scrolling area, always shown (SHEET-017). */
   freeze?: { rows: number; cols: number };
+  /** Autofilter (SHEET-018). */
+  filter?: import('./filter').AutoFilter;
 }
 
 export interface Workbook {

@@ -1,5 +1,6 @@
 /** XLSX (SpreadsheetML) reader (SHEET-001). */
 import { readSheetCharts } from './chart-ooxml';
+import { parseRange } from './chart';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText, type ZipEntries } from '../core/zip';
 import { readRels } from '../document/ooxml';
@@ -72,6 +73,20 @@ class XlsxReader {
       if (xml && rel) {
         const sheetDoc = parseXml(xml);
         this.readSheet(sheetDoc, sheet);
+        // SHEET-018: the autofilter and its chosen values.
+        const af = descendants(sheetDoc, 'autoFilter')[0];
+        const range = af ? parseRange(attr(af, 'ref') ?? '') : undefined;
+        if (af && range) {
+          const columns: Record<number, string[]> = {};
+          for (const fc of children(af, 'filterColumn')) {
+            const filters = child(fc, 'filters');
+            if (!filters) continue;
+            const values = children(filters, 'filter').map((f) => attr(f, 'val') ?? '');
+            if (/^(1|true)$/.test(attr(filters, 'blank') ?? '')) values.push('');
+            columns[range.c1 + Number(attr(fc, 'colId') ?? 0)] = values;
+          }
+          sheet.filter = { range, columns };
+        }
         // SHEET-017: frozen panes.
         const pane = descendants(sheetDoc, 'pane').find((p) => /^frozen/.test(attr(p, 'state') ?? ''));
         const rows = pane ? Math.max(0, Math.round(Number(attr(pane, 'ySplit') ?? 0))) : 0;
