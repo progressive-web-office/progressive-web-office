@@ -3,7 +3,7 @@
  * and MDZ readers/writers and by the WYSIWYG editor.
  */
 
-export type ParagraphStyle = 'normal' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote' | 'code';
+export type ParagraphStyle = 'normal' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote' | 'code' | 'caption';
 export type Align = 'left' | 'center' | 'right' | 'justify';
 
 export interface TextFormat {
@@ -82,7 +82,25 @@ export interface FootnoteRun {
   footnote: Run[];
 }
 
-export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun;
+/** Kinds of numbered items (DOC-026). */
+export type SeqKind = 'figure' | 'table' | 'equation';
+export const SEQ_KINDS: SeqKind[] = ['figure', 'table', 'equation'];
+
+/**
+ * The number of a figure, table or equation, counted in document order
+ * (DOC-026). Its paragraph's `id` is the target of cross-references; an
+ * equation number shows as `(n)`.
+ */
+export interface SeqRun {
+  seq: SeqKind;
+}
+
+/** A cross-reference to the paragraph with this `id` (DOC-026). */
+export interface RefRun {
+  ref: string;
+}
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -105,6 +123,8 @@ export interface ParagraphLayout {
 export interface Paragraph extends ParagraphLayout {
   type: 'paragraph';
   style: ParagraphStyle;
+  /** Anchor of cross-references to this paragraph (DOC-026). */
+  id?: string;
   align?: Align;
   list?: ListInfo;
   runs: Run[];
@@ -287,6 +307,154 @@ export const isCodeCellRun = (run: Run): run is CodeCellRun => 'cell' in run;
 export const isDiagramRun = (run: Run): run is DiagramRun => 'diagram' in run;
 export const isTextRun = (run: Run): run is TextRun => 'text' in run;
 export const isFootnoteRun = (run: Run): run is FootnoteRun => 'footnote' in run;
+export const isSeqRun = (run: Run): run is SeqRun => 'seq' in run;
+export const isRefRun = (run: Run): run is RefRun => 'ref' in run;
+
+/** What a cross-reference can point to (DOC-026). */
+export interface CrossTarget {
+  id: string;
+  kind: SeqKind | 'heading';
+  /** Number of a figure, table or equation. */
+  number?: number;
+  /** What a reference shows: `Figure 3`, `(2)` or the heading text. */
+  label: string;
+  /** The whole caption or heading, to choose a target. */
+  description: string;
+}
+
+/** Paragraphs in document order, table cells included. */
+export function allParagraphs(blocks: Block[]): Paragraph[] {
+  const out: Paragraph[] = [];
+  for (const b of blocks) {
+    if (b.type === 'paragraph') out.push(b);
+    else if (b.type === 'table') for (const row of b.rows) for (const cell of row) out.push(...cell.blocks);
+  }
+  return out;
+}
+
+/** The text shown for a numbered item: `(n)` for equations. */
+export const seqText = (kind: SeqKind, n: number): string => (kind === 'equation' ? `(${n})` : String(n));
+
+/** The label of a numbered paragraph: the text just before its number (`Figure `) and the number. */
+export function seqLabel(runs: Run[], kind: SeqKind, n: number): string {
+  const i = runs.findIndex(isSeqRun);
+  let prefix = '';
+  for (let j = i - 1; j >= 0 && isTextRun(runs[j]!); j--) prefix = (runs[j] as TextRun).text + prefix;
+  prefix = prefix.split('\n').pop()!.trim();
+  return kind === 'equation' || !prefix ? seqText(kind, n) : `${prefix}\u00a0${n}`;
+}
+
+/**
+ * Runs covered by a paragraph's anchor, as [start, end): the label and the
+ * number of a numbered paragraph (`Figure 3`, `(2)`), or the whole paragraph.
+ */
+export function anchorSpan(runs: Run[]): [number, number] {
+  const i = runs.findIndex(isSeqRun);
+  if (i < 0) return [0, runs.length];
+  let start = i;
+  if ((runs[i] as SeqRun).seq !== 'equation') while (start > 0 && isTextRun(runs[start - 1]!) && !(runs[start - 1] as TextRun).text.includes('\n')) start--;
+  return [start, i + 1];
+}
+
+/** Names of the numbered sequences in Word and OpenDocument files. */
+export const SEQ_NAMES: Record<SeqKind, string> = { figure: 'Figure', table: 'Table', equation: 'Equation' };
+
+/** A sequence name from a file (`Figure`, `Illustration`, `Tableau`…) as a kind. */
+export function seqKindOf(name: string): SeqKind {
+  const n = name.toLowerCase();
+  if (/^(tab|tbl)/.test(n)) return 'table';
+  if (/^(eq|éq|formul|gleichung)/.test(n)) return 'equation';
+  return 'figure';
+}
+
+/** Numbers of the figures, tables and equations, and the targets of cross-references (DOC-026). */
+export function crossTargets(blocks: Block[]): { targets: Map<string, CrossTarget>; numbers: Map<SeqRun, number> } {
+  const counters: Record<SeqKind, number> = { figure: 0, table: 0, equation: 0 };
+  const targets = new Map<string, CrossTarget>();
+  const numbers = new Map<SeqRun, number>();
+  for (const p of allParagraphs(blocks)) {
+    let first: { kind: SeqKind; n: number } | undefined;
+    for (const run of p.runs) {
+      if (!isSeqRun(run)) continue;
+      const n = ++counters[run.seq];
+      numbers.set(run, n);
+      first ??= { kind: run.seq, n };
+    }
+    if (!p.id || targets.has(p.id)) continue;
+    const text = describeRuns(p.runs, first?.n ?? 0);
+    if (first) {
+      targets.set(p.id, { id: p.id, kind: first.kind, number: first.n, label: seqLabel(p.runs, first.kind, first.n), description: first.kind === 'equation' ? `${seqText('equation', first.n)} ${p.runs.filter(isMathRun).map((r) => r.math).join(' ')}`.trim() : text });
+    } else if (/^h[1-6]$/.test(p.style)) {
+      targets.set(p.id, { id: p.id, kind: 'heading', label: text, description: text });
+    }
+  }
+  return { targets, numbers };
+}
+
+/** A paragraph's text with its number shown, to choose it as a target. */
+export function describeRuns(runs: Run[], n: number): string {
+  return runs
+    .map((r) => (isTextRun(r) ? r.text : isSeqRun(r) ? seqText(r.seq, n) : ''))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** What a cross-reference shows; `??` when its target is missing, as in LaTeX. */
+export const refLabel = (targets: Map<string, CrossTarget>, id: string): string => targets.get(id)?.label ?? '??';
+
+/** A new anchor for a cross-reference target, e.g. `fig_k3x9a2`. */
+export function newAnchor(kind: SeqKind | 'heading'): string {
+  const prefix = { figure: 'fig', table: 'tbl', equation: 'eq', heading: 'sec' }[kind];
+  return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** The kind of a target from its anchor prefix (`fig_`, `tbl_`, `eq_`, `sec_`; also `fig:` and `fig-`). */
+export function anchorKind(id: string): SeqKind | 'heading' | undefined {
+  const m = /^(fig|tbl|tab|eq|sec)[_:-]/i.exec(id);
+  if (!m) return undefined;
+  return ({ fig: 'figure', tbl: 'table', tab: 'table', eq: 'equation', sec: 'heading' } as const)[m[1]!.toLowerCase() as 'fig'];
+}
+
+export /** `(` SEQ Equation `)`: the parentheses belong to the number. */
+function unwrapEquationNumbers(runs: Run[]): Run[] {
+  runs = runs.filter((r) => !isTextRun(r) || r.text);
+  runs.forEach((r, i) => {
+    if (!isSeqRun(r) || r.seq !== 'equation') return;
+    const before = runs[i - 1];
+    const after = runs[i + 1];
+    if (before && isTextRun(before) && after && isTextRun(after) && before.text.endsWith('(') && after.text.startsWith(')')) {
+      runs[i - 1] = { ...before, text: before.text.slice(0, -1) };
+      runs[i + 1] = { ...after, text: after.text.slice(1) };
+    }
+  });
+  return runs;
+}
+
+/** References made through a paragraph's other anchors point to its anchor; unused anchors are dropped. */
+export function resolveAnchors(blocks: Block[], alias: Map<string, string>): void {
+  const remap = (runs: Run[]): void => {
+    for (const r of runs) {
+      if (isRefRun(r)) r.ref = alias.get(r.ref) ?? r.ref;
+      else if (isFootnoteRun(r)) remap(r.footnote);
+    }
+  };
+  for (const p of allParagraphs(blocks)) remap(p.runs);
+  pruneAnchors(blocks);
+}
+
+/** Drop anchors that no cross-reference uses (imported bookmarks are often noise). */
+export function pruneAnchors(blocks: Block[]): void {
+  const used = new Set<string>();
+  const visit = (runs: Run[]): void => {
+    for (const r of runs) {
+      if (isRefRun(r)) used.add(r.ref);
+      else if (isFootnoteRun(r)) visit(r.footnote);
+    }
+  };
+  for (const p of allParagraphs(blocks)) visit(p.runs);
+  for (const p of allParagraphs(blocks)) if (p.id && !used.has(p.id) && !p.runs.some(isSeqRun)) delete p.id;
+}
 
 /** Runs split at blank lines (`\n\n`) into paragraphs (footnotes hold several). */
 export function splitParagraphs(runs: Run[]): Run[][] {

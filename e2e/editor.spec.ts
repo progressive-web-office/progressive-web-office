@@ -261,3 +261,46 @@ test('edits tables: rows, columns, merged cells and header row (DOC-025)', async
   expect(xml).toContain('<w:gridSpan w:val="2"/>');
   expect(xml).toContain('<w:tblHeader/>');
 });
+
+test('captions number figures and cross-references follow them (DOC-026)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('# Results');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Some text');
+  const caption = async (text: string) => {
+    await page.getByRole('button', { name: 'Caption', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Caption' });
+    await expect(dialog.getByLabel('Figure')).toBeChecked();
+    await dialog.getByLabel('Caption text').fill(text);
+    await dialog.getByRole('button', { name: 'OK' }).click();
+  };
+  await caption('Setup');
+  await expect(editor.locator('p.caption')).toHaveText(['Figure 1: Setup']);
+  // A caption inserted earlier renumbers the next one.
+  await editor.locator('h1').click();
+  await caption('Overview');
+  await expect(editor.locator('p.caption')).toHaveText(['Figure 1: Overview', 'Figure 2: Setup']);
+
+  await editor.locator('p', { hasText: 'Some text' }).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(', see ');
+  await page.getByRole('button', { name: 'Cross-reference' }).click();
+  const picker = page.getByRole('dialog', { name: 'Insert a cross-reference' });
+  await expect(picker.getByRole('button', { name: 'Results' })).toBeVisible(); // headings too
+  await picker.getByRole('button', { name: 'Figure 2: Setup' }).click();
+  await page.keyboard.type('.');
+  await expect(editor.locator('p', { hasText: 'Some text' })).toHaveText('Some text, see Figure 2.');
+  // Deleting the first caption renumbers the figure and its reference.
+  await editor.locator('p.caption').first().click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Shift+Home');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Backspace');
+  await expect(editor.locator('p.caption')).toHaveText(['Figure 1: Setup']);
+  await expect(editor.locator('p', { hasText: 'Some text' })).toHaveText('Some text, see Figure 1.');
+
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const xml = strFromU8(unzipSync(new Uint8Array((await saveAs(page, 'Word document (.docx)')).data))['word/document.xml']!);
+  expect(xml).toContain('SEQ Figure');
+  expect(xml).toMatch(/REF _Ref_fig_\w+ \\h/);
+});

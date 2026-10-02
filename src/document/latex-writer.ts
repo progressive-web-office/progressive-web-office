@@ -20,8 +20,14 @@ import {
   type Run,
   type Table,
   type TableCell,
+  type SeqRun,
+  type MathRun,
   type WriteOptions,
   tableGrid,
+  crossTargets,
+  isSeqRun,
+  isRefRun,
+  seqText,
 } from './model';
 import { cellsAsBlocks } from './code-cells';
 import { diagramLangOf, diagramsAsPictures } from './diagram';
@@ -58,6 +64,9 @@ class LatexWriter {
   readonly images = new Map<string, Uint8Array>();
   private imagePaths = new Map<string, string>();
   private multirow = false;
+  private captions = false;
+  /** Cross-reference targets and numbers (DOC-026). */
+  private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
 
   constructor(private readonly doc: RichDocument) {}
 
@@ -83,6 +92,7 @@ class LatexWriter {
   }
 
   write(): string {
+    this.xref = crossTargets(this.doc.blocks);
     const body = this.blocks(this.doc.blocks);
     const cjk = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/.test(body);
     const meta = this.doc.meta;
@@ -102,6 +112,7 @@ class LatexWriter {
       '\\usepackage[normalem]{ulem}',
       '\\usepackage{hyperref}',
       ...(this.multirow ? ['\\usepackage{multirow}'] : []),
+      ...(this.captions ? ['\\usepackage{caption}'] : []),
       ...this.furniture(),
       ...(meta.title ? [`\\title{${escapeLatex(meta.title)}}`] : []),
       ...(meta.author ? [`\\author{${escapeLatex(meta.author)}}`] : []),
@@ -149,8 +160,23 @@ class LatexWriter {
       const text = p.runs.map((r) => ('text' in r ? r.text : '')).join('');
       return `\\begin{verbatim}\n${text}\n\\end{verbatim}`;
     }
+    // DOC-026: anchors become \label, numbered paragraphs captions and equations.
+    const label = p.id && this.xref.targets.has(p.id) ? `\\label{${p.id}}` : '';
     const heading = HEADINGS[p.style];
-    if (heading) return `\\${heading}{${this.inline(p.runs).replace(/\\\\\n?/g, ' ')}}`;
+    if (heading) return `\\${heading}{${this.inline(p.runs).replace(/\\\\\n?/g, ' ')}}${label}`;
+    const seqAt = p.runs.findIndex(isSeqRun);
+    const seq = seqAt >= 0 ? (p.runs[seqAt] as SeqRun) : undefined;
+    const maths = p.runs.filter((r) => isMathRun(r) && r.display);
+    if (seq?.seq === 'equation' && maths.length === 1 && p.runs.every((r) => r === seq || r === maths[0] || ('text' in r && !r.text.trim()))) {
+      return `\\begin{equation}\n${(maths[0] as MathRun).math}${label ? `\n${label}` : ''}\n\\end{equation}`;
+    }
+    if (seq && seq.seq !== 'equation') {
+      this.captions = true;
+      const rest = p.runs.slice(seqAt + 1);
+      const first = rest[0];
+      if (first && 'text' in first) rest[0] = { ...first, text: first.text.replace(/^\s*[:.\u2013\u2014-]\s*/, '') };
+      return `\\captionof{${seq.seq}}{${this.inline(rest).replace(/\\\\\n?/g, ' ')}}${label}`;
+    }
     const only = p.runs.length === 1 ? p.runs[0] : undefined;
     if (only && isMathRun(only) && only.display) return `\\[${only.math}\\]`;
     const text = this.inline(p.runs);
@@ -225,6 +251,22 @@ class LatexWriter {
         continue;
       }
       if (isDiagramRun(run) || isCodeCellRun(run)) continue; // replaced by diagramsAsPictures / cellsAsBlocks
+      if (isSeqRun(run)) {
+        out += seqText(run.seq, this.xref.numbers.get(run) ?? 1);
+        continue;
+      }
+      if (isRefRun(run)) {
+        const target = this.xref.targets.get(run.ref);
+        if (!target) out += '??';
+        else if (target.kind === 'equation') out += `\\eqref{${run.ref}}`;
+        else if (target.kind === 'heading') out += `\\nameref{${run.ref}}`;
+        else {
+          // "Figure 3" → "Figure~\ref{…}": the label's word, then the number.
+          const word = target.label.replace(/[\s\u00a0]*\d+$/, '');
+          out += `${word ? `${escapeLatex(word)}~` : ''}\\ref{${run.ref}}`;
+        }
+        continue;
+      }
       if (isFootnoteRun(run)) {
         // DOC-022; a blank line inside \footnote starts a new paragraph of the note.
         out += `\\footnote{${this.inline(run.footnote.filter((r) => !isImageRun(r) && !isFootnoteRun(r))).replace(/\\\\\n\\\\\n/g, '\n\n')}}`;

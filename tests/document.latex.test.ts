@@ -102,9 +102,9 @@ Inline $a^2$ and \\(b\\).
       paragraph('Wise words', { style: 'quote' }),
       paragraph('x = {1}', { style: 'code' }),
       { type: 'paragraph', style: 'normal', runs: [{ text: 'Inline ' }, { math: 'a^2' }, { text: ' and ' }, { math: 'b' }, { text: '.' }] },
-      { type: 'paragraph', style: 'normal', runs: [{ math: 'E = mc^2', display: true }] },
+      { type: 'paragraph', style: 'normal', id: 'eq:1', runs: [{ math: 'E = mc^2', display: true }, { seq: 'equation' }] }, // DOC-026: numbered
       { type: 'paragraph', style: 'normal', runs: [{ math: '\\int_0^1 x\\,dx', display: true }] },
-      { type: 'paragraph', style: 'normal', runs: [{ math: '\\begin{aligned}a &= b \\\\ c &= d\\end{aligned}', display: true }] },
+      { type: 'paragraph', style: 'normal', runs: [{ math: '\\begin{aligned}a &= b \\\\ c &= d\\end{aligned}', display: true }, { seq: 'equation' }] },
     ] satisfies Block[]);
   });
 

@@ -34,6 +34,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   table. Merged cells and header rows are kept in DOCX, ODT, HTML and LaTeX
   (`\multicolumn` / `\multirow`); Markdown tables are read with their header
   row.
+- Captions and cross-references in text documents: 🏷 numbers figures,
+  tables and equations (Caption style, numbers in document order), ↪ inserts
+  a reference to a figure, table, equation or heading that follows
+  renumbering and shows `??` when its target is deleted. Kept as SEQ/REF
+  fields and bookmarks in DOCX, sequences and bookmark references in ODT,
+  `\captionof` / `equation` / `\label` / `\ref` / `\eqref` / `\nameref` in
+  LaTeX, and anchors, links and `\tag` in Markdown; read back from Word,
+  LibreOffice and LaTeX files (`figure` and `table` floats included).
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

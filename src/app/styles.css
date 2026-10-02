@@ -716,3 +716,13 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .hf-row input { min-height: 30px; min-width: 0; }
 .hf-fields { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 @media print { .doc-furniture { display: none; } }
+
+/* Captions and cross-references (DOC-026) */
+.doc-page p.caption { font-size: 0.9em; font-style: italic; color: #44546a; margin: 4pt 0 10pt; }
+.doc-page .pm-xref, .doc-page a.xref { color: var(--accent); text-decoration: none; border-bottom: 1px dotted currentColor; cursor: pointer; }
+.doc-page .pm-xref.broken, .doc-page a.xref.broken { color: var(--danger); }
+.doc-page .pm-seq { cursor: default; }
+/* A numbered display equation: the number on the right, on the same line. */
+.doc-page p:has(> .pm-display):has(> .pm-seq[data-seq='equation']),
+.doc-page p:has(> .math.display):has(> .seq[data-seq='equation']) { display: flex; align-items: center; gap: 1em; }
+.doc-page p:has(> .pm-display) > .pm-display, .doc-page p:has(> .math.display) > .math.display { flex: 1; }

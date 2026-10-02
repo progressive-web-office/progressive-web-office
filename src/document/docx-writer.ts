@@ -11,6 +11,11 @@ import {
   isDiagramRun,
   isImageRun,
   isFootnoteRun,
+  isSeqRun,
+  isRefRun,
+  crossTargets,
+  anchorSpan,
+  SEQ_NAMES,
   splitParagraphs,
   tocEntries,
   tableGrid,
@@ -41,6 +46,7 @@ const STYLE_IDS: Record<string, string> = {
   h6: 'Heading6',
   quote: 'Quote',
   code: 'Code',
+  caption: 'Caption',
 };
 
 /** Content width of an A4 page with 2.54 cm margins, in pixels (for image scaling). */
@@ -56,6 +62,9 @@ class DocxWriter {
   /** Footnote bodies (DOC-022); a note's id is its index + 1. */
   private footnotes: string[] = [];
   private ridCounter = 1;
+  /** Cross-reference targets and numbers (DOC-026). */
+  private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
+  private bookmarkId = 0;
 
   constructor(
     private readonly doc: RichDocument,
@@ -69,6 +78,7 @@ class DocxWriter {
   write(): Uint8Array {
     this.rels.push({ id: this.nextRid(), type: REL.styles, target: 'styles.xml' });
     this.rels.push({ id: this.nextRid(), type: REL.numbering, target: 'numbering.xml' });
+    this.xref = crossTargets(this.doc.blocks);
     const body = this.blocks(this.doc.blocks);
     if (this.footnotes.length) this.rels.push({ id: this.nextRid(), type: REL.footnotes, target: 'footnotes.xml' });
     // DOC-024: header and footer parts.
@@ -227,7 +237,14 @@ class DocxWriter {
     if (numId) pPr += `<w:numPr><w:ilvl w:val="${Math.min(8, p.list?.level ?? 0)}"/><w:numId w:val="${numId}"/></w:numPr>`;
     pPr += layoutPPr(p);
     if (p.align && p.align !== 'left') pPr += `<w:jc w:val="${p.align === 'justify' ? 'both' : p.align}"/>`;
-    return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${p.runs.map((r) => this.run(r)).join('')}</w:p>`;
+    let runs = p.runs.map((r) => this.run(r));
+    if (p.id && this.xref.targets.get(p.id)) {
+      // DOC-026: a bookmark around the label and number, or the heading text.
+      const [start, end] = anchorSpan(p.runs);
+      const id = this.bookmarkId++;
+      runs = [...runs.slice(0, start), `<w:bookmarkStart w:id="${id}" w:name="${bookmarkName(p.id)}"/>`, ...runs.slice(start, end), `<w:bookmarkEnd w:id="${id}"/>`, ...runs.slice(end)];
+    }
+    return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${runs.join('')}</w:p>`;
   }
 
   private furnitureKinds: ('header' | 'footer')[] = [];
@@ -292,6 +309,17 @@ class DocxWriter {
 
   private run(run: Run): string {
     if (isFootnoteRun(run)) return this.footnote(run.footnote);
+    if (isSeqRun(run)) {
+      // DOC-026: a SEQ field, its number shown until Word updates it.
+      const n = this.xref.numbers.get(run) ?? 1;
+      const field = `<w:fldSimple w:instr=" SEQ ${SEQ_NAMES[run.seq]} \\* ARABIC "><w:r><w:t>${n}</w:t></w:r></w:fldSimple>`;
+      return run.seq === 'equation' ? `<w:r><w:t>(</w:t></w:r>${field}<w:r><w:t>)</w:t></w:r>` : field;
+    }
+    if (isRefRun(run)) {
+      const target = this.xref.targets.get(run.ref);
+      if (!target) return '<w:r><w:t>??</w:t></w:r>';
+      return `<w:fldSimple w:instr=" REF ${bookmarkName(run.ref)} \\h "><w:r><w:t xml:space="preserve">${esc(target.label)}</w:t></w:r></w:fldSimple>`;
+    }
     if (isImageRun(run)) return this.image(run);
     if (isDiagramRun(run) || isCodeCellRun(run)) return ''; // replaced by diagramsAsPictures / cellsAsBlocks
     if (isMathRun(run)) {
@@ -449,6 +477,8 @@ const STYLES_XML =
   heading(6, 22) +
   '<w:style w:type="paragraph" w:styleId="Quote"><w:name w:val="Quote"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/>' +
   '<w:pPr><w:ind w:left="720" w:right="720"/></w:pPr><w:rPr><w:i/><w:iCs/><w:color w:val="404040"/></w:rPr></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="Caption"><w:name w:val="caption"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="35"/><w:unhideWhenUsed/><w:qFormat/>' +
+  '<w:pPr><w:spacing w:after="200" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:i/><w:iCs/><w:color w:val="44546A"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>' +
   '<w:style w:type="paragraph" w:styleId="Code"><w:name w:val="Code"/><w:basedOn w:val="Normal"/><w:qFormat/>' +
   '<w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/></w:pPr>' +
   '<w:rPr><w:rFonts w:ascii="Courier New" w:hAnsi="Courier New" w:cs="Courier New"/><w:sz w:val="20"/></w:rPr></w:style>' +
@@ -471,3 +501,5 @@ export function writeDocx(doc: RichDocument, opts: WriteOptions = {}): Uint8Arra
   return new DocxWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)), opts).write();
 }
 
+/** Word bookmark of a cross-reference target: hidden (`_Ref`), letters, digits and `_`, 40 characters at most. */
+export const bookmarkName = (id: string): string => (id.startsWith('_') ? id : `_Ref_${id}`).replace(/[^A-Za-z0-9_]/g, '_').slice(0, 40);

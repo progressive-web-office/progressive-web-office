@@ -297,3 +297,77 @@ export const insertToc: Command = (state, dispatch) => {
   dispatch(state.tr.insert(pos, schema.nodes.toc!.create()).scrollIntoView());
   return true;
 };
+
+// --- cross-references (DOC-026) -------------------------------------------------
+
+/** The paragraph holding the cursor, with its position. */
+function currentParagraph(state: EditorState): { node: PmNode; pos: number } | undefined {
+  const $from = state.selection.$from;
+  for (let d = $from.depth; d > 0; d--) {
+    const node = $from.node(d);
+    if (node.type === schema.nodes.paragraph) return { node, pos: $from.before(d) };
+  }
+  return undefined;
+}
+
+/** Whether the cursor is in a paragraph holding a display equation. */
+export function inDisplayEquation(state: EditorState): boolean {
+  const p = currentParagraph(state);
+  let found = false;
+  p?.node.forEach((c) => {
+    if (c.type === schema.nodes.math && c.attrs.display) found = true;
+  });
+  return found;
+}
+
+/**
+ * A caption "Figure 3: text" (or "Table 1: text"): after the current block,
+ * or above the table holding the cursor.
+ */
+export const insertCaption =
+  (kind: 'figure' | 'table', word: string, text: string, anchor: string): Command =>
+  (state, dispatch) => {
+    if (!dispatch) return true;
+    const $from = state.selection.$from;
+    const inTable = $from.depth > 1 && $from.node(1).type.spec.tableRole === 'table';
+    const pos = $from.depth === 0 ? state.doc.content.size : kind === 'table' && inTable ? $from.before(1) : $from.after(1);
+    const content = [schema.text(`${word} `), schema.nodes.seq!.create({ kind }), ...(text ? [schema.text(`: ${text}`)] : [])];
+    const caption = schema.nodes.paragraph!.create({ style: 'caption', align: 'center', anchor }, content);
+    const tr = state.tr.insert(pos, caption);
+    tr.setSelection(TextSelection.near(tr.doc.resolve(pos + caption.nodeSize - 1)));
+    dispatch(tr.scrollIntoView());
+    return true;
+  };
+
+/** Number the display equation holding the cursor: `(n)` at its end. */
+export const numberEquation =
+  (anchor: string): Command =>
+  (state, dispatch) => {
+    const p = currentParagraph(state);
+    if (!p || !inDisplayEquation(state)) return false;
+    let numbered = false;
+    p.node.forEach((c) => {
+      if (c.type === schema.nodes.seq) numbered = true;
+    });
+    if (numbered) return false;
+    if (!dispatch) return true;
+    const tr = state.tr.insert(p.pos + p.node.nodeSize - 1, schema.nodes.seq!.create({ kind: 'equation' }));
+    if (!p.node.attrs.anchor) tr.setNodeMarkup(p.pos, undefined, { ...p.node.attrs, anchor });
+    dispatch(tr);
+    return true;
+  };
+
+/** Insert a reference to the paragraph with this anchor; `anchorAt` first anchors a heading. */
+export const insertCrossReference =
+  (id: string, anchorAt?: number): Command =>
+  (state, dispatch) => {
+    if (!dispatch) return true;
+    const tr = state.tr;
+    if (anchorAt !== undefined) {
+      const node = tr.doc.nodeAt(anchorAt);
+      if (node) tr.setNodeMarkup(anchorAt, undefined, { ...node.attrs, anchor: id });
+    }
+    tr.replaceSelectionWith(schema.nodes.xref!.create({ ref: id }), false);
+    dispatch(tr.scrollIntoView());
+    return true;
+  };

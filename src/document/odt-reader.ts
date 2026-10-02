@@ -18,6 +18,9 @@ import {
   type RichDocument,
   type Run,
   type TableCell,
+  seqKindOf,
+  resolveAnchors,
+  unwrapEquationNumbers,
   type TextFormat,
 } from './model';
 import { diagramLangOf } from './diagram';
@@ -108,6 +111,10 @@ class OdtReader {
 
   constructor(private readonly zip: ZipEntries) {}
 
+  /** Anchors met in the current paragraph (DOC-026). */
+  private anchors: string[] = [];
+  private anchorAlias = new Map<string, string>();
+
   read(): RichDocument {
     const content = readZipText(this.zip, 'content.xml');
     if (!content) throw new Error('Not an OpenDocument text: content.xml is missing.');
@@ -118,6 +125,7 @@ class OdtReader {
     const body = xml.getElementsByTagNameNS(ODF_NS.office, 'text')[0];
     if (!body) throw new Error('Not an OpenDocument text: no office:text body.');
     this.doc.blocks = this.readBlocks(body, undefined, 0);
+    resolveAnchors(this.doc.blocks, this.anchorAlias);
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
     this.doc.meta = readOdfMeta(this.zip);
     if (stylesText) {
@@ -218,6 +226,7 @@ class OdtReader {
       if (s.name === 'Title') return 'h1';
       if (s.name === 'Subtitle') return 'h2';
       if (s.name === 'Quotations') return 'quote';
+      if (s.name === 'Caption') return 'caption';
       if (s.name === 'Preformatted_20_Text') return 'code';
       if (s.name === 'Horizontal_20_Line') return 'rule';
     }
@@ -300,8 +309,13 @@ class OdtReader {
     const base: TextFormat = {};
     for (const s of chain) if (s.automatic) Object.assign(base, s.format);
     if (para.style === 'code') delete base.code;
+    this.anchors = [];
     this.readInline(el, base, para.runs, para.style === 'code');
-    para.runs = normalizeRuns(para.runs);
+    if (this.anchors.length) {
+      para.id = this.anchors[0]!;
+      for (const n of this.anchors.slice(1)) this.anchorAlias.set(n, para.id);
+    }
+    para.runs = normalizeRuns(unwrapEquationNumbers(para.runs));
     const first = para.runs[0];
     if (first && 'text' in first && para.style !== 'code') {
       first.text = first.text.replace(/^ +/, '');
@@ -361,12 +375,34 @@ class OdtReader {
             if (note.length) out.push({ footnote: note });
             break;
           }
-          case 'annotation':
+          case 'sequence': {
+            // DOC-026: a numbered figure, table or equation.
+            out.push({ seq: seqKindOf(attr(c, 'name') ?? '') });
+            const name = attr(c, 'ref-name');
+            if (name) this.anchors.push(name);
+            break;
+          }
           case 'bookmark':
           case 'bookmark-start':
-          case 'bookmark-end':
-          case 'soft-page-break':
           case 'reference-mark':
+          case 'reference-mark-start': {
+            const name = attr(c, 'name');
+            if (name) this.anchors.push(name);
+            break;
+          }
+          case 'bookmark-ref':
+          case 'sequence-ref':
+          case 'reference-ref':
+          case 'note-ref': {
+            const name = attr(c, 'ref-name');
+            if (name && c.localName !== 'note-ref') out.push({ ref: name });
+            else this.readInline(c, fmt, out, pre);
+            break;
+          }
+          case 'annotation':
+          case 'bookmark-end':
+          case 'reference-mark-end':
+          case 'soft-page-break':
           case 'tracked-changes':
             break;
           default:

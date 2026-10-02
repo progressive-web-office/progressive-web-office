@@ -14,6 +14,13 @@ import {
   isImageRun,
   isTextRun,
   normalizeRuns,
+  allParagraphs,
+  anchorKind,
+  seqKindOf,
+  isFootnoteRun,
+  isRefRun,
+  resolveAnchors,
+  type TextRun,
   runsText,
   cleanPageSetup,
   type PageSetup,
@@ -248,13 +255,24 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
           break;
         }
         const p = newParagraph(heading ?? 'normal');
-        p.runs = runs;
+        // DOC-026: `<a id="…"></a>` anchors the paragraph.
+        p.runs = normalizeRuns(
+          runs.map((r) => {
+            if (!isTextRun(r) || !r.text.includes(ANCHOR_MARK)) return r;
+            return { ...r, text: r.text.replace(ANCHOR_RE, (_, id: string) => ((p.id ??= id), '')) };
+          }),
+        );
         push(p);
         break;
       }
       case 'math_block': {
         const p = newParagraph();
-        p.runs = [{ math: tok.content, display: true }];
+        // DOC-026: `\tag{n}` numbers the equation, `\label{…}` anchors it.
+        const label = /\\label\{([^}]*)\}/.exec(tok.content)?.[1]?.trim();
+        const tagged = /\\tag\*?\{[^}]*\}/.test(tok.content);
+        const math = tok.content.replace(/\\(?:label|tag\*?)\{[^}]*\}/g, '').trim();
+        p.runs = tagged ? [{ math, display: true }, { seq: 'equation' }] : [{ math: tok.content, display: true }];
+        if (label) p.id = label;
         push(p);
         break;
       }
@@ -330,6 +348,7 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
       else if (/^(?:\[\[_?TOC_?\]\]|\[TOC\]|\[toc\])$/.test(text)) blocks[i] = { type: 'toc' };
     }
   }
+  crossReferences(blocks);
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   if (firstHeading && !doc.meta.title) doc.meta.title = firstHeading.runs.map((r) => ('text' in r ? r.text : '')).join('');
@@ -402,7 +421,10 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
       }
       case 'html_inline': {
         const tag = tok.content.trim().toLowerCase();
-        if (tag === '<u>') fmt.underline = true;
+        const anchor = /^<a\s+(?:id|name)\s*=\s*"([^"]+)"\s*>$/.exec(tok.content.trim());
+        if (anchor) runs.push({ text: `${ANCHOR_MARK}${anchor[1]}\u0000` });
+        else if (tag === '</a>') break;
+        else if (tag === '<u>') fmt.underline = true;
         else if (tag === '</u>') delete fmt.underline;
         else if (/^<br\s*\/?>$/.test(tag)) text('\n');
         else text(tok.content);
@@ -413,4 +435,50 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
     }
   }
   return runs;
+}
+
+/** Marks an `<a id>` anchor among the runs of a paragraph while it is read. */
+const ANCHOR_MARK = '\u0000anchor:';
+const ANCHOR_RE = /\u0000anchor:([^\u0000]*)\u0000/g;
+
+const CAPTION_WORD = /^(Figures?|Fig\.|Illustrations?|Abbildung|Tables?|Tableaux?|Tabelle|图|表)[\s\u00a0]*(\d+)/i;
+
+/**
+ * DOC-026: anchored paragraphs that start with "Figure 3" are captions, and
+ * links to an anchor of the document are cross-references.
+ */
+function crossReferences(blocks: Block[]): void {
+  const ids = new Set<string>();
+  for (const p of allParagraphs(blocks)) {
+    if (!p.id) continue;
+    ids.add(p.id);
+    const first = p.runs[0];
+    const m = first && isTextRun(first) ? CAPTION_WORD.exec(first.text) : null;
+    const kind = anchorKind(p.id);
+    if (!m || kind === 'heading' || kind === 'equation' || /^h\d$/.test(p.style)) continue;
+    const word = m[0].slice(0, m[0].length - m[2]!.length);
+    p.style = 'caption';
+    p.runs.splice(0, 1, { ...(first as TextRun), text: word }, { seq: kind ?? seqKindOf(m[1]!) }, { ...(first as TextRun), text: (first as TextRun).text.slice(m[0].length) });
+    p.runs = normalizeRuns(p.runs);
+  }
+  const visit = (runs: Run[]): Run[] => {
+    const out: Run[] = [];
+    for (const r of runs) {
+      if (isFootnoteRun(r)) {
+        out.push({ footnote: visit(r.footnote) });
+        continue;
+      }
+      const id = isTextRun(r) && r.link?.startsWith('#') ? r.link.slice(1) : undefined;
+      if (id && ids.has(id)) {
+        const prev = out[out.length - 1];
+        // The link's runs make one reference.
+        if (!(prev && isRefRun(prev) && prev.ref === id)) out.push({ ref: id });
+        continue;
+      }
+      out.push(r);
+    }
+    return out;
+  };
+  for (const p of allParagraphs(blocks)) p.runs = visit(p.runs);
+  resolveAnchors(blocks, new Map());
 }

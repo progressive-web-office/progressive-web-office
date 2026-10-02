@@ -15,7 +15,7 @@ import { LAYOUT_KEYS, type Align, type CellOutput, type ParagraphStyle } from '.
 import { cssFontFamily, footnoteFromDom } from '../html';
 import { t } from '../../i18n';
 
-const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code'];
+const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code', 'caption'];
 const ALIGNS: Align[] = ['left', 'center', 'right', 'justify'];
 
 function paragraphAttrs(dom: HTMLElement, style: ParagraphStyle): Record<string, unknown> {
@@ -26,6 +26,7 @@ function paragraphAttrs(dom: HTMLElement, style: ParagraphStyle): Record<string,
     align,
     listOrdered: list === 'ol' ? true : list === 'ul' ? false : null,
     listLevel: Number(dom.dataset.level ?? 0) || 0,
+    anchor: dom.dataset.anchor || null,
   };
   // Spacing is read back from the editor's own data attributes only (DOC-020).
   for (const k of LAYOUT_KEYS) {
@@ -48,14 +49,20 @@ function layoutCss(a: Record<string, unknown>): string {
 
 function paragraphDom(node: PmNode): DOMOutputSpec {
   const { style, align, listOrdered, listLevel } = node.attrs as { style: ParagraphStyle; align: Align | null; listOrdered: boolean | null; listLevel: number };
-  const tag = style === 'normal' ? 'p' : style === 'quote' ? 'blockquote' : style === 'code' ? 'pre' : style;
+  const tag = style === 'normal' || style === 'caption' ? 'p' : style === 'quote' ? 'blockquote' : style === 'code' ? 'pre' : style;
   const attrs: Record<string, string> = {};
+  const anchor = node.attrs.anchor as string | null;
+  if (anchor) {
+    attrs.id = anchor;
+    attrs['data-anchor'] = anchor;
+  }
   const css = [align ? `text-align: ${align}` : '', layoutCss(node.attrs)].filter(Boolean).join('; ');
   if (css) attrs.style = css;
   if (align) attrs['data-align'] = align;
   for (const k of LAYOUT_KEYS) if (node.attrs[k] !== null) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(node.attrs[k]);
+  if (style === 'caption') attrs.class = 'caption';
   if (listOrdered !== null) {
-    attrs.class = 'list-item';
+    attrs.class = `${attrs.class ?? ''} list-item`.trim();
     attrs['data-list'] = listOrdered ? 'ol' : 'ul';
     attrs['data-level'] = String(listLevel);
   }
@@ -80,11 +87,14 @@ export const schema = new Schema({
         spaceBefore: { default: null },
         spaceAfter: { default: null },
         lineHeight: { default: null },
+        /** Cross-reference anchor (DOC-026). */
+        anchor: { default: null },
       },
       parseDOM: [
         ...STYLES.filter((s) => /^h\d$/.test(s)).map((s) => ({ tag: s, getAttrs: (d: HTMLElement) => paragraphAttrs(d, s) })),
         { tag: 'blockquote', getAttrs: (d: HTMLElement) => paragraphAttrs(d, 'quote') },
         { tag: 'pre', preserveWhitespace: 'full' as const, getAttrs: (d: HTMLElement) => paragraphAttrs(d, 'code') },
+        { tag: 'p.caption', getAttrs: (d: HTMLElement) => paragraphAttrs(d, 'caption') },
         { tag: 'p', getAttrs: (d: HTMLElement) => paragraphAttrs(d, 'normal') },
       ],
       toDOM: paragraphDom,
@@ -138,6 +148,24 @@ export const schema = new Schema({
       attrs: { diagram: { default: '' }, lang: { default: 'mermaid' } },
       parseDOM: [{ tag: 'span.diagram', getAttrs: (d: HTMLElement) => ({ diagram: d.dataset.source ?? '', lang: d.dataset.diagram ?? 'mermaid' }) }],
       toDOM: (n) => ['span', { class: 'diagram', 'data-diagram': n.attrs.lang, 'data-source': n.attrs.diagram }, n.attrs.diagram],
+    },
+    /** A figure, table or equation number, counted by the editor (DOC-026). */
+    seq: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { kind: { default: 'figure' } },
+      parseDOM: [{ tag: 'span.seq[data-seq]', priority: 60, getAttrs: (d: HTMLElement) => ({ kind: d.dataset.seq }) }],
+      toDOM: (n) => ['span', { class: 'seq', 'data-seq': n.attrs.kind }, '#'],
+    },
+    /** A cross-reference, showing its target's label (DOC-026). */
+    xref: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { ref: { default: '' } },
+      parseDOM: [{ tag: 'a.xref[data-ref]', priority: 60, getAttrs: (d: HTMLElement) => ({ ref: d.dataset.ref }) }],
+      toDOM: (n) => ['a', { class: 'xref', 'data-ref': n.attrs.ref, href: `#${n.attrs.ref as string}` }, '??'],
     },
     footnote: {
       inline: true,

@@ -2,7 +2,7 @@
  * LaTeX import (TEX-003, TEX-004): the common subset of `article` documents.
  * Unsupported constructs are kept as visible source text.
  */
-import { addResource, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat } from './model';
+import { addResource, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
 
 type Node =
   | { k: 'text'; v: string }
@@ -26,6 +26,7 @@ const ARITY: Record<string, [boolean, number]> = {
   thanks: [false, 1], phantom: [false, 1], hyperref: [true, 1], newpage: [false, 0], clearpage: [false, 0],
   fancyhead: [true, 1], fancyfoot: [true, 1], lhead: [false, 1], chead: [false, 1], rhead: [false, 1], lfoot: [false, 1], cfoot: [false, 1], rfoot: [false, 1],
   fancyhf: [true, 1], pageref: [false, 1],
+  captionof: [true, 2], autoref: [false, 1], cref: [false, 1], Cref: [false, 1], nameref: [false, 1], vref: [false, 1],
 };
 
 const FANCY = new Set(['fancyhead', 'fancyfoot', 'lhead', 'chead', 'rhead', 'lfoot', 'cfoot', 'rfoot']);
@@ -47,7 +48,7 @@ const SYMBOLS: Record<string, string> = {
 /** Commands ignored on import (layout only). */
 const IGNORED = new Set([
   'maketitle', 'noindent', 'indent', 'centering', 'raggedright', 'raggedleft', 'hfill', 'vfill', 'smallskip', 'medskip',
-  'bigskip', 'newpage', 'clearpage', 'pagebreak', 'nopagebreak', 'label', 'vspace', 'hspace', 'protect', 'relax', 'small', 'large', 'Large',
+  'bigskip', 'newpage', 'clearpage', 'pagebreak', 'nopagebreak', 'vspace', 'hspace', 'protect', 'relax', 'small', 'large', 'Large',
   'LARGE', 'huge', 'Huge', 'normalsize', 'footnotesize', 'scriptsize', 'tiny', 'selectfont', 'color', 'hline', 'toprule', 'midrule',
   'bottomrule', 'phantom', 'nonumber', 'notag', 'documentclass', 'usepackage', 'thispagestyle', 'pagestyle',
 ]);
@@ -340,6 +341,11 @@ class Builder {
     private readonly opts: LatexReadOptions,
   ) {}
 
+  /** Floats being read (figure, table), for their captions (DOC-026). */
+  private floats: SeqKind[] = [];
+  /** The last heading, caption or equation: what a \label names. */
+  private lastTarget: Paragraph | undefined;
+
   flush(): void {
     const p = this.current;
     if (!p) return;
@@ -486,7 +492,9 @@ class Builder {
     if (HEADING_LEVEL[name]) {
       this.flush();
       const runs = normalizeRuns(this.inlineRuns(args[0] ?? '').map((r) => ('text' in r ? { ...r, text: r.text.replace(/\n/g, ' ') } : r)));
-      this.blocks.push({ type: 'paragraph', style: HEADING_LEVEL[name]!, runs });
+      const heading: Paragraph = { type: 'paragraph', style: HEADING_LEVEL[name]!, runs };
+      this.blocks.push(heading);
+      this.lastTarget = heading;
       return;
     }
     if (ACCENTS[name] && !/^[A-Za-z]{2,}$/.test(name)) {
@@ -537,9 +545,38 @@ class Builder {
         return;
       }
       case 'caption':
+      case 'captionof': {
+        // DOC-026: a numbered caption; its \label names it.
         this.flush();
-        arg(0, { ...fmt, italic: true });
-        return void this.flush();
+        const kind = name === 'captionof' ? seqKindOf(args[0] ?? '') : (this.floats[this.floats.length - 1] ?? 'figure');
+        const fr = this.doc.meta.language?.startsWith('fr');
+        const word = kind === 'table' ? (fr ? 'Tableau' : 'Table') : kind === 'equation' ? (fr ? 'Équation' : 'Equation') : 'Figure';
+        const runs = normalizeRuns(this.inlineRuns(args[name === 'captionof' ? 1 : 0] ?? '').map((r) => ('text' in r ? { ...r, text: r.text.replace(/\n/g, ' ') } : r)));
+        const p: Paragraph = { type: 'paragraph', style: 'caption', runs: [{ text: `${word} ` }, { seq: kind }, ...(runs.length ? [{ text: ': ' }, ...runs] : [])] };
+        if (ctx.align === 'center') p.align = 'center';
+        this.blocks.push(p);
+        this.lastTarget = p;
+        return;
+      }
+      case 'label': {
+        const target = this.lastTarget ?? this.current;
+        if (target && !target.id && args[0]) target.id = args[0].trim();
+        return;
+      }
+      case 'ref':
+      case 'autoref':
+      case 'cref':
+      case 'Cref':
+      case 'vref':
+      case 'eqref':
+      case 'nameref': {
+        if (!args[0]) return;
+        const p = this.open(ctx);
+        // "Figure~\ref{x}": the reference shows the label itself.
+        const last = p.runs[p.runs.length - 1];
+        if (name === 'ref' && last && 'text' in last) last.text = last.text.replace(/(?:Figures?|Fig\.|Tables?|Tableaux?|Équations?|Equations?|Eqs?\.|Éq\.)[\s\u00a0]*$/i, '');
+        return void p.runs.push({ ref: args[0].split(',')[0]!.trim() });
+      }
       case 'includegraphics':
         return void this.image(node.opt, args[0] ?? '', ctx);
       case 'item': {
@@ -579,8 +616,6 @@ class Builder {
       case 'date':
       case 'thanks':
         return;
-      case 'ref':
-      case 'eqref':
       case 'cite':
         return void this.text(node.raw, fmt, ctx);
       default:
@@ -606,16 +641,17 @@ class Builder {
 
   private environment(node: Extract<Node, { k: 'env' }>, fmt: TextFormat, ctx: Ctx): void {
     const { name, body } = node;
-    if (MATH_ENVS.has(name)) {
+    if (MATH_ENVS.has(name) || ALIGN_ENVS.has(name)) {
       this.flush();
-      const latex = body.replace(/\\(label|tag)\{[^}]*\}/g, '').replace(/\\(nonumber|notag)\b/g, '').trim();
-      this.blocks.push({ type: 'paragraph', style: 'normal', runs: [{ math: latex, display: true }] });
-      return;
-    }
-    if (ALIGN_ENVS.has(name)) {
-      this.flush();
-      const latex = body.replace(/\\(label|tag)\{[^}]*\}/g, '').replace(/\\(nonumber|notag)\b/g, '').trim();
-      this.blocks.push({ type: 'paragraph', style: 'normal', runs: [{ math: `\\begin{aligned}${latex}\\end{aligned}`, display: true }] });
+      let latex = body.replace(/\\(label|tag)\{[^}]*\}/g, '').replace(/\\(nonumber|notag)\b/g, '').trim();
+      if (ALIGN_ENVS.has(name)) latex = `\\begin{aligned}${latex}\\end{aligned}`;
+      // DOC-026: numbered environments get an equation number, their \label its anchor.
+      const numbered = !name.endsWith('*') && name !== 'displaymath' && name !== 'math' && !/\\(nonumber|notag)\b/.test(body);
+      const p: Paragraph = { type: 'paragraph', style: 'normal', runs: numbered ? [{ math: latex, display: true }, { seq: 'equation' }] : [{ math: latex, display: true }] };
+      const label = /\\label\{([^}]*)\}/.exec(body)?.[1]?.trim();
+      if (label) p.id = label;
+      this.blocks.push(p);
+      this.lastTarget = p;
       return;
     }
     if (VERBATIM_ENVS.has(name)) {
@@ -662,7 +698,10 @@ class Builder {
       default:
         if (TRANSPARENT_ENVS.has(name)) {
           this.flush();
+          const float = /^figure/.test(name) ? 'figure' : /^table/.test(name) ? 'table' : undefined;
+          if (float) this.floats.push(float);
           this.walk(nodes(), fmt, ctx);
+          if (float) this.floats.pop();
           this.flush();
           return;
         }
@@ -817,5 +856,19 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
   builder.walk(parse(body), {}, { style: 'normal', listDepth: 0, ordered: false, inList: false });
   builder.flush();
   doc.blocks = builder.blocks.length ? builder.blocks : emptyDocument().blocks;
+  // "(\ref{eq})": the reference to an equation already shows its parentheses.
+  const { targets } = crossTargets(doc.blocks);
+  for (const p of allParagraphs(doc.blocks)) {
+    p.runs.forEach((r, i) => {
+      const before = p.runs[i - 1];
+      const after = p.runs[i + 1];
+      if (isRefRun(r) && targets.get(r.ref)?.kind === 'equation' && before && 'text' in before && after && 'text' in after && before.text.endsWith('(') && after.text.startsWith(')')) {
+        before.text = before.text.slice(0, -1);
+        after.text = after.text.slice(1);
+      }
+    });
+    p.runs = normalizeRuns(p.runs);
+  }
+  resolveAnchors(doc.blocks, new Map());
   return doc;
 }

@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { LAYOUT_KEYS, normalizeRuns, type Block, type Paragraph, type Run, type Table, type TableCell, type TextFormat } from '../model';
+import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CrossTarget, type Paragraph, type Run, type SeqKind, type Table, type TableCell, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -61,6 +61,10 @@ function runsToInline(runs: Run[]): PmNode[] {
       out.push(schema.nodes.diagram!.create({ diagram: run.diagram, lang: run.lang }));
     } else if ('footnote' in run) {
       out.push(schema.nodes.footnote!.create({ runs: run.footnote }));
+    } else if ('seq' in run) {
+      out.push(schema.nodes.seq!.create({ kind: run.seq }));
+    } else if ('ref' in run) {
+      out.push(schema.nodes.xref!.create({ ref: run.ref }));
     } else {
       out.push(schema.nodes.code_cell!.create({ cell: run.cell, lang: run.lang, output: run.output ?? null }));
     }
@@ -71,7 +75,7 @@ function runsToInline(runs: Run[]): PmNode[] {
 export function paragraphToPm(p: Paragraph): PmNode {
   const layout = Object.fromEntries(LAYOUT_KEYS.map((k) => [k, p[k] ?? null]));
   return schema.nodes.paragraph!.create(
-    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, ...layout },
+    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, anchor: p.id ?? null, ...layout },
     runsToInline(p.runs),
   );
 }
@@ -134,6 +138,12 @@ function inlineToRuns(node: PmNode): Run[] {
       case 'footnote':
         runs.push({ footnote: a.runs as Run[] });
         break;
+      case 'seq':
+        runs.push({ seq: a.kind as SeqKind });
+        break;
+      case 'xref':
+        runs.push({ ref: a.ref as string });
+        break;
       case 'code_cell':
         runs.push({ cell: a.cell as string, lang: a.lang as 'python', ...(a.output ? { output: a.output as NonNullable<Extract<Run, { cell: string }>['output']> } : {}) });
         break;
@@ -147,6 +157,7 @@ export function pmToParagraph(node: PmNode): Paragraph {
   return {
     type: 'paragraph',
     style: a.style,
+    ...(node.attrs.anchor ? { id: node.attrs.anchor as string } : {}),
     ...(a.align ? { align: a.align } : {}),
     ...(a.listOrdered !== null ? { list: { ordered: a.listOrdered, level: a.listLevel } } : {}),
     ...Object.fromEntries(LAYOUT_KEYS.filter((k) => node.attrs[k] !== null).map((k) => [k, node.attrs[k] as number])),
@@ -184,4 +195,40 @@ export function pmToBlocks(doc: PmNode): Block[] {
   const blocks: Block[] = [];
   doc.forEach((node) => blocks.push(pmToBlock(node)));
   return blocks;
+}
+
+/** Numbers by position of the seq nodes, and cross-reference targets, of an editor document (DOC-026). */
+export interface PmCrossRefs {
+  numbers: Map<number, number>;
+  targets: Map<string, CrossTarget>;
+}
+
+export function pmCrossTargets(doc: PmNode): PmCrossRefs {
+  const counters: Record<SeqKind, number> = { figure: 0, table: 0, equation: 0 };
+  const numbers = new Map<number, number>();
+  const targets = new Map<string, CrossTarget>();
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'paragraph') return true;
+    let first: { kind: SeqKind; n: number } | undefined;
+    node.forEach((child, offset) => {
+      if (child.type.name !== 'seq') return;
+      const kind = child.attrs.kind as SeqKind;
+      const n = ++counters[kind];
+      numbers.set(pos + 1 + offset, n);
+      first ??= { kind, n };
+    });
+    const id = node.attrs.anchor as string | null;
+    if (id && !targets.has(id)) {
+      const runs = inlineToRuns(node);
+      const text = describeRuns(runs, first?.n ?? 0);
+      if (first) {
+        const math = runs.flatMap((r) => ('math' in r ? [r.math] : [])).join(' ');
+        targets.set(id, { id, kind: first.kind, number: first.n, label: seqLabel(runs, first.kind, first.n), description: first.kind === 'equation' ? `(${first.n}) ${math}`.trim() : text });
+      } else if (/^h[1-6]$/.test(node.attrs.style as string)) {
+        targets.set(id, { id, kind: 'heading', label: text, description: text });
+      }
+    }
+    return false;
+  });
+  return { numbers, targets };
 }

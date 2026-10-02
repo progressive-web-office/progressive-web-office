@@ -24,6 +24,11 @@ import {
   type TextRun,
   type CodeCellRun,
   tableGrid,
+  crossTargets,
+  isSeqRun,
+  isRefRun,
+  seqText,
+  type MathRun,
 } from './model';
 
 export interface MarkdownWriteOptions {
@@ -73,6 +78,8 @@ function codeSpan(text: string): string {
   return `${fence}${pad}${text}${pad}${fence}`;
 }
 
+const escapeAttr = (s: string): string => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
 class MarkdownWriter {
   /** Footnote definitions, written after the text (DOC-022). */
   private readonly notes: string[] = [];
@@ -80,7 +87,12 @@ class MarkdownWriter {
   constructor(
     private readonly doc: RichDocument,
     private readonly opts: MarkdownWriteOptions,
-  ) {}
+  ) {
+    this.xref = crossTargets(doc.blocks);
+  }
+
+  /** Cross-reference targets and numbers (DOC-026). */
+  private readonly xref: ReturnType<typeof crossTargets>;
 
   write(): string {
     const parts: string[] = [];
@@ -129,14 +141,23 @@ class MarkdownWriter {
   }
 
   private paragraph(p: Paragraph): string {
+    const anchored = !!p.id && this.xref.targets.has(p.id);
+    // DOC-026: a numbered equation carries its number and anchor as \tag and \label.
+    const maths = p.runs.filter((r) => isMathRun(r) && r.display);
+    const seq = p.runs.find(isSeqRun);
+    if (seq?.seq === 'equation' && maths.length === 1 && p.runs.every((r) => r === seq || r === maths[0] || (isTextRun(r) && !r.text.trim()))) {
+      const n = this.xref.numbers.get(seq) ?? 1;
+      return `$$\n${(maths[0] as MathRun).math} \\tag{${n}}${anchored ? `\\label{${p.id}}` : ''}\n$$`;
+    }
+    const anchor = anchored ? `<a id="${escapeAttr(p.id!)}"></a>` : '';
     const only = p.runs.length === 1 ? p.runs[0] : undefined;
     if (only && isMathRun(only) && only.display) return `$$\n${only.math}\n$$`;
     if (only && isDiagramRun(only)) return fenced(only.diagram, only.lang);
     if (only && isCodeCellRun(only)) return this.cell(only);
     const heading = /^h(\d)$/.exec(p.style);
     const inline = this.inline(p.runs, true);
-    if (heading) return `${'#'.repeat(Number(heading[1]))} ${inline.replace(/\n/g, ' ')}`;
-    return inline || '<br>';
+    if (heading) return `${'#'.repeat(Number(heading[1]))} ${anchor}${inline.replace(/\n/g, ' ')}`;
+    return anchor + inline || '<br>';
   }
 
   /** CODE-006: the cell as a `{run}` fence, then its last output and figures. */
@@ -228,6 +249,15 @@ class MarkdownWriter {
       }
       if (isMathRun(run)) {
         out += run.display ? `$$${run.math}$$` : `$${run.math}$`;
+        continue;
+      }
+      if (isSeqRun(run)) {
+        out += seqText(run.seq, this.xref.numbers.get(run) ?? 1);
+        continue;
+      }
+      if (isRefRun(run)) {
+        const target = this.xref.targets.get(run.ref);
+        out += target ? `[${escapeInline(target.label)}](#${run.ref})` : '??';
         continue;
       }
       if (isFootnoteRun(run)) {

@@ -32,6 +32,8 @@ and any ZIP archive of Markdown files.
 | Horizontal rule | ― | |
 | Page break | ⤓ | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> |
 | Footnote | ¹ | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> |
+| Caption (numbered figure, table or equation) | 🏷 | |
+| Cross-reference | ↪ | |
 | Table of contents | § | |
 | Header and footer | ▤ | |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
@@ -67,6 +69,36 @@ recomputes it, with page numbers, when the file is opened (it may ask to
 update the fields), and LibreOffice updates it with *Tools › Update*. In
 Markdown it is written `[[_TOC_]]` (shown as a table of contents by GitLab,
 Typora and others) and in LaTeX `\tableofcontents`.
+
+### Captions and cross-references
+
+🏷 numbers a **figure**, a **table** or an **equation**:
+
+- a figure caption (“Figure 1: …”) goes below the current paragraph, so put
+  the cursor on the picture first;
+- a table caption goes above the table holding the cursor;
+- with the cursor on a display equation (`$$…$$`), *Equation* adds its
+  number `(1)` at the end of the line.
+
+Numbers follow the document order and update as you insert, move or delete
+captions. The caption is an ordinary paragraph in the *Caption* style: its
+text can be edited like any other.
+
+↪ inserts a **cross-reference**: choose a figure, table, equation or heading
+in the list. The reference shows “Figure 2”, “Table 1”, “(3)” or the
+heading's text, and follows renumbering; <kbd>Ctrl</kbd>+click on it to go
+to its target. A reference whose target was deleted shows **??** in red, as
+in LaTeX.
+
+| Format | Numbers | References |
+|--------|---------|------------|
+| Word (`.docx`) | `SEQ` fields in the *Caption* style | `REF` fields to bookmarks (Word updates them with F9) |
+| OpenDocument (`.odt`) | `text:sequence` (Figure, Table, Equation) | bookmark references |
+| LaTeX | `\captionof{figure}{…}`, `equation` environments, `\label` | `Figure~\ref{…}`, `\eqref{…}`, `\nameref{…}` |
+| Markdown | `<a id="…"></a>Figure 1: …`, `$$ … \tag{1}\label{…} $$` | links `[Figure 1](#…)` |
+
+Captions, `\label` and `\ref` of Word, LibreOffice and LaTeX files are
+read back as numbers and references.
 
 ### Tables
 
@@ -159,6 +191,7 @@ accepted.
 | Footnotes | ✅ | ✅ | ✅ (`[^1]`) | ✅ (`[^1]`) |
 | Table of contents | ✅ (field) | ✅ | ✅ (`[[_TOC_]]`) | ✅ (`[[_TOC_]]`) |
 | Header and footer | ✅ | ✅ | ✅ (front matter) | ✅ (front matter) |
+| Captions and cross-references | ✅ (fields) | ✅ | ✅ (anchors and links) | ✅ (anchors and links) |
 
 Other features of Word/LibreOffice files (comments, tracked changes, named
 styles beyond headings, sections and page layout) are **not** preserved

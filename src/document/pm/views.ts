@@ -6,7 +6,8 @@
 import type { Node as PmNode } from 'prosemirror-model';
 import type { EditorView, NodeView, NodeViewConstructor } from 'prosemirror-view';
 import { codeCellElement, diagramElement, mathElement, type ImageInfo } from '../html';
-import type { CodeCellRun, Run } from '../model';
+import { seqText, type CodeCellRun, type Run, type SeqKind } from '../model';
+import type { PmCrossRefs } from './convert';
 import { t } from '../../i18n';
 
 export interface ViewHooks {
@@ -21,6 +22,10 @@ export interface ViewHooks {
   editDiagram(pos: number, node: PmNode): void;
   /** A code cell button or its source was clicked. */
   cellAction(action: string, pos: number, node: PmNode): void;
+  /** Current numbers and cross-reference targets (DOC-026). */
+  xref(): PmCrossRefs;
+  /** Show the paragraph with this anchor. */
+  gotoAnchor(id: string): void;
 }
 
 /** The code cell element of a node view, with its position (for running cells in order). */
@@ -166,6 +171,60 @@ class TocView implements NodeView {
   }
 }
 
+/** The number of a figure, table or equation, recounted after every change (DOC-026). */
+class SeqView extends AtomView {
+  constructor(node: PmNode, view: EditorView, getPos: () => number | undefined, hooks: ViewHooks) {
+    super(node, view, getPos, hooks);
+    hooks.tocViews.add(this);
+  }
+
+  protected override render(): void {
+    this.refresh();
+  }
+
+  refresh(): void {
+    const pos = this.getPos();
+    const n = (pos !== undefined ? this.hooks.xref().numbers.get(pos) : undefined) ?? 0;
+    const kind = this.node.attrs.kind as SeqKind;
+    const text = seqText(kind, n);
+    if (this.dom.textContent !== text) this.dom.textContent = text;
+    this.dom.dataset.seq = kind;
+  }
+
+  destroy(): void {
+    this.hooks.tocViews.delete(this);
+  }
+}
+
+/** A cross-reference: its target's label, following renumbering; a click shows the target (DOC-026). */
+class XrefView extends AtomView {
+  constructor(node: PmNode, view: EditorView, getPos: () => number | undefined, hooks: ViewHooks) {
+    super(node, view, getPos, hooks);
+    hooks.tocViews.add(this);
+  }
+
+  protected override render(): void {
+    this.refresh();
+    this.dom.onclick = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      this.hooks.gotoAnchor(this.node.attrs.ref as string);
+    };
+  }
+
+  refresh(): void {
+    const target = this.hooks.xref().targets.get(this.node.attrs.ref as string);
+    const label = target?.label ?? '??';
+    if (this.dom.textContent !== label) this.dom.textContent = label;
+    this.dom.classList.toggle('broken', !target);
+    this.dom.title = target ? `${target.description} — ${t('xref.follow')}` : t('xref.broken');
+  }
+
+  destroy(): void {
+    this.hooks.tocViews.delete(this);
+  }
+}
+
 /** A footnote reference: a superscript number (CSS counter); the text shows on hover (DOC-022). */
 class FootnoteView extends AtomView {
   protected override render(): void {
@@ -238,6 +297,8 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     code_cell: (node, view, getPos) => new CodeCellView(node, view, getPos, hooks),
     footnote: (node, view, getPos) => new FootnoteView(node, view, getPos, hooks),
     toc: (node) => new TocView(node, hooks),
+    seq: (node, view, getPos) => new SeqView(node, view, getPos, hooks),
+    xref: (node, view, getPos) => new XrefView(node, view, getPos, hooks),
     image: (node) => new ImageView(node, hooks),
   };
 }

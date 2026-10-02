@@ -30,6 +30,13 @@ import {
   type Table,
   type TableCell,
   type TextFormat,
+  crossTargets,
+  isSeqRun,
+  isRefRun,
+  refLabel,
+  seqKindOf,
+  seqText,
+  type SeqKind,
 } from './model';
 import { diagramLangOf } from './diagram';
 import { t } from '../i18n';
@@ -49,7 +56,24 @@ export interface ImageInfo {
 
 // --- model -> DOM -----------------------------------------------------------
 
+/** Numbers and targets of the document being rendered (DOC-026). */
+let xref: ReturnType<typeof crossTargets> | undefined;
+
 export function blocksToDom(
+  blocks: Block[],
+  doc: Document,
+  resolveImage: (key: string) => ImageInfo | undefined,
+): DocumentFragment {
+  const outer = xref;
+  xref = crossTargets(blocks);
+  try {
+    return blocksToDomInner(blocks, doc, resolveImage);
+  } finally {
+    xref = outer;
+  }
+}
+
+function blocksToDomInner(
   blocks: Block[],
   doc: Document,
   resolveImage: (key: string) => ImageInfo | undefined,
@@ -87,7 +111,7 @@ export function blocksToDom(
 }
 
 function tagFor(style: ParagraphStyle): string {
-  if (style === 'normal' || style === 'quote') return 'p';
+  if (style === 'normal' || style === 'quote' || style === 'caption') return 'p';
   if (style === 'code') return 'pre';
   return style;
 }
@@ -133,6 +157,11 @@ function paragraphToDom(p: Paragraph, tag: string, doc: Document, resolveImage: 
   const el = doc.createElement(tag);
   if (p.align && p.align !== 'left') el.style.textAlign = p.align;
   Object.assign(el.style, layoutStyle(p));
+  if (p.style === 'caption') el.className = 'caption';
+  if (p.id) {
+    el.id = p.id;
+    el.dataset.anchor = p.id;
+  }
   appendRuns(el, p.runs, doc, resolveImage);
   return el;
 }
@@ -177,6 +206,14 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
   for (const run of runs) {
     if (isFootnoteRun(run)) {
       el.append(footnoteElement(run.footnote, doc));
+      continue;
+    }
+    if (isSeqRun(run)) {
+      el.append(seqElement(run.seq, xref?.numbers.get(run) ?? 1, doc));
+      continue;
+    }
+    if (isRefRun(run)) {
+      el.append(refElement(run.ref, xref ? refLabel(xref.targets, run.ref) : '??', doc));
       continue;
     }
     if (isMathRun(run)) {
@@ -380,6 +417,8 @@ interface BlockCtx {
   listDepth: number;
   ordered: boolean;
   pre: boolean;
+  /** Cross-reference anchor of the block (DOC-026). */
+  anchor?: string;
 }
 
 export interface DomToBlocksOptions {
@@ -411,6 +450,7 @@ export function domToBlocks(
   const open = (ctx: BlockCtx): Paragraph => {
     if (!current) {
       current = { type: 'paragraph', style: ctx.style, runs: [] };
+      if (ctx.anchor) current.id = ctx.anchor;
       if (ctx.align) current.align = ctx.align;
       if (ctx.list) current.list = { ...ctx.list };
     }
@@ -448,6 +488,14 @@ export function domToBlocks(
     if (el.dataset?.footnote !== undefined && el.classList.contains('footnote')) {
       const note = footnoteFromDom(el);
       if (note) open(ctx).runs.push({ footnote: note });
+      return;
+    }
+    if (el.dataset?.seq !== undefined && el.classList.contains('seq')) {
+      open(ctx).runs.push({ seq: seqKindOf(el.dataset.seq) });
+      return;
+    }
+    if (el.dataset?.ref !== undefined && el.classList.contains('xref')) {
+      open(ctx).runs.push({ ref: el.dataset.ref });
       return;
     }
     if (el.dataset?.latex !== undefined && el.classList.contains('math')) {
@@ -500,8 +548,9 @@ export function domToBlocks(
     }
     flush();
     const align = alignOf(el) ?? ctx.align;
-    const next: BlockCtx = { ...ctx, ...(align ? { align } : {}) };
+    const next: BlockCtx = { ...ctx, ...(align ? { align } : {}), anchor: el.dataset?.anchor || undefined };
     if (/^h[1-6]$/.test(tag)) next.style = tag as ParagraphStyle;
+    else if (tag === 'p' && el.classList.contains('caption')) next.style = 'caption';
     else if (tag === 'blockquote') next.style = 'quote';
     else if (tag === 'pre') {
       next.style = 'code';
@@ -639,4 +688,24 @@ export function sanitizeHtml(html: string, lookupImage: (img: HTMLImageElement) 
     }),
   );
   return div.innerHTML;
+}
+
+/** The number of a figure, table or equation (DOC-026). */
+export function seqElement(kind: SeqKind, n: number, doc: Document = document): HTMLElement {
+  const span = doc.createElement('span');
+  span.className = 'seq';
+  span.dataset.seq = kind;
+  span.textContent = seqText(kind, n);
+  return span;
+}
+
+/** A cross-reference: a link to its target showing the target's label (DOC-026). */
+export function refElement(id: string, label: string, doc: Document = document): HTMLElement {
+  const a = doc.createElement('a');
+  a.className = 'xref';
+  a.dataset.ref = id;
+  a.href = `#${id}`;
+  a.textContent = label;
+  if (label === '??') a.classList.add('broken');
+  return a;
 }

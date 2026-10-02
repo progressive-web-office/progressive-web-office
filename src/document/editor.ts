@@ -8,6 +8,7 @@ import { EditorState, TextSelection, type Command, type Transaction } from 'pros
 import { EditorView as PmView } from 'prosemirror-view';
 import { toggleMark } from 'prosemirror-commands';
 import { addColumnAfter, addColumnBefore, addRowAfter, addRowBefore, deleteColumn, deleteRow, deleteTable, isInTable, mergeCells, splitCell, toggleHeaderRow } from 'prosemirror-tables';
+import { editCaption, pickReference, seqWord, type ReferenceTarget } from './xref-dialog';
 import { redo, undo } from 'prosemirror-history';
 import { applyDocumentParts, documentParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { documentTools, type AgentTool } from '../ai/tools';
@@ -19,11 +20,11 @@ import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } 
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument } from './model';
+import { addResource, newAnchor, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument } from './model';
 import type { CodeRunner } from '../code/runner';
-import { blockToPm, blocksToPm, pmToBlocks } from './pm/convert';
+import { blockToPm, blocksToPm, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
-import { insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
+import { inDisplayEquation, insertCaption, insertCrossReference, numberEquation, insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
@@ -55,6 +56,7 @@ const STYLES: [ParagraphStyle, MessageKey][] = [
   ['h4', 'doc.style.h4'],
   ['quote', 'doc.style.quote'],
   ['code', 'doc.style.code'],
+  ['caption', 'doc.style.caption'],
 ];
 
 /** Transactions coming from other participants: not "changes" of this user. */
@@ -146,6 +148,8 @@ export class DocumentEditor implements EditorView {
           },
           editDiagram: (pos, node) => void this.editDiagram(pos, node),
           cellAction: (action, pos, node) => this.onCellAction(action, pos, node),
+          xref: () => this.crossRefs(),
+          gotoAnchor: (id) => this.gotoAnchor(id),
         }),
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
         dispatchTransaction: (tr) => this.dispatch(tr),
@@ -180,6 +184,54 @@ export class DocumentEditor implements EditorView {
   }
 
   /** Top-level headings up to `levels`, with their positions (DOC-023). */
+  /** Numbers and cross-reference targets, recomputed after a change (DOC-026). */
+  private xrefCache: PmCrossRefs | undefined;
+
+  private crossRefs(): PmCrossRefs {
+    if (!this.view) return { numbers: new Map(), targets: new Map() };
+    this.xrefCache ??= pmCrossTargets(this.view.state.doc);
+    return this.xrefCache;
+  }
+
+  /** Put the cursor at the start of the paragraph with this anchor. */
+  private gotoAnchor(id: string): void {
+    let at: number | undefined;
+    this.view.state.doc.descendants((node, pos) => {
+      if (at !== undefined) return false;
+      if (node.type === schema.nodes.paragraph && node.attrs.anchor === id) at = pos;
+      return node.type !== schema.nodes.paragraph;
+    });
+    if (at === undefined) return;
+    this.view.dispatch(this.view.state.tr.setSelection(TextSelection.near(this.view.state.doc.resolve(at + 1))).scrollIntoView());
+    this.view.focus();
+  }
+
+  /** Number a figure, table or equation (DOC-026). */
+  private async editCaption(): Promise<void> {
+    const state = this.view.state;
+    const choice = await editCaption(this.element, { equation: inDisplayEquation(state), inTable: isInTable(state) });
+    if (!choice) return;
+    if (choice.kind === 'equation') this.command(numberEquation(newAnchor('equation')));
+    else this.command(insertCaption(choice.kind, seqWord(choice.kind), choice.text, newAnchor(choice.kind)));
+    this.refocus();
+  }
+
+  /** Refer to a numbered item or a heading (DOC-026). */
+  private async insertCrossReference(): Promise<void> {
+    const { targets } = this.crossRefs();
+    const list: ReferenceTarget[] = [...targets.values()].map((x) => ({ id: x.id, kind: x.kind, label: x.label, description: x.description }));
+    // Headings without an anchor get one when they are chosen.
+    this.view.state.doc.descendants((node, pos) => {
+      if (node.type !== schema.nodes.paragraph) return true;
+      const text = node.textContent.replace(/\s+/g, ' ').trim();
+      if (/^h\d$/.test(node.attrs.style as string) && !node.attrs.anchor && text) list.push({ id: newAnchor('heading'), kind: 'heading', label: text, description: text, anchorAt: pos });
+      return false;
+    });
+    const target = await pickReference(this.element, list);
+    if (target) this.command(insertCrossReference(target.id, target.anchorAt));
+    this.refocus();
+  }
+
   private headings(levels: number): { level: number; text: string; pos: number }[] {
     const out: { level: number; text: string; pos: number }[] = [];
     this.view?.state.doc.forEach((node, pos) => {
@@ -231,6 +283,7 @@ export class DocumentEditor implements EditorView {
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
     if (tr.docChanged) {
+      this.xrefCache = undefined;
       this.renderNotes();
       for (const toc of this.tocViews) toc.refresh();
     }
@@ -555,6 +608,8 @@ export class DocumentEditor implements EditorView {
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
       act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
+      act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
+      act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),
       act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
       act(t('common.insertImage'), '🖼', () => void this.pickImage()),
       act(t('doc.insertTable'), '▦', () => this.command(insertTable()), t('doc.insertTableTitle')),

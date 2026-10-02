@@ -12,6 +12,12 @@ import {
   isDiagramRun,
   isMathRun,
   isFootnoteRun,
+  isSeqRun,
+  isRefRun,
+  crossTargets,
+  anchorSpan,
+  SEQ_NAMES,
+  SEQ_KINDS,
   splitParagraphs,
   tocEntries,
   cleanPageSetup,
@@ -38,6 +44,7 @@ const PARA_STYLE: Record<string, string> = {
   normal: 'Standard',
   quote: 'Quotations',
   code: 'Preformatted_20_Text',
+  caption: 'Caption',
 };
 
 class OdtWriter {
@@ -57,8 +64,15 @@ class OdtWriter {
     private readonly opts: WriteOptions = {},
   ) {}
 
+  /** Cross-reference targets and numbers (DOC-026). */
+  private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
+  /** Anchor of the paragraph being written, named on its sequence. */
+  private anchor: string | undefined;
+
   write(): Uint8Array {
-    const body = this.blocks(this.doc.blocks);
+    this.xref = crossTargets(this.doc.blocks);
+    const decls = `<text:sequence-decls>${SEQ_KINDS.map((k) => `<text:sequence-decl text:display-outline-level="0" text:name="${SEQ_NAMES[k]}"/>`).join('')}</text:sequence-decls>`;
+    const body = decls + this.blocks(this.doc.blocks);
     const content =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       `<office:document-content ${ODF_XMLNS} office:version="1.3">` +
@@ -208,7 +222,17 @@ class OdtWriter {
   }
 
   private paragraph(p: Paragraph): string {
-    const runs = this.runs(p.runs);
+    let runs: string;
+    if (p.id && this.xref.targets.get(p.id)) {
+      // DOC-026: a bookmark around the label and number, or the heading text.
+      const [start, end] = anchorSpan(p.runs);
+      const name = esc(p.id);
+      this.anchor = p.id;
+      runs = `${this.runs(p.runs.slice(0, start))}<text:bookmark-start text:name="${name}"/>${this.runs(p.runs.slice(start, end))}<text:bookmark-end text:name="${name}"/>${this.runs(p.runs.slice(end))}`;
+      this.anchor = undefined;
+    } else {
+      runs = this.runs(p.runs);
+    }
     const heading = /^h(\d)$/.exec(p.style);
     if (heading) {
       const style = this.paraStyle(`Heading_20_${heading[1]}`, p);
@@ -230,6 +254,20 @@ class OdtWriter {
       if (isDiagramRun(run) || isCodeCellRun(run)) continue; // replaced by diagramsAsPictures / cellsAsBlocks
       if (isMathRun(run)) {
         out += this.formula(run.math, !!run.display);
+        atStart = false;
+        continue;
+      }
+      if (isSeqRun(run)) {
+        const n = this.xref.numbers.get(run) ?? 1;
+        const name = SEQ_NAMES[run.seq];
+        const seq = `<text:sequence${this.anchor ? ` text:ref-name="${esc(this.anchor)}"` : ''} text:name="${name}" text:formula="ooow:${name}+1" style:num-format="1">${n}</text:sequence>`;
+        out += run.seq === 'equation' ? `(${seq})` : seq;
+        atStart = false;
+        continue;
+      }
+      if (isRefRun(run)) {
+        const target = this.xref.targets.get(run.ref);
+        out += target ? `<text:bookmark-ref text:reference-format="text" text:ref-name="${esc(run.ref)}">${esc(target.label)}</text:bookmark-ref>` : '??';
         atStart = false;
         continue;
       }
@@ -372,6 +410,7 @@ const STYLES_XML =
   heading(4, '12pt') +
   heading(5, '11pt') +
   heading(6, '11pt') +
+  '<style:style style:name="Caption" style:family="paragraph" style:parent-style-name="Standard" style:class="extra"><style:paragraph-properties fo:margin-top="0.0835in" fo:margin-bottom="0.0835in"/><style:text-properties fo:font-size="10pt" fo:font-style="italic"/></style:style>' +
   '<style:style style:name="Quotations" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-left="0.3937in" fo:margin-right="0.3937in"/><style:text-properties fo:font-style="italic"/></style:style>' +
   '<style:style style:name="Preformatted_20_Text" style:display-name="Preformatted Text" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:margin-bottom="0in"/><style:text-properties style:font-name="Liberation Mono" fo:font-size="10pt"/></style:style>' +
   '<style:style style:name="Horizontal_20_Line" style:display-name="Horizontal Line" style:family="paragraph" style:parent-style-name="Standard" style:class="html"><style:paragraph-properties fo:border-bottom="0.0138in double #808080" fo:padding="0in"/><style:text-properties fo:font-size="6pt"/></style:style>' +

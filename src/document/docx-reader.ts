@@ -6,6 +6,9 @@ import {
   cleanFormat,
   emptyDocument,
   normalizeRuns,
+  resolveAnchors,
+  unwrapEquationNumbers,
+  seqKindOf,
   PAGE_BREAK,
   cleanPageSetup,
   type PageSetup,
@@ -152,12 +155,19 @@ class DocxReader {
       if (s.name === 'title') return 'h1';
       if (s.name === 'subtitle') return 'h2';
       if (s.name === 'quote' || s.name === 'intense quote' || s.name === 'block text') return 'quote';
+      if (s.name === 'caption') return 'caption';
       if (['code', 'html preformatted', 'source text', 'preformatted text', 'plain text'].includes(s.name)) return 'code';
     }
     const m = /^heading(\d)$/i.exec(styleId ?? '');
     if (m) return `h${Math.min(6, Number(m[1]))}` as ParagraphStyle;
+    if (/^(caption|l[ée]gende)$/i.test(styleId ?? '')) return 'caption';
     return 'normal';
   }
+
+  /** Open complex fields of the current paragraph (DOC-026). */
+  private fields: { instr: string; start: number; result: boolean }[] = [];
+  /** Other bookmarks of a target paragraph → its anchor. */
+  private anchorAlias = new Map<string, string>();
 
   read(): RichDocument {
     const text = readZipText(this.zip, 'word/document.xml');
@@ -165,6 +175,7 @@ class DocxReader {
     const body = descendants(parseXml(text), 'body')[0];
     if (!body) throw new Error('Not a Word document: missing body.');
     this.doc.blocks = this.readBlocks(body);
+    resolveAnchors(this.doc.blocks, this.anchorAlias);
     const page = this.readFurniture(body);
     if (page) this.doc.page = page;
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
@@ -220,8 +231,17 @@ class DocxReader {
       const list = this.listInfo(undefined, styleId);
       if (list) para.list = list;
     }
+    this.fields = [];
     this.readInline(p, {}, para.runs);
-    para.runs = normalizeRuns(para.runs);
+    // DOC-026: the paragraph's bookmarks make it a cross-reference target.
+    const names = descendants(p, 'bookmarkStart')
+      .map((b) => attr(b, 'name') ?? '')
+      .filter((n) => n && n !== '_GoBack');
+    if (names.length) {
+      para.id = anchorFromBookmark(names[0]!);
+      for (const n of names.slice(1)) this.anchorAlias.set(anchorFromBookmark(n), para.id);
+    }
+    para.runs = normalizeRuns(unwrapEquationNumbers(para.runs));
     // Horizontal rule: empty paragraph with a bottom border.
     if (!para.runs.length && pPr && child(pPr, 'pBdr') && child(child(pPr, 'pBdr')!, 'bottom')) return { type: 'rule' };
     return para;
@@ -275,6 +295,12 @@ class DocxReader {
         case 'AlternateContent': {
           const choice = children(el)[0];
           if (choice) this.readInline(choice, fmt, out);
+          break;
+        }
+        case 'fldSimple': {
+          const result: Run[] = [];
+          this.readInline(el, fmt, result);
+          out.push(...fieldRuns(attr(el, 'instr') ?? '', result));
           break;
         }
         case 'oMath':
@@ -350,6 +376,21 @@ class DocxReader {
         case 'cr':
           // A page break is marked with a form feed; the paragraph is split there.
           out.push({ text: attr(el, 'type') === 'page' ? '\f' : '\n', ...fmt });
+          break;
+        case 'fldChar': {
+          // Complex fields (DOC-026): SEQ and REF become numbers and references.
+          const type = attr(el, 'fldCharType');
+          if (type === 'begin') this.fields.push({ instr: '', start: out.length, result: false });
+          else if (type === 'separate' && this.fields.length) Object.assign(this.fields[this.fields.length - 1]!, { start: out.length, result: true });
+          else if (type === 'end' && this.fields.length) {
+            const f = this.fields.pop()!;
+            const result = f.result ? out.splice(f.start) : [];
+            out.push(...fieldRuns(f.instr, result));
+          }
+          break;
+        }
+        case 'instrText':
+          if (this.fields.length) this.fields[this.fields.length - 1]!.instr += el.textContent ?? '';
           break;
         case 'noBreakHyphen':
           out.push({ text: '‑', ...fmt });
@@ -574,4 +615,15 @@ function jcToAlign(jc: string | null): Align | undefined {
 
 export function readDocx(bytes: Uint8Array): RichDocument {
   return new DocxReader(readZip(bytes)).read();
+}
+
+/** Anchor of a Word bookmark: ours carry a `_Ref_` prefix. */
+const anchorFromBookmark = (name: string): string => name.replace(/^_Ref_/, '');
+
+/** A field's runs (DOC-026): SEQ → number, REF → cross-reference, others → their shown text. */
+function fieldRuns(instr: string, result: Run[]): Run[] {
+  const [name = '', arg = ''] = instr.trim().split(/\s+/);
+  if (name.toUpperCase() === 'SEQ' && arg) return [{ seq: seqKindOf(arg) }];
+  if (name.toUpperCase() === 'REF' && arg) return [{ ref: anchorFromBookmark(arg) }];
+  return result;
 }
