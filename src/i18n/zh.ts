@@ -1065,4 +1065,7 @@ export const zh: Record<MessageKey, string> = {
   'goal.timer5': '休息 5 分钟',
   'goal.timerDone': '时间到。',
   'goal.status': '{words}/{goal} 词（{pct}%）',
+  'md.picturesMissing': '此笔记旁边的 {n} 张图片无法读取：请打开其所在文件夹（打开文件夹）以查看。',
+  'folder.forget': '忘记 {name}',
+  'folder.forgetTitle': '从此列表中移除（不影响文件夹及其文件）',
 };

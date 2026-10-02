@@ -61,6 +61,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Pictures linked from a Markdown note opened from a folder or an archive
+  (relative paths with spaces or accents, `<img>` tags, `![[name]]` embeds)
+  are shown, kept as links when the note is saved back and included in the
+  MDZ, Word and OpenDocument exports.
+- *Save as* after opening a folder no longer writes the new file into the
+  folder.
+- The offer to reopen the last folder on the start screen can be removed.
 - Frozen numeric cells scrolled away with the sheet.
 - The "Working…" indicator could stay on screen after opening a ZIP
   archive.

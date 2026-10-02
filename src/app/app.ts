@@ -154,13 +154,17 @@ export class App {
       if (isArchive(bytes)) return void (await this.openArchive(file.name, bytes));
       if (file.size > MAX_FILE_SIZE) return this.showError(t('error.tooLarge', { name: file.name, limit: MAX_FILE_SIZE / 1024 / 1024 }));
       if (!this.confirmDiscard()) return;
-      const format = await this.openBytes(file.name, bytes);
+      // MD-018: a note's pictures on the web are embedded; those next to it need its folder.
+      const note = /\.(md|markdown)$/i.test(file.name) ? new TextDecoder().decode(bytes) : undefined;
+      const images = note !== undefined ? await this.noteImages(file.name, note) : undefined;
+      const format = await this.openBytes(file.name, bytes, undefined, images && ((src) => images.get(src)));
+      if (format && note !== undefined) await this.missingPictures(note, images!);
       if (format) this.onFileOpened?.(file, format);
     });
   }
 
   /** Detect the format and show the matching editor; returns the format on success. */
-  private async openBytes(name: string, bytes: Uint8Array, source?: RepoSource, resolveImage?: import('../document/markdown-reader').MarkdownReadOptions['resolveImage']): Promise<DocumentFormat | null> {
+  private async openBytes(name: string, bytes: Uint8Array, source?: RepoSource, resolveImage?: import('../document/markdown-reader').MarkdownReadOptions['resolveImage'], keepImageLinks = false): Promise<DocumentFormat | null> {
     try {
       if (isArchive(bytes)) {
         await this.openArchive(name, bytes);
@@ -174,7 +178,7 @@ export class App {
       // FILE-020: a template file opens as a new document of its base format.
       const template = isTemplate(bytes);
       if (template) name = `${name.replace(/\.[^.]+$/, '')}.${fileExtension(format)}`;
-      const view = await openView(format, bytes, this.viewContext(), name, resolveImage);
+      const view = await openView(format, bytes, this.viewContext(), name, resolveImage, keepImageLinks);
       const doc: OpenDocument = { name, format, kind: formatKind(format), view };
       if (template) doc.fromTemplate = true;
       else if (source) doc.source = source;
@@ -491,7 +495,8 @@ export class App {
     if (!format && doc.source) return this.commitToRepository();
     if (!format && doc.grist) return this.saveToGrist();
     if (!format && doc.dav) return this.saveToCloud();
-    if (doc.folderPath && this.folder?.provider.capabilities.write) return this.saveToFolder(format);
+    // Save writes back into the folder; "Save as" writes a new file elsewhere, not into the folder.
+    if (!format && doc.folderPath && this.folder?.provider.capabilities.write) return this.saveToFolder();
     const target = format ?? doc.format;
     try {
       const bytes = await doc.view.save(target);
@@ -500,6 +505,11 @@ export class App {
       const name = own ? doc.name : replaceExtension(doc.name, fileExtension(target));
       const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : 'txt';
       if (await saveFile(bytes, name, target, own ? { mimeType: 'text/plain', extension: ext } : undefined)) {
+        // The document is now the file saved elsewhere, no longer the one of the folder.
+        if (doc.folderPath && format) {
+          delete doc.folderPath;
+          this.folder?.setCurrent(undefined);
+        }
         doc.name = name;
         doc.format = target;
         this.keepVersion(doc, bytes);
@@ -1254,7 +1264,14 @@ export class App {
         else this.showError(t('folder.denied', { name: handle.name }));
       })();
     }, { className: 'card folder', icon: '📁' });
-    recent.before(h('div', { class: 'start-actions folder-reopen' }, reopen));
+    // FOLDER-001: the offer can be removed; the folder itself is not touched.
+    const row = h('div', { class: 'start-actions folder-reopen' }, reopen);
+    row.append(
+      button(t('folder.forget', { name: handle.name }), () => {
+        void import('../storage/recent').then(({ forgetFolder }) => forgetFolder()).then(() => row.remove());
+      }, { text: '✕', className: 'icon folder-forget', title: t('folder.forgetTitle') }),
+    );
+    recent.before(row);
   }
 
   /** Open a document of the folder; `query` shows its first match. */
@@ -1279,8 +1296,8 @@ export class App {
         return;
       }
       if (!this.confirmDiscard()) return;
-      const images = /\.(md|markdown)$/i.test(path) ? await this.noteImages(path, new TextDecoder().decode(bytes)) : undefined;
-      if (!(await this.openBytes(basename(path), bytes, undefined, images && ((src) => images.get(src))))) return;
+      const images = /\.(md|markdown)$/i.test(path) ? await this.noteImages(path, new TextDecoder().decode(bytes), (p) => readBytes(folder.provider, p)) : undefined;
+      if (!(await this.openBytes(basename(path), bytes, undefined, images && ((src) => images.get(src)), true))) return;
       if (this.current && !this.current.fromTemplate) this.current.folderPath = path;
       if (this.current && !folder.provider.capabilities.write) this.setReadOnly(true, true);
       folder.setCurrent(path);
@@ -1349,34 +1366,53 @@ export class App {
     await this.openFromFolder(path, heading || undefined);
   }
 
-  /** Pictures referenced by a note (`![](img.png)`, `![[img.png]]`), read from the folder. */
-  private async noteImages(path: string, text: string): Promise<Map<string, { data: Uint8Array; mediaType: string; name: string }>> {
-    const folder = this.folder;
+  /**
+   * Pictures referenced by a note (`![](img.png)`, `<img src>`, `![[img.png]]`, MD-018):
+   * read next to it with `readRelative` (folder, server), or from the web.
+   */
+  private async noteImages(path: string, text: string, readRelative?: (path: string) => Promise<Uint8Array | undefined>): Promise<Map<string, { data: Uint8Array; mediaType: string; name: string }>> {
     const out = new Map<string, { data: Uint8Array; mediaType: string; name: string }>();
-    if (!folder) return out;
-    const [{ readBytes, resolve, listFiles }, { mediaTypeForName }] = await Promise.all([import('../fs'), import('../document/model')]);
-    const refs = new Set<string>();
-    for (const m of text.matchAll(/!\[[^\]]*\]\(([^)\s]+)/g)) if (!/^[a-z]+:/i.test(m[1]!)) refs.add(decodeURI(m[1]!));
-    for (const m of text.matchAll(/!\[\[([^\]|#]+\.(?:png|jpe?g|gif|svg|webp|bmp|avif))/gi)) refs.add(m[1]!.trim());
-    if (!refs.size) return out;
+    const [{ imageRefs }, { mediaTypeForName }, { resolve }] = await Promise.all([import('../document/markdown-reader'), import('../document/model'), import('../fs')]);
+    const refs = imageRefs(text);
+    const folder = this.folder;
     let all: string[] | undefined;
     for (const ref of refs) {
-      let target: string | undefined;
+      let decoded = ref;
       try {
-        target = resolve(path, ref);
+        decoded = decodeURI(ref);
       } catch {
-        target = undefined;
+        /* kept */
       }
-      let bytes = target ? await readBytes(folder.provider, target).catch(() => undefined) : undefined;
-      if (!bytes && !ref.includes('/')) {
-        // An embed names a picture anywhere in the folder.
-        all ??= await listFiles(folder.provider);
-        const found = all.find((p) => p.split('/').pop()!.toLowerCase() === ref.toLowerCase());
-        if (found) bytes = await readBytes(folder.provider, found).catch(() => undefined);
+      let bytes: Uint8Array | undefined;
+      if (/^https?:\/\//i.test(ref)) {
+        // A picture on the web: embedded when the server allows it, so that exports keep it.
+        bytes = await fetchPicture(ref);
+      } else if (!/^(data:|[a-z][a-z0-9+.-]*:)/i.test(ref)) {
+        let target: string | undefined;
+        try {
+          target = resolve(path, decoded.replace(/^\.\//, ''));
+        } catch {
+          target = undefined;
+        }
+        if (target && readRelative) bytes = await readRelative(target).catch(() => undefined);
+        if (!bytes && folder && !decoded.includes('/')) {
+          // An embed names a picture anywhere in the folder.
+          const { listFiles, readBytes } = await import('../fs');
+          all ??= await listFiles(folder.provider);
+          const found = all.find((p) => p.split('/').pop()!.toLowerCase() === decoded.toLowerCase());
+          if (found) bytes = await readBytes(folder.provider, found).catch(() => undefined);
+        }
       }
-      if (bytes) out.set(ref, { data: bytes, mediaType: mediaTypeForName(ref), name: ref.split('/').pop()! });
+      if (bytes) out.set(ref, { data: bytes, mediaType: mediaTypeForName(decoded.replace(/[?#].*$/, '')), name: decoded.split('/').pop()!.replace(/[?#].*$/, '') });
     }
     return out;
+  }
+
+  /** Tell when pictures next to a note could not be read (it was opened without its folder). */
+  private async missingPictures(note: string, found: Map<string, unknown>): Promise<void> {
+    const { imageRefs, isRelativeImage } = await import('../document/markdown-reader');
+    const missing = imageRefs(note).filter((r) => isRelativeImage(r) && !found.has(r));
+    if (missing.length) this.showNotice(t('md.picturesMissing', { n: missing.length }));
   }
 
   /** The folder's documents, relative to the open document (to include them, DOC-028). */
@@ -1654,5 +1690,17 @@ export class App {
         void this.pickAndOpen();
       }
     });
+  }
+}
+
+/** A picture from the web, when its server allows it (CORS), within 20 MB and 10 s. */
+async function fetchPicture(url: string): Promise<Uint8Array | undefined> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000), credentials: 'omit' });
+    if (!res.ok || !/^image\//.test(res.headers.get('content-type') ?? 'image/')) return undefined;
+    const data = new Uint8Array(await res.arrayBuffer());
+    return data.length <= 20 * 1024 * 1024 ? data : undefined;
+  } catch {
+    return undefined;
   }
 }

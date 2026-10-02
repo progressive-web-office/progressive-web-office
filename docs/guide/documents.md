@@ -417,8 +417,16 @@ document and read back when it is opened again:
 - CommonMark with GitHub-flavoured tables and strikethrough.
 - Raw HTML in a Markdown file is displayed as text and never executed;
   only `<u>…</u>` and `<br>` are interpreted.
-- Saving as `.md` embeds images as `data:` URIs so the file stays
-  self-contained. Use **MDZ** to keep images as separate files.
+- Pictures linked with a relative path (`![alt](img/photo.png)`,
+  `<img src="img/photo.png">` or `![[photo.png]]`) are shown when the note is
+  opened from a folder or an archive; names with spaces or accents work
+  whether they are written encoded (`%20`) or not. Pictures on the web are
+  downloaded when the server allows it; a notice lists the ones that could
+  not be found.
+- Saving a note back into its folder keeps relative links as links. Saving
+  as a standalone `.md` embeds the other images as `data:` URIs so the file
+  stays self-contained. Use **MDZ** (or DOCX, ODT…) to keep the pictures
+  with the document.
 - A YAML front matter (`---` … `---` at the top of the file) provides the
   document properties: `title`, `author`, `date`, `subject`, `description`
   (or `abstract`), `keywords` (list), `lang` (or `language`) and `license`.

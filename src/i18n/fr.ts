@@ -1065,4 +1065,7 @@ export const fr: Record<MessageKey, string> = {
   'goal.timer5': 'Pause de 5 minutes',
   'goal.timerDone': 'Le temps est écoulé.',
   'goal.status': '{words}/{goal} mots ({pct} %)',
+  'md.picturesMissing': '{n} images de cette note sont à côté d’elle et ne peuvent pas être lues : ouvrez son dossier (Ouvrir un dossier) pour les voir.',
+  'folder.forget': 'Oublier {name}',
+  'folder.forgetTitle': 'Retirer de cette liste (le dossier et ses fichiers ne sont pas touchés)',
 };

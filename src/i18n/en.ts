@@ -1063,6 +1063,9 @@ export const en = {
   'goal.timer5': 'Break of 5 minutes',
   'goal.timerDone': 'Time is up.',
   'goal.status': '{words}/{goal} words ({pct} %)',
+  'md.picturesMissing': '{n} pictures of this note are next to it and cannot be read: open its folder (Open a folder) to see them.',
+  'folder.forget': 'Forget {name}',
+  'folder.forgetTitle': 'Remove from this list (the folder and its files are not touched)',
 } as const;
 
 export type MessageKey = keyof typeof en;

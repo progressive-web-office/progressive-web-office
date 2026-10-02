@@ -77,6 +77,8 @@ export async function openView(
   fileName = 'document',
   /** Pictures referenced by a Markdown note, read from its folder (FOLDER-005). */
   resolveImage?: import('../document/markdown-reader').MarkdownReadOptions['resolveImage'],
+  /** Keep the relative links of the note's pictures (it is saved back into its folder, MD-018). */
+  keepImageLinks = false,
 ): Promise<EditorView> {
   switch (format) {
     case 'docx':
@@ -90,6 +92,7 @@ export async function openView(
         chooseEntry: (candidates, preselected) =>
           ctx.choose(t('mdz.chooseTitle'), t('mdz.chooseMessage'), candidates, preselected),
         ...(resolveImage ? { resolveImage } : {}),
+        keepImageLinks,
       });
       return new DocumentEditor(doc, ctx);
     }

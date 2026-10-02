@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { strToU8, unzipSync, zipSync } from 'fflate';
-import { openApp, openFile } from './helpers';
+import { openApp, openFile, saveAs } from './helpers';
 
 // A 1×1 transparent PNG.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
@@ -105,3 +105,41 @@ test('comments lines of a source file in its own comment syntax (FILE-024)', asy
   await expect(panel).toBeHidden();
 });
 
+
+test('shows the pictures of a note of a folder and keeps them on export; Save as writes outside the folder (MD-018)', async ({ page }) => {
+  const errors = await openApp(page);
+  const note = '# Results\n\n![Voltage](<img/photo été.png>)\n\n<p align="center"><img src="img/diagram.png" alt="Diagram"></p>\n\nAn embed: ![[logo.png]]\n';
+  const zip = zipSync({ 'notes/report.md': strToU8(note), 'notes/img/photo été.png': new Uint8Array(PNG), 'notes/img/diagram.png': new Uint8Array(PNG), 'logo.png': new Uint8Array(PNG), 'syllabus.docx': strToU8('x') });
+  await openFile(page, 'course.zip', Buffer.from(zip), 'application/zip');
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'notes' }).click();
+  await panel.getByRole('button', { name: 'report.md' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  const pictures = editor.locator('img[data-resource]');
+  await expect(pictures).toHaveCount(3);
+  for (let i = 0; i < 3; i++) await expect.poll(() => pictures.nth(i).evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+
+  // Saved back into the folder, the links stay links.
+  await editor.locator('h1').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Saved in the archive.')).toBeVisible();
+
+  // Save as: a file outside the folder, with the pictures inside it.
+  const mdz = await saveAs(page, 'Markdown package (.mdz)');
+  expect(mdz.name).toBe('report.mdz');
+  const files = unzipSync(new Uint8Array(mdz.data));
+  expect(Object.keys(files).filter((p) => p.startsWith('assets/images/'))).toHaveLength(1);
+  const archive = page.waitForEvent('download');
+  await panel.getByRole('button', { name: 'Download the archive with its changes' }).click();
+  const chunks: Buffer[] = [];
+  for await (const c of await (await archive).createReadStream()) chunks.push(c as Buffer);
+  const back = unzipSync(new Uint8Array(Buffer.concat(chunks)));
+  expect(Object.keys(back).sort()).toEqual(['logo.png', 'notes/img/diagram.png', 'notes/img/photo été.png', 'notes/report.md', 'syllabus.docx']);
+  const saved = new TextDecoder().decode(back['notes/report.md']);
+  expect(saved).toContain('# Results\\!');
+  expect(saved).toContain('](img/photo%20été.png)');
+  expect(saved).not.toContain('data:image');
+  expect(errors).toEqual([]);
+});

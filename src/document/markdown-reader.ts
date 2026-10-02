@@ -54,6 +54,8 @@ export interface MarkdownReadOptions {
   resolveImage?: (src: string) => ResolvedImage | undefined;
   /** Rewrite link targets (e.g. archive-relative links in MDZ packages). */
   rewriteLink?: (href: string) => string;
+  /** Keep the relative link of resolved pictures, to write it back (a note saved into its folder). */
+  keepImageLinks?: boolean;
 }
 
 /** `$...$` (inline) and `$$...$$` (display) TeX math, pandoc-style rules (MATH-003). */
@@ -151,6 +153,65 @@ export function decodeDataUri(uri: string): ResolvedImage | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** A link that is a path next to the note (not data, not a web address). */
+export const isRelativeImage = (src: string): boolean => !!src && !/^(data:|[a-z][a-z0-9+.-]*:|\/\/)/i.test(src);
+
+/** The picture of a reference: the exact reference, else its decoded path (accents, spaces). */
+function resolveImage(src: string, opts: MarkdownReadOptions): ResolvedImage | undefined {
+  if (src.startsWith('data:')) return decodeDataUri(src);
+  let decoded = src;
+  try {
+    decoded = decodeURI(src);
+  } catch {
+    /* kept */
+  }
+  return opts.resolveImage?.(src) ?? (decoded !== src ? opts.resolveImage?.(decoded) : undefined);
+}
+
+/** An image run; a picture read from next to the note keeps its link, to be written back as it was. */
+function imageRun(src: string, alt: string, title: string | undefined, doc: RichDocument, opts: MarkdownReadOptions): Run {
+  const resolved = resolveImage(src, opts);
+  const run: Run = { image: resolved ? addResource(doc, resolved.data, resolved.mediaType, resolved.name) : '' };
+  if (alt) run.alt = alt;
+  if (title) run.title = title;
+  if (!resolved || (opts.keepImageLinks && isRelativeImage(src))) run.src = src;
+  return run;
+}
+
+/** The `<img>` tags of some HTML, as image runs. */
+function htmlImages(html: string, doc: RichDocument, opts: MarkdownReadOptions): Run[] {
+  const out: Run[] = [];
+  for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
+    const attr = (name: string): string | undefined => new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i').exec(m[0])?.slice(1).find((v) => v !== undefined);
+    const src = attr('src');
+    if (!src) continue;
+    const run = imageRun(src, attr('alt') ?? '', attr('title'), doc, opts);
+    const width = Number(attr('width'));
+    if (width > 0 && 'image' in run) run.width = width;
+    out.push(run);
+  }
+  return out;
+}
+
+/** The picture references of a note, as the reader asks for them (MD-018). */
+export function imageRefs(source: string): string[] {
+  const refs = new Map<string, string>();
+  readMarkdown(source, {
+    resolveImage: (src) => {
+      let key = src;
+      try {
+        key = decodeURI(src);
+      } catch {
+        /* kept */
+      }
+      // The reader asks again with the decoded path: one reference each.
+      if (!refs.has(key)) refs.set(key, src);
+      return undefined;
+    },
+  });
+  return [...refs.values()];
 }
 
 export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): RichDocument {
@@ -361,7 +422,10 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         }
         const p = newParagraph();
         const html = tok.content.replace(/\n+$/, '');
-        if (html) p.runs = [{ text: html }];
+        // MD-018: pictures given as HTML (`<img>`, `<p align="center"><img …></p>`) are pictures.
+        const pictures = /<img\b/i.test(html) && !/<\/?(?:table|ul|ol|pre|script)\b/i.test(html) ? htmlImages(html, doc, opts) : [];
+        if (pictures.length) p.runs = pictures;
+        else if (html) p.runs = [{ text: html }];
         push(p);
         break;
       }
@@ -400,6 +464,14 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
     }
   }
   crossReferences(blocks);
+  // FOLDER-005, MD-018: pictures embedded with ![[name.png]] are read like the others.
+  for (const p of allParagraphs(blocks)) {
+    for (const run of p.runs) {
+      if (!isImageRun(run) || run.image || !run.src) continue;
+      const resolved = resolveImage(run.src, opts);
+      if (resolved) run.image = addResource(doc, resolved.data, resolved.mediaType, resolved.name);
+    }
+  }
   // DOC-028: `{{#include chapter.md}}` alone on a line is a sub-document.
   for (let i = 0; i < blocks.length; i++) {
     const b = blocks[i]!;
@@ -480,13 +552,8 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
       case 'image': {
         const src = String(tok.attrGet('src') ?? '');
         const alt = tok.content;
-        const resolved = src.startsWith('data:') ? decodeDataUri(src) : opts.resolveImage?.(src);
-        const run: Run = { image: resolved ? addResource(doc, resolved.data, resolved.mediaType, resolved.name) : '' };
-        if (alt) run.alt = alt;
         const title = tok.attrGet('title');
-        if (title) run.title = String(title);
-        if (!resolved) run.src = src;
-        runs.push(run);
+        runs.push(imageRun(src, alt, title ? String(title) : undefined, doc, opts));
         break;
       }
       case 'html_inline': {
@@ -497,6 +564,7 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         else if (tag === '<u>') fmt.underline = true;
         else if (tag === '</u>') delete fmt.underline;
         else if (/^<br\s*\/?>$/.test(tag)) text('\n');
+        else if (/^<img\b/.test(tag)) runs.push(...htmlImages(tok.content, doc, opts));
         else text(tok.content);
         break;
       }

@@ -1,4 +1,13 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { isRelativeImage } from './markdown-reader';
+
+const safeDecode = (s: string): string => {
+  try {
+    return decodeURI(s);
+  } catch {
+    return s;
+  }
+};
 import { solutionSegments } from './solutions';
 import { CriticComments } from './critic';
 import { writeFrontMatter } from './frontmatter';
@@ -315,7 +324,14 @@ class MarkdownWriter {
         continue;
       }
       if (isImageRun(run)) {
-        const url = run.image ? (this.opts.imageUrl ? this.opts.imageUrl(run.image) : this.dataUri(run.image)) : (run.src ?? '');
+        // MD-018: a picture read from next to the note is written back as its link; others are embedded.
+        const url = run.image
+          ? this.opts.imageUrl
+            ? this.opts.imageUrl(run.image)
+            : run.src && isRelativeImage(run.src)
+              ? safeDecode(run.src)
+              : this.dataUri(run.image)
+          : (run.src ?? '');
         out += `![${escapeInline(run.alt ?? '')}](${url.replace(/[()\s]/g, encodeURIComponent)})`;
         continue;
       }

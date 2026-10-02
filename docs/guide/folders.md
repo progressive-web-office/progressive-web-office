@@ -31,7 +31,8 @@ tree, for the top of the folder) to move it. The open document follows when
 it is renamed or moved.
 
 - **Save** writes the document back into the folder, in place. *Save as*
-  another format writes the converted file next to it, in the same folder.
+  writes a new file wherever you choose (it is not added to the folder);
+  the document then follows that new file.
 - **Search the folder** looks for a word in all its documents at once
   (Markdown, LaTeX, text, BibTeX, Word, OpenDocument), ignoring case and
   accents. Click a result to open the document at the first match.
@@ -40,7 +41,7 @@ it is renamed or moved.
   file) opens that document with <kbd>Ctrl</kbd>+click
   (<kbd>⌘</kbd>+click on macOS). Links to web pages open in a new tab.
 - The folder is remembered: the start screen offers to reopen it (the
-  browser asks again for permission).
+  browser asks again for permission). The ✕ next to the offer forgets it.
 
 Chromium-based browsers (Chrome, Edge, Opera…) read and write the folder in
 place. Other browsers open it **read-only**: documents can be read and
