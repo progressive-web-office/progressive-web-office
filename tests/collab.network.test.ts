@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadCollabNetwork, parseRelays, saveCollabNetwork, trysteroOptions } from '../src/collab/network';
+import { DEFAULT_RELAYS, loadCollabNetwork, parseRelays, saveCollabNetwork, trysteroOptions } from '../src/collab/network';
 
 describe('COLLAB-009 network of the real-time collaboration', () => {
   beforeEach(() => localStorage.clear());
@@ -16,9 +16,10 @@ describe('COLLAB-009 network of the real-time collaboration', () => {
   });
 
   it('gives the options of the connection', () => {
-    expect(trysteroOptions({ relays: [] })).toEqual({});
+    // All the default relays, rather than a few picked by the library.
+    expect(trysteroOptions({ relays: [] })).toEqual({ relayUrls: DEFAULT_RELAYS });
     expect(trysteroOptions({ relays: ['wss://nos.lol'], turn: { urls: 'turns:t.example.org:443' } })).toEqual({ relayUrls: ['wss://nos.lol'], turnConfig: [{ urls: 'turns:t.example.org:443' }] });
     // An address that is not a STUN/TURN server is left out.
-    expect(trysteroOptions({ relays: [], turn: { urls: 'https://t.example.org' } })).toEqual({});
+    expect(trysteroOptions({ relays: [], turn: { urls: 'https://t.example.org' } })).toEqual({ relayUrls: DEFAULT_RELAYS });
   });
 });

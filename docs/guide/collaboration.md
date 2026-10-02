@@ -46,8 +46,11 @@ The bar says where the connection is:
   yet;
 - **Waiting for the shared document…**: someone is there, the document is
   coming;
-- **Cannot reach the servers used to find each other**: no Internet, or a
-  network that blocks the relays.
+- **Cannot reach the servers used to find each other**: no Internet, a
+  network that blocks the relays, or relays that refuse the messages.
+
+By default, several well-known public Nostr relays are used at once, so that
+one relay down or refusing messages does not keep the participants apart.
 
 When nobody can be reached directly for 15 seconds — browsers that cannot
 connect to each other, typically a company network on one side and mobile

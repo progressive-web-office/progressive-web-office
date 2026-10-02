@@ -93,8 +93,8 @@ async function open(key: CryptoKey, sealed: string): Promise<string | null> {
 
 export interface RelayRoom extends CollabRoom {
   leave(): void;
-  /** Relays reached. */
-  relays(): { open: number; total: number };
+  /** Relays reached, and those that accepted our messages. */
+  relays(): { open: number; total: number; accepting?: number };
 }
 
 export async function relayRoom(room: string, secret: string, selfId: string, deps: RelayDeps): Promise<RelayRoom> {
@@ -190,10 +190,13 @@ export async function relayRoom(room: string, secret: string, selfId: string, de
     }
   };
 
-  const onMessage = (ev: { data: unknown }): void => {
+  /** Whether each relay accepted our last event (its `OK` answer). */
+  const accepted = new Map<number, boolean>();
+  const onMessage = (i: number) => (ev: { data: unknown }): void => {
     if (typeof ev.data !== 'string') return;
     try {
       const msg = JSON.parse(ev.data) as unknown[];
+      if (msg[0] === 'OK') accepted.set(i, msg[2] === true);
       const event = msg[2] as { content?: unknown } | undefined;
       if (msg[0] === 'EVENT' && msg[1] === subId && typeof event?.content === 'string') void onEvent(event.content);
     } catch {
@@ -209,7 +212,7 @@ export async function relayRoom(room: string, secret: string, selfId: string, de
       // Subscribed: say we are here.
       void post({ n: '__here' });
     };
-    s.onmessage = onMessage;
+    s.onmessage = onMessage(i);
     s.onclose = () => {
       if (!closed) setTimeout(() => connect(i, Math.min(retry * 2, 60_000)), retry);
     };
@@ -242,7 +245,12 @@ export async function relayRoom(room: string, secret: string, selfId: string, de
     ]) as unknown as CollabRoom['makeAction'],
     onPeerJoin: (fn) => void joins.push(fn),
     onPeerLeave: (fn) => void leaves.push(fn),
-    relays: () => ({ open: sockets.filter((s) => s.readyState === 1).length, total: sockets.length }),
+    relays: () => ({
+      open: sockets.filter((s) => s.readyState === 1).length,
+      total: sockets.length,
+      // Known once a relay has answered.
+      ...(accepted.size ? { accepting: [...accepted].filter(([i, ok]) => ok && sockets[i]?.readyState === 1).length } : {}),
+    }),
     leave: () => {
       closed = true;
       clearInterval(presence);

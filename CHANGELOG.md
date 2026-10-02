@@ -105,6 +105,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Devices of a real-time collaboration could fail to find each other, even
+  on the same network: the few relays picked by the connection library
+  included some that no longer pass messages on. A list of well-known relays
+  is now used, all at once; relays refusing the messages are reported.
 - A file renamed in the app kept its old name in the recent files and lost
   its versions; the recent files now also keep the content saved last.
 - Tracked changes typed or deleted across a second boundary were split

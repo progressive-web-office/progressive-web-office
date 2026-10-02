@@ -18,6 +18,25 @@ export interface CollabNetwork {
 
 const KEY = 'pwo.collab.network';
 
+/**
+ * Relays used when none is set: well-known, open and long-lived ones, all of
+ * them at once (trystero's own choice includes relays that no longer pass
+ * messages on, so that devices may never find each other).
+ */
+export const DEFAULT_RELAYS = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.primal.net',
+  'wss://relay.snort.social',
+  'wss://nostr.mom',
+  'wss://offchain.pub',
+  'wss://relay.nostr.net',
+  'wss://nostr-pub.wellorder.net',
+];
+
+/** The relays to use: those of the settings, else the defaults. */
+export const relaysOf = (network: CollabNetwork): string[] => (network.relays.length ? network.relays : DEFAULT_RELAYS);
+
 /** Relay addresses from what the user typed: one per line or separated by commas. */
 export function parseRelays(text: string): string[] {
   return text
@@ -56,8 +75,7 @@ export function saveCollabNetwork(network: CollabNetwork): void {
 
 /** The options of trystero's `joinRoom` for these settings. */
 export function trysteroOptions(network: CollabNetwork): { relayUrls?: string[]; turnConfig?: TurnServer[] } {
-  const out: { relayUrls?: string[]; turnConfig?: TurnServer[] } = {};
-  if (network.relays.length) out.relayUrls = network.relays;
+  const out: { relayUrls?: string[]; turnConfig?: TurnServer[] } = { relayUrls: relaysOf(network) };
   if (network.turn && /^(turns?|stun):/i.test(network.turn.urls)) out.turnConfig = [network.turn];
   return out;
 }

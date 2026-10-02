@@ -161,3 +161,26 @@ describe('COLLAB-011 direct connection, and the relays when it fails', () => {
     expect(leaves).toEqual(['bob']);
   });
 });
+
+describe('COLLAB-011 relays that refuse the messages', () => {
+  it('counts the relays that accepted them', async () => {
+    const deps = hub();
+    const socket = deps.socket;
+    // The second relay refuses every event.
+    deps.socket = (url: string) => {
+      const s = socket(url);
+      const send = s.send.bind(s);
+      s.send = (data: string) => {
+        const msg = JSON.parse(data) as unknown[];
+        if (msg[0] === 'EVENT') setTimeout(() => s.onmessage?.({ data: JSON.stringify(['OK', 'id', url.includes('a.'), url.includes('a.') ? '' : 'blocked']) }), 1);
+        if (msg[0] !== 'EVENT' || url.includes('a.')) send(data);
+      };
+      return s;
+    };
+    const a = await relayRoom('room4', 'secret-four', 'alice', deps);
+    expect(a.relays().accepting).toBeUndefined();
+    await until(() => a.relays().accepting !== undefined && a.relays().open === 2);
+    expect(a.relays()).toEqual({ open: 2, total: 2, accepting: 1 });
+    a.leave();
+  });
+});

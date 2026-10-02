@@ -39,7 +39,7 @@ For example, to read two whole pages side by side, page by page: 2 pages,
 
 How the participants of a [real-time collaboration](./collaboration) find
 each other and connect: **relays** (Nostr, one `wss://` address per line;
-empty: public relays) and a **TURN server** with its user name and password,
+empty: a list of well-known public relays, all used at once) and a **TURN server** with its user name and password,
 for networks that block direct connections between browsers. They are used by
 the next sessions. The password is kept in this browser like the other
 settings.

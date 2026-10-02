@@ -31,7 +31,7 @@ interface Transport {
   selfId: string;
   leave(): void;
   /** Relays reached, to tell "no network" from "nobody else yet" (COLLAB-009). */
-  relays?(): { open: number; total: number };
+  relays?(): { open: number; total: number; accepting?: number };
   /** COLLAB-011: also go through the relays, when nobody could be reached directly. */
   useRelays?(): Promise<void>;
   mode?(): 'direct' | 'relays';
@@ -78,8 +78,9 @@ async function connect(link: CollabLink): Promise<Transport> {
   const room = hybridRoom(direct as unknown as CollabRoom, async () => {
     const [{ relayRoom }, strategy] = await Promise.all([import('./relay-room'), import('trystero/nostr')]);
     // Exported by the Nostr strategy (signed ephemeral events), not declared in its types.
-    const nostr = strategy as unknown as { defaultRelayUrls: string[]; createEvent(topic: string, content: string): Promise<string>; subscribe(subId: string, topic: string): string };
-    const urls = network.relays.length ? network.relays : nostr.defaultRelayUrls.slice(0, 8);
+    const nostr = strategy as unknown as { createEvent(topic: string, content: string): Promise<string>; subscribe(subId: string, topic: string): string };
+    const { relaysOf } = await import('./network');
+    const urls = relaysOf(network);
     return relayRoom(link.room, link.secret, selfId, {
       urls,
       socket: (url) => new WebSocket(url) as never,
@@ -89,8 +90,12 @@ async function connect(link: CollabLink): Promise<Transport> {
   });
   const relays = (): { open: number; total: number } => {
     const sockets = Object.values(getRelaySockets() as Record<string, WebSocket>);
-    const own = room.relay()?.relays() ?? { open: 0, total: 0 };
-    return { open: sockets.filter((s) => s.readyState === WebSocket.OPEN).length + own.open, total: sockets.length + own.total };
+    const own = room.relay()?.relays();
+    return {
+      open: sockets.filter((s) => s.readyState === WebSocket.OPEN).length + (own?.open ?? 0),
+      total: sockets.length + (own?.total ?? 0),
+      ...(own?.accepting !== undefined ? { accepting: own.accepting } : {}),
+    };
   };
   return {
     room,
@@ -234,7 +239,8 @@ export class Collaboration {
     }
     const viaRelays = this.transport.mode?.() === 'relays';
     const relays = this.transport.relays?.();
-    const offline = !!relays && relays.total > 0 && relays.open === 0;
+    // Relays reached but none accepting the messages (COLLAB-011): as good as none.
+    const offline = !!relays && relays.total > 0 && (relays.open === 0 || relays.accepting === 0);
     let text: string;
     if (this.strangers.size) text = t('collab.incompatible');
     else if (this.binding.isReady) text = n ? t(viaRelays ? 'collab.connectedRelays' : 'collab.connected', { n }) : offline ? t('collab.noRelay') : t('collab.alone');
