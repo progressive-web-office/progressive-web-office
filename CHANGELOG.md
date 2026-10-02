@@ -10,6 +10,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Synchronise a text document without a network (🔄 *Sync by QR*): two
+  devices, one of them never connected, merge their changes character by
+  character through QR codes shown and scanned with QRShare (three short
+  passes, or one to send the whole document), or through files of codes.
+  Devices introduce themselves with a signed key and a fingerprint; changes
+  are summarised before being applied, checked on a copy first, and logged.
 - QRShare handoff protocol version 2, when QRShare announces it: the app
   can ask for a send mode (animated QR codes without the choice screen) and
   get a received file back in its own window, from QRShare's origin only.
