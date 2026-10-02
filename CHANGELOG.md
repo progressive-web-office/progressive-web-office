@@ -10,6 +10,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The command palette shows the keyboard shortcut of each command that has
+  one.
 - Examples with plots: a lab report with Python cells (fit with error bars,
   damped oscillations, Bode plot, histogram, field map, SymPy) whose output
   and figures are already drawn, and a workbook of measurements with line
@@ -17,11 +19,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Spreadsheet functions: `EXP`, `LN`, `LOG`, `LOG10`, trigonometric and
   hyperbolic functions, `DEGREES`, `RADIANS`, `SIGN`, `SUMSQ`, `VAR`,
   `VARP`, `STDEV`, `STDEVP`, `SLOPE`, `INTERCEPT`, `RSQ`, `CORREL`.
-- Review mode for text documents (📖, Ctrl+Alt+R): the document shown as
+- Review mode for text documents (📖 Review mode, first in the toolbar, or
+  Ctrl+Alt+R): the document shown as
   pages like a PDF file, read-only but open to comments, with the review bar
   of the PDF viewer.
 - Page by page reading without scrolling (one spread at a time) for PDF files
-  and reviewed documents, keyboard shortcuts to turn the pages (j/k, Space,
+  and reviewed documents, keyboard shortcuts to turn the pages (k/j, Space,
   Page Up/Down…), zoom, comment and go from comment to comment, and a full
   screen without distractions (f).
 - Cell formatting in spreadsheets: bold, italic, underline, text and fill

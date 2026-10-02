@@ -4,9 +4,9 @@ import { REVIEW_KEYS, reviewAction, spreadStart } from '../src/review/keys';
 const key = (k: string, mods: Partial<{ shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean }> = {}) => ({ key: k, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, ...mods });
 
 describe('REVIEW-002 review shortcuts', () => {
-  it('turns pages with j/k, n/p, Page Up/Down, the space bar and the side arrows', () => {
-    for (const k of ['j', 'n', 'PageDown', ' ', 'ArrowRight']) expect(reviewAction(key(k))).toBe('next');
-    for (const k of ['k', 'p', 'PageUp', 'ArrowLeft']) expect(reviewAction(key(k))).toBe('prev');
+  it('turns pages with k/j, n/p, Page Up/Down, the space bar and the side arrows', () => {
+    for (const k of ['k', 'n', 'PageDown', ' ', 'ArrowRight']) expect(reviewAction(key(k))).toBe('next');
+    for (const k of ['j', 'p', 'PageUp', 'ArrowLeft']) expect(reviewAction(key(k))).toBe('prev');
     expect(reviewAction(key(' ', { shiftKey: true }))).toBe('prev');
     expect(reviewAction(key('Home'))).toBe('first');
     expect(reviewAction(key('g'))).toBe('first');

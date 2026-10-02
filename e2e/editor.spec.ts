@@ -445,6 +445,13 @@ test('runs an action found by name in the command palette (UI-018)', async ({ pa
   await page.keyboard.press('Enter');
   await expect(palette).toBeHidden();
   await expect(editor.locator('.toc')).toHaveCount(1);
+  // The keyboard shortcuts of the commands are shown beside them.
+  await page.keyboard.press('Control+Shift+P');
+  await palette.getByRole('combobox').fill('bold');
+  await expect(palette.getByRole('option').first().locator('kbd')).toHaveText('Ctrl+B');
+  await palette.getByRole('combobox').fill('review mode');
+  await expect(palette.getByRole('option').first()).toContainText('Review mode');
+  await expect(palette.getByRole('option').first().locator('kbd')).toHaveText('Ctrl+Alt+R');
 });
 
 test('keeps a version at each save and opens an older one (FILE-025)', async ({ page }) => {

@@ -1083,6 +1083,9 @@ export class DocumentEditor implements EditorView {
     return h(
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('doc.formatting') },
+      // REVIEW-001: the review mode, named, first in the toolbar.
+      act(t('review.mode'), `📖 ${t('review.mode')}`, () => this.review.toggle(true), t('review.modeTitle')),
+      h('span', { class: 'sep' }),
       act(t('common.undo'), '↶', () => this.command(undo), `${t('common.undo')} (Ctrl+Z)`),
       act(t('common.redo'), '↷', () => this.command(redo), `${t('common.redo')} (Ctrl+Y)`),
       h('span', { class: 'sep' }),
@@ -1116,7 +1119,6 @@ export class DocumentEditor implements EditorView {
       this.textToolsMenu(),
       this.viewToolsMenu(),
       act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`),
-      act(t('review.mode'), '📖', () => this.review.toggle(true), t('review.modeTitle')),
       this.trackButton,
       h('span', { class: 'sep' }),
       state(t('solution.button'), '✓', (s, d) => setParagraphAttrs({ solution: !paragraphAttr(s, 'solution') })(s, d), () => !!paragraphAttr(this.view.state, 'solution'), t('solution.title')),

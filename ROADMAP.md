@@ -56,7 +56,7 @@ group is not a commitment.
 - Grammar checking with LanguageTool (public or self-hosted instance)
 - Visual comparison of two versions of a document
 - ✅ Review mode: text documents shown as pages like PDF files, page by page
-  or scrolled, the same shortcuts (j/k…), comments, full screen without
+  or scrolled, the same shortcuts (k/j…), comments, full screen without
   distractions (REVIEW-001 to REVIEW-004); next: clickable outline, read
   aloud (Web Speech)
 

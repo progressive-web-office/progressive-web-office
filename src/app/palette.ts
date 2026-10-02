@@ -7,6 +7,8 @@ import { t } from '../i18n';
 
 export interface PaletteCommand {
   label: string;
+  /** Keyboard shortcuts doing the same (UI-018). */
+  keys?: string[];
   /** Where it is (the toolbar or panel), shown beside the name. */
   where: string;
   run(): void;
@@ -28,6 +30,20 @@ export function filterCommands<T extends { label: string }>(commands: T[], query
   return scored.sort((a, b) => a.score - b.score).map((x) => x.c);
 }
 
+const KEY = /^(?:(?:Ctrl|Alt|Shift|Cmd|⌘|Option|⌥|Mod)\+)*(?:[A-Za-z0-9]|F\d{1,2}|Esc|Enter|Space|Tab|Delete|Backspace|Home|End|Page (?:Up|Down)|[←→↑↓]|[^\sA-Za-z0-9().]{1,2})$/;
+
+/**
+ * A tooltip such as "Comment (Ctrl+Alt+M)" or "Next page (k)": the name and
+ * the shortcuts in its last parentheses (before a `;` that explains them).
+ */
+export function splitShortcut(title: string): { label: string; keys: string[] } {
+  const m = /^(.*\S)\s*\(([^()]*)\)\s*$/.exec(title);
+  if (!m) return { label: title, keys: [] };
+  const keys = m[2]!.split(';')[0]!.split(/\s*,\s*/).map((k) => k.trim());
+  if (!keys.length || !keys.every((k) => KEY.test(k))) return { label: title, keys: [] };
+  return { label: m[1]!, keys };
+}
+
 /** The buttons and select options shown in `root`, as commands. */
 export function collectCommands(root: HTMLElement): PaletteCommand[] {
   const out: PaletteCommand[] = [];
@@ -36,13 +52,16 @@ export function collectCommands(root: HTMLElement): PaletteCommand[] {
   const whereOf = (el: HTMLElement): string => el.closest<HTMLElement>('[role=toolbar], aside, header, [aria-label]')?.getAttribute('aria-label') ?? '';
   for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>('button'))) {
     if (b.disabled || !visible(b)) continue;
-    const label = (b.getAttribute('aria-label') || b.title || b.textContent || '').replace(/\s+/g, ' ').trim();
+    const raw = (b.getAttribute('aria-label') || b.title || b.textContent || '').replace(/\s+/g, ' ').trim();
+    // The shortcut is in the tooltip, the name in the label (or the tooltip).
+    const fromTitle = splitShortcut(b.title.replace(/\s+/g, ' ').trim());
+    const label = splitShortcut(raw).label;
     if (!label || label.length < 2) continue;
     const where = whereOf(b);
     const key = `${label}\u0000${where}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ label, where, run: () => b.click() });
+    out.push({ label, where, ...(fromTitle.keys.length ? { keys: fromTitle.keys } : {}), run: () => b.click() });
   }
   // Entries of menus such as "Save as…".
   for (const select of Array.from(root.querySelectorAll<HTMLSelectElement>('select'))) {
@@ -78,7 +97,7 @@ export function openPalette(host: HTMLElement, commands: PaletteCommand[]): Prom
       list.replaceChildren(
         ...(shown.length
           ? shown.map((c, i) => {
-              const li = h('li', { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' }, h('span', {}, c.label), c.where ? h('small', {}, c.where) : '');
+              const li = h('li', { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' }, h('span', {}, c.label), h('span', { class: 'palette-meta' }, ...(c.keys ?? []).map((k) => h('kbd', {}, k)), c.where ? h('small', {}, c.where) : ''));
               li.addEventListener('mousedown', (e) => e.preventDefault());
               li.addEventListener('click', () => run(i));
               return li;

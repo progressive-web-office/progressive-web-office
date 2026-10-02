@@ -26,8 +26,8 @@ export type ReviewAction =
 
 /** The shortcuts, in the order of the help, with the keys shown for each. */
 export const REVIEW_KEYS: readonly { action: ReviewAction; keys: string[] }[] = [
-  { action: 'next', keys: ['j', 'n', 'Page Down', 'Space', '→'] },
-  { action: 'prev', keys: ['k', 'p', 'Page Up', 'Shift+Space', '←'] },
+  { action: 'next', keys: ['k', 'n', 'Page Down', 'Space', '→'] },
+  { action: 'prev', keys: ['j', 'p', 'Page Up', 'Shift+Space', '←'] },
   { action: 'first', keys: ['g', 'Home'] },
   { action: 'last', keys: ['G', 'End'] },
   { action: 'zoomIn', keys: ['+'] },
@@ -48,11 +48,11 @@ export const REVIEW_KEYS: readonly { action: ReviewAction; keys: string[] }[] = 
 ];
 
 const SIMPLE: Record<string, ReviewAction> = {
-  j: 'next',
+  k: 'next',
   n: 'next',
   PageDown: 'next',
   ArrowRight: 'next',
-  k: 'prev',
+  j: 'prev',
   p: 'prev',
   PageUp: 'prev',
   ArrowLeft: 'prev',

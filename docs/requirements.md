@@ -286,7 +286,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-014 | S | 0.1.0 | On a narrow screen (phone), the system shall keep the header on one line, with Save visible and the other file actions in a menu, and lay out each editing toolbar as a single row that scrolls horizontally, so that the document stays visible above the on-screen keyboard. |
 | UI-016 | M | 0.1.0 | The system shall let the user type any font size from 1 to 999 pt (rounded to the half point) in text documents and presentations, with the usual sizes offered as suggestions and the arrow keys stepping through them and beyond; in a presentation, a size typed while editing a text box shall apply to the selected text only. |
 | UI-017 | S | 0.1.0 | The About window shall list the open-source components the application ships with (its runtime dependencies), each with the exact version installed at build time, its licence and a link to its project page, and the copied details for a problem report shall include these versions. |
-| UI-018 | S | 0.2.0 | The system shall offer a command palette (Ctrl+Shift+P and a header button) listing the buttons and menu entries of the screen, filtered by the words typed (in any order, ignoring case and accents), run with Enter and navigable with the arrow keys. |
+| UI-018 | S | 0.2.0 | The system shall offer a command palette (Ctrl+Shift+P and a header button) listing the buttons and menu entries of the screen, filtered by the words typed (in any order, ignoring case and accents), run with Enter and navigable with the arrow keys, each command showing its keyboard shortcuts when it has some. |
 
 ## 9. Quality (QA)
 
@@ -423,7 +423,7 @@ integration is ever needed.
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
 | REVIEW-001 | S | 0.2.0 | The system shall offer a review mode for text documents (toolbar or Ctrl+Alt+R) that lays the document out as pages like a PDF file (page breaks starting new pages), with no change to the text but comments still possible, and the same page controls as the PDF viewer: page number, previous and next, zoom, whole page or width, 1 to 4 pages side by side, and a choice between scrolling the pages and showing one spread at a time without scrolling (also offered by the PDF viewer); the choices shall be remembered. |
-| REVIEW-002 | S | 0.2.0 | While reading a PDF file or reviewing a text document, the system shall turn the pages with single keys outside the fields (j/n/Page Down/Space/→ next, k/p/Page Up/Shift+Space/← previous, g/Home first, G/End last) and offer shortcuts to zoom (+ −), fit the width (w) or the page (h, 0), set the pages side by side (1–4), switch the flow (s), comment (c), go to the next and previous comment (] [), find (/), go full screen (f) and list the shortcuts (?). |
+| REVIEW-002 | S | 0.2.0 | While reading a PDF file or reviewing a text document, the system shall turn the pages with single keys outside the fields (k/n/Page Down/Space/→ next, j/p/Page Up/Shift+Space/← previous, g/Home first, G/End last) and offer shortcuts to zoom (+ −), fit the width (w) or the page (h, 0), set the pages side by side (1–4), switch the flow (s), comment (c), go to the next and previous comment (] [), find (/), go full screen (f) and list the shortcuts (?). |
 | REVIEW-003 | S | 0.2.0 | Page by page, the mouse wheel shall turn the pages when the spread has nothing more to scroll. |
 | REVIEW-004 | S | 0.2.0 | The system shall offer a full screen without distractions (f, Esc to leave) showing only the pages, the review bar and the comments. |
 

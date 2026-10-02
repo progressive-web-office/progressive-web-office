@@ -18,26 +18,26 @@ test('turns the pages of a PDF file one spread at a time with the keyboard (REVI
   await page.getByRole('region', { name: 'Page 1' }).click();
   await page.getByRole('button', { name: 'Page layout' }).click();
   await expect(page.locator('.pdf-page:visible')).toHaveCount(1);
-  await page.keyboard.press('j');
+  await page.keyboard.press('k');
   await expect(pageInput).toHaveValue('2');
   await expect(page.getByRole('region', { name: 'Page 2' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Page 1' })).toBeHidden();
   // Two pages side by side: a spread is 1–2, 3–4…
   await page.keyboard.press('2');
   await expect(page.locator('.pdf-page:visible')).toHaveCount(2);
-  await page.keyboard.press('j');
+  await page.keyboard.press('k');
   await expect(pageInput).toHaveValue('3');
   await expect(page.locator('.pdf-page:visible')).toHaveText([/Hello page 3/, /Hello page 4/]);
   await page.keyboard.press('End');
   await expect(pageInput).toHaveValue('6');
-  await page.keyboard.press('k');
+  await page.keyboard.press('j');
   await expect(pageInput).toHaveValue('3');
   await page.keyboard.press('g');
   await expect(pageInput).toHaveValue('1');
   // The help lists the shortcuts.
   await page.keyboard.press('?');
   const help = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
-  await expect(help.getByRole('row', { name: /Next page/ })).toContainText('j');
+  await expect(help.getByRole('row', { name: /Next page/ })).toContainText('k');
   await help.getByRole('button', { name: 'Close' }).click();
   // Full screen without distractions.
   await page.keyboard.press('f');
@@ -57,7 +57,7 @@ test('reviews a text document page by page and comments it (REVIEW-001..REVIEW-0
   await expect(editor).toContainText('Paragraph 60.');
   const bar = page.getByRole('toolbar', { name: 'Review' });
   await expect(bar).toBeHidden();
-  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('button', { name: 'Review mode', exact: true }).click();
   await expect(bar).toBeVisible();
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeHidden();
   await expect(editor).toHaveAttribute('contenteditable', 'false');
@@ -75,7 +75,7 @@ test('reviews a text document page by page and comments it (REVIEW-001..REVIEW-0
     });
   expect(await inView('Paragraph 1.')).toBe(true);
   expect(await inView('Paragraph 60.')).toBe(false);
-  await page.keyboard.press('j');
+  await page.keyboard.press('k');
   await expect(pageInput).toHaveValue('2');
   expect(await inView('Paragraph 1.')).toBe(false);
   await page.keyboard.press('End');

@@ -86,10 +86,10 @@ export class DocReview {
     this.bar = h(
       'div',
       { class: 'toolbar review-bar', role: 'toolbar', 'aria-label': t('review.bar'), hidden: true },
-      button(t('pdf.prev'), () => this.do('prev'), { text: '◀', title: `${t('pdf.prev')} (k)` }),
+      button(t('pdf.prev'), () => this.do('prev'), { text: '◀', title: `${t('pdf.prev')} (j)` }),
       this.pageInput,
       this.pageTotal,
-      button(t('pdf.next'), () => this.do('next'), { text: '▶', title: `${t('pdf.next')} (j)` }),
+      button(t('pdf.next'), () => this.do('next'), { text: '▶', title: `${t('pdf.next')} (k)` }),
       h('span', { class: 'sep' }),
       button(t('pdf.zoomOut'), () => this.do('zoomOut'), { text: '−', title: `${t('pdf.zoomOut')} (-)` }),
       this.zoomLabel,

@@ -6,7 +6,7 @@ the same buttons and keyboard shortcuts, and comments added as you read.
 
 ## Review mode of text documents
 
-Click **📖 Review** in the toolbar of a text document (or press
+Click **📖 Review mode**, first in the toolbar of a text document, (or press
 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd>). The editing toolbars make way
 for the review bar:
 
@@ -28,7 +28,7 @@ viewer, where comments are highlights and notes (see [PDF](./pdf)).
 ## Page by page or scrolled
 
 **📄 Page by page** shows one spread at a time, with no scrolling: the next
-spread replaces it (<kbd>j</kbd>, <kbd>Space</kbd>, the mouse wheel at the
+spread replaces it (<kbd>k</kbd>, <kbd>Space</kbd>, the mouse wheel at the
 bottom of the page…). **📜 Scroll** shows the pages one after the other.
 <kbd>s</kbd> switches between them. Choose 1, 2, 3, 4 (or 6 for PDF files)
 pages side by side, the whole page (↕) or the width (↔). The choices are
@@ -46,8 +46,8 @@ Single keys, when the cursor is not in a field (⌨ or <kbd>?</kbd> lists them):
 
 | Keys | Action |
 |------|--------|
-| <kbd>j</kbd> <kbd>n</kbd> <kbd>Page Down</kbd> <kbd>Space</kbd> <kbd>→</kbd> | Next page (or spread) |
-| <kbd>k</kbd> <kbd>p</kbd> <kbd>Page Up</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd> <kbd>←</kbd> | Previous page |
+| <kbd>k</kbd> <kbd>n</kbd> <kbd>Page Down</kbd> <kbd>Space</kbd> <kbd>→</kbd> | Next page (or spread) |
+| <kbd>j</kbd> <kbd>p</kbd> <kbd>Page Up</kbd> <kbd>Shift</kbd>+<kbd>Space</kbd> <kbd>←</kbd> | Previous page |
 | <kbd>g</kbd> <kbd>Home</kbd> / <kbd>G</kbd> <kbd>End</kbd> | First / last page |
 | <kbd>+</kbd> <kbd>-</kbd> | Zoom in / out |
 | <kbd>w</kbd> / <kbd>h</kbd> <kbd>0</kbd> | Fit the width / the whole page |

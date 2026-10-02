@@ -138,5 +138,5 @@ Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (or click **⌘** in the
 header) and type part of an action's name, in any order: *table*, *insert
 image*, *docx*, *solution*… The palette lists every button and menu entry of
 the screen (toolbars, panels, *Save as* formats); <kbd>↑</kbd> <kbd>↓</kbd>
-choose one, <kbd>Enter</kbd> runs it, <kbd>Esc</kbd> closes the palette.
+choose one, <kbd>Enter</kbd> runs it, <kbd>Esc</kbd> closes the palette. The keyboard shortcut of a command, when it has one, is shown beside it: next time, use it directly.
 
