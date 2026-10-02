@@ -1,0 +1,67 @@
+/**
+ * Reading and review settings (SET-002): how PDF files and text documents in
+ * review mode are shown when they open, shared by both.
+ */
+import { PAGES_PER_ROW } from '../pdf/fit';
+
+/** Pages scrolled one after the other, or shown a spread at a time (REVIEW-001). */
+export type PageFlow = 'scroll' | 'pages';
+
+export interface ReadingSettings {
+  /** Pages side by side. */
+  perRow: number;
+  /** Fit the width or the whole page. */
+  zoom: 'width' | 'page';
+  flow: PageFlow;
+  /** The choices made in the toolbar become the defaults. */
+  rememberLast: boolean;
+  /** PDF files open in review mode. */
+  pdfReview: boolean;
+  /** Text documents open in review mode. */
+  docReview: boolean;
+}
+
+const KEY = 'pwo.reading';
+/** Where the PDF viewer kept its last view before these settings. */
+const FORMER_PDF_KEY = 'pwo.pdf.view';
+
+export const DEFAULT_READING: ReadingSettings = { perRow: 1, zoom: 'width', flow: 'scroll', rememberLast: true, pdfReview: false, docReview: false };
+
+function read(key: string): Record<string, unknown> | undefined {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function loadReading(): ReadingSettings {
+  const former = read(FORMER_PDF_KEY);
+  const v = read(KEY) ?? (former ? { ...former, perRow: former.columns } : {});
+  const d = DEFAULT_READING;
+  return {
+    perRow: (PAGES_PER_ROW as readonly number[]).includes(v.perRow as number) ? (v.perRow as number) : d.perRow,
+    zoom: v.zoom === 'page' || v.zoom === 'width' ? v.zoom : d.zoom,
+    flow: v.flow === 'pages' || v.flow === 'scroll' ? v.flow : d.flow,
+    rememberLast: typeof v.rememberLast === 'boolean' ? v.rememberLast : d.rememberLast,
+    pdfReview: typeof v.pdfReview === 'boolean' ? v.pdfReview : d.pdfReview,
+    docReview: typeof v.docReview === 'boolean' ? v.docReview : d.docReview,
+  };
+}
+
+/** Change settings (the settings window). */
+export function saveReading(changes: Partial<ReadingSettings>): ReadingSettings {
+  const next = { ...loadReading(), ...changes };
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    /* storage unavailable: the choice lasts for this page */
+  }
+  return next;
+}
+
+/** A choice made in the toolbar: it becomes the default when the user wants it to. */
+export function rememberReading(changes: Partial<Pick<ReadingSettings, 'perRow' | 'zoom' | 'flow'>>): void {
+  if (loadReading().rememberLast) saveReading(changes);
+}

@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-or-later",
+  "author": "Sébastien Celles (https://github.com/s-celles)",
   "repository": {
     "type": "git",
     "url": "https://github.com/s-celles/progressive-web-office.git"

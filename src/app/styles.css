@@ -1003,3 +1003,23 @@ body.distraction-free .ai-panel { display: none !important; }
 /* REVIEW-005: correcting a PDF file: the annotation tools and their panel in front. */
 .pdf-viewer.reviewing .pdf-form-tool { display: none; }
 .pdf-review-hint { color: var(--muted); font-size: 0.9rem; }
+
+/* SET-001: settings window, by category. */
+.settings-dialog { width: min(48rem, calc(100vw - 32px)); max-width: none; }
+.settings-body { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 16px; min-height: 20rem; }
+.settings-tabs { display: flex; flex-direction: column; gap: 4px; border-right: 1px solid var(--border); padding-right: 12px; }
+.settings-tabs [role='tab'] { text-align: left; border-color: transparent; background: transparent; }
+.settings-tabs [role='tab'][aria-selected='true'] { background: var(--sel); border-color: var(--accent); font-weight: 600; }
+.settings-panel { outline: none; }
+.settings-panel h3 { margin: 0 0 12px; font-size: 1.05rem; }
+.settings-field { display: grid; grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr); gap: 4px 12px; align-items: center; margin-bottom: 12px; }
+.settings-field.check { grid-template-columns: auto minmax(0, 1fr); }
+.settings-field .hint { grid-column: 2; margin: 0; font-size: 0.85rem; }
+.settings-dialog .dialog-actions { align-items: center; }
+.settings-dialog .dialog-actions .hint { margin-right: auto; font-size: 0.85rem; }
+@media (max-width: 600px) {
+  .settings-body { grid-template-columns: 1fr; }
+  .settings-tabs { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--border); padding: 0 0 8px; }
+  .settings-field { grid-template-columns: 1fr; }
+  .settings-field .hint { grid-column: 1; }
+}

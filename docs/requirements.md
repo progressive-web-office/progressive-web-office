@@ -280,7 +280,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-009 | M | 0.0.8 | Every user-visible string shall come from a translation catalog; a test shall fail if a key is missing in any language. |
 | UI-010 | S | 0.0.8 | The system shall set the `lang` attribute of the document to the selected language. |
 | UI-011 | S | 0.1.0 | The system shall let the user choose a light, dark or system theme (following the operating system preference by default); the choice shall persist and apply to native controls. Document pages and slides shall stay light, as on paper. |
-| UI-012 | S | 0.1.0 | The system shall offer an About window, from the toolbar and the start screen, showing the version, the git commit and date of the build, the licence, whether the app is installed and works offline, a QR code of the app address to open it on another device (shown full screen when activated), and links to the documentation, source code, changelog, requirements and problem reports; it shall copy these details for a problem report. |
+| UI-012 | S | 0.1.0 | The system shall offer an About window, from the toolbar and the start screen, showing the author, the version, the git commit and date of the build, the licence, whether the app is installed and works offline, a QR code of the app address to open it on another device (shown full screen when activated), and links to the documentation, source code, changelog, requirements and problem reports; it shall copy these details for a problem report. |
 | UI-013 | S | 0.1.0 | The system shall display its version and the short git commit of the build (e.g. `v0.0.13 (6cae6fc)`) in the toolbar and on the start screen, as QRShare does; activating it shall open the About window. |
 | UI-015 | C | — | On a phone, the system shall dock a contextual toolbar above the on-screen keyboard with the essential commands for the selection, the other commands under "More", and offer a full-screen writing mode. |
 | UI-014 | S | 0.1.0 | On a narrow screen (phone), the system shall keep the header on one line, with Save visible and the other file actions in a menu, and lay out each editing toolbar as a single row that scrolls horizontally, so that the document stays visible above the on-screen keyboard. |
@@ -427,6 +427,13 @@ integration is ever needed.
 | REVIEW-003 | S | 0.2.0 | Page by page, the mouse wheel shall turn the pages when the spread has nothing more to scroll. |
 | REVIEW-004 | S | 0.2.0 | The system shall offer a full screen without distractions (f, Esc to leave) showing only the pages, the review bar and the comments. |
 | REVIEW-005 | S | 0.2.0 | The PDF viewer shall offer the same review mode button and shortcut (Ctrl+Alt+R): the highlight and note tools named in the toolbar, the form and signature tools hidden, and the annotations panel shown, explaining how to annotate while it is empty. |
+
+## 9n. Settings (SET)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| SET-001 | S | 0.2.0 | The system shall offer a settings window (⚙ in the header, and the command palette by "settings", "paramètres"…) with its settings grouped by category — general (language, theme, the user's name, the format family of new files), reading and review, writing (typography as you type), printing (paper, orientation, margins) — each kept in the browser as soon as it changes. |
+| SET-002 | S | 0.2.0 | The reading and review settings shall set how PDF files and text documents in review mode open: pages side by side, fit to the width or to the whole page, scrolling or page by page, and whether PDF files and text documents open in review mode; the choices made in the toolbar shall become the new defaults unless the user turns this off. |
 
 ## 9j. Images and drawing (IMG)
 

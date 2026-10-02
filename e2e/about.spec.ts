@@ -7,6 +7,7 @@ test('shows the About window from the header (UI-012)', async ({ page }) => {
   await page.locator('.header-actions').getByRole('button', { name: 'About' }).click();
   const about = page.getByRole('dialog', { name: 'About' });
   await expect(about).toContainText(`Version${pkg.version}`);
+  await expect(about.getByRole('link', { name: 'Sébastien Celles' })).toHaveAttribute('href', 'https://github.com/s-celles');
   await expect(about.getByRole('img', { name: /QR code of the app address http:\/\/localhost:4173\// })).toBeVisible();
   await expect(about.getByRole('link', { name: 'Documentation' })).toHaveAttribute('href', 'http://localhost:4173/docs/');
   await expect(about.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/s-celles/progressive-web-office');

@@ -10,7 +10,7 @@ import { t, type MessageKey } from '../i18n';
 import { fitScale, PAGES_PER_ROW, type PdfZoom } from '../pdf/fit';
 import { isTyping, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
-import type { PageFlow } from '../pdf/viewer';
+import { loadReading, rememberReading, type PageFlow } from '../review/settings';
 
 /** A page of the screen layout, in CSS pixels (US Letter at 96 dpi, as the editor). */
 export const PAGE = { width: 816, height: 1056, marginX: 80, marginY: 72, gap: 24 } as const;
@@ -20,21 +20,6 @@ export const pageAt = (x: number): number => Math.max(0, Math.floor(x / (PAGE.wi
 
 /** Width of `n` pages side by side. */
 export const spreadWidth = (n: number): number => n * PAGE.width + (n - 1) * PAGE.gap;
-
-const VIEW_KEY = 'pwo.review.view';
-
-function loadView(): { zoom: PdfZoom; perRow: number; flow: PageFlow } {
-  try {
-    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as { zoom?: unknown; perRow?: unknown; flow?: unknown };
-    return {
-      zoom: v.zoom === 'width' ? 'width' : 'page',
-      perRow: (PAGES_PER_ROW as readonly number[]).includes(v.perRow as number) ? (v.perRow as number) : 1,
-      flow: v.flow === 'scroll' ? 'scroll' : 'pages',
-    };
-  } catch {
-    return { zoom: 'page', perRow: 1, flow: 'pages' };
-  }
-}
 
 export interface ReviewHost {
   /** The editor's root (`.doc-editor`). */
@@ -74,7 +59,7 @@ export class DocReview {
   private frame = 0;
 
   constructor(private readonly host: ReviewHost, leave: () => void) {
-    const v = loadView();
+    const v = loadReading();
     this.zoom = v.zoom;
     this.perRow = v.perRow;
     this.flow = v.flow;
@@ -264,12 +249,9 @@ export class DocReview {
 
   // --- actions --------------------------------------------------------------------------
 
+  /** A choice of the bar: the default next time, when the settings say so (SET-002). */
   private save(): void {
-    try {
-      localStorage.setItem(VIEW_KEY, JSON.stringify({ zoom: typeof this.zoom === 'number' ? 'page' : this.zoom, perRow: this.perRow, flow: this.flow }));
-    } catch {
-      /* not kept */
-    }
+    rememberReading({ perRow: this.perRow, flow: this.flow, ...(typeof this.zoom === 'number' ? {} : { zoom: this.zoom }) });
   }
 
   private setPerRow(n: number): void {

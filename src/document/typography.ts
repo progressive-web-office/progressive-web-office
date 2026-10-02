@@ -3,6 +3,25 @@
  * as you type and as text transforms (DOC-032).
  */
 
+const TYPOGRAPHY_KEY = 'pwo.typography';
+
+/** Whether typography as you type is on (on unless turned off). */
+export function loadTypography(): boolean {
+  try {
+    return localStorage.getItem(TYPOGRAPHY_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+export function saveTypography(on: boolean): void {
+  try {
+    localStorage.setItem(TYPOGRAPHY_KEY, on ? 'on' : 'off');
+  } catch {
+    /* not kept */
+  }
+}
+
 export const NBSP = '\u00a0';
 /** Narrow no-break space, before `; ! ?` in French. */
 export const NNBSP = '\u202f';

@@ -38,6 +38,7 @@ import { ChangePanel } from './change-panel';
 import { trackTransaction, UNTRACKED } from './changes';
 import { withoutSolutions } from './solutions';
 import { TRANSFORMS, transformText, typographyRules, type TransformId } from './text-tools';
+import { loadTypography, saveTypography } from './typography';
 import { writingKey, writingPlugin } from './pm/writing-plugin';
 import { readability } from './readability';
 import { addWritten, loadGoal, saveGoal } from './writing-stats';
@@ -46,6 +47,7 @@ import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
 import { editPageSetup, pageSetupCss, zonePreview } from './page-setup';
 import { DocReview } from './review';
+import { loadReading } from '../review/settings';
 import { REVIEW_KEYWORDS } from '../review/keys';
 
 /** Words finding a button in the command palette (UI-018). */
@@ -84,23 +86,6 @@ const STYLES: [ParagraphStyle, MessageKey][] = [
 /** Transactions coming from other participants: not "changes" of this user. */
 const REMOTE = 'pwo-remote';
 
-const TYPOGRAPHY_KEY = 'pwo.typography';
-
-function loadTypography(): boolean {
-  try {
-    return localStorage.getItem(TYPOGRAPHY_KEY) !== 'off';
-  } catch {
-    return true;
-  }
-}
-
-function saveTypography(on: boolean): void {
-  try {
-    localStorage.setItem(TYPOGRAPHY_KEY, on ? 'on' : 'off');
-  } catch {
-    /* not kept */
-  }
-}
 
 export class DocumentEditor implements EditorView {
   readonly element: HTMLElement;
@@ -625,7 +610,10 @@ export class DocumentEditor implements EditorView {
 
   // --- EditorView ---------------------------------------------------------------
 
-  mounted(): void {}
+  mounted(): void {
+    // SET-002: documents with text may open in review mode.
+    if (loadReading().docReview && this.view.state.doc.textContent.trim()) this.review.toggle(true);
+  }
 
   focus(): void {
     this.view.focus();

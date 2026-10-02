@@ -962,6 +962,10 @@ export class App {
     }
     if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) actions.append(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
     actions.append(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
+    // SET-001: the settings window.
+    const settings = button(t('settings.open'), () => void this.openSettings(), { title: t('settings.openTitle'), text: '⚙', className: 'icon' });
+    settings.dataset.keywords = 'settings preferences options configuration paramètres préférences réglages 设置 选项';
+    actions.append(settings);
     actions.append(this.themeButton());
     actions.append(button(t('palette.label'), () => void this.openPalette(), { title: t('palette.button'), text: '⌘', className: 'icon' }));
     actions.append(button(t('about.open'), () => void this.showAbout(), { title: t('about.openTitle'), text: '?', className: 'icon' }));
@@ -1462,6 +1466,19 @@ export class App {
 
   /** Every action of the screen, found by name (UI-018). */
   private paletteOpen = false;
+
+  /** The settings window (SET-001). */
+  async openSettings(category?: import('../settings/dialog').SettingsCategory): Promise<void> {
+    if (this.root.querySelector('dialog[open]')) return;
+    const { openSettings } = await import('../settings/dialog');
+    openSettings(this.root, {
+      locale: () => {
+        if (!this.current) this.showStart();
+        this.renderHeader();
+      },
+      theme: () => this.renderHeader(),
+    }, category);
+  }
 
   async openPalette(): Promise<void> {
     if (this.paletteOpen || this.root.querySelector('dialog[open]')) return;

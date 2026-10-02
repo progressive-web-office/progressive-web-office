@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Settings window (⚙), by category: general (language, theme, your name,
+  formats of new files), reading and review (pages side by side, zoom,
+  page by page, open PDF files or documents in review mode, remember the
+  toolbar's last choice or not), writing and printing.
+- The About window names the author.
 - Review mode for PDF files too (📖 Review mode, Ctrl+Alt+R, or *correction*
   in the command palette): highlight and note tools named, form tools
   hidden, the annotations panel shown with how to annotate.

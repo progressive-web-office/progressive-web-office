@@ -208,6 +208,10 @@ The full list is in [ROADMAP.md](ROADMAP.md); changes are in
 Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), the
 [Code of Conduct](CODE_OF_CONDUCT.md) and the [security policy](SECURITY.md).
 
+## Author
+
+[Sébastien Celles](https://github.com/s-celles).
+
 ## License
 
 [GNU Affero General Public License v3.0 or later](LICENSE.md).

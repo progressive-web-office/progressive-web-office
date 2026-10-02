@@ -17,32 +17,11 @@ import type { PdfNote } from './annotations';
 import { askAuthor } from '../app/author';
 import { isTyping, REVIEW_KEYWORDS, reviewAction, reviewCommands, spreadStart, type ReviewAction } from '../review/keys';
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
+import { loadReading, rememberReading, type PageFlow } from '../review/settings';
 
-const VIEW_KEY = 'pwo.pdf.view';
 const GAP = 12;
 
-/** Pages scrolled one after the other, or shown a spread at a time (REVIEW-001). */
-export type PageFlow = 'scroll' | 'pages';
-
-/** The zoom mode, pages per row and flow chosen last (PDF-016, REVIEW-001). */
-function loadView(): { zoom: PdfZoom; columns: number; flow: PageFlow } {
-  try {
-    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as { zoom?: unknown; columns?: unknown; flow?: unknown };
-    const zoom = v.zoom === 'page' || v.zoom === 'width' ? v.zoom : 'width';
-    const columns = (PAGES_PER_ROW as readonly number[]).includes(v.columns as number) ? (v.columns as number) : 1;
-    return { zoom, columns, flow: v.flow === 'pages' ? 'pages' : 'scroll' };
-  } catch {
-    return { zoom: 'width', columns: 1, flow: 'scroll' };
-  }
-}
-
-function saveView(zoom: PdfZoom, columns: number, flow: PageFlow): void {
-  try {
-    localStorage.setItem(VIEW_KEY, JSON.stringify({ zoom: typeof zoom === 'number' ? 'width' : zoom, columns, flow }));
-  } catch {
-    /* not kept */
-  }
-}
+export type { PageFlow } from '../review/settings';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -83,11 +62,11 @@ export class PdfViewer implements EditorView {
   private readonly pageInput = h('input', { type: 'number', min: '1', class: 'page-input', 'aria-label': t('pdf.pageNumber') });
   private readonly zoomLabel = h('span', { class: 'zoom-label', 'aria-live': 'polite' });
   private pages: PageShell[] = [];
-  private zoom: PdfZoom = loadView().zoom;
+  private zoom: PdfZoom = loadReading().zoom;
   /** Pages side by side (PDF-016). */
-  private columns = loadView().columns;
+  private columns = loadReading().perRow;
   /** REVIEW-001: scroll the pages, or turn them a spread at a time. */
-  private flow: PageFlow = loadView().flow;
+  private flow: PageFlow = loadReading().flow;
   private readonly flowButton = button(t('review.flow'), () => this.setFlow(this.flow === 'pages' ? 'scroll' : 'pages'), { text: '', className: 'flow-btn' });
   private readonly fullscreenButton = button(t('review.fullscreen'), () => this.toggleFullscreen(), { text: '⛶', title: t('review.fullscreenTitle'), className: 'icon', pressed: false });
   private lastWheel = 0;
@@ -202,6 +181,8 @@ export class PdfViewer implements EditorView {
 
   mounted(): void {
     this.layout();
+    // SET-002: PDF files may open in review mode.
+    if (loadReading().pdfReview) this.setReviewing(true);
     if (typeof ResizeObserver === 'function') {
       let width = this.scroller.clientWidth;
       let height = this.scroller.clientHeight;
@@ -554,7 +535,7 @@ export class PdfViewer implements EditorView {
 
   private setZoom(zoom: PdfZoom): void {
     this.zoom = zoom;
-    if (typeof zoom !== 'number') saveView(zoom, this.columns, this.flow);
+    if (typeof zoom !== 'number') rememberReading({ zoom });
     void this.layout();
   }
 
@@ -563,13 +544,13 @@ export class PdfViewer implements EditorView {
   private setColumns(columns: number): void {
     this.columns = columns;
     this.columnsSelect.value = String(columns);
-    saveView(this.zoom, this.columns, this.flow);
+    rememberReading({ perRow: columns });
     void this.layout();
   }
 
   private setFlow(flow: PageFlow): void {
     this.flow = flow;
-    saveView(this.zoom, this.columns, this.flow);
+    rememberReading({ flow });
     this.renderFlowButton();
     this.showSpread();
     this.goTo(this.current, false);

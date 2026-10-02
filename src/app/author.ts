@@ -30,3 +30,13 @@ export function askAuthor(question: string): string {
   }
   return author;
 }
+
+/** Set the name (the settings window); an empty name is asked again when needed. */
+export function saveAuthor(name: string): void {
+  try {
+    if (name.trim()) localStorage.setItem(AUTHOR_KEY, name.trim());
+    else localStorage.removeItem(AUTHOR_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}

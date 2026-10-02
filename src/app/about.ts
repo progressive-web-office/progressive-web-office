@@ -51,6 +51,10 @@ function dependencyList(): HTMLElement {
   );
 }
 
+/** UI-012: the author of the application. */
+export const AUTHOR = 'Sébastien Celles';
+const AUTHOR_URL = 'https://github.com/s-celles';
+
 /** The content of the About window for the app published at `appUrl`. */
 export function aboutContent(appUrl: string): HTMLElement {
   const figure = h('figure', { class: 'about-qr-figure' });
@@ -63,6 +67,7 @@ export function aboutContent(appUrl: string): HTMLElement {
   const commit = BUILD.commit === 'unknown' ? h('span', {}, shortCommit()) : link(`${SOURCE_URL}/commit/${BUILD.commit}`, shortCommit());
   commit.classList.add('mono');
   const rows: [string, Node | string][] = [
+    [t('about.author'), link(AUTHOR_URL, AUTHOR)],
     [t('about.version'), link(`${SOURCE_URL}/blob/main/CHANGELOG.md`, BUILD.version)],
     [t('about.commit'), commit],
     [t('about.built'), Number.isNaN(date.getTime()) ? BUILD.date : date.toLocaleString()],
