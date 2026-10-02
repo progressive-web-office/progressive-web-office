@@ -62,11 +62,11 @@ group is not a commitment.
 
 - Comments and track changes (ODF and DOCX), on top of real-time
   collaboration
-- Asynchronous collaboration without a network: the document as a CRDT,
-  merged between devices (at least one fully offline) by passes of animated
-  QR codes through QRShare (state vector, then only the missing updates),
-  with signed frames, trusted peers and an import log; a `collab-core`
-  module independent of PWO, for other applications too
+- ✅ Asynchronous collaboration without a network for text documents
+  (COLLAB-008, 0.0.14): character-level merge through passes of animated QR
+  codes with QRShare, signed frames, trusted devices, an import log
+- Offline synchronisation of spreadsheets, images sent once by SHA-256
+  (blob frames), the Yjs history embedded in ODT and DOCX files
 
 ### Images and drawing
 

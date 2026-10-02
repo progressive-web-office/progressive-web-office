@@ -32,6 +32,8 @@ export interface EditorView {
   saveVariants?(): SaveVariant[];
   /** Real-time collaboration on this document (COLLAB-002). */
   collab?(): import('../collab/parts').CollabAdapter;
+  /** Offline synchronisation of this document through QR codes (COLLAB-008). */
+  syncable?(): SyncableDocument;
   /** Tools for AI agents working on this document (AI-001, AI-006). */
   agentTools?(): AgentTool[];
   /** Show the document without allowing changes (FILE-017). */
@@ -41,6 +43,13 @@ export interface EditorView {
   /** The document with its sub-documents as `include` blocks, to assemble (DOC-028). */
   masterDocument?(): import('../document/model').RichDocument | undefined;
   destroy(): void;
+}
+
+/** A text document that can be read and replaced by the offline synchronisation (COLLAB-008). */
+export interface SyncableDocument {
+  read(): import('../document/model').RichDocument;
+  /** Replace the content (properties, images, blocks) with a synchronised one. */
+  write(doc: import('../document/model').RichDocument): void;
 }
 
 export interface ViewContext {

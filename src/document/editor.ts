@@ -18,7 +18,7 @@ import type { PrintSettings } from '../print/settings';
 import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import { sizeInput, type SizeInput } from '../app/size-input';
-import type { EditorView, ViewContext } from '../app/views';
+import type { EditorView, SyncableDocument, ViewContext } from '../app/views';
 import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
 import { decodeDataUri } from './markdown-reader';
@@ -569,6 +569,25 @@ export class DocumentEditor implements EditorView {
           return typeof block === 'number' ? [{ name: p.name, color: p.color, block }] : [];
         });
         this.view.dispatch(this.view.state.tr.setMeta(peersKey, markers).setMeta(REMOTE, true).setMeta('addToHistory', false));
+      },
+    };
+  }
+
+  /** Offline synchronisation (COLLAB-008): the whole document in and out. */
+  syncable(): SyncableDocument {
+    return {
+      read: () => ({ ...this.doc, meta: { ...this.doc.meta }, blocks: this.currentBlocks() }),
+      write: (doc) => {
+        this.doc.meta = { ...doc.meta };
+        if (doc.page) this.doc.page = doc.page;
+        else delete this.doc.page;
+        if (doc.references) this.doc.references = doc.references;
+        else delete this.doc.references;
+        for (const [id, res] of doc.resources) if (!this.doc.resources.has(id)) this.doc.resources.set(id, res);
+        this.replaceBlocks(doc.blocks, false);
+        this.renderFurniture();
+        this.referencesChanged();
+        this.ctx.changed();
       },
     };
   }

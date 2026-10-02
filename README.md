@@ -26,9 +26,9 @@ scans it and opens the document in Progressive Web Office. -->
 - **Exchange without a network.** With [QRShare](https://github.com/s-celles/QRShare),
   a document goes from one device to another through animated QR codes,
   with no Wi-Fi, no Bluetooth and no cable.
-- **Planned: collaboration on isolated computers.** Several people editing
-  the same document on devices that are never online, merging their changes
-  through QR codes. This is on the roadmap, not available yet.
+- **Collaboration on isolated computers.** Several people edit the same
+  text document on devices that are never online and merge their changes
+  through QR codes, down to the character.
 
 ## Features
 
@@ -72,6 +72,8 @@ backlinks.
 **Working with others**
 - Real-time collaboration on text documents and spreadsheets, browser to
   browser (WebRTC, end-to-end encrypted).
+- Synchronisation of a text document between devices without any network,
+  through QR codes shown and scanned with QRShare.
 - A document carried inside a link, or a link to a document kept on a web
   server, opened read-only.
 - GitHub and GitLab repositories (open and commit), Nextcloud / WebDAV,
@@ -127,7 +129,10 @@ Stored **in your browser only**:
 - preferences and the accounts you add for Git, WebDAV, Grist and the AI
   assistant (localStorage). AI keys are kept only if you choose to save
   them in the browser;
-- documents you put in *Browser storage* (Origin Private File System).
+- documents you put in *Browser storage* (Origin Private File System);
+- for the synchronisation without a network: this device's key, the
+  devices you trusted, the history of each synchronised document and the
+  last imports (IndexedDB).
 
 The application **goes online only when you use a feature that needs it**:
 
@@ -138,7 +143,7 @@ The application **goes online only when you use a feature that needs it**:
 | Python code cells | the jsDelivr CDN, once, for Python packages (checked against their hashes) |
 | Real-time collaboration | public Nostr relays to introduce the browsers, STUN servers (Google, Cloudflare); documents travel browser to browser, encrypted |
 | Link to a file on a server | that server |
-| Send with QRShare | QRShare's page (its manifest is read to check the handoff) |
+| Send with QRShare, sync by QR | QRShare's page (its manifest is read to check the handoff) |
 
 ## Install and use
 
@@ -174,7 +179,7 @@ The code is TypeScript without a UI framework, built with Vite. See
 
 ## Roadmap
 
-- Asynchronous collaboration without a network, through QRShare (planned).
+- Offline synchronisation of spreadsheets.
 - Comments and track changes.
 - Spreadsheet cell formatting, sorting and filtering, more functions.
 - Document templates, page numbering styles, editing modes (visual, source).

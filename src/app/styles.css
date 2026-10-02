@@ -416,6 +416,11 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .git-field textarea { width: 100%; box-sizing: border-box; font: inherit; }
 .card.share { border-left-color: var(--accent); }
 .share-dialog { width: min(560px, calc(100vw - 32px)); }
+.sync-dialog { width: min(560px, calc(100vw - 32px)); }
+.sync-status:empty { display: none; }
+.sync-actions, .sync-files { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.sync-files button { font-size: 0.9em; }
+.sync-log { margin: 4px 0; padding-left: 1.2em; font-size: 0.9em; }
 .share-file { font-family: ui-monospace, monospace; }
 
 /* --- AI assistant (AI-001..AI-005) ---------------------------------------------- */

@@ -27,7 +27,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "@pdfme/pdf-lib": "^6.2.2",
-    "@scelles/collab": "github:s-celles/QRShare#collab-dist-v0.1.0",
+    "@scelles/collab": "github:s-celles/QRShare#collab-dist-v0.2.0",
     "@types/markdown-it-footnote": "^3.0.4",
     "fflate": "^0.8.3",
     "lean-qr": "^2.7.4",
