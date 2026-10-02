@@ -10,7 +10,7 @@ import type { FolderIndex, SearchHit } from './search';
 import { isNote, NoteVault } from './vault';
 
 /** Files the app opens, by extension. */
-export const OPENABLE = /\.(docx|odt|odm|md|markdown|mdz|tex|xlsx|ods|csv|tsv|pptx|odp|pdf)$/i;
+export const OPENABLE = /\.(docx|odt|odm|md|markdown|mdz|tex|xlsx|ods|csv|tsv|pptx|odp|pdf|ott|ots|otp|dotx|xltx|potx)$/i;
 
 export interface FolderPanelHooks {
   open(path: string, query?: string): void;
@@ -22,9 +22,9 @@ export interface FolderPanelHooks {
 }
 
 const ICONS: [RegExp, string][] = [
-  [/\.(docx|odt|odm|md|markdown|mdz|tex)$/i, '📝'],
-  [/\.(xlsx|ods|csv|tsv)$/i, '📊'],
-  [/\.(pptx|odp)$/i, '📽️'],
+  [/\.(docx|odt|odm|md|markdown|mdz|tex|ott|dotx)$/i, '📝'],
+  [/\.(xlsx|ods|csv|tsv|ots|xltx)$/i, '📊'],
+  [/\.(pptx|odp|otp|potx)$/i, '📽️'],
   [/\.pdf$/i, '📕'],
 ];
 export const iconOf = (path: string): string => ICONS.find(([re]) => re.test(path))?.[1] ?? '📄';

@@ -107,6 +107,13 @@ const fileTypes = {
   'application/x-tex': ['.tex'],
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
   'application/vnd.oasis.opendocument.presentation': ['.odp'],
+  // FILE-020: templates open as new documents.
+  'application/vnd.oasis.opendocument.text-template': ['.ott'],
+  'application/vnd.oasis.opendocument.spreadsheet-template': ['.ots'],
+  'application/vnd.oasis.opendocument.presentation-template': ['.otp'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.template': ['.dotx'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.template': ['.xltx'],
+  'application/vnd.openxmlformats-officedocument.presentationml.template': ['.potx'],
   'application/pdf': ['.pdf'],
 };
 

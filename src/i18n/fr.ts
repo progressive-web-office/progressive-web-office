@@ -870,4 +870,7 @@ export const fr: Record<MessageKey, string> = {
   'tpl.mineEmpty': 'Aucun pour l’instant : ouvrez un document et choisissez « Enregistrer comme modèle… » dans Enregistrer sous.',
   'tpl.delete': 'Supprimer le modèle {name}',
   'tpl.deleteConfirm': 'Supprimer le modèle « {name} » ?',
+  'tpl.fromFile': 'Nouveau document créé à partir d’un modèle : l’enregistrer ne modifie pas le modèle ({name}).',
+  'tpl.saveFile': 'Enregistrer comme fichier modèle (.{ext})…',
+  'tpl.fileSaved': 'Fichier modèle {name} enregistré.',
 };

@@ -33,14 +33,17 @@ interface SaveFilePickerWindow {
  * Deliver bytes to the user: File System Access API when available,
  * classic download otherwise. Resolves to false if the user cancelled.
  */
-export async function saveFile(bytes: Uint8Array, name: string, format: DocumentFormat): Promise<boolean> {
-  const blob = new Blob([bytes as BlobPart], { type: MIME_TYPES[format] });
+export async function saveFile(bytes: Uint8Array, name: string, format: DocumentFormat, as?: { mimeType: string; extension: string }): Promise<boolean> {
+  // FILE-020: a template has its own media type and extension.
+  const mimeType = as?.mimeType ?? MIME_TYPES[format];
+  const extension = as?.extension ?? fileExtension(format);
+  const blob = new Blob([bytes as BlobPart], { type: mimeType });
   const w = window as unknown as SaveFilePickerWindow;
   if (typeof w.showSaveFilePicker === 'function') {
     try {
       const handle = await w.showSaveFilePicker({
         suggestedName: name,
-        types: [{ description: name, accept: { [MIME_TYPES[format]]: [`.${fileExtension(format)}`] } }],
+        types: [{ description: name, accept: { [mimeType]: [`.${extension}`] } }],
       });
       const writable = await handle.createWritable();
       await writable.write(blob);

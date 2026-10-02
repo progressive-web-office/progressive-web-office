@@ -107,3 +107,25 @@ test('saves a document as a template of the browser and starts from it (FILE-019
   await gallery.getByRole('button', { name: 'Delete the template Weekly report' }).click();
   await expect(mine.getByRole('button', { name: 'Weekly report', exact: true })).toHaveCount(0);
 });
+
+test('opens a template file as a new document and saves template files (FILE-020)', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'New document' }).click();
+  await page.getByRole('textbox', { name: 'Document' }).click();
+  await page.keyboard.type('Letterhead of the lab');
+  const download = page.waitForEvent('download');
+  await page.getByLabel('Save as format').selectOption({ label: 'Save as template file (.ott)…' });
+  const file = await download;
+  expect(file.suggestedFilename()).toMatch(/\.ott$/);
+  const chunks: Buffer[] = [];
+  for await (const c of await file.createReadStream()) chunks.push(c as Buffer);
+  const ott = Buffer.concat(chunks);
+  expect(ott.subarray(30, 38).toString()).toBe('mimetype');
+  expect(ott.subarray(38, 86).toString()).toBe('application/vnd.oasis.opendocument.text-template');
+
+  page.once('dialog', (d) => void d.accept());
+  await openFile(page, 'letterhead.ott', ott);
+  await expect(page.getByRole('textbox', { name: 'Document' })).toContainText('Letterhead of the lab');
+  await expect(page.getByRole('alert')).toContainText('New document from a template');
+  await expect(page.locator('header')).toContainText('letterhead.odt');
+});

@@ -868,6 +868,9 @@ export const en = {
   'tpl.mineEmpty': 'None yet: open a document and choose “Save as template…” in Save as.',
   'tpl.delete': 'Delete the template {name}',
   'tpl.deleteConfirm': 'Delete the template “{name}”?',
+  'tpl.fromFile': 'New document from a template: saving it does not change the template ({name}).',
+  'tpl.saveFile': 'Save as template file (.{ext})…',
+  'tpl.fileSaved': 'Template file {name} saved.',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -11,6 +11,7 @@ import {
   type DocumentFormat,
   type DocumentKind,
 } from '../core/format';
+import { isTemplate, isTemplateBase, TEMPLATE_FORMATS, templateExtension, templateMimeType, toTemplate, type TemplateBase } from '../core/template-format';
 import { defaultFormat, FORMAT_FAMILIES, loadFormatFamily, saveFormatFamily, type FormatFamily } from '../core/format-preference';
 import { pickFile, readFileBytes, replaceExtension, saveFile } from '../storage/file-io';
 import type { AssistantPanel } from '../ai/panel';
@@ -30,6 +31,9 @@ interface RepoSource {
   version: string;
 }
 
+/** FILE-020: the template file formats offered for a kind. */
+const templateBasesFor = (kind: DocumentKind): TemplateBase[] => TEMPLATE_FORMATS.filter((f) => formatKind(f) === kind);
+
 interface OpenDocument {
   name: string;
   format: DocumentFormat;
@@ -46,6 +50,8 @@ interface OpenDocument {
   readOnly?: boolean;
   /** Its source cannot be written (read-only folder): editing needs a copy. */
   locked?: boolean;
+  /** Made from a template file: a new document, not tied to where the template is (FILE-020). */
+  fromTemplate?: boolean;
 }
 
 interface CloudSource {
@@ -155,10 +161,15 @@ export class App {
         this.showError(t('error.unsupported', { name }));
         return null;
       }
+      // FILE-020: a template file opens as a new document of its base format.
+      const template = isTemplate(bytes);
+      if (template) name = `${name.replace(/\.[^.]+$/, '')}.${fileExtension(format)}`;
       const view = await openView(format, bytes, this.viewContext(), name, resolveImage);
       const doc: OpenDocument = { name, format, kind: formatKind(format), view };
-      if (source) doc.source = source;
+      if (template) doc.fromTemplate = true;
+      else if (source) doc.source = source;
       this.setDocument(doc);
+      if (template) this.showNotice(t('tpl.fromFile', { name }));
       return format;
     } catch (err) {
       if ((err as Error).name !== 'MdzCancelled') this.showError(t('error.open', { name, message: (err as Error).message }));
@@ -174,7 +185,7 @@ export class App {
     if (!file) return;
     await this.withBusy(async () => {
       if (!(await this.openBytes(basename(file.path), file.bytes))) return;
-      if (this.current) this.current.dav = { account: file.account, path: file.path, ...(file.etag ? { etag: file.etag } : {}) };
+      if (this.current && !this.current.fromTemplate) this.current.dav = { account: file.account, path: file.path, ...(file.etag ? { etag: file.etag } : {}) };
       this.renderHeader();
     });
   }
@@ -404,6 +415,20 @@ export class App {
         this.showError((err as Error).message);
       }
     });
+  }
+
+  /** Save the open document as a template file: .ott, .dotx… (FILE-020). */
+  async saveTemplateFile(base: DocumentFormat): Promise<void> {
+    const doc = this.current;
+    if (!doc?.view.save) return;
+    try {
+      if (!isTemplateBase(base)) return;
+      const extension = templateExtension(base);
+      const name = `${doc.name.replace(/\.[^.]+$/, '')}.${extension}`;
+      if (await saveFile(toTemplate(await doc.view.save(base), base), name, base, { mimeType: templateMimeType(base), extension })) this.showNotice(t('tpl.fileSaved', { name }));
+    } catch (err) {
+      this.showError(t('error.save', { message: (err as Error).message }));
+    }
   }
 
   /** Keep the open document as a template of this browser (FILE-019). */
@@ -886,11 +911,13 @@ export class App {
         ...saveFormatsFor(doc.kind, loadFormatFamily()).map((f) => h('option', { value: f }, formatLabel(f))),
         ...(doc.view.saveVariants?.() ?? []).map((v) => h('option', { value: `variant:${v.id}` }, v.label)),
         ...(doc.kind !== 'pdf' ? [h('option', { value: 'template' }, t('tpl.saveAs'))] : []),
+        ...templateBasesFor(doc.kind).map((f) => h('option', { value: `tplfile:${f}` }, t('tpl.saveFile', { ext: templateExtension(f) }))),
       );
       select.addEventListener('change', () => {
         const value = select.value;
         select.value = '';
         if (value === 'template') void this.saveAsTemplate();
+        else if (value.startsWith('tplfile:')) void this.saveTemplateFile(value.slice('tplfile:'.length) as DocumentFormat);
         else if (value.startsWith('variant:')) void this.saveCopy(value.slice('variant:'.length));
         else if (value) void this.save(value as DocumentFormat);
       });
@@ -1179,7 +1206,7 @@ export class App {
       if (!bytes) return this.showError(t('folder.missing', { path }));
       const images = /\.(md|markdown)$/i.test(path) ? await this.noteImages(path, new TextDecoder().decode(bytes)) : undefined;
       if (!(await this.openBytes(basename(path), bytes, undefined, images && ((src) => images.get(src))))) return;
-      if (this.current) this.current.folderPath = path;
+      if (this.current && !this.current.fromTemplate) this.current.folderPath = path;
       if (this.current && !folder.provider.capabilities.write) this.setReadOnly(true, true);
       folder.setCurrent(path);
       void folder.showBacklinks(path);

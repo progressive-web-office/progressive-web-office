@@ -30,7 +30,7 @@ export function formatLabel(format: DocumentFormat): string {
 
 
 /** File extensions accepted by the open dialog. */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.tex', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf'];
+export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.tex', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx'];
 
 export function formatKind(format: DocumentFormat): DocumentKind {
   switch (format) {
@@ -99,10 +99,11 @@ function detectZipFormat(bytes: Uint8Array): DocumentFormat | null {
     return null;
   }
   const mimetype = readZipText(zip, 'mimetype')?.trim();
-  // An OpenDocument master document (.odm) is a text document with linked sections (DOC-028).
-  if (mimetype === MIME_TYPES.odt || mimetype === 'application/vnd.oasis.opendocument.text-master') return 'odt';
-  if (mimetype === MIME_TYPES.ods) return 'ods';
-  if (mimetype === MIME_TYPES.odp) return 'odp';
+  // An OpenDocument master document (.odm) is a text document with linked sections (DOC-028);
+  // templates (.ott, .ots, .otp) are opened as their documents (FILE-020).
+  if (mimetype === MIME_TYPES.odt || mimetype === 'application/vnd.oasis.opendocument.text-master' || mimetype === `${MIME_TYPES.odt}-template`) return 'odt';
+  if (mimetype === MIME_TYPES.ods || mimetype === `${MIME_TYPES.ods}-template`) return 'ods';
+  if (mimetype === MIME_TYPES.odp || mimetype === `${MIME_TYPES.odp}-template`) return 'odp';
   if (mimetype === MIME_TYPES.mdz) return 'mdz';
   if (zip['index.md'] && zip['manifest.json']) return 'mdz';
   const types = readZipText(zip, '[Content_Types].xml') ?? '';

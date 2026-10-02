@@ -870,4 +870,7 @@ export const zh: Record<MessageKey, string> = {
   'tpl.mineEmpty': '暂无：打开文档并在“另存为”中选择“另存为模板…”。',
   'tpl.delete': '删除模板 {name}',
   'tpl.deleteConfirm': '删除模板“{name}”？',
+  'tpl.fromFile': '由模板创建的新文档：保存它不会修改模板（{name}）。',
+  'tpl.saveFile': '另存为模板文件（.{ext}）…',
+  'tpl.fileSaved': '模板文件 {name} 已保存。',
 };
