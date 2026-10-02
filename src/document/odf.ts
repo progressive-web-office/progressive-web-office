@@ -1,5 +1,5 @@
 /** Shared OpenDocument helpers: namespaces, lengths, manifest and meta. */
-import { cleanMeta, isoTimestamp, normalizeDate, type DocumentMeta } from './model';
+import { cleanMeta, isoTimestamp, normalizeDate, type DocumentMeta, type PageNumberFormat } from './model';
 import { escapeXml as esc, parseXml } from '../core/xml';
 import { readZipText, type ZipEntries } from '../core/zip';
 
@@ -141,3 +141,6 @@ export function odfText(text: string, atStart: boolean): string {
 
 /** BibTeX fields with an ODF attribute of the same name (`doi` goes to `custom1`). */
 export const ODF_BIB_FIELDS = ['address', 'annote', 'author', 'booktitle', 'chapter', 'edition', 'editor', 'howpublished', 'institution', 'journal', 'month', 'note', 'number', 'organizations', 'pages', 'publisher', 'school', 'series', 'title', 'report-type', 'volume', 'year', 'url', 'isbn', 'issn'];
+
+/** DOC-029: page number formats as style:num-format values. */
+export const ODF_NUMBER_FORMAT: Record<PageNumberFormat, string> = { decimal: '1', 'lower-roman': 'i', 'upper-roman': 'I', 'lower-alpha': 'a', 'upper-alpha': 'A' };

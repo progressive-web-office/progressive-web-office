@@ -97,6 +97,18 @@ class LatexWriter {
     return lines;
   }
 
+  /** DOC-029: page number style, first number and title page, at the start of the body. */
+  private numbering(): string[] {
+    const page = cleanPageSetup(this.doc.page);
+    if (!page) return [];
+    const style = { decimal: '', 'lower-roman': 'roman', 'upper-roman': 'Roman', 'lower-alpha': 'alph', 'upper-alpha': 'Alph' }[page.numberFormat ?? 'decimal'];
+    return [
+      ...(page.hideOnFirstPage ? ['\\thispagestyle{empty}'] : []),
+      ...(style ? [`\\pagenumbering{${style}}`] : []),
+      ...(page.startAt !== undefined ? [`\\setcounter{page}{${page.startAt}}`] : []),
+    ];
+  }
+
   write(): string {
     this.xref = crossTargets(this.doc.blocks);
     const body = this.blocks(this.doc.blocks);
@@ -131,7 +143,9 @@ class LatexWriter {
       ...pdfMetadata(meta),
       '',
       '\\begin{document}',
-      ...(meta.title ? ['\\maketitle', ''] : []),
+      ...(meta.title ? ['\\maketitle'] : []),
+      ...this.numbering(),
+      ...(meta.title ? [''] : []),
       body.trimEnd(),
       '',
       '\\end{document}',

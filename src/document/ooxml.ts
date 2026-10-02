@@ -1,5 +1,5 @@
 /** Shared OOXML (Office Open XML) helpers: relationships and namespaces. */
-import { cleanMeta, isoTimestamp, normalizeDate, type DocumentMeta } from './model';
+import { cleanMeta, isoTimestamp, normalizeDate, type DocumentMeta, type PageNumberFormat } from './model';
 import { attr, children, parseXml } from '../core/xml';
 import { readZipText, type ZipEntries } from '../core/zip';
 
@@ -143,3 +143,6 @@ export const IMAGE_CONTENT_TYPES: Record<string, string> = {
 };
 
 export const EMU_PER_PX = 9525;
+
+/** DOC-029: page number formats as w:pgNumType w:fmt values. */
+export const DOCX_NUMBER_FORMAT: Record<PageNumberFormat, string> = { decimal: 'decimal', 'lower-roman': 'lowerRoman', 'upper-roman': 'upperRoman', 'lower-alpha': 'lowerLetter', 'upper-alpha': 'upperLetter' };

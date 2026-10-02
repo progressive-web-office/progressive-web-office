@@ -217,7 +217,7 @@ test('header and footer with page numbers (DOC-024)', async ({ page }) => {
   await page.getByRole('button', { name: 'Header and footer' }).click();
   const dialog = page.getByRole('dialog', { name: 'Header and footer' });
   await dialog.getByLabel('Header — Left').fill('TP 3');
-  await dialog.getByRole('button', { name: '“Page 1 of N” in the footer' }).click();
+  await dialog.getByRole('button', { name: 'Page 1 of 10', exact: true }).click();
   await expect(dialog.getByLabel('Footer — Centre')).toHaveValue('Page {page} of {pages}');
   await dialog.getByLabel('Footer — Right').click();
   await dialog.getByRole('button', { name: 'Date' }).click();
@@ -229,6 +229,25 @@ test('header and footer with page numbers (DOC-024)', async ({ page }) => {
   const docx = unzipSync(new Uint8Array((await saveAs(page, 'Word document (.docx)')).data));
   expect(strFromU8(docx['word/header1.xml']!)).toContain('TP 3');
   expect(strFromU8(docx['word/footer1.xml']!)).toContain('w:instr=" NUMPAGES "');
+});
+
+test('page numbering styles: roman numerals from iii, no number on the title page (DOC-029)', async ({ page }) => {
+  await newDocument(page);
+  await page.getByRole('button', { name: 'Header and footer' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Header and footer' });
+  await dialog.getByRole('button', { name: '- 1 -', exact: true }).click();
+  await expect(dialog.getByLabel('Footer — Centre')).toHaveValue('- {page} -');
+  await dialog.getByLabel('Style').selectOption({ label: 'i, ii, iii' });
+  await dialog.getByLabel('First page number').fill('3');
+  await dialog.getByLabel('No header and footer on the first page (title page)').check();
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(page.getByRole('button', { name: 'Footer', exact: true })).toContainText('- iii -');
+
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const docx = unzipSync(new Uint8Array((await saveAs(page, 'Word document (.docx)')).data));
+  const main = strFromU8(docx['word/document.xml']!);
+  expect(main).toContain('<w:pgNumType w:fmt="lowerRoman" w:start="3"/>');
+  expect(main).toContain('<w:titlePg/>');
 });
 
 test('edits tables: rows, columns, merged cells and header row (DOC-025)', async ({ page }) => {

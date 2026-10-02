@@ -355,6 +355,10 @@ function markdownFrontMatter(doc: RichDocument): string {
   const furniture = (['header', 'footer'] as const).flatMap((kind) =>
     (['left', 'center', 'right'] as const).flatMap((k) => (page?.[kind]?.[k] ? [`${kind}-${k}: ${JSON.stringify(page[kind]![k])}`] : [])),
   );
+  // DOC-029: page numbering, when it differs from the defaults.
+  if (page?.numberFormat) furniture.push(`page-numbering: ${page.numberFormat}`);
+  if (page?.startAt !== undefined) furniture.push(`page-start: ${page.startAt}`);
+  if (page?.hideOnFirstPage) furniture.push('first-page-hidden: true');
   // DOC-027: the sources as pandoc's references (one CSL JSON item per line).
   const refs = doc.references;
   const bibliography = refs?.entries.length ? ['references:', ...refs.entries.map((e) => `- ${JSON.stringify(toCsl(e))}`)] : [];

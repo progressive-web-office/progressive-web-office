@@ -11,6 +11,7 @@ import {
   PAGE_BREAK,
   cleanPageSetup,
   type PageSetup,
+  type PageNumberFormat,
   type Align,
   type Block,
   type Paragraph,
@@ -25,7 +26,7 @@ import {
   type TextFormat,
 } from './model';
 import { diagramLangOf } from './diagram';
-import { lengthToPx, ODF_BIB_FIELDS, ODF_NS, readOdfMeta } from './odf';
+import { lengthToPx, ODF_BIB_FIELDS, ODF_NS, ODF_NUMBER_FORMAT, readOdfMeta } from './odf';
 import { mathmlToLatex } from '../math/convert';
 
 interface OdfStyle {
@@ -43,10 +44,28 @@ interface OdfStyle {
 }
 
 /** Header and footer of the first master page, as zones split at tabs (DOC-024). */
-function readFurniture(xml: Document): PageSetup | undefined {
-  const master = descendants(xml, 'master-page')[0];
+function readFurniture(xml: Document, content?: Document): PageSetup | undefined {
+  const masters = descendants(xml, 'master-page');
+  const master = masters.find((m) => attr(m, 'name') === 'Standard') ?? masters[0];
   if (!master) return undefined;
   const setup: PageSetup = {};
+  // DOC-029: the number format of the page layout, a first number as the fields' offset.
+  const layout = descendants(xml, 'page-layout').find((l) => attr(l, 'name') === attr(master, 'page-layout-name'));
+  const numFormat = layout ? attr(descendants(layout, 'page-layout-properties')[0] ?? layout, 'num-format') : undefined;
+  const format = (Object.entries(ODF_NUMBER_FORMAT) as [PageNumberFormat, string][]).find(([, v]) => v === numFormat)?.[0];
+  if (format) setup.numberFormat = format;
+  const field = descendants(master, 'page-number')[0];
+  const adjust = field ? Number(attr(field, 'page-adjust')) : NaN;
+  if (Number.isInteger(adjust)) setup.startAt = adjust + 1;
+  // A title page: the first paragraph's style starts a master page without header and footer.
+  if (content) {
+    const empty = new Set(masters.filter((m) => m !== master && !child(m, 'header') && !child(m, 'footer')).map((m) => attr(m, 'name')));
+    const first = descendants(content, 'text').find((e) => e.namespaceURI === ODF_NS.office);
+    const para = first ? descendants(first, 'p').concat(descendants(first, 'h')).sort((a, b) => (a.compareDocumentPosition(b) & 4 ? -1 : 1))[0] : undefined;
+    const styleName = para ? attr(para, 'style-name') : undefined;
+    const style = descendants(content, 'style').find((s) => s.namespaceURI === ODF_NS.style && attr(s, 'name') === styleName);
+    if (style && empty.has(attr(style, 'master-page-name'))) setup.hideOnFirstPage = true;
+  }
   for (const kind of ['header', 'footer'] as const) {
     const part = child(master, kind);
     const p = part ? descendants(part, 'p').find((e) => (e.textContent ?? '').trim() || descendants(e, 'page-number').length) : undefined;
@@ -134,7 +153,7 @@ class OdtReader {
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
     this.doc.meta = readOdfMeta(this.zip);
     if (stylesText) {
-      const page = readFurniture(parseXml(stylesText));
+      const page = readFurniture(parseXml(stylesText), xml);
       if (page) this.doc.page = page;
     }
     return this.doc;

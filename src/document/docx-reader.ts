@@ -12,6 +12,7 @@ import {
   PAGE_BREAK,
   cleanPageSetup,
   type PageSetup,
+  type PageNumberFormat,
   type PageZones,
   type Align,
   type Block,
@@ -27,7 +28,7 @@ import { ommlToLatex } from '../math/convert';
 import type { BibEntry } from './bibliography';
 import { parseCitation, parseCslCitation, readSources } from './word-sources';
 import { diagramLangOf } from './diagram';
-import { EMU_PER_PX, IMAGE_CONTENT_TYPES, onOff, readCoreProps, readRels, type Relationship } from './ooxml';
+import { DOCX_NUMBER_FORMAT, EMU_PER_PX, IMAGE_CONTENT_TYPES, onOff, readCoreProps, readRels, type Relationship } from './ooxml';
 
 interface StyleInfo {
   name: string;
@@ -65,6 +66,15 @@ class DocxReader {
       const zones = furnitureZones(parseXml(text).documentElement);
       if (zones) setup[kind] = zones;
     }
+    // DOC-029: page number style, first number, title page.
+    const numbering = children(sect, 'pgNumType')[0];
+    const fmt = numbering ? attr(numbering, 'fmt') : undefined;
+    const format = (Object.entries(DOCX_NUMBER_FORMAT) as [PageNumberFormat, string][]).find(([, v]) => v === fmt)?.[0];
+    if (format) setup.numberFormat = format;
+    const start = numbering ? Number(attr(numbering, 'start')) : NaN;
+    if (Number.isInteger(start)) setup.startAt = start;
+    const titlePg = children(sect, 'titlePg')[0];
+    if (titlePg && !/^(0|false|off)$/.test(attr(titlePg, 'val') ?? '')) setup.hideOnFirstPage = true;
     return cleanPageSetup(setup);
   }
 

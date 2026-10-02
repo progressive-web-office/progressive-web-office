@@ -188,7 +188,7 @@ export class DocumentEditor implements EditorView {
     for (const [strip, kind] of [[this.headerStrip, 'header'], [this.footerStrip, 'footer']] as const) {
       const zones = page?.[kind];
       strip.hidden = !zones;
-      strip.replaceChildren(...(['left', 'center', 'right'] as const).map((z) => h('span', { class: `zone ${z}` }, zones?.[z] ? zonePreview(zones[z]!, title) : '')));
+      strip.replaceChildren(...(['left', 'center', 'right'] as const).map((z) => h('span', { class: `zone ${z}` }, zones?.[z] ? zonePreview(zones[z]!, title, page) : '')));
     }
   }
 

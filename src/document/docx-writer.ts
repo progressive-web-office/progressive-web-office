@@ -36,9 +36,10 @@ import {
 import { mathmlToOmml, OMML_NS } from '../math/convert';
 import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
-import { APP_XML, coreXml, EMU_PER_PX, NS, REL } from './ooxml';
+import { APP_XML, coreXml, DOCX_NUMBER_FORMAT, EMU_PER_PX, NS, REL } from './ooxml';
 import { citations, formatEntry, type Citations } from './bibliography';
 import { citationInstr, SOURCES_PROPS, sourcesXml } from './word-sources';
+
 
 const STYLE_IDS: Record<string, string> = {
   h1: 'Heading1',
@@ -91,23 +92,31 @@ class DocxWriter {
     const body = this.blocks(this.doc.blocks);
     if (this.footnotes.length) this.rels.push({ id: this.nextRid(), type: REL.footnotes, target: 'footnotes.xml' });
     // DOC-024: header and footer parts.
-    const furniture: { kind: 'header' | 'footer'; rid: string; xml: string }[] = [];
+    const furniture: { kind: 'header' | 'footer'; type: 'default' | 'first'; file: string; rid: string; xml: string }[] = [];
     const page = cleanPageSetup(this.doc.page);
     for (const kind of ['header', 'footer'] as const) {
       const zones = page?.[kind];
       if (!zones) continue;
-      const rid = this.nextRid();
-      this.rels.push({ id: rid, type: REL[kind], target: `${kind}1.xml` });
-      furniture.push({ kind, rid, xml: this.furnitureXml(kind, zones) });
+      const add = (type: 'default' | 'first', file: string, xml: string): void => {
+        const rid = this.nextRid();
+        this.rels.push({ id: rid, type: REL[kind], target: file });
+        furniture.push({ kind, type, file, rid, xml });
+      };
+      add('default', `${kind}1.xml`, this.furnitureXml(kind, zones));
+      // DOC-029: an empty header and footer on a title page.
+      if (page.hideOnFirstPage) add('first', `${kind}0.xml`, this.furnitureXml(kind, null));
     }
-    this.furnitureKinds = furniture.map((f) => f.kind);
-    const refs = furniture.map((f) => `<w:${f.kind}Reference w:type="default" r:id="${f.rid}"/>`).join('');
+    this.furnitureFiles = furniture.map((f) => ({ kind: f.kind, file: f.file }));
+    const numbering = page?.numberFormat || page?.startAt !== undefined
+      ? `<w:pgNumType${page.numberFormat ? ` w:fmt="${DOCX_NUMBER_FORMAT[page.numberFormat]}"` : ''}${page.startAt !== undefined ? ` w:start="${page.startAt}"` : ''}/>`
+      : '';
+    const refs = furniture.map((f) => `<w:${f.kind}Reference w:type="${f.type}" r:id="${f.rid}"/>`).join('');
     const documentXml =
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<w:document xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}">` +
       `<w:body>${body}<w:sectPr>${refs}<w:pgSz w:w="11906" w:h="16838"/>` +
       '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>' +
-      '</w:sectPr></w:body></w:document>';
+      `${numbering}${page?.hideOnFirstPage ? '<w:titlePg/>' : ''}</w:sectPr></w:body></w:document>`;
 
     const entries: ZipEntryInput[] = [
       { path: '[Content_Types].xml', data: this.contentTypes() },
@@ -125,7 +134,7 @@ class DocxWriter {
       entries.push({ path: 'customXml/itemProps1.xml', data: SOURCES_PROPS });
       entries.push({ path: 'customXml/_rels/item1.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="${NS.rel}"><Relationship Id="rId1" Type="${REL.customXmlProps}" Target="itemProps1.xml"/></Relationships>` });
     }
-    for (const f of furniture) entries.push({ path: `word/${f.kind}1.xml`, data: f.xml });
+    for (const f of furniture) entries.push({ path: `word/${f.file}`, data: f.xml });
     for (const [key, m] of this.media) {
       const res = this.doc.resources.get(key);
       if (res) entries.push({ path: `word/${m.path}`, data: res.data });
@@ -147,7 +156,7 @@ class DocxWriter {
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
       '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
       (this.footnotes.length ? '<Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>' : '') +
-      this.furnitureKinds.map((k) => `<Override PartName="/word/${k}1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.${k}+xml"/>`).join('') +
+      this.furnitureFiles.map((f) => `<Override PartName="/word/${f.file}" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.${f.kind}+xml"/>`).join('') +
       (this.doc.references?.entries.length ? '<Override PartName="/customXml/itemProps1.xml" ContentType="application/vnd.openxmlformats-officedocument.customXmlProperties+xml"/>' : '') +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
       '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
@@ -284,10 +293,11 @@ class DocxWriter {
     return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${runs.join('')}</w:p>`;
   }
 
-  private furnitureKinds: ('header' | 'footer')[] = [];
+  private furnitureFiles: { kind: 'header' | 'footer'; file: string }[] = [];
 
   /** A header or footer: left, centre and right zones separated by tabs, with fields (DOC-024). */
-  private furnitureXml(kind: 'header' | 'footer', zones: PageZones): string {
+  /** A header or footer part; `null` zones give an empty one. */
+  private furnitureXml(kind: 'header' | 'footer', zones: PageZones | null): string {
     const field = (instr: string, shown: string): string => `<w:fldSimple w:instr=" ${esc(instr)} "><w:r><w:t xml:space="preserve">${esc(shown)}</w:t></w:r></w:fldSimple>`;
     const runs = (text: string | undefined): string =>
       zoneParts(text ?? '')
@@ -308,8 +318,10 @@ class DocxWriter {
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<w:${tag} xmlns:w="${NS.w}" xmlns:r="${NS.r}">` +
-      `<w:p><w:pPr><w:pStyle w:val="${style}"/><w:tabs><w:tab w:val="center" w:pos="4513"/><w:tab w:val="right" w:pos="9026"/></w:tabs></w:pPr>` +
-      `${runs(zones.left)}<w:r><w:tab/></w:r>${runs(zones.center)}<w:r><w:tab/></w:r>${runs(zones.right)}</w:p>` +
+      (zones
+        ? `<w:p><w:pPr><w:pStyle w:val="${style}"/><w:tabs><w:tab w:val="center" w:pos="4513"/><w:tab w:val="right" w:pos="9026"/></w:tabs></w:pPr>` +
+          `${runs(zones.left)}<w:r><w:tab/></w:r>${runs(zones.center)}<w:r><w:tab/></w:r>${runs(zones.right)}</w:p>`
+        : `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr></w:p>`) +
       `</w:${tag}>`
     );
   }

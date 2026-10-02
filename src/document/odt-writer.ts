@@ -23,6 +23,7 @@ import {
   tocEntries,
   cleanPageSetup,
   zoneParts,
+  formatPageNumber,
   nestLists,
   splitListSegments,
   type Block,
@@ -40,7 +41,7 @@ import { MATHML_NS } from '../math/convert';
 import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { citations, formatEntry, writeNames, parseNames, type BibEntry, type Citations } from './bibliography';
-import { ODF_BIB_FIELDS, manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from './odf';
+import { ODF_BIB_FIELDS, ODF_NUMBER_FORMAT, manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from './odf';
 
 const PARA_STYLE: Record<string, string> = {
   normal: 'Standard',
@@ -81,7 +82,7 @@ class OdtWriter {
     this.cites = citations(this.doc.blocks, this.doc.references);
     this.entries = new Map((this.doc.references?.entries ?? []).map((e) => [e.key, e]));
     const decls = `<text:sequence-decls>${SEQ_KINDS.map((k) => `<text:sequence-decl text:display-outline-level="0" text:name="${SEQ_NAMES[k]}"/>`).join('')}</text:sequence-decls>`;
-    const body = decls + this.blocks(this.doc.blocks);
+    const body = decls + this.firstPageStyle(this.blocks(this.doc.blocks));
     const content =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       `<office:document-content ${ODF_XMLNS} office:version="1.3">` +
@@ -115,6 +116,20 @@ class OdtWriter {
       { path: 'meta.xml', data: metaXml(this.doc.meta) },
       ...files,
     ]);
+  }
+
+  /** DOC-029: the first paragraph starts on the "First Page" master page (no header and footer). */
+  private firstPageStyle(body: string): string {
+    if (!cleanPageSetup(this.doc.page)?.hideOnFirstPage) return body;
+    const m = /^<text:(?:p|h) text:style-name="([^"]+)"/.exec(body);
+    if (!m) return body;
+    const used = m[1]!;
+    const auto = this.autoStyles.get(used);
+    const xml = auto
+      ? auto.replace(`style:name="${used}"`, 'style:name="PFirst" style:master-page-name="First_20_Page"')
+      : `<style:style style:name="PFirst" style:family="paragraph" style:parent-style-name="${used}" style:master-page-name="First_20_Page"/>`;
+    this.autoStyles.set('PFirst', xml);
+    return body.replace(m[0], m[0].replace(`"${used}"`, '"PFirst"'));
   }
 
   /** Automatic paragraph style for alignment and spacing on top of a common style (DOC-020). */
@@ -406,13 +421,17 @@ const heading = (n: number, size: string): string =>
 /** styles.xml, with the header and footer on the master page (DOC-024). */
 function stylesXml(doc: RichDocument): string {
   const page = cleanPageSetup(doc.page);
+  // DOC-029: number format on the fields and the page layout, first number as an offset.
+  const format = page?.numberFormat ? ODF_NUMBER_FORMAT[page.numberFormat] : undefined;
+  const numFormat = format ? ` style:num-format="${format}"` : '';
+  const adjust = page?.startAt !== undefined ? ` text:page-adjust="${page.startAt - 1}"` : '';
   const zoneXml = (text: string | undefined): string =>
     zoneParts(text ?? '')
       .map((p) =>
         typeof p === 'string'
           ? odfText(p, false)
           : p.field === 'page'
-            ? '<text:page-number text:select-page="current">1</text:page-number>'
+            ? `<text:page-number text:select-page="current"${numFormat}${adjust}>${formatPageNumber(page?.startAt ?? 1, page?.numberFormat)}</text:page-number>`
             : p.field === 'pages'
               ? '<text:page-count>1</text:page-count>'
               : p.field === 'title'
@@ -426,9 +445,13 @@ function stylesXml(doc: RichDocument): string {
     const style = kind === 'header' ? 'Header' : 'Footer';
     return `<style:${kind}><text:p text:style-name="${style}">${zoneXml(z.left)}<text:tab/>${zoneXml(z.center)}<text:tab/>${zoneXml(z.right)}</text:p></style:${kind}>`;
   };
-  const master = `<style:master-page style:name="Standard" style:page-layout-name="pm1">${part('header')}${part('footer')}</style:master-page>`;
-  return STYLES_XML.replace('@MASTER@', master);
+  const master =
+    `<style:master-page style:name="Standard" style:page-layout-name="pm1">${part('header')}${part('footer')}</style:master-page>` +
+    // A title page without header and footer, used by the first paragraph (see firstPageStyle).
+    (page?.hideOnFirstPage ? '<style:master-page style:name="First_20_Page" style:display-name="First Page" style:page-layout-name="pm1" style:next-style-name="Standard"/>' : '');
+  return STYLES_XML.replace('@MASTER@', master).replace('<style:page-layout-properties ', `<style:page-layout-properties${numFormat} `);
 }
+
 
 const STYLES_XML =
   '<?xml version="1.0" encoding="UTF-8"?>\n' +

@@ -3,7 +3,7 @@
  * Unsupported constructs are kept as visible source text.
  */
 import { parseBibtex, type BibEntry } from './bibliography';
-import { addResource, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
+import { addResource, type PageNumberFormat, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
 
 type Node =
   | { k: 'text'; v: string }
@@ -52,7 +52,11 @@ const IGNORED = new Set([
   'bigskip', 'newpage', 'clearpage', 'pagebreak', 'nopagebreak', 'vspace', 'hspace', 'protect', 'relax', 'small', 'large', 'Large',
   'LARGE', 'huge', 'Huge', 'normalsize', 'footnotesize', 'scriptsize', 'tiny', 'selectfont', 'color', 'hline', 'toprule', 'midrule',
   'bottomrule', 'phantom', 'nonumber', 'notag', 'documentclass', 'usepackage', 'thispagestyle', 'pagestyle',
+  'pagenumbering', 'setcounter',
 ]);
+
+/** DOC-029: \pagenumbering styles. */
+const LATEX_NUMBERING: Record<string, PageNumberFormat> = { arabic: 'decimal', roman: 'lower-roman', Roman: 'upper-roman', alph: 'lower-alpha', Alph: 'upper-alpha' };
 
 const MATH_ENVS = new Set(['equation', 'equation*', 'displaymath', 'math', 'gather', 'gather*', 'multline', 'multline*']);
 const ALIGN_ENVS = new Set(['align', 'align*', 'eqnarray', 'eqnarray*', 'flalign', 'flalign*', 'alignat', 'alignat*']);
@@ -915,6 +919,14 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
     }
   }
   doc.meta = cleanMeta(doc.meta);
+  // DOC-029: page numbering set at the start of the body.
+  if (doc.page) {
+    const numbering = /\\pagenumbering\{(\w+)\}/.exec(body)?.[1];
+    if (numbering && LATEX_NUMBERING[numbering]) doc.page.numberFormat = LATEX_NUMBERING[numbering];
+    const start = /\\setcounter\{page\}\{(\d+)\}/.exec(body)?.[1];
+    if (start) doc.page.startAt = Number(start);
+    if (/\\thispagestyle\{empty\}/.test(body.slice(0, 400))) doc.page.hideOnFirstPage = true;
+  }
   const page = cleanPageSetup(doc.page);
   if (page) doc.page = page;
   else delete doc.page;

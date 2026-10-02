@@ -13,7 +13,7 @@ import { updateYFragment, yXmlFragmentToProsemirrorJSON } from 'y-prosemirror';
 import type { Node as PmNode } from 'prosemirror-model';
 import { blocksToPm, pmToBlocks } from '../../document/pm/convert';
 import { schema } from '../../document/pm/schema';
-import { META_FIELDS, cleanPageSetup, type DocumentMeta, type PageSetup, type References, type Resource, type RichDocument } from '../../document/model';
+import { META_FIELDS, PAGE_NUMBER_FORMATS, cleanPageSetup, type DocumentMeta, type PageSetup, type References, type Resource, type RichDocument } from '../../document/model';
 
 export const BODY = 'body';
 export const DOC = 'doc';
@@ -84,6 +84,10 @@ function checkPage(v: unknown): PageSetup | undefined {
   if (v === null) return undefined;
   if (!isRecord(v)) throw new Error('invalid page setup');
   for (const [k, zones] of Object.entries(v)) {
+    // DOC-029: page numbering settings.
+    if (k === 'numberFormat' && (PAGE_NUMBER_FORMATS as readonly unknown[]).includes(zones)) continue;
+    if (k === 'startAt' && Number.isInteger(zones) && (zones as number) >= 0) continue;
+    if (k === 'hideOnFirstPage' && typeof zones === 'boolean') continue;
     if ((k !== 'header' && k !== 'footer') || !isRecord(zones)) throw new Error('invalid page setup');
     for (const [z, text] of Object.entries(zones)) if (!['left', 'center', 'right'].includes(z) || typeof text !== 'string') throw new Error('invalid page setup');
   }

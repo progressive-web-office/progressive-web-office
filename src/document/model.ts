@@ -290,9 +290,34 @@ export interface PageZones {
   right?: string;
 }
 
+/** How page numbers are written (DOC-029). */
+export const PAGE_NUMBER_FORMATS = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha'] as const;
+export type PageNumberFormat = (typeof PAGE_NUMBER_FORMATS)[number];
+
 export interface PageSetup {
   header?: PageZones;
   footer?: PageZones;
+  /** Page number style (DOC-029); decimal when absent. */
+  numberFormat?: PageNumberFormat;
+  /** Number of the first page; 1 when absent. */
+  startAt?: number;
+  /** No header and footer on the first page (a title page). */
+  hideOnFirstPage?: boolean;
+}
+
+/** `n` written in a page number format: 4 → "iv", "D"… */
+export function formatPageNumber(n: number, format: PageNumberFormat = 'decimal'): string {
+  if (format === 'decimal' || n < 1) return String(n);
+  if (format.endsWith('alpha')) {
+    let s = '';
+    for (let k = n; k > 0; k = Math.floor((k - 1) / 26)) s = String.fromCharCode(97 + ((k - 1) % 26)) + s;
+    return format === 'upper-alpha' ? s.toUpperCase() : s;
+  }
+  const romans: [number, string][] = [[1000, 'm'], [900, 'cm'], [500, 'd'], [400, 'cd'], [100, 'c'], [90, 'xc'], [50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']];
+  let s = '';
+  let k = Math.min(n, 3999);
+  for (const [v, r] of romans) for (; k >= v; k -= v) s += r;
+  return format === 'upper-roman' ? s.toUpperCase() : s;
 }
 
 export const PAGE_FIELDS = ['page', 'pages', 'title', 'date'] as const;
@@ -319,7 +344,17 @@ export function cleanPageSetup(page: PageSetup | undefined): PageSetup | undefin
   };
   const header = zones(page?.header);
   const footer = zones(page?.footer);
-  return header || footer ? { ...(header ? { header } : {}), ...(footer ? { footer } : {}) } : undefined;
+  if (!header && !footer) return undefined;
+  // DOC-029: numbering settings only matter with a header or footer; defaults are left out.
+  const format = page?.numberFormat && page.numberFormat !== 'decimal' && (PAGE_NUMBER_FORMATS as readonly string[]).includes(page.numberFormat) ? page.numberFormat : undefined;
+  const start = page?.startAt !== undefined && Number.isInteger(page.startAt) && page.startAt !== 1 && page.startAt >= 0 ? page.startAt : undefined;
+  return {
+    ...(header ? { header } : {}),
+    ...(footer ? { footer } : {}),
+    ...(format ? { numberFormat: format } : {}),
+    ...(start !== undefined ? { startAt: start } : {}),
+    ...(page?.hideOnFirstPage ? { hideOnFirstPage: true } : {}),
+  };
 }
 
 export interface RichDocument {

@@ -27,6 +27,8 @@ import {
   cleanPageSetup,
   type PageSetup,
   type PageZones,
+  type PageNumberFormat,
+  PAGE_NUMBER_FORMATS,
   type Block,
   type CodeCellRun,
   type CodeLang,
@@ -182,6 +184,21 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
     lines.splice(styleAt, 1);
   }
   for (const line of lines) {
+    // DOC-029: page numbering.
+    const numbering = /^page-numbering:\s*([\w-]+)\s*$/.exec(line)?.[1];
+    if (numbering && (PAGE_NUMBER_FORMATS as readonly string[]).includes(numbering)) {
+      page.numberFormat = numbering as PageNumberFormat;
+      continue;
+    }
+    const start = /^page-start:\s*(\d+)\s*$/.exec(line)?.[1];
+    if (start) {
+      page.startAt = Number(start);
+      continue;
+    }
+    if (/^first-page-hidden:\s*true\s*$/.test(line)) {
+      page.hideOnFirstPage = true;
+      continue;
+    }
     const m = /^(header|footer)-(left|center|right):\s*(.*)$/.exec(line);
     if (!m) {
       kept.push(line);

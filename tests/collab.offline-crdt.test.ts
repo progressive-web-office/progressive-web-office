@@ -75,6 +75,15 @@ describe('COLLAB-008 text document as a CRDT', () => {
     expect(validateCrdt(big)).toMatch(/limit/i);
   });
 
+  it('keeps the page numbering settings (DOC-029)', () => {
+    const y = new Y.Doc();
+    const page = { footer: { center: '{page}' }, numberFormat: 'upper-roman' as const, startAt: 2, hideOnFirstPage: true };
+    writeCrdt(y, { ...richSample(), page });
+    expect(readCrdt(y).page).toEqual(page);
+    y.getMap('doc').set('page', JSON.stringify({ ...page, numberFormat: 'klingon' }));
+    expect(validateCrdt(y)).toMatch(/page setup/);
+  });
+
   it('rejects malformed properties', () => {
     const y = new Y.Doc();
     writeCrdt(y, richSample());
