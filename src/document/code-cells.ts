@@ -12,7 +12,8 @@ export function cellsAsBlocks(doc: RichDocument): RichDocument {
     changed = true;
     const only = p.runs.length === 1 ? p.runs[0] : undefined;
     if (!only || !isCodeCellRun(only)) return [{ ...p, runs: p.runs.map((r) => (isCodeCellRun(r) ? { text: r.cell, code: true } : r)) }];
-    const out: Paragraph[] = [{ type: 'paragraph', style: 'code', runs: only.cell ? [{ text: only.cell }] : [] }];
+    // CODE-009: a hidden code is not written, only its output.
+    const out: Paragraph[] = only.hidden ? [] : [{ type: 'paragraph', style: 'code', runs: only.cell ? [{ text: only.cell }] : [] }];
     const text = only.output?.text.replace(/\n+$/, '');
     if (text) out.push({ type: 'paragraph', style: 'code', runs: [{ text }] });
     const images = (only.output?.images ?? []).filter((key) => doc.resources.has(key));

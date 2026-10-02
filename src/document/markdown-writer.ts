@@ -194,7 +194,7 @@ class MarkdownWriter {
 
   /** CODE-006: the cell as a `{run}` fence, then its last output and figures. */
   private cell(run: CodeCellRun): string {
-    const parts = [fenced(run.cell, `${run.lang} {run}`)];
+    const parts = [fenced(run.cell, `${run.lang} {run${run.hidden ? ' hide' : ''}}`)];
     const text = run.output?.text.replace(/\n$/, '');
     if (text) parts.push(fenced(text, `text {output${run.output?.error ? ' error' : ''}}`));
     const images = (run.output?.images ?? []).filter((key) => this.doc.resources.has(key));

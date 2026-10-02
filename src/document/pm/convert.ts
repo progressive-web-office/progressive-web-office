@@ -78,7 +78,7 @@ function runsToInline(runs: Run[]): PmNode[] {
     } else if ('cite' in run) {
       out.push(schema.nodes.cite!.create({ keys: run.cite, locator: run.locator ?? null }));
     } else {
-      out.push(schema.nodes.code_cell!.create({ cell: run.cell, lang: run.lang, output: run.output ?? null }));
+      out.push(schema.nodes.code_cell!.create({ cell: run.cell, lang: run.lang, output: run.output ?? null, hidden: !!run.hidden }));
     }
   }
   return out;
@@ -162,7 +162,7 @@ function inlineToRuns(node: PmNode): Run[] {
         runs.push(a.locator ? { cite: [...(a.keys as string[])], locator: a.locator as string } : { cite: [...(a.keys as string[])] });
         break;
       case 'code_cell':
-        runs.push({ cell: a.cell as string, lang: a.lang as 'python', ...(a.output ? { output: a.output as NonNullable<Extract<Run, { cell: string }>['output']> } : {}) });
+        runs.push({ cell: a.cell as string, lang: a.lang as 'python', ...(a.output ? { output: a.output as NonNullable<Extract<Run, { cell: string }>['output']> } : {}), ...(a.hidden ? { hidden: true } : {}) });
         break;
     }
   });

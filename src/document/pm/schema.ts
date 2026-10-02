@@ -211,14 +211,14 @@ export const schema = new Schema({
       inline: true,
       group: 'inline',
       atom: true,
-      attrs: { cell: { default: '' }, lang: { default: 'python' }, output: { default: null } },
+      attrs: { cell: { default: '' }, lang: { default: 'python' }, output: { default: null }, hidden: { default: false } },
       parseDOM: [
         {
           tag: 'span.code-cell[data-cell]',
-          getAttrs: (d: HTMLElement) => ({ cell: d.dataset.cell ?? '', lang: d.dataset.lang ?? 'python', output: d.dataset.output ? (JSON.parse(d.dataset.output) as CellOutput) : null }),
+          getAttrs: (d: HTMLElement) => ({ cell: d.dataset.cell ?? '', lang: d.dataset.lang ?? 'python', output: d.dataset.output ? (JSON.parse(d.dataset.output) as CellOutput) : null, hidden: d.dataset.hidden === 'true' }),
         },
       ],
-      toDOM: (n) => ['span', { class: 'code-cell', 'data-lang': n.attrs.lang, 'data-cell': n.attrs.cell, ...(n.attrs.output ? { 'data-output': json(n.attrs.output) } : {}) }, n.attrs.cell],
+      toDOM: (n) => ['span', { class: 'code-cell', 'data-lang': n.attrs.lang, 'data-cell': n.attrs.cell, ...(n.attrs.output ? { 'data-output': json(n.attrs.output) } : {}), ...(n.attrs.hidden ? { 'data-hidden': 'true' } : {}) }, n.attrs.cell],
     },
   },
   // The order is the nesting order: links outermost.

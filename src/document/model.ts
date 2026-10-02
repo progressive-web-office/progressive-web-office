@@ -101,6 +101,8 @@ export interface CodeCellRun {
   cell: string;
   lang: CodeLang;
   output?: CellOutput;
+  /** CODE-009: the code is hidden, only its output is shown (and printed, and exported). */
+  hidden?: boolean;
 }
 
 /** A footnote, numbered automatically where it is referenced (DOC-022). */

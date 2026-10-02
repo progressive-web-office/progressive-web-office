@@ -391,7 +391,7 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         const lang = info?.flags.includes('run') ? CELL_LANGS[info.lang] : undefined;
         if (lang) {
           const p = newParagraph();
-          p.runs = [{ cell: content, lang }];
+          p.runs = [{ cell: content, lang, ...(info!.flags.includes('hide') ? { hidden: true } : {}) }];
           push(p);
           break;
         }

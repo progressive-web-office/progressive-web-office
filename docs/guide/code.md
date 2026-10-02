@@ -35,6 +35,16 @@ plt.plot(t, np.exp(-0.3 * t) * np.sin(2 * np.pi * t))
 plt.title("Damped signal")
 ```
 
+## Hiding the code
+
+**🙈** in the bar of a cell hides its code: only its output (text and
+figures) stays, on screen, in print and in the Word, OpenDocument and LaTeX
+exports — for example to hand out a sheet of results, or plots without the
+program behind them. The cell can still be run; **👁** shows the code again.
+*View › Hide the code of every cell* (or *Show…*) does it for the whole
+document. In Markdown, the code is kept, with the `hide` flag:
+```` ```python {run hide} ````.
+
 ## Completion
 
 The code editor of a cell highlights the code, indents it (<kbd>Tab</kbd>),

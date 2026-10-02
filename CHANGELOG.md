@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The code of a cell can be hidden (one cell, or every cell from the View
+  menu): only its output is shown, printed and exported; Markdown keeps it
+  with `{run hide}`.
 - The TypeScript language service for TypeScript and JavaScript files and
   JavaScript cells: typed completions with documentation, errors underlined,
   types under the pointer; loaded on first use, then kept offline.

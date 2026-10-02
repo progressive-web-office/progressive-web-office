@@ -335,6 +335,11 @@ export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (
   cell.className = 'code-cell';
   cell.dataset.lang = run.lang;
   cell.contentEditable = 'false';
+  // CODE-009: only the output of a cell whose code is hidden is shown (and printed).
+  if (run.hidden) {
+    cell.classList.add('code-hidden');
+    cell.dataset.hidden = 'true';
+  }
   const source = doc.createElement('span');
   source.className = 'code-cell-source';
   source.textContent = run.cell;

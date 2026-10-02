@@ -1053,3 +1053,9 @@ body.distraction-free .ai-panel { display: none !important; }
 .cm-ts-info p { margin: 6px 0 0; white-space: pre-wrap; color: var(--muted); }
 .cm-tooltip-lint { background: var(--surface); color: var(--text); }
 .cm-diagnostic { padding: 4px 8px; font-size: 0.85rem; white-space: pre-wrap; }
+
+/* CODE-009: a cell whose code is hidden shows its output only (on screen and in print). */
+.code-cell.code-hidden > .code-cell-source { display: none; }
+.code-cell.code-hidden > .code-cell-output { border-top: 0; }
+.code-cell-hidden-note { font-weight: 400; font-style: italic; }
+.print-document .code-cell.code-hidden > .code-cell-source { display: none; }

@@ -494,6 +494,17 @@ export class DocumentEditor implements EditorView {
     else if (action === 'run-all') void this.runCells(this.cellPositions());
     else if (action === 'stop') this.runner?.stop();
     else if (action === 'edit') void this.editCell(pos, node);
+    // CODE-009: show or hide the code, the output staying.
+    else if (action === 'toggle-code') this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, hidden: !node.attrs.hidden }));
+  }
+
+  /** CODE-009: hide (or show) the code of every cell of the document. */
+  private setAllCodeHidden(hidden: boolean): void {
+    const tr = this.view.state.tr;
+    this.view.state.doc.descendants((n, pos) => {
+      if (n.type === schema.nodes.code_cell && !!n.attrs.hidden !== hidden) tr.setNodeMarkup(pos, undefined, { ...n.attrs, hidden });
+    });
+    if (tr.docChanged) this.view.dispatch(tr);
   }
 
   private cellPositions(): number[] {
@@ -691,6 +702,8 @@ export class DocumentEditor implements EditorView {
         h('option', { value: 'focus' }, `${mark(this.writing.focus)}${t('wview.focus')}`),
         h('option', { value: 'typewriter' }, `${mark(this.writing.typewriter)}${t('wview.typewriter')}`),
         h('option', { value: 'goal' }, t('wview.goal')),
+        h('option', { value: 'hide-code' }, t('code.hideAll')),
+        h('option', { value: 'show-code' }, t('code.showAll')),
       );
     };
     fill();
@@ -699,6 +712,7 @@ export class DocumentEditor implements EditorView {
       const value = select.value;
       select.value = '';
       if (value === 'goal') void this.editGoal();
+      else if (value === 'hide-code' || value === 'show-code') this.setAllCodeHidden(value === 'hide-code');
       else if (value === 'readability' || value === 'focus' || value === 'typewriter') this.setWriting({ [value]: !this.writing[value] });
       fill();
       this.refocus();

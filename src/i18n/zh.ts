@@ -1162,4 +1162,9 @@ export const zh: Record<MessageKey, string> = {
   'settings.turnPassword': 'TURN 密码',
   'settings.collabNext': '用于之后的协作会话。',
   'collab.connectedRelays': '已通过中继连接 · 其他 {n} 人（较慢）',
+  'code.hideCode': '隐藏代码（保留输出）',
+  'code.showCode': '显示代码',
+  'code.hiddenNote': '代码已隐藏',
+  'code.hideAll': '隐藏所有单元格的代码',
+  'code.showAll': '显示所有单元格的代码',
 };

@@ -1162,4 +1162,9 @@ export const fr: Record<MessageKey, string> = {
   'settings.turnPassword': 'Mot de passe TURN',
   'settings.collabNext': 'Utilisé par les prochaines sessions de collaboration.',
   'collab.connectedRelays': 'Connecté via les relais · {n} autre(s) (plus lent)',
+  'code.hideCode': 'Masquer le code (garder le résultat)',
+  'code.showCode': 'Afficher le code',
+  'code.hiddenNote': 'code masqué',
+  'code.hideAll': 'Masquer le code de toutes les cellules',
+  'code.showAll': 'Afficher le code de toutes les cellules',
 };

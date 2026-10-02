@@ -27,7 +27,14 @@ test('two browsers find each other through a relay and edit together (COLLAB-001
   const bob = await (await browser.newContext()).newPage();
   await useRelay(bob);
   await bob.goto(url);
-  await expect(bob.locator('td[data-r="1"][data-c="0"]')).toHaveText('Pens', { timeout: 60_000 });
+  try {
+    await expect(bob.locator('td[data-r="1"][data-c="0"]')).toHaveText('Pens', { timeout: 60_000 });
+  } catch (err) {
+    // What each side says, to tell a discovery problem from a sync problem.
+    const state = async (p: Page) => p.locator('.collab-bar').textContent().catch(() => '(no bar)');
+    console.log('DIAG alice:', await state(alice), '| bob:', await state(bob), '| relay events:', relay.events, '| bob url:', bob.url());
+    throw err;
+  }
   await expect(alice.locator('.collab-bar')).toContainText('Connected · 1 other(s)');
   // Renaming oneself keeps the connection, and the others see the new name.
   await alice.locator('.collab-person.self').click();

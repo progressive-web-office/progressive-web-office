@@ -1160,6 +1160,11 @@ export const en = {
   'settings.turnPassword': 'TURN password',
   'settings.collabNext': 'Used by the next collaboration sessions.',
   'collab.connectedRelays': 'Connected through the relays · {n} other(s) (slower)',
+  'code.hideCode': 'Hide the code (keep the output)',
+  'code.showCode': 'Show the code',
+  'code.hiddenNote': 'code hidden',
+  'code.hideAll': 'Hide the code of every cell',
+  'code.showAll': 'Show the code of every cell',
 } as const;
 
 export type MessageKey = keyof typeof en;

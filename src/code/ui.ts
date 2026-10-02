@@ -21,7 +21,8 @@ export function decorateCells(root: HTMLElement): void {
       h(
         'span',
         { class: 'code-cell-bar', contenteditable: 'false' },
-        h('span', { class: 'code-cell-lang' }, LANG_LABEL[lang] ?? lang),
+        h('span', { class: 'code-cell-lang' }, LANG_LABEL[lang] ?? lang, cell.classList.contains('code-hidden') ? h('span', { class: 'code-cell-hidden-note' }, ` · ${t('code.hiddenNote')}`) : ''),
+        action('toggle-code', cell.classList.contains('code-hidden') ? '👁' : '🙈', t(cell.classList.contains('code-hidden') ? 'code.showCode' : 'code.hideCode')),
         action('run', '▶', t('code.run')),
         action('run-all', '⏩', t('code.runAll')),
         action('stop', '■', t('code.stop')),

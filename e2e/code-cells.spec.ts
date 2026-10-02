@@ -117,3 +117,22 @@ test('plots a matplotlib figure and stores it with the document (CODE-005)', asy
   expect(md).toMatch(/```text \{output\}\n1\.0\n```\n\n!\[Output\]\(data:image\/png;base64,[^)]+ "output"\)/);
   expect(errors).toEqual([]);
 });
+
+test('hides the code of a cell, its output staying, and keeps it hidden in the file (CODE-009)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'nb.md', '# Notes\n\n```python {run}\nprint(6 * 7)\n```\n\n```text {output}\n42\n```\n');
+  const cell = page.locator('.doc-page .code-cell');
+  await expect(cell.locator('.code-cell-source')).toBeVisible();
+  await cell.getByRole('button', { name: 'Hide the code (keep the output)' }).click();
+  await expect(cell.locator('.code-cell-source')).toBeHidden();
+  await expect(cell.locator('.code-cell-output')).toHaveText('42\n');
+  await expect(cell.locator('.code-cell-bar')).toContainText('code hidden');
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString('utf8');
+  expect(md).toContain('```python {run hide}\nprint(6 * 7)\n```');
+  // Every cell at once, from the View menu.
+  await page.getByRole('combobox', { name: 'View' }).selectOption({ label: 'Show the code of every cell' });
+  await expect(cell.locator('.code-cell-source')).toBeVisible();
+  await page.getByRole('combobox', { name: 'View' }).selectOption({ label: 'Hide the code of every cell' });
+  await expect(cell.locator('.code-cell-source')).toBeHidden();
+  expect(errors).toEqual([]);
+});
