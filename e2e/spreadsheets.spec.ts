@@ -100,3 +100,34 @@ test('formats cells: bold, colours, alignment, borders, kept in the file (SHEET-
   expect(styles).toContain('<fgColor rgb="FFFFFF00"/>');
   expect(styles).toContain('<alignment horizontal="center"/>');
 });
+
+test('filters the rows of a table by the values of a column (SHEET-018)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'class.csv', 'Name,Class,Score\nAlice,A,17\nBilal,B,9\nChloé,A,12\nDavid,,14\n', 'text/csv');
+  await page.locator('td[data-r="1"][data-c="0"]').click();
+  await page.getByRole('button', { name: 'Filter', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Filter', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Filter column B' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Show in “Class”' });
+  await expect(dialog.getByRole('checkbox')).toHaveCount(4);
+  await dialog.getByLabel('B', { exact: true }).uncheck();
+  await dialog.getByLabel('(Empty)').uncheck();
+  await dialog.getByRole('button', { name: 'Apply' }).click();
+  await expect(page.locator('td[data-r="2"]')).toHaveCount(0);
+  await expect(page.locator('td[data-r="4"]')).toHaveCount(0);
+  await expect(page.locator('th[data-row="3"]')).toBeVisible();
+  // The arrows skip the hidden rows.
+  await page.locator('td[data-r="1"][data-c="0"]').click();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('.name-box')).toHaveText('A4');
+  const xlsx = await saveAs(page, 'Excel workbook (.xlsx)');
+  const { unzipSync } = await import('fflate');
+  const sheet = new TextDecoder().decode(unzipSync(new Uint8Array(xlsx.data))['xl/worksheets/sheet1.xml']);
+  expect(sheet).toContain('<autoFilter ref="A1:C5">');
+  expect(sheet).toContain('<row r="3" hidden="1">');
+  // Showing everything again.
+  await page.getByRole('button', { name: 'Filter column B' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Show all' }).click();
+  await expect(page.locator('td[data-r="2"][data-c="0"]')).toHaveText('Bilal');
+  expect(errors).toEqual([]);
+});

@@ -920,6 +920,16 @@ export const en = {
   'pdf.pagesPerRow': 'Pages side by side',
   'pdf.onePage': '1 page',
   'pdf.nPages': '{n} pages',
+  'filter.button': 'Filter',
+  'filter.title': 'Filter: buttons in the headings of the data around the selection to choose the rows shown',
+  'filter.column': 'Filter column {name}',
+  'filter.titleColumn': 'Show in “{name}”',
+  'filter.search': 'Search the values',
+  'filter.all': '(Select all)',
+  'filter.empty': '(Empty)',
+  'filter.values': 'Values shown',
+  'filter.clear': 'Show all',
+  'filter.apply': 'Apply',
 } as const;
 
 export type MessageKey = keyof typeof en;

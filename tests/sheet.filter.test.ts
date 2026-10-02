@@ -64,3 +64,17 @@ describe('SHEET-018 autofilter', () => {
     expect(content).toContain('table:visibility="filter"');
   });
 });
+
+describe('SHEET-018 rows shown by the grid', async () => {
+  const { RowMap } = await import('../src/sheet/filter');
+  it('maps rows to indexes among the shown rows and back', () => {
+    const m = new RowMap([2, 3, 6]);
+    expect([0, 1, 2, 4, 5, 7, 8].map((r) => m.index(r))).toEqual([0, 1, 2, 2, 3, 4, 5]);
+    expect([0, 1, 2, 3, 4, 5].map((i) => m.rowAt(i))).toEqual([0, 1, 4, 5, 7, 8]);
+    expect(m.step(1, 1)).toBe(4);
+    expect(m.step(4, -1)).toBe(1);
+    expect(m.step(5, 1)).toBe(7);
+    expect(m.step(0, -3)).toBe(0);
+    expect(m.isHidden(3)).toBe(true);
+  });
+});

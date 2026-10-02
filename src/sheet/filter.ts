@@ -62,3 +62,47 @@ export function hiddenRows(wb: Workbook, si: number, calc: Calculator): Set<numb
   }
   return hidden;
 }
+
+/**
+ * Rows of the grid with the filtered ones left out: a row's index among the
+ * shown rows, and back (the grid lays rows out by index).
+ */
+export class RowMap {
+  private readonly set: Set<number>;
+
+  /** `hidden`: the hidden rows, in ascending order. */
+  constructor(private readonly hidden: number[] = []) {
+    this.set = new Set(hidden);
+  }
+
+  isHidden(row: number): boolean {
+    return this.set.has(row);
+  }
+
+  /** Index of a row among the shown rows (for a hidden row, the index of the next shown one). */
+  index(row: number): number {
+    let lo = 0;
+    let hi = this.hidden.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.hidden[mid]! < row) lo = mid + 1;
+      else hi = mid;
+    }
+    return row - lo;
+  }
+
+  /** The shown row at an index. */
+  rowAt(index: number): number {
+    let row = Math.max(0, index);
+    for (const h of this.hidden) {
+      if (h <= row) row++;
+      else break;
+    }
+    return row;
+  }
+
+  /** The shown row `steps` shown rows away (negative: up), never above row 0. */
+  step(row: number, steps: number): number {
+    return this.rowAt(Math.max(0, this.index(row) + steps));
+  }
+}

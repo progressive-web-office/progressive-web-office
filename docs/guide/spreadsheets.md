@@ -100,6 +100,20 @@ numbers), it is ticked as one and stays in place; untick it otherwise.
   its relative references follow its row, as when copying.
 - One <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the sort.
 
+## Filtering
+
+Put the active cell in a table whose first row holds the headings and click
+**⊻ Filter**: each heading gets a **▾** button. Click it to check the values
+to show in that column (a search field narrows the list; **(Empty)** stands
+for empty cells); the other rows of the table are hidden. Filters of several
+columns combine: a row is shown when it matches all of them. A filtered
+column's button is highlighted (**▼**). **Show all** clears the column's
+filter; **⊻ Filter** again removes the filter.
+
+The arrow keys skip the hidden rows. Values are compared as they are shown
+(with their number format). The filter and the rows it hides are kept in
+Excel and OpenDocument files.
+
 ## Charts
 
 1. Select the data — or just click inside a block of data: the whole block is

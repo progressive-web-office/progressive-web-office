@@ -28,8 +28,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   folding and search, built on CodeMirror. They are saved under their own
   name, keeping their line ends.
 - Pictures open in a viewer, fitted to the window or at their own size.
-- Autofilters are kept in Excel and OpenDocument spreadsheets: their range,
-  the values chosen in each column and the rows they hide.
+- Autofilter in spreadsheets: ▾ buttons in the headings of a table to choose
+  the values shown in each column; the filter and the rows it hides are kept
+  in Excel and OpenDocument files.
 
 ### Fixed
 

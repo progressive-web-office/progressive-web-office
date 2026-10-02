@@ -14,6 +14,7 @@ import { fillWithMath, typesetMath } from '../math/inline';
 import { partsWorkbook, workbookParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { addSheet, applyCellStyle, clearCellStyle, clearRange, copyRange, deleteCells, deleteSheet, guessHeader, insertCells, pasteText, renameSheet, sortRange, type Range } from './ops';
 import { chooseSort } from './sort-dialog';
+import { columnValues, displayText, hiddenRows, RowMap, setColumnFilter, toggleFilter } from './filter';
 
 const ROW_H = 24;
 const DEFAULT_W = 96;
@@ -65,6 +66,8 @@ export class SheetEditor implements EditorView {
   private si = 0;
   private anchor = { row: 0, col: 0 };
   private focusCell = { row: 0, col: 0 };
+  /** Rows hidden by the autofilter are left out of the layout (SHEET-018). */
+  private rows = new RowMap();
   private nRows = 200;
   private nCols = 26;
   private firstRow = 0;
@@ -287,6 +290,7 @@ export class SheetEditor implements EditorView {
     const head = h('tr', {}, h('th', { class: 'corner', 'aria-label': t('sheet.selectAll') }));
     const frozen = this.frozen();
     this.freezeButton.setAttribute('aria-pressed', String(!!this.wb.sheets[this.si]!.freeze));
+    this.filterButton.setAttribute('aria-pressed', String(!!this.wb.sheets[this.si]!.filter));
     for (let c = 0; c < this.nCols; c++) {
       colgroup.append(h('col', { style: `width: ${this.width(c)}px` }));
       const th = h('th', { class: 'colhead', 'data-col': String(c), scope: 'col' }, colName(c));
@@ -327,12 +331,16 @@ export class SheetEditor implements EditorView {
     const vh = this.viewport.clientHeight;
     const visible = vh > 0 ? Math.ceil(vh / ROW_H) : MIN_RENDER_ROWS;
     const frozen = this.frozen();
-    const first = Math.max(frozen.rows, Math.floor(this.viewport.scrollTop / ROW_H) - OVERSCAN);
-    const last = Math.min(this.nRows - 1, first + visible + OVERSCAN * 2);
+    if (force) this.rows = new RowMap([...hiddenRows(this.wb, this.si, this.calc)].sort((a, b) => a - b));
+    const rows_ = this.rows;
+    const firstIndex = Math.max(rows_.index(frozen.rows), Math.floor(this.viewport.scrollTop / ROW_H) - OVERSCAN);
+    const first = rows_.rowAt(firstIndex);
+    const last = Math.min(this.nRows - 1, rows_.rowAt(firstIndex + visible + OVERSCAN * 2));
     if (!force && first === this.firstRow && last === this.lastRow) return;
     this.firstRow = first;
     this.lastRow = last;
     const sheet = this.wb.sheets[this.si]!;
+    const filter = sheet.filter;
     const tbody = this.table.tBodies[0]!;
     let hasMath = false;
     const rows: HTMLTableRowElement[] = [];
@@ -352,15 +360,21 @@ export class SheetEditor implements EditorView {
           else if (isError(v)) td.classList.add('err');
           if (cell.style) applyLook(td, cell.style);
         }
+        if (filter && r === filter.range.r1 && c >= filter.range.c1 && c <= filter.range.c2) {
+          const on = !!filter.columns[c];
+          const b = h('button', { type: 'button', class: `filter-btn${on ? ' on' : ''}`, 'data-filter-col': String(c), 'aria-label': t('filter.column', { name: colName(c) }), 'aria-pressed': String(on), title: t('filter.column', { name: colName(c) }), tabindex: '-1' }, on ? '▼' : '▾');
+          td.classList.add('filter-head');
+          td.append(b);
+        }
         tr.append(td);
       }
       return tr;
     };
     // SHEET-017: frozen rows are always there, above the scrolling ones.
     for (let r = 0; r < frozen.rows; r++) rows.push(row(r));
-    rows.push(h('tr', { class: 'spacer', style: `height: ${(first - frozen.rows) * ROW_H}px`, 'aria-hidden': 'true' }));
-    for (let r = first; r <= last; r++) rows.push(row(r));
-    rows.push(h('tr', { class: 'spacer', style: `height: ${Math.max(0, this.nRows - 1 - last) * ROW_H}px`, 'aria-hidden': 'true' }));
+    rows.push(h('tr', { class: 'spacer', style: `height: ${(rows_.index(first) - rows_.index(frozen.rows)) * ROW_H}px`, 'aria-hidden': 'true' }));
+    for (let r = first; r <= last; r++) if (!rows_.isHidden(r)) rows.push(row(r));
+    rows.push(h('tr', { class: 'spacer', style: `height: ${Math.max(0, rows_.index(this.nRows) - 1 - rows_.index(last)) * ROW_H}px`, 'aria-hidden': 'true' }));
     tbody.replaceChildren(...rows);
     if (hasMath) void typesetMath(tbody);
     this.renderSelection();
@@ -432,7 +446,7 @@ export class SheetEditor implements EditorView {
   private cellPosition(row: number, col: number): { x: number; y: number } {
     let x = 48;
     for (let c = 0; c < col; c++) x += this.width(c);
-    return { x, y: (this.table.tHead?.offsetHeight || ROW_H) + row * ROW_H };
+    return { x, y: (this.table.tHead?.offsetHeight || ROW_H) + this.rows.index(row) * ROW_H };
   }
 
   private cellAt(x: number, y: number): { row: number; col: number } {
@@ -440,7 +454,7 @@ export class SheetEditor implements EditorView {
     let col = 0;
     let left = 48;
     while (left + this.width(col) / 2 < x && col < 16_000) left += this.width(col++);
-    return { row: Math.max(0, Math.round((y - head) / ROW_H)), col };
+    return { row: this.rows.rowAt(Math.max(0, Math.round((y - head) / ROW_H))), col };
   }
 
   private renderCharts(): void {
@@ -562,6 +576,29 @@ export class SheetEditor implements EditorView {
     this.changed(true);
   }
 
+  /** Turn the autofilter on for the data around the selection, or off (SHEET-018). */
+  private readonly filterButton = button(t('filter.button'), () => this.toggleAutoFilter(), { text: '⊻', title: t('filter.title') });
+
+  private toggleAutoFilter(): void {
+    const sheet = this.wb.sheets[this.si]!;
+    const range = this.dataRange();
+    if (!sheet.filter && range.r2 <= range.r1) return;
+    this.structural(() => toggleFilter(this.wb, this.si, range));
+    this.viewport.focus();
+  }
+
+  /** The values shown in a column of the filter. */
+  private async filterColumn(col: number): Promise<void> {
+    const filter = this.wb.sheets[this.si]!.filter;
+    if (!filter) return;
+    this.commitEdit();
+    const heading = displayText(this.wb, this.si, this.calc, filter.range.r1, col).trim();
+    const { chooseFilterValues } = await import('./filter-dialog');
+    const chosen = await chooseFilterValues(this.element, t('filter.titleColumn', { name: heading || colName(col) }), columnValues(this.wb, this.si, this.calc, col), filter.columns[col]);
+    if (chosen !== null) this.structural(() => setColumnFilter(this.wb, this.si, col, chosen));
+    this.viewport.focus();
+  }
+
   private readonly freezeButton = button(t('freeze.button'), () => this.toggleFreeze(), { text: '❄', title: t('freeze.title') });
 
   /** Sort the rows of the data around the selection by a column (SHEET-016). */
@@ -661,6 +698,7 @@ export class SheetEditor implements EditorView {
   private select(row: number, col: number, extend = false): void {
     row = Math.max(0, row);
     col = Math.max(0, col);
+    if (this.rows.isHidden(row)) row = this.rows.rowAt(this.rows.index(row));
     this.focusCell = { row, col };
     if (!extend) this.anchor = { row, col };
     if (row >= this.nRows - 10 || col >= this.nCols - 2) this.renderAll();
@@ -671,7 +709,7 @@ export class SheetEditor implements EditorView {
   private scrollIntoView(row: number, col: number): void {
     const vp = this.viewport;
     if (!vp.clientHeight) return;
-    const top = row * ROW_H;
+    const top = this.rows.index(row) * ROW_H;
     const headH = ROW_H;
     // SHEET-017: frozen rows and columns are always visible and cover the top and left.
     const frozen = this.frozen();
@@ -750,7 +788,7 @@ export class SheetEditor implements EditorView {
       e.preventDefault();
       this.commitEdit();
       const { row, col } = this.focusCell;
-      if (e.key === 'Enter') this.select(row + (e.shiftKey ? -1 : 1), col);
+      if (e.key === 'Enter') this.select(this.rows.step(row, e.shiftKey ? -1 : 1), col);
       else this.select(row, col + (e.shiftKey ? -1 : 1));
       this.viewport.focus();
     } else if (e.key === 'Escape') {
@@ -775,7 +813,7 @@ export class SheetEditor implements EditorView {
     const move = moves[e.key];
     if (move) {
       e.preventDefault();
-      this.select(row + move[0], col + move[1], e.shiftKey);
+      this.select(this.rows.step(row, move[0]), col + move[1], e.shiftKey);
       return;
     }
     if (mod) {
@@ -862,6 +900,7 @@ export class SheetEditor implements EditorView {
       act(t('sheet.autoSum'), 'Σ', () => this.autoSum()),
       act(t('sheet.insertChart'), '📊', () => void this.insertChart()),
       act(t('sort.button'), '⇅', () => void this.sort()),
+      this.filterButton,
       this.freezeButton,
     );
   }
@@ -994,6 +1033,13 @@ export class SheetEditor implements EditorView {
     this.viewport.addEventListener('mousedown', (e) => {
       const t = e.target as HTMLElement;
       if (t.classList.contains('cell-input')) return;
+      // SHEET-018: a column's filter button.
+      const filterBtn = t.closest<HTMLElement>('.filter-btn');
+      if (filterBtn) {
+        e.preventDefault();
+        void this.filterColumn(Number(filterBtn.dataset.filterCol));
+        return;
+      }
       const td = t.closest('td');
       if (td?.dataset.r) {
         e.preventDefault();
