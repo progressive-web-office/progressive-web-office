@@ -101,6 +101,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- A file renamed in the app kept its old name in the recent files and lost
+  its versions; the recent files now also keep the content saved last.
 - Tracked changes typed or deleted across a second boundary were split
   into several changes: they now join the neighbouring change of the same
   author.

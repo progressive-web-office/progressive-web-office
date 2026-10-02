@@ -92,6 +92,18 @@ export async function addRecent(file: File, format: DocumentFormat): Promise<voi
   for (const old of list.slice(MAX_RECENT)) await removeRecent(old.id);
 }
 
+/** FILE-026: the recent entries of a file renamed in the app follow its new name. */
+export async function renameRecent(oldName: string, newName: string): Promise<number> {
+  const all = (await request((await store('recent', 'readonly')).getAll())) as RecentRecord[];
+  const matching = all.filter((r) => r.name === oldName);
+  for (const r of matching) {
+    const os = await store('recent', 'readwrite');
+    await request(os.delete(r.id));
+    await request((await store('recent', 'readwrite')).put({ ...r, id: `${newName}:${r.format}`, name: newName }));
+  }
+  return matching.length;
+}
+
 export async function getRecent(id: string): Promise<File | undefined> {
   const rec = (await request((await store('recent', 'readonly')).get(id))) as RecentRecord | undefined;
   return rec ? new File([rec.data as BlobPart], rec.name, { type: rec.type }) : undefined;
@@ -214,6 +226,16 @@ export async function saveVersion(doc: string, name: string, format: DocumentFor
   await request(os.put({ id: `${doc}@${savedAt}`, doc, name, format, size: bytes.byteLength, savedAt, hash, data: bytes, ...(label ? { label } : {}) }));
   for (const old of all.slice(MAX_VERSIONS - 1)) await request((await store('versions', 'readwrite')).delete(old.id));
   return true;
+}
+
+/** FILE-026: the versions of a renamed or moved document follow it. */
+export async function moveVersions(fromDoc: string, toDoc: string, name: string): Promise<number> {
+  const all = (await request((await store('versions', 'readonly')).index('doc').getAll(fromDoc))) as (VersionEntry & { data: Uint8Array; hash: string })[];
+  for (const v of all) {
+    await request((await store('versions', 'readwrite')).delete(v.id));
+    await request((await store('versions', 'readwrite')).put({ ...v, id: `${toDoc}@${v.savedAt}`, doc: toDoc, name }));
+  }
+  return all.length;
 }
 
 export async function loadVersion(id: string): Promise<Uint8Array | undefined> {

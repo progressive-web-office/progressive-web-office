@@ -158,14 +158,22 @@ test('renames the open file with a click on its name, keeping the extension (FIL
   const download = page.waitForEvent('download');
   await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('CR TP 1.md');
+  // The recent files and the versions know it under its new name.
+  await page.getByRole('button', { name: 'History' }).click();
+  const history = page.getByRole('dialog', { name: /Versions/ });
+  await expect(history).toContainText('CR TP 1.md');
+  await page.keyboard.press('Escape');
   // Escape keeps the name.
   await page.getByRole('button', { name: 'Rename CR TP 1.md' }).click();
   await input.fill('other');
   await input.press('Escape');
   await expect(page.getByRole('button', { name: 'Rename CR TP 1.md' })).toBeVisible();
 
-  // A file of an archive is renamed in the archive.
   await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  const recent = page.getByRole('region', { name: 'Recent files' });
+  await expect(recent.getByRole('button', { name: /CR TP 1\.md/ }).first()).toBeVisible();
+  await expect(recent.getByRole('button', { name: /notes\.md/ })).toHaveCount(0);
+  // A file of an archive is renamed in the archive.
   await openFile(page, 'work.zip', Buffer.from(zipSync({ 'a/report.md': strToU8('# Report\n'), 'a/other.docx': strToU8('x') })), 'application/zip');
   const panel = page.getByRole('complementary', { name: 'Folder' });
   await panel.getByRole('button', { name: 'a', exact: true }).click();

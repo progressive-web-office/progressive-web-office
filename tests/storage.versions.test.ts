@@ -26,3 +26,16 @@ describe('FILE-025 local version history', () => {
     expect(Array.from((await loadVersion(list[0]!.id))!)).toEqual([MAX_VERSIONS + 4]);
   });
 });
+
+describe('FILE-026 the versions of a renamed file', () => {
+  it('follow it under its new key and name', async () => {
+    const { moveVersions } = await import('../src/storage/recent');
+    await saveVersion('file:notes.md', 'notes.md', 'md', new Uint8Array([1]));
+    await saveVersion('file:notes.md', 'notes.md', 'md', new Uint8Array([2]), 'draft');
+    expect(await moveVersions('file:notes.md', 'file:CR.md', 'CR.md')).toBe(2);
+    expect(await listVersions('file:notes.md')).toEqual([]);
+    const moved = await listVersions('file:CR.md');
+    expect(moved.map((v) => [v.name, v.label ?? ''])).toEqual([['CR.md', 'draft'], ['CR.md', '']]);
+    expect(Array.from((await loadVersion(moved[0]!.id))!)).toEqual([2]);
+  });
+});

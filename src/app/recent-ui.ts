@@ -1,7 +1,7 @@
 /** Recent files on the start screen (FILE-008, FILE-009). */
 import { getLocale, t } from '../i18n';
 import { formatLabel } from '../core/format';
-import { addRecent, clearRecent, getRecent, listRecent, removeRecent, type RecentEntry } from '../storage/recent';
+import { addRecent, clearRecent, getRecent, listRecent, removeRecent, renameRecent, type RecentEntry } from '../storage/recent';
 import type { App } from './app';
 import { button, h } from './dom';
 
@@ -56,5 +56,7 @@ async function render(app: App, container: HTMLElement): Promise<void> {
 
 export function installRecent(app: App): void {
   app.onFileOpened = (file, format) => void addRecent(file, format).catch(() => undefined);
+  app.onFileSaved = (file, format) => void addRecent(file, format).catch(() => undefined);
+  app.onFileRenamed = (oldName, newName) => renameRecent(oldName, newName).then(() => undefined, () => undefined);
   app.renderStart = (container) => void render(app, container);
 }

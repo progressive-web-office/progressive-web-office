@@ -442,6 +442,10 @@ export class App {
 
   /** Hook used by the recent-files feature. */
   onFileOpened?: (file: File, format: DocumentFormat) => void;
+  /** A file saved on its own: the recent files keep what was saved (FILE-008). */
+  onFileSaved?: (file: File, format: DocumentFormat) => void;
+  /** A file renamed in the app (FILE-026). */
+  onFileRenamed?: (oldName: string, newName: string) => Promise<void> | void;
 
   async newDocument(kind: Exclude<DocumentKind, 'pdf' | 'file'>): Promise<void> {
     if (!this.confirmDiscard()) return;
@@ -536,6 +540,7 @@ export class App {
         doc.name = name;
         doc.format = target;
         this.keepVersion(doc, bytes);
+        this.onFileSaved?.(new File([bytes as BlobPart], name, { type: MIME_TYPES[target] }), target);
         this.dirty = false;
         this.discardDraft();
         this.renderHeader();
@@ -1296,6 +1301,8 @@ export class App {
       this.showError(t('file.renameInvalid'));
       return this.renderHeader();
     }
+    const oldName = doc.name;
+    const oldKey = this.versionKey(doc);
     if (doc.folderPath && this.folder) {
       const provider = this.folder.provider;
       if (!provider.capabilities.write) {
@@ -1317,7 +1324,12 @@ export class App {
     } else {
       doc.name = name;
       this.renderHeader();
+      // The recent files list it under its new name.
+      await this.onFileRenamed?.(oldName, name);
     }
+    // Its versions follow it.
+    const newKey = this.versionKey(doc);
+    if (newKey !== oldKey) await import('../storage/recent').then(({ moveVersions }) => moveVersions(oldKey, newKey, name)).catch(() => undefined);
     this.showNotice(t('file.renamed', { name }));
   }
 
@@ -1343,8 +1355,12 @@ export class App {
       delete doc.folderPath;
       this.dirty = true;
     } else if (change.to) {
+      const oldKey = this.versionKey(doc);
       doc.folderPath = change.to + doc.folderPath.slice(change.path.length);
       doc.name = basename(doc.folderPath);
+      // FILE-026: its versions follow it.
+      const newKey = this.versionKey(doc);
+      await import('../storage/recent').then(({ moveVersions }) => moveVersions(oldKey, newKey, doc.name)).catch(() => undefined);
     }
     this.folder?.setCurrent(doc.folderPath);
     this.renderHeader();

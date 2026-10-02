@@ -83,7 +83,9 @@ cancels.
 
 - A file of the open [folder or archive](./folders) is renamed there; the
   folder panel, and the links of other notes to it, follow.
-- Another file takes the new name the next time it is saved.
+- Another file takes the new name the next time it is saved; the recent
+  files list it under its new name.
+- Its [versions](#versions) follow it.
 - A file of a Git repository, Grist or a Nextcloud / WebDAV server keeps the
   name it has there.
 

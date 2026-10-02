@@ -54,3 +54,16 @@ describe('FILE-011 drafts', () => {
     expect(await loadDraft()).toBeUndefined();
   });
 });
+
+describe('FILE-026 a renamed file in the recent files', () => {
+  it('keeps its entry under the new name, with the content saved last', async () => {
+    const { renameRecent } = await import('../src/storage/recent');
+    await addRecent(file('notes.md', 'old'), 'md');
+    await addRecent(file('other.md'), 'md');
+    expect(await renameRecent('notes.md', 'CR TP 1.md')).toBe(1);
+    expect((await listRecent()).map((e) => e.name).sort()).toEqual(['CR TP 1.md', 'other.md']);
+    expect(await (await getRecent('CR TP 1.md:md'))!.text()).toBe('old');
+    expect(await getRecent('notes.md:md')).toBeUndefined();
+    expect(await renameRecent('missing.md', 'x.md')).toBe(0);
+  });
+});
