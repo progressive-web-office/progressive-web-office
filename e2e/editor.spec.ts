@@ -114,12 +114,14 @@ test('character formatting and paragraph spacing reach the file (DOC-020)', asyn
   await page.keyboard.type('Titre rouge');
   await page.keyboard.press('Shift+Home');
   await page.getByLabel('Font', { exact: true }).selectOption('Georgia');
-  await page.getByLabel('Font size').selectOption('18');
+  // UI-016: any size can be typed, beyond the suggested ones.
+  await page.getByLabel('Font size').fill('150');
+  await page.getByLabel('Font size').press('Enter');
   await page.getByRole('button', { name: 'Text colour' }).click(); // applies the default red
   await page.getByRole('button', { name: 'Highlight colour' }).click();
   const span = editor.locator('span[data-font="Georgia"]');
   await expect(span).toHaveText('Titre rouge');
-  await expect(editor.locator('[data-size="18"]')).toHaveText('Titre rouge');
+  await expect(editor.locator('[data-size="150"]')).toHaveText('Titre rouge');
   await expect(editor.locator('mark[data-highlight="#ffff00"]')).toHaveCount(1);
   // The toolbar shows the formatting at the cursor.
   await expect(page.getByLabel('Font', { exact: true })).toHaveValue('Georgia');
@@ -137,7 +139,7 @@ test('character formatting and paragraph spacing reach the file (DOC-020)', asyn
   const odt = await saveAs(page, 'OpenDocument text (.odt)');
   const content = strFromU8(unzipSync(new Uint8Array(odt.data))['content.xml']!);
   expect(content).toContain('fo:font-family="Georgia"');
-  expect(content).toContain('fo:font-size="18pt"');
+  expect(content).toContain('fo:font-size="150pt"');
   expect(content).toContain('fo:color="#c00000"');
   expect(content).toContain('fo:background-color="#ffff00"');
   expect(content).toContain('fo:margin-left="28.3pt"');

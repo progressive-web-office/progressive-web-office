@@ -3,6 +3,7 @@ import { beforeMutation, slideTools, type AgentTool } from '../ai/tools';
 import { contentHeightPx, contentWidthPx, mmToPx, type PrintSettings } from '../print/settings';
 import { t } from '../i18n';
 import { button, h } from '../app/dom';
+import { sizeInput } from '../app/size-input';
 import type { EditorView, ViewContext } from '../app/views';
 import { domToBlocks } from '../document/html';
 import { bytesToBase64 } from '../document/markdown-writer';
@@ -15,7 +16,7 @@ import { typesetMath } from '../math/inline';
 
 const THUMB_W = 150;
 const MAX_UNDO = 100;
-const FONT_SIZES = [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 54, 66, 80];
+const FONT_SIZES = [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 54, 66, 80, 96, 120, 160, 200, 300];
 
 export class SlideEditor implements EditorView {
   readonly element: HTMLElement;
@@ -23,7 +24,10 @@ export class SlideEditor implements EditorView {
   private readonly stageWrap = h('div', { class: 'stage-wrap', tabindex: '0', 'aria-label': t('slides.editor') });
   private readonly stage = h('div', { class: 'stage' });
   private readonly notes = h('textarea', { class: 'notes', 'aria-label': t('slides.notes'), placeholder: t('slides.notesPlaceholder'), rows: '3' });
-  private readonly sizeSelect = h('select', { 'aria-label': t('slides.fontSize'), title: t('slides.fontSize') }, ...FONT_SIZES.map((s) => h('option', { value: String(s) }, `${s} pt`)));
+  /** UI-016: any size can be typed; the selection being edited is kept while typing it. */
+  private readonly sizeSelect = sizeInput({ label: t('slides.fontSize'), suggestions: FONT_SIZES, onChange: (size) => this.setFontSize(size) });
+  private savedRange: Range | null = null;
+  private untrack: (() => void) | undefined;
   private readonly fillInput = h('input', { type: 'color', 'aria-label': t('slides.fill'), title: t('slides.fill') });
   private readonly textColor = h('input', { type: 'color', 'aria-label': t('slides.textColor'), title: t('slides.textColor'), value: '#000000' });
   private current = 0;
@@ -244,7 +248,7 @@ export class SlideEditor implements EditorView {
     }
     const shape = this.slide().shapes.find((s) => s.id === id);
     if (shape) {
-      this.sizeSelect.value = String(shape.fontSize);
+      this.sizeSelect.set(shape.fontSize);
       this.fillInput.value = shape.fill ?? '#ffffff';
     }
   }
@@ -321,7 +325,18 @@ export class SlideEditor implements EditorView {
     el.classList.add('editing');
     this.snapshot();
     this.editing = { shape, content };
-    content.addEventListener('focusout', () => this.finishEditing(), { once: true });
+    // Remember the selected text, which is lost when the size field takes the focus (UI-016).
+    this.savedRange = null;
+    const track = (): void => this.saveRange();
+    document.addEventListener('selectionchange', track);
+    this.untrack = () => document.removeEventListener('selectionchange', track);
+    const onOut = (e: FocusEvent): void => {
+      // Typing a size for the selected text keeps the editing going (UI-016).
+      if (e.relatedTarget instanceof Node && this.sizeSelect.element.contains(e.relatedTarget)) return;
+      content.removeEventListener('focusout', onOut);
+      if (this.editing?.content === content) this.finishEditing();
+    };
+    content.addEventListener('focusout', onOut);
     content.focus();
   }
 
@@ -329,6 +344,9 @@ export class SlideEditor implements EditorView {
     const editing = this.editing;
     if (!editing) return;
     this.editing = null;
+    this.untrack?.();
+    this.untrack = undefined;
+    this.savedRange = null;
     // Parse the children only: the container carries the shape's default font size.
     const frag = document.createDocumentFragment();
     frag.append(...Array.from(editing.content.childNodes).map((n) => n.cloneNode(true)));
@@ -502,10 +520,21 @@ export class SlideEditor implements EditorView {
     this.select(shape.id);
   }
 
+  private saveRange(): void {
+    const sel = window.getSelection();
+    const range = sel && sel.rangeCount ? sel.getRangeAt(0) : null;
+    if (range && this.editing?.content.contains(range.commonAncestorContainer)) this.savedRange = range.cloneRange();
+  }
+
   private setFontSize(size: number): void {
     if (this.editing) {
       const content = this.editing.content;
       content.focus();
+      if (this.savedRange) {
+        const sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(this.savedRange);
+      }
       document.execCommand('fontSize', false, '7');
       for (const font of Array.from(content.querySelectorAll('font[size="7"]'))) {
         const span = h('span', { style: `font-size: ${size}pt` });
@@ -553,7 +582,9 @@ export class SlideEditor implements EditorView {
     const b = (label: string, text: string, fn: () => void) => button(label, fn, { text, title: label });
     const w = this.pres.width;
     const hh = this.pres.height;
-    this.sizeSelect.addEventListener('change', () => this.setFontSize(Number(this.sizeSelect.value)));
+    this.sizeSelect.element.addEventListener('focusout', (e) => {
+      if (this.editing && !(e.relatedTarget instanceof Node && this.editing.content.contains(e.relatedTarget))) this.finishEditing();
+    });
     this.fillInput.addEventListener('change', () => this.setFill(this.fillInput.value));
     this.textColor.addEventListener('change', () => this.setTextColor(this.textColor.value));
     return h(
@@ -575,7 +606,7 @@ export class SlideEditor implements EditorView {
       b(t('common.bold'), 'B', () => this.format('bold')),
       b(t('common.italic'), 'I', () => this.format('italic')),
       b(t('common.underline'), 'U', () => this.format('underline')),
-      this.sizeSelect,
+      this.sizeSelect.element,
       this.textColor,
       b(t('common.alignLeft'), '⇤', () => this.format('justifyLeft')),
       b(t('common.alignCenter'), '↔', () => this.format('justifyCenter')),

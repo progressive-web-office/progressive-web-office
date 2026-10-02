@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Any font size can be typed (1 to 999 pt) in text documents and
+  presentations; the usual sizes are suggested, and the arrow keys step
+  through them and beyond (by 20 % past the largest). In a presentation, a
+  size typed while editing a text box applies to the selected text.
 - QRShare handoff protocol version 2, when QRShare announces it: the app
   can ask for a send mode (animated QR codes without the choice screen) and
   get a received file back in its own window, from QRShare's origin only.

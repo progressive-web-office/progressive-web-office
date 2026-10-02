@@ -17,6 +17,7 @@ import { documentTools, type AgentTool } from '../ai/tools';
 import type { PrintSettings } from '../print/settings';
 import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
+import { sizeInput, type SizeInput } from '../app/size-input';
 import type { EditorView, ViewContext } from '../app/views';
 import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
@@ -48,7 +49,7 @@ function installListCss(): void {
 
 /** Fonts offered in the toolbar: common names, rendered with metric-compatible fallbacks when missing. */
 const FONTS = ['Arial', 'Calibri', 'Cambria', 'Georgia', 'Liberation Sans', 'Liberation Serif', 'Times New Roman', 'Verdana', 'OpenDyslexic'];
-const SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 60, 72];
+const SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 60, 72, 96, 120, 144];
 
 const STYLES: [ParagraphStyle, MessageKey][] = [
   ['normal', 'doc.style.normal'],
@@ -70,7 +71,7 @@ export class DocumentEditor implements EditorView {
   readonly view: PmView;
   private readonly styleSelect: HTMLSelectElement;
   private readonly fontSelect: HTMLSelectElement;
-  private readonly sizeSelect: HTMLSelectElement;
+  private readonly sizeSelect: SizeInput;
   private readonly lineSelect: HTMLSelectElement;
   private readonly markButtons: [string, HTMLButtonElement][] = [];
   private readonly stateButtons: [() => boolean, HTMLButtonElement][] = [];
@@ -107,11 +108,14 @@ export class DocumentEditor implements EditorView {
       this.command(setMarkValue(schema.marks.font!, v ? { family: v } : null));
       this.refocus();
     });
-    this.sizeSelect = h('select', { 'aria-label': t('fmt.size'), title: t('fmt.size'), class: 'size-select' }, h('option', { value: '' }, '—'), ...SIZES.map((n) => h('option', { value: String(n) }, String(n))));
-    this.sizeSelect.addEventListener('change', () => {
-      const v = Number(this.sizeSelect.value);
-      this.command(setMarkValue(schema.marks.size!, v ? { pt: v } : null));
-      this.refocus();
+    // UI-016: any size can be typed, the usual ones are suggested.
+    this.sizeSelect = sizeInput({
+      label: t('fmt.size'),
+      suggestions: SIZES,
+      onChange: (pt) => {
+        this.command(setMarkValue(schema.marks.size!, { pt }));
+        this.refocus();
+      },
     });
     this.lineSelect = h('select', { 'aria-label': t('para.lineSpacing'), title: t('para.lineSpacing'), class: 'size-select' }, h('option', { value: '' }, '↕'), ...LINE_SPACINGS.map((n) => h('option', { value: String(n) }, `↕ ${n}`)));
     this.lineSelect.addEventListener('change', () => {
@@ -687,7 +691,7 @@ export class DocumentEditor implements EditorView {
       mark('code', t('doc.inlineCode'), '</>', 'Ctrl+`'),
       h('span', { class: 'sep' }),
       this.fontSelect,
-      this.sizeSelect,
+      this.sizeSelect.element,
       this.colorControl(t('fmt.color'), 'A', '#c00000', (hex) => this.command(setMarkValue(schema.marks.color!, hex ? { hex } : null)), t('fmt.automatic')),
       this.colorControl(t('fmt.highlight'), '🖍', '#ffff00', (hex) => this.command(setMarkValue(schema.marks.highlight!, hex ? { hex } : null)), t('fmt.noHighlight')),
       act(t('fmt.clear'), '⌫', () => this.command(clearFormatting), `${t('fmt.clear')} (Ctrl+Space)`),
@@ -776,8 +780,7 @@ export class DocumentEditor implements EditorView {
     if (font && ![...this.fontSelect.options].some((o) => o.value === font)) this.fontSelect.append(h('option', { value: font }, font));
     this.fontSelect.value = font;
     const size = markValue(state, schema.marks.size!, 'pt') as number | undefined;
-    if (size && ![...this.sizeSelect.options].some((o) => o.value === String(size))) this.sizeSelect.append(h('option', { value: String(size) }, String(size)));
-    this.sizeSelect.value = size ? String(size) : '';
+    this.sizeSelect.set(size);
     const line = paragraphAttr(state, 'lineHeight') as number | null | undefined;
     if (line && ![...this.lineSelect.options].some((o) => o.value === String(line))) this.lineSelect.append(h('option', { value: String(line) }, `↕ ${line}`));
     this.lineSelect.value = line ? String(line) : '';

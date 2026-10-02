@@ -17,7 +17,7 @@ and any ZIP archive of Markdown files.
 | Bold / italic / underline | **B** *I* U | <kbd>Ctrl</kbd>+<kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd> |
 | Strikethrough | S | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> |
 | Inline code | `</>` | <kbd>Ctrl</kbd>+<kbd>`</kbd> |
-| Font and size | *Default ▾* *— ▾* | |
+| Font and size | *Default ▾* and the size field: pick a size or type any one from 1 to 999 pt, then <kbd>Enter</kbd> | <kbd>↑</kbd> / <kbd>↓</kbd> in the size field |
 | Text colour / highlight | **A** 🖍 (the swatch chooses the colour, × removes it) | |
 | Clear formatting | ⌫ | <kbd>Ctrl</kbd>+<kbd>Space</kbd> |
 | Indent / outdent | ⇢ ⇠ | <kbd>Ctrl</kbd>+<kbd>]</kbd> / <kbd>Ctrl</kbd>+<kbd>[</kbd> |

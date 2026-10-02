@@ -662,6 +662,7 @@ button.qr-zoom img { display: block; margin: 0; }
 /* Character formatting controls (DOC-020) */
 .toolbar .font-select { max-width: 9.5rem; }
 .toolbar .size-select { width: 4.5rem; }
+.toolbar .size-input { width: 4.5rem; }
 .color-control { display: inline-flex; align-items: stretch; }
 .color-control button.color-apply { border-top-right-radius: 0; border-bottom-right-radius: 0; box-shadow: inset 0 -4px 0 var(--swatch, transparent); }
 .color-control input[type='color'] { width: 22px; min-height: 32px; padding: 0 2px; border: 1px solid var(--border); border-left: 0; background: var(--surface); cursor: pointer; }

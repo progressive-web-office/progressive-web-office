@@ -33,6 +33,10 @@ Presentation** (`.odp`) files.
   order; the colour picker sets its fill colour.
 - **B / I / U**, font size, text colour, alignment and bullets apply to the
   selected text while editing, or to the whole shape otherwise.
+- The font size field suggests the usual sizes, up to 300 pt, and takes
+  any size from 1 to 999 pt: type it and press <kbd>Enter</kbd>.
+  <kbd>↑</kbd> / <kbd>↓</kbd> step to the next size, by 20 % past the
+  largest one.
 - <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> undo and redo.
 
 ## Slideshow
