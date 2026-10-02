@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- QRShare handoff protocol version 2, when QRShare announces it: the app
+  can ask for a send mode (animated QR codes without the choice screen) and
+  get a received file back in its own window, from QRShare's origin only.
+- A document identifier (UUID) kept in DOCX (`dc:identifier`), ODT (a
+  user-defined property) and Markdown front matter (`identifier`), for the
+  offline synchronisation of a document between devices. It is not shown in
+  the properties dialog.
 - Documents that are not small text are handed to QRShare inside the browser
   (QRShare app handoff protocol), without a download; QRShare can hand received
   files back to Progressive Web Office, which accepts them only from the
