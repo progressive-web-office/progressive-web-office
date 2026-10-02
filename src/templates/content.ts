@@ -487,6 +487,15 @@ export const LABELS = {
     budget: { sheet: 'Budget', item: 'Item', months: ['January', 'February', 'March'], total: 'Total', income: 'Income', salary: 'Salary', other: 'Other income', expenses: 'Expenses', rent: 'Rent', food: 'Food', transport: 'Transport', leisure: 'Leisure', balance: 'Balance', chart: 'Expenses by month' },
     grades: { sheet: 'Grades', student: 'Student', tests: ['Test 1', 'Test 2', 'Test 3'], average: 'Average', mention: 'Result', mentions: ['Excellent', 'Very good', 'Good', 'Pass', 'Below'], classAverage: 'Class average', passed: 'Passed', students: ['Alice', 'Bilal', 'Chloé', 'David', 'Emma', 'Farid'] },
     invoice: { sheet: 'Invoice', title: 'INVOICE', number: 'No.', date: 'Date', client: 'Client', description: 'Description', qty: 'Qty', price: 'Unit price', amount: 'Amount', items: ['Design work (hours)', 'Printing', 'Delivery'], subtotal: 'Subtotal', tax: 'VAT', total: 'Total' },
+    signs: {
+      title: 'Race signs',
+      event: 'Village run · 12 October',
+      start: 'START',
+      finish: 'FINISH',
+      water: 'WATER',
+      km: 'km',
+      notes: 'Print one sign per page (Print, 1 slide per page), then laminate. Change the texts and colours as needed; the orientation (portrait or landscape) is next to the slide size.',
+    },
     talk: {
       title: 'Title of the talk',
       subtitle: 'Speaker · Event · Date',
@@ -502,6 +511,15 @@ export const LABELS = {
     budget: { sheet: 'Budget', item: 'Poste', months: ['Janvier', 'Février', 'Mars'], total: 'Total', income: 'Revenus', salary: 'Salaire', other: 'Autres revenus', expenses: 'Dépenses', rent: 'Loyer', food: 'Alimentation', transport: 'Transport', leisure: 'Loisirs', balance: 'Solde', chart: 'Dépenses par mois' },
     grades: { sheet: 'Notes', student: 'Élève', tests: ['Devoir 1', 'Devoir 2', 'Devoir 3'], average: 'Moyenne', mention: 'Mention', mentions: ['Très bien', 'Bien', 'Assez bien', 'Passable', 'Insuffisant'], classAverage: 'Moyenne de la classe', passed: 'Moyenne ≥ 10', students: ['Alice', 'Bilal', 'Chloé', 'David', 'Emma', 'Farid'] },
     invoice: { sheet: 'Facture', title: 'FACTURE', number: 'N°', date: 'Date', client: 'Client', description: 'Désignation', qty: 'Qté', price: 'Prix unitaire', amount: 'Montant', items: ['Conception (heures)', 'Impression', 'Livraison'], subtotal: 'Total HT', tax: 'TVA', total: 'Total TTC' },
+    signs: {
+      title: 'Panneaux de course',
+      event: 'Course des trois villages · 12 octobre',
+      start: 'DÉPART',
+      finish: 'ARRIVÉE',
+      water: 'RAVITO',
+      km: 'km',
+      notes: 'Imprimez un panneau par page (Imprimer, 1 diapositive par page), puis plastifiez. Changez les textes et les couleurs au besoin ; l’orientation (portrait ou paysage) se règle à côté du format des diapositives.',
+    },
     talk: {
       title: 'Titre de la présentation',
       subtitle: 'Orateur · Événement · Date',

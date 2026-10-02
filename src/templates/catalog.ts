@@ -6,7 +6,7 @@ import type { MessageKey } from '../i18n';
 import { readMarkdown } from '../document/markdown-reader';
 import { isTextRun, type Paragraph, type RichDocument } from '../document/model';
 import { getCell, newWorkbook, setInput, type Workbook } from '../sheet/model';
-import { contentSlide, DEFAULT_SIZE, titleSlide, type Presentation, type Slide } from '../slides/model';
+import { contentSlide, DEFAULT_SIZE, textShape, titleSlide, type Presentation, type Slide } from '../slides/model';
 import { DOCUMENT_TEXTS, LABELS, type DocumentTexts, type TemplateLang } from './content';
 
 export type Built = { kind: 'document'; doc: RichDocument } | { kind: 'spreadsheet'; wb: Workbook } | { kind: 'presentation'; pres: Presentation };
@@ -144,6 +144,72 @@ function invoice(lang: TemplateLang): Workbook {
   return wb;
 }
 
+/** A4 landscape at 96 dpi: signs are printed one per page. */
+const A4_LANDSCAPE = { width: 1123, height: 794 };
+
+/** Width in em of a character in a bold sans-serif font, roughly (wide letters, capitals, digits, the rest). */
+function charWidth(c: string): number {
+  if (/[WM]/.test(c)) return 1.0;
+  if (/[A-Z]|[À-Þ]/.test(c)) return 0.78;
+  if (/[0-9]/.test(c)) return 0.7;
+  if (c === ' ') return 0.35;
+  if (/[a-z]|[ß-ÿ]/.test(c)) return 0.64;
+  return 0.9;
+}
+
+/** The largest font size (points) for which `text` fits in a box, on one line. */
+export function fitFontSize(text: string, boxWidth: number, boxHeight: number): number {
+  const ems = [...text].reduce((n, c) => n + charWidth(c), 0) || 1;
+  // A line is about 1.2 em high; keep 8 % to spare for the fonts that are wider.
+  const px = Math.min(boxWidth / ems, boxHeight / 1.2) * 0.92;
+  return Math.floor(px * 0.75);
+}
+
+/** Race signs (FILE-018): one big word, arrow or distance per page, in high-contrast colours. */
+function raceSigns(lang: TemplateLang): Presentation {
+  const L = LABELS[lang].signs;
+  const { width, height } = A4_LANDSCAPE;
+  const margin = 40;
+  const sign = (text: string, background: string, color: string, caption?: string): Slide => {
+    const boxH = caption ? height * 0.72 : height - 2 * margin;
+    const big = textShape(text, {
+      x: margin,
+      y: margin,
+      width: width - 2 * margin,
+      height: boxH,
+      anchor: 'middle',
+      fontSize: fitFontSize(text, width - 2 * margin, boxH),
+      paragraphs: [{ type: 'paragraph', style: 'normal', align: 'center', runs: [{ text, bold: true, color }] }],
+    });
+    const shapes = [big];
+    if (caption) {
+      shapes.push(
+        textShape(caption, {
+          x: margin,
+          y: margin + boxH,
+          width: width - 2 * margin,
+          height: height - boxH - 2 * margin,
+          anchor: 'middle',
+          fontSize: 32,
+          paragraphs: [{ type: 'paragraph', style: 'normal', align: 'center', runs: [{ text: caption, color }] }],
+        }),
+      );
+    }
+    return { shapes, background, notes: L.notes };
+  };
+  const slides: Slide[] = [
+    sign(L.start, '#1b7f3b', '#ffffff', L.event),
+    sign('→', '#ffd400', '#000000'),
+    sign('←', '#ffd400', '#000000'),
+    sign('↑', '#ffd400', '#000000'),
+    sign(`1 ${L.km}`, '#ffffff', '#000000', L.event),
+    sign(`2 ${L.km}`, '#ffffff', '#000000', L.event),
+    sign(L.water, '#0b5cad', '#ffffff', L.event),
+    sign(L.finish, '#c4161c', '#ffffff', L.event),
+  ];
+  return { ...A4_LANDSCAPE, slides, resources: new Map(), meta: { title: L.title } };
+}
+
 function talk(lang: TemplateLang): Presentation {
   const L = LABELS[lang].talk;
   const first = titleSlide();
@@ -169,5 +235,6 @@ export const TEMPLATES: Template[] = [
   { id: 'grades', kind: 'spreadsheet', icon: '🎓', name: 'tpl.grades', description: 'tpl.gradesDesc', build: (lang) => ({ kind: 'spreadsheet', wb: grades(lang) }) },
   { id: 'invoice', kind: 'spreadsheet', icon: '🧾', name: 'tpl.invoice', description: 'tpl.invoiceDesc', build: (lang) => ({ kind: 'spreadsheet', wb: invoice(lang) }) },
   { id: 'talk', kind: 'presentation', icon: '🎤', name: 'tpl.talk', description: 'tpl.talkDesc', build: (lang) => ({ kind: 'presentation', pres: talk(lang) }) },
+  { id: 'race-signs', kind: 'presentation', icon: '🏁', name: 'tpl.signs', description: 'tpl.signsDesc', build: (lang) => ({ kind: 'presentation', pres: raceSigns(lang) }) },
   { id: 'tour', kind: 'document', example: true, icon: '🧭', name: 'tpl.tour', description: 'tpl.tourDesc', build: documentFrom('tour') },
 ];
