@@ -823,6 +823,16 @@ export const en = {
   'about.dependencies': 'Components',
   'about.dependenciesCount': 'Open-source components ({n})',
   'about.component': 'Component',
+  'sort.button': 'Sort…',
+  'sort.title': 'Sort',
+  'sort.range': 'Rows of {range}',
+  'sort.column': 'Sort by',
+  'sort.columnName': 'Column {name}',
+  'sort.order': 'Order',
+  'sort.ascending': 'Ascending (A to Z, 0 to 9)',
+  'sort.descending': 'Descending (Z to A, 9 to 0)',
+  'sort.header': 'The first row is a header (it stays in place)',
+  'sort.apply': 'Sort',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -1,8 +1,8 @@
 /** Structural workbook operations (SHEET-010, SHEET-011, SHEET-013). */
 import { cellKey, parseKey } from './address';
 import { formatValue } from './number-format';
-import { shiftFormula, tokenize, refText, type RefToken } from './formula';
-import { parseInput, newSheet, type Cell, type Workbook } from './model';
+import { shiftFormula, tokenize, refText, translateFormula, type RefToken } from './formula';
+import { isError, parseInput, newSheet, type Cell, type Value, type Workbook } from './model';
 import type { Calculator } from './engine';
 
 export interface Range {
@@ -157,4 +157,69 @@ export function clearRange(wb: Workbook, si: number, range: Range): void {
     const [r, c] = parseKey(key);
     if (r >= range.r1 && r <= range.r2 && c >= range.c1 && c <= range.c2) sheet.cells.delete(key);
   }
+}
+
+export interface SortOptions {
+  /** Column (absolute index) holding the sort key. */
+  col: number;
+  descending: boolean;
+  /** The first row of the range is a header and stays in place. */
+  header: boolean;
+}
+
+const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
+const blank = (v: Value): boolean => v === null || v === '';
+/** Numbers, then text, then booleans, then errors (empty cells are handled apart). */
+const kind = (v: Value): number => (typeof v === 'number' ? 0 : typeof v === 'string' ? 1 : typeof v === 'boolean' ? 2 : 3);
+
+function compareValues(a: Value, b: Value): number {
+  const ka = kind(a);
+  const kb = kind(b);
+  if (ka !== kb) return ka - kb;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  if (typeof a === 'string' && typeof b === 'string') return collator.compare(a, b);
+  if (typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b);
+  return isError(a) && isError(b) ? a.error.localeCompare(b.error) : 0;
+}
+
+/**
+ * Sort the rows of a range by the computed values of one column (SHEET-016).
+ * Rows move as a whole within the range; their formulas are translated like
+ * a copy. The sort is stable and empty keys always go last.
+ */
+export function sortRange(wb: Workbook, si: number, calc: Calculator, range: Range, opts: SortOptions): void {
+  const sheet = wb.sheets[si]!;
+  const first = range.r1 + (opts.header ? 1 : 0);
+  const rows: { from: number; key: Value; cells: (Cell | undefined)[] }[] = [];
+  for (let r = first; r <= range.r2; r++) {
+    const cells: (Cell | undefined)[] = [];
+    for (let c = range.c1; c <= range.c2; c++) cells.push(sheet.cells.get(cellKey(r, c)));
+    rows.push({ from: r, key: sheet.cells.has(cellKey(r, opts.col)) ? calc.value(si, [r, opts.col]) : null, cells });
+  }
+  const dir = opts.descending ? -1 : 1;
+  rows.sort((a, b) => (blank(a.key) || blank(b.key) ? Number(blank(a.key)) - Number(blank(b.key)) : dir * compareValues(a.key, b.key)));
+  rows.forEach((row, i) => {
+    const r = first + i;
+    row.cells.forEach((cell, j) => {
+      const key = cellKey(r, range.c1 + j);
+      if (!cell) return void sheet.cells.delete(key);
+      sheet.cells.set(key, cell.formula !== undefined && r !== row.from ? { ...cell, formula: translateFormula(cell.formula, r - row.from, 0) } : cell);
+    });
+  });
+}
+
+/** Whether the first row of a range looks like a header: text above columns holding something else. */
+export function guessHeader(wb: Workbook, si: number, calc: Calculator, range: Range): boolean {
+  if (range.r2 <= range.r1) return false;
+  const sheet = wb.sheets[si]!;
+  let otherBelow = false;
+  for (let c = range.c1; c <= range.c2; c++) {
+    if (!sheet.cells.has(cellKey(range.r1, c))) continue;
+    if (typeof calc.value(si, [range.r1, c]) !== 'string') return false;
+    for (let r = range.r1 + 1; r <= range.r2 && !otherBelow; r++) {
+      const v = sheet.cells.has(cellKey(r, c)) ? calc.value(si, [r, c]) : null;
+      if (v !== null && typeof v !== 'string') otherBelow = true;
+    }
+  }
+  return otherBelow;
 }

@@ -12,7 +12,8 @@ import { chartData, parseRange, renderChartSvg } from './chart';
 import { formatValue } from './number-format';
 import { fillWithMath, typesetMath } from '../math/inline';
 import { partsWorkbook, workbookParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
-import { addSheet, clearRange, copyRange, deleteCells, deleteSheet, insertCells, pasteText, renameSheet, type Range } from './ops';
+import { addSheet, clearRange, copyRange, deleteCells, deleteSheet, guessHeader, insertCells, pasteText, renameSheet, sortRange, type Range } from './ops';
+import { chooseSort } from './sort-dialog';
 
 const ROW_H = 24;
 const DEFAULT_W = 96;
@@ -457,6 +458,12 @@ export class SheetEditor implements EditorView {
 
   /** Default data: the selection, or the block of filled cells around the active cell. */
   private chartRangeGuess(): string {
+    const r = this.dataRange();
+    return `${refName(r.r1, r.c1)}:${refName(r.r2, r.c2)}`;
+  }
+
+  /** The selection, or the block of filled cells around the active cell when one cell is selected. */
+  private dataRange(): Range {
     let r = this.range();
     if (r.r1 === r.r2 && r.c1 === r.c2) {
       const sheet = this.wb.sheets[this.si]!;
@@ -470,7 +477,23 @@ export class SheetEditor implements EditorView {
         for (let row = r.r1; row <= r.r2 && !grew; row++) if (filled(row, r.c2 + 1)) (r = { ...r, c2: r.c2 + 1 }), (grew = true);
       }
     }
-    return `${refName(r.r1, r.c1)}:${refName(r.r2, r.c2)}`;
+    return r;
+  }
+
+  /** Sort the rows of the data around the selection by a column (SHEET-016). */
+  private async sort(): Promise<void> {
+    this.commitEdit();
+    const range = this.dataRange();
+    if (range.r2 <= range.r1) return;
+    const sheet = this.wb.sheets[this.si]!;
+    const col = Math.min(Math.max(this.focusCell.col, range.c1), range.c2);
+    const opts = await chooseSort(this.element, range, { col, header: guessHeader(this.wb, this.si, this.calc, range) }, (c) => {
+      const v = sheet.cells.has(cellKey(range.r1, c)) ? this.calc.value(this.si, [range.r1, c]) : '';
+      return typeof v === 'string' ? v : '';
+    });
+    if (!opts) return this.viewport.focus();
+    this.structural(() => sortRange(this.wb, this.si, this.calc, range, opts));
+    this.viewport.focus();
   }
 
   private async insertChart(): Promise<void> {
@@ -735,6 +758,7 @@ export class SheetEditor implements EditorView {
       this.formatSelect,
       act(t('sheet.autoSum'), 'Σ', () => this.autoSum()),
       act(t('sheet.insertChart'), '📊', () => void this.insertChart()),
+      act(t('sort.button'), '⇅', () => void this.sort()),
     );
   }
 

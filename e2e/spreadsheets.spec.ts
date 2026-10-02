@@ -32,3 +32,21 @@ test('opens a semicolon CSV and converts it to ODS (SHEET-003)', async ({ page }
   expect(ods.name).toBe('data.ods');
   expect(ods.data.subarray(30, 38).toString()).toBe('mimetype');
 });
+
+test('sorts the table around the active cell by a column, keeping the header (SHEET-016)', async ({ page }) => {
+  await openApp(page);
+  await openFile(page, 'scores.csv', 'Name,Score\nChloé,12\nalice,17\nBob,9\n', 'text/csv');
+  await page.locator('td[data-r="2"][data-c="1"]').click();
+  await page.getByRole('button', { name: 'Sort…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Sort' });
+  await expect(dialog.getByLabel('The first row is a header (it stays in place)')).toBeChecked();
+  await expect(dialog.getByLabel('Sort by')).toHaveValue('1');
+  await dialog.getByLabel('Descending (Z to A, 9 to 0)').check();
+  await dialog.getByRole('button', { name: 'Sort', exact: true }).click();
+  const col = (c: number) => page.locator(`td[data-c="${c}"]`).filter({ hasText: /./ }).allTextContents();
+  await expect.poll(() => col(0)).toEqual(['Name', 'alice', 'Chloé', 'Bob']);
+  expect(await col(1)).toEqual(['Score', '17', '12', '9']);
+  // One undo step.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(() => col(0)).toEqual(['Name', 'Chloé', 'alice', 'Bob']);
+});
