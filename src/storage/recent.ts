@@ -5,7 +5,7 @@
 import type { DocumentFormat } from '../core/format';
 
 const DB_NAME = 'pwo';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 export const MAX_RECENT = 12;
 /** Larger files are not kept in the recent list (storage quota). */
 export const MAX_RECENT_SIZE = 25 * 1024 * 1024;
@@ -45,6 +45,8 @@ function db(): Promise<IDBDatabase> {
       if (!d.objectStoreNames.contains('drafts')) d.createObjectStore('drafts', { keyPath: 'id' });
       // FOLDER-001: the last opened folder (a directory handle).
       if (!d.objectStoreNames.contains('folders')) d.createObjectStore('folders', { keyPath: 'id' });
+      // FILE-019: the user's own templates.
+      if (!d.objectStoreNames.contains('templates')) d.createObjectStore('templates', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -59,7 +61,7 @@ function request<T>(req: IDBRequest<T>): Promise<T> {
   });
 }
 
-async function store(name: 'recent' | 'drafts' | 'folders', mode: IDBTransactionMode): Promise<IDBObjectStore> {
+async function store(name: 'recent' | 'drafts' | 'folders' | 'templates', mode: IDBTransactionMode): Promise<IDBObjectStore> {
   return (await db()).transaction(name, mode).objectStore(name);
 }
 
@@ -138,4 +140,34 @@ export async function forgetFolder(): Promise<void> {
   } catch {
     /* nothing stored */
   }
+}
+
+/** A template of the user, kept in this browser (FILE-019). */
+export interface UserTemplate {
+  id: string;
+  name: string;
+  format: DocumentFormat;
+  size: number;
+  savedAt: number;
+}
+
+/** Keep `bytes` as a template; one with the same name and format is replaced. Returns its id. */
+export async function saveTemplate(name: string, format: DocumentFormat, bytes: Uint8Array): Promise<string> {
+  const id = `${name}:${format}`;
+  await request((await store('templates', 'readwrite')).put({ id, name, format, size: bytes.byteLength, savedAt: Date.now(), data: bytes }));
+  return id;
+}
+
+export async function listTemplates(): Promise<UserTemplate[]> {
+  const all = (await request((await store('templates', 'readonly')).getAll())) as (UserTemplate & { data: Uint8Array })[];
+  return all.map(({ data: _data, ...meta }) => meta).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function loadTemplate(id: string): Promise<Uint8Array | undefined> {
+  const rec = (await request((await store('templates', 'readonly')).get(id))) as { data: Uint8Array } | undefined;
+  return rec?.data;
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  await request((await store('templates', 'readwrite')).delete(id));
 }
