@@ -136,3 +136,68 @@ test('hides the code of a cell, its output staying, and keeps it hidden in the f
   await expect(cell.locator('.code-cell-source')).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+const REACTIVE = [
+  '# Reactive',
+  '',
+  '```python {run}',
+  'b = a * 10',
+  'print("b =", b)',
+  '```',
+  '',
+  '```python {run}',
+  'a = 2',
+  '```',
+  '',
+  '```javascript {run}',
+  'console.log("twice", k * 2);',
+  '```',
+  '',
+  '```javascript {run}',
+  'const k = 5;',
+  '```',
+  '',
+  '```python {run}',
+  'a = 1',
+  '```',
+  '',
+].join('\n');
+
+test('runs cells in the order of what they use, marks out-of-date cells and refuses a name defined twice (CODE-014)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = await openApp(page);
+  await openFile(page, 'reactive.md', REACTIVE);
+  const cells = page.locator('.doc-page .code-cell');
+  await expect(cells).toHaveCount(5);
+  await cells.first().getByRole('button', { name: 'Run all cells' }).click();
+  await page.getByRole('dialog', { name: 'Run the code of this document?' }).getByRole('button', { name: 'Run' }).click();
+  // `a` is defined twice: those cells and the one using it do not run.
+  await expect(cells.nth(1).locator('.code-cell-output.error')).toContainText('“a” is defined in several cells (2, 5)', { timeout: 60_000 });
+  await expect(cells.nth(4).locator('.code-cell-output.error')).toContainText('defined in several cells');
+  await expect(page.locator('.code-stale')).toHaveCount(1);
+  // JavaScript cells share their names too, in the order of what they use.
+  await expect(cells.nth(2).locator('.code-cell-output')).toHaveText('twice 10\n');
+
+  // The second definition becomes local to its cell (`_`): the cell using `a` runs after the one defining it.
+  await cells.nth(4).getByRole('button', { name: 'Edit code' }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit code cell' });
+  await edit.getByLabel('Code').fill('_a = 1');
+  await edit.getByRole('button', { name: 'Update' }).click();
+  await cells.nth(0).getByRole('button', { name: 'Run all cells' }).click();
+  await expect(cells.nth(0).locator('.code-cell-output')).toHaveText('b = 20\n', { timeout: 30_000 });
+  await expect(page.locator('.code-stale')).toHaveCount(0);
+
+  // Changing `a` makes the cell using it out of date until it runs again.
+  await cells.nth(1).getByRole('button', { name: 'Edit code' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit code cell' });
+  await dialog.getByLabel('Code').fill('a = 3');
+  await dialog.getByRole('button', { name: 'Update' }).click();
+  // The edited cell (its output cleared) and the cell using it.
+  await expect(page.locator('.code-stale')).toHaveCount(2);
+  await expect(page.locator('.code-stale .code-cell-output')).toHaveText(['b = 20\n']);
+  await cells.nth(0).getByRole('button', { name: 'Run cell' }).click();
+  await expect(cells.nth(0).locator('.code-cell-output')).toHaveText('b = 30\n', { timeout: 30_000 });
+  await expect(page.locator('.code-stale')).toHaveCount(0);
+  // Completion in the code editor asks the Pyodide CDN for jedi, out of reach here.
+  expect(errors.filter((e) => !e.startsWith('Failed to load resource'))).toEqual([]);
+});

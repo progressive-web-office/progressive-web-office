@@ -10,6 +10,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Reactive code cells (CODE-014): cells run in the order of the names they
+  define and use; changing or running a cell marks the cells using it as out
+  of date (or runs them, as chosen in *Settings › Writing*); JavaScript cells
+  share their top-level names like Python cells; a name defined in several
+  cells and cycles are reported; names no cell defines any more are removed.
+
 - File explorer: size and date of each file, sorting by name, date, size or
   type (remembered), files found by name in the folder search (FOLDER-008);
   keyboard navigation in the tree (FOLDER-009); importing files and folders
@@ -124,6 +130,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   in Excel and OpenDocument files.
 
 ### Changed
+
+- The lab template keeps each name in one cell (CODE-014).
 
 - The review mode is one switch for every file, also in the settings.
 - One name for the user, asked once: comments, annotations, tracked

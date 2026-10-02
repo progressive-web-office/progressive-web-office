@@ -13,6 +13,7 @@ import { PAGES_PER_ROW } from '../pdf/fit';
 import { loadTypography, saveTypography } from '../document/typography';
 import { loadPrintSettings, PAPER_SIZES, savePrintSettings, type Paper } from '../print/settings';
 import { loadCollabNetwork, parseRelays, saveCollabNetwork } from '../collab/network';
+import { loadReactivity, REACTIVITY, saveReactivity } from '../code/settings';
 
 export type SettingsCategory = 'general' | 'reading' | 'writing' | 'printing' | 'collab';
 export const CATEGORIES: SettingsCategory[] = ['general', 'reading', 'writing', 'printing', 'collab'];
@@ -86,7 +87,12 @@ function readingPanel(): HTMLElement[] {
 }
 
 function writingPanel(): HTMLElement[] {
-  return [field(t('text.typography'), check(loadTypography(), saveTypography), t('settings.typographyHint'))];
+  const modes: Record<(typeof REACTIVITY)[number], MessageKey> = { lazy: 'settings.reactLazy', auto: 'settings.reactAuto', off: 'settings.reactOff' };
+  return [
+    field(t('text.typography'), check(loadTypography(), saveTypography), t('settings.typographyHint')),
+    // CODE-014: how code cells react to each other.
+    field(t('settings.reactivity'), select(REACTIVITY.map((m) => [m, t(modes[m])]), loadReactivity(), saveReactivity), t('settings.reactivityHint')),
+  ];
 }
 
 function printingPanel(): HTMLElement[] {

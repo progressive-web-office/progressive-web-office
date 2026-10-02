@@ -75,6 +75,30 @@ export class CodeRunner {
 
   private readonly completions = new Map<number, (items: import('./completion').SmartItem[] | null) => void>();
 
+  /** CODE-014: the names a Python cell defines and uses (null for a syntax error). */
+  analyze(code: string): Promise<import('./reactive').CellDeps | null> {
+    return this.start().then(
+      () =>
+        new Promise((resolve) => {
+          const id = ++this.nextId;
+          this.analyses.set(id, resolve);
+          this.post({ type: 'analyze', id, code });
+        }),
+    );
+  }
+
+  private readonly analyses = new Map<number, (deps: import('./reactive').CellDeps | null) => void>();
+
+  /** CODE-014: remove names no cell defines any more. */
+  forget(lang: CodeLang, names: string[]): void {
+    if (this.frame && names.length) this.post({ type: 'forget', lang, names });
+  }
+
+  /** Whether the sandbox runs (and holds the names of earlier runs). */
+  get started(): boolean {
+    return !!this.ready;
+  }
+
   /** Stop whatever is running: the sandbox is destroyed and restarted on the next run. */
   stop(reason = 'Stopped.'): void {
     this.frame?.remove();
@@ -83,6 +107,8 @@ export class CodeRunner {
     removeEventListener('message', this.onMessage);
     for (const p of this.pending.values()) p.resolve({ text: `${reason}\n`, error: true, images: [] });
     this.pending.clear();
+    for (const done of this.analyses.values()) done(null);
+    this.analyses.clear();
   }
 
   destroy(): void {
@@ -142,6 +168,13 @@ export class CodeRunner {
         const p = this.pending.get(m.id);
         this.pending.delete(m.id);
         p?.resolve({ text: m.text ?? '', error: m.error, images: (m.images ?? []).map((b) => new Uint8Array(b)) });
+        break;
+      }
+      case 'deps': {
+        const done = this.analyses.get(m.id);
+        this.analyses.delete(m.id);
+        const d = (m as { deps?: unknown }).deps as import('./reactive').CellDeps | null | undefined;
+        done?.(d && Array.isArray(d.defs) && Array.isArray(d.refs) ? d : null);
         break;
       }
       case 'completions': {

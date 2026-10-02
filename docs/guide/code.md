@@ -15,12 +15,14 @@ stay next to the explanation.
    (<kbd>Tab</kbd> indents).
 2. Click **Insert**: the cell is added on its own line.
 3. Click **▶** to run the cell, or **⏩** to run all the cells of the document
-   from the top (it stops at the first error).
+   (in the order of what they use, see below).
 
 Print results with `print()` (Python) or `console.log()` (JavaScript); in
 Python, the value of the last line is shown too. Figures drawn with
-**matplotlib** are added below the output. Python cells share their
-variables, like a notebook: define `x` in one cell and use it in the next.
+**matplotlib** are added below the output. Cells of the same language share
+their names: define `x` in one cell and use it in another, in Python as in
+JavaScript (where `const`, `let`, functions, classes and imports declared at
+the top level of a cell are shared).
 
 Click the code or **✎** to edit a cell; changing the code removes its previous
 output. **■** stops a running cell (for example an endless loop) — the next run
@@ -34,6 +36,41 @@ t = np.linspace(0, 10, 500)
 plt.plot(t, np.exp(-0.3 * t) * np.sin(2 * np.pi * t))
 plt.title("Damped signal")
 ```
+
+## Reactive cells
+
+The cells of a document know what they use: a cell **depends** on the cells
+that define the names it uses. So:
+
+- cells run in the order of their dependencies, wherever they are in the
+  document: a cell using `a` runs after the cell defining `a`, even if that
+  cell comes later;
+- when you change or run a cell, the cells using what it defines are marked
+  **⟳ out of date** (their output is dimmed): it is no longer the result of
+  the current code. Run one of them: the out-of-date cells it uses run first;
+- a cell you have just changed is out of date too, until it runs.
+
+*Settings › Writing › When a code cell runs* chooses what happens to the
+cells using it:
+
+| Setting | Behaviour |
+|---------|-----------|
+| mark them as out of date (default) | they keep their output, marked ⟳, until you run them — good for long computations |
+| run them too | they run right away, like a spreadsheet |
+| run it alone (no dependencies) | the classic notebook: cells run in the order of the document, and JavaScript cells do not share their names |
+
+Two rules keep the results reproducible, with no hidden state:
+
+- **a name is defined in one cell only.** A name defined in two cells is
+  reported in both (“`x` is defined in several cells”), and they do not run.
+  Names starting with `_` (`_i`, `_tmp`) stay inside their cell and may be
+  reused anywhere;
+- two cells cannot use each other (a cycle): they are reported and do not
+  run.
+
+A name no cell defines any more (you deleted or changed the cell defining it)
+is removed from the interpreter at the next run, so a cell still using it
+fails instead of using an old value.
 
 ## Hiding the code
 

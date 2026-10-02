@@ -1179,4 +1179,13 @@ export const fr: Record<MessageKey, string> = {
   'code.hiddenNote': 'code masqué',
   'code.hideAll': 'Masquer le code de toutes les cellules',
   'code.showAll': 'Afficher le code de toutes les cellules',
+  'code.stale': 'Périmée : une cellule qu’elle utilise a changé. Exécutez-la à nouveau.',
+  'code.definedTwice': '« {name} » est défini dans plusieurs cellules ({cells}). Chaque nom n’est défini que dans une cellule (renommez-le, ou faites-le commencer par _ pour le garder dans sa cellule).',
+  'code.cycle': 'Ces cellules s’utilisent l’une l’autre ({cells}) : elles ne peuvent pas s’exécuter.',
+  'code.analysing': 'Analyse de ce qu’utilisent les cellules…',
+  'settings.reactivity': 'Quand une cellule de code s’exécute',
+  'settings.reactivityHint': 'Les cellules s’exécutent dans l’ordre de ce qu’elles utilisent. Un nom n’est défini que dans une cellule ; les noms commençant par _ restent dans leur cellule.',
+  'settings.reactLazy': 'marquer comme périmées les cellules qui l’utilisent',
+  'settings.reactAuto': 'exécuter aussi les cellules qui l’utilisent',
+  'settings.reactOff': 'l’exécuter seule, dans l’ordre du document (sans dépendances)',
 };

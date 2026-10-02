@@ -1177,6 +1177,15 @@ export const en = {
   'code.hiddenNote': 'code hidden',
   'code.hideAll': 'Hide the code of every cell',
   'code.showAll': 'Show the code of every cell',
+  'code.stale': 'Out of date: a cell it uses changed. Run it again.',
+  'code.definedTwice': '“{name}” is defined in several cells ({cells}). Each name is defined in one cell only (rename it, or start it with _ to keep it to its cell).',
+  'code.cycle': 'These cells use each other ({cells}): they cannot run.',
+  'code.analysing': 'Looking at what the cells use…',
+  'settings.reactivity': 'When a code cell runs',
+  'settings.reactivityHint': 'Cells run in the order of what they use. A name is defined in one cell only; names starting with _ stay in their cell.',
+  'settings.reactLazy': 'mark the cells that use it as out of date',
+  'settings.reactAuto': 'run the cells that use it too',
+  'settings.reactOff': 'run it alone, in the order of the document (no dependencies)',
 } as const;
 
 export type MessageKey = keyof typeof en;

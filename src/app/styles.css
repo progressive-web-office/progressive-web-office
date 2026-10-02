@@ -1059,3 +1059,10 @@ body.distraction-free .ai-panel { display: none !important; }
 .code-cell.code-hidden > .code-cell-output { border-top: 0; }
 .code-cell-hidden-note { font-weight: 400; font-style: italic; }
 .print-document .code-cell.code-hidden > .code-cell-source { display: none; }
+
+/* CODE-014: a cell whose output is out of date (a cell it uses changed or ran since). */
+.code-stale > .code-cell .code-cell-output { opacity: 0.55; }
+.code-stale > .code-cell { border-color: #c78a00; }
+.code-stale::before { content: '⟳ ' attr(data-stale); display: block; margin-top: 6pt; padding: 2px 10px; border-radius: 6px 6px 0 0; font: 600 0.78rem system-ui, sans-serif; color: #7a5200; background: #fff4d6; }
+.code-stale > .code-cell { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+@media print { .code-stale::before { display: none; } .code-stale > .code-cell .code-cell-output { opacity: 1; } }

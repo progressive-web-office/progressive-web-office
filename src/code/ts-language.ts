@@ -147,3 +147,6 @@ export async function scriptIntelligence(file: string): Promise<Extension[]> {
     }),
   ];
 }
+
+/** CODE-014: the names a JavaScript cell declares and uses; null when the language service is unavailable. */
+export const analyzeScript = (code: string): Promise<import('./reactive').CellDeps | null> => ask<import('./reactive').CellDeps>({ type: 'analyze', text: code }, 20000);

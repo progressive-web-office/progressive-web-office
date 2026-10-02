@@ -19,6 +19,16 @@ interface CompleteRequest {
   line: number;
   column: number;
 }
+interface AnalyzeRequest {
+  type: 'analyze';
+  id: number;
+  code: string;
+}
+interface ForgetRequest {
+  type: 'forget';
+  lang: 'python' | 'javascript';
+  names: string[];
+}
 interface FileReply {
   type: 'file';
   id: number;
@@ -185,6 +195,58 @@ async function completePython(code: string, line: number, column: number): Promi
   return JSON.parse(String(result)) as unknown[];
 }
 
+// --- reactive cells (CODE-014) -----------------------------------------------------
+
+/** Names a cell defines at its top level and names it uses, from Python's own symbol tables. */
+const DEPS = `
+def _pwo_deps(code):
+    import json
+    import symtable
+    try:
+        top = symtable.symtable(code, "<cell>", "exec")
+    except SyntaxError:
+        return "null"
+    defs, refs = set(), set()
+    for s in top.get_symbols():
+        if s.is_assigned() or s.is_imported() or s.is_namespace():
+            defs.add(s.get_name())
+        if s.is_referenced():
+            refs.add(s.get_name())
+    def visit(table):
+        for child in table.get_children():
+            for s in child.get_symbols():
+                if s.is_global():
+                    if s.is_declared_global() and s.is_assigned():
+                        defs.add(s.get_name())
+                    if s.is_referenced():
+                        refs.add(s.get_name())
+            visit(child)
+    visit(top)
+    return json.dumps({"defs": sorted(defs), "refs": sorted(refs)})
+`;
+
+let deps: Promise<void> | undefined;
+
+async function analyzePython(id: number, code: string): Promise<unknown> {
+  python ??= loadPython(id);
+  const py = await python;
+  deps ??= py.runPythonAsync(DEPS).then(() => undefined);
+  await deps;
+  return JSON.parse(String(await py.runPythonAsync(`_pwo_deps(${JSON.stringify(code)})`))) as unknown;
+}
+
+/** Remove names no cell defines any more, so that no hidden state is left. */
+async function forget(lang: 'python' | 'javascript', names: string[]): Promise<void> {
+  if (lang === 'javascript') {
+    const shared = (globalThis as unknown as { __pwoScope?: Record<string, unknown> }).__pwoScope;
+    for (const n of names) if (shared) delete shared[n];
+    return;
+  }
+  if (!python) return;
+  const py = await python;
+  await py.runPythonAsync(`import __main__\nfor _pwo_n in ${JSON.stringify(names)}:\n    __main__.__dict__.pop(_pwo_n, None)\ndel _pwo_n`);
+}
+
 function describe(value: unknown): string {
   const proxy = value as PyProxyLike & { toString(): string };
   const text = proxy.toString();
@@ -204,6 +266,8 @@ function pythonError(err: unknown): string {
 
 async function runJavaScript(id: number, code: string): Promise<Output> {
   report(id, 'running');
+  // CODE-014: the names shared by the JavaScript cells of the document.
+  (globalThis as unknown as { __pwoScope?: object }).__pwoScope ??= {};
   const out: string[] = [];
   const format = (args: unknown[]): string =>
     args
@@ -240,7 +304,16 @@ interface Output {
 let queue: Promise<unknown> = Promise.resolve();
 
 scope.addEventListener('message', (event: MessageEvent) => {
-  const message = event.data as RunRequest | FileReply | CompleteRequest;
+  const message = event.data as RunRequest | FileReply | CompleteRequest | AnalyzeRequest | ForgetRequest;
+  if (message.type === 'analyze' || message.type === 'forget') {
+    // Queued with the cells: the analysis and the cleaning come before the runs that follow.
+    queue = queue.then(async () => {
+      if (message.type === 'forget') return forget(message.lang, message.names).catch(() => undefined);
+      const result = await analyzePython(message.id, message.code).catch(() => null);
+      scope.postMessage({ type: 'deps', id: message.id, deps: result });
+    });
+    return;
+  }
   if (message.type === 'complete') {
     // Not queued after the cells: while one runs, completion simply waits.
     void completePython(message.code, message.line, message.column).then(

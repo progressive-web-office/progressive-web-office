@@ -31,6 +31,9 @@ import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReferenc
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
+import { cellStatePlugin, markCells, stalePositions } from './pm/cell-state';
+import type { CellDeps, CellError } from '../code/reactive';
+import { loadReactivity } from '../code/settings';
 import { listCss } from './pm/list-css';
 import { askAuthor } from '../app/author';
 import { isHistoryTransaction } from 'prosemirror-history';
@@ -217,6 +220,7 @@ export class DocumentEditor implements EditorView {
             typographyRules({ enabled: () => this.typography, lang: () => this.lang() }),
             // DOC-033, DOC-035: readability and focus decorations.
             writingPlugin((score, level, wps) => t('read.label', { score, level: t(`read.${level}` as MessageKey), wps })),
+            cellStatePlugin(() => t('code.stale')),
             ...basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
           ],
         }),
@@ -529,9 +533,68 @@ export class DocumentEditor implements EditorView {
     if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, attrs));
     else this.command(insertOnOwnLine(schema.nodes.code_cell!.create(attrs)));
     this.refocus();
+    // CODE-014: the cells using what it defined (before or now) are out of date.
+    if (!unchanged && current && pos !== undefined) void this.markDependents(pos, { lang: current.lang, code: current.cell });
   }
 
-  /** Run cells in order in the sandbox and store their output in the document (CODE-002, CODE-005). */
+  // --- reactive cells (CODE-014) -----------------------------------------------
+
+  /** Analyses of cells by language and code; null when the code cannot be analysed. */
+  private readonly analyses = new Map<string, Promise<CellDeps | null>>();
+  /** Names defined by the cells run so far, by language. */
+  private readonly defined = new Map<string, Set<string>>();
+
+  private allCells(): { pos: number; node: PmNode }[] {
+    const out: { pos: number; node: PmNode }[] = [];
+    this.view.state.doc.descendants((node, pos) => {
+      if (node.type === schema.nodes.code_cell) out.push({ pos, node });
+    });
+    return out;
+  }
+
+  /** What a cell defines and uses; Python needs the running interpreter unless `start`. */
+  private async depsOf(lang: string, code: string, start: boolean): Promise<CellDeps | undefined> {
+    const key = `${lang}\u0000${code}`;
+    let found = this.analyses.get(key);
+    if (!found) {
+      if (lang === 'javascript') found = import('../code/ts-language').then(({ analyzeScript }) => analyzeScript(code)).catch(() => null);
+      else if (this.runner && (start || this.runner.started)) found = this.runner.analyze(code);
+      else return undefined;
+      this.analyses.set(key, found);
+    }
+    return (await found) ?? undefined;
+  }
+
+  private async graphOf(cells: { node: PmNode }[], start: boolean, extra?: { index: number; deps: CellDeps }) {
+    const { buildGraph } = await import('../code/reactive');
+    const deps = await Promise.all(cells.map((c) => this.depsOf(c.node.attrs.lang as string, c.node.attrs.cell as string, start)));
+    if (extra && deps[extra.index]) {
+      const d = deps[extra.index]!;
+      deps[extra.index] = { defs: [...new Set([...d.defs, ...extra.deps.defs])], refs: [...new Set([...d.refs, ...extra.deps.refs])] };
+    }
+    return { deps, graph: buildGraph(cells.map((c, i) => ({ lang: c.node.attrs.lang as 'python' | 'javascript', ...(deps[i] ? { deps: deps[i] } : {}) }))) };
+  }
+
+  /** After a cell changed: mark what depends on it (on its old code or its new one) out of date. */
+  private async markDependents(pos: number, before: { lang: string; code: string }): Promise<void> {
+    if (loadReactivity() === 'off') return;
+    const cells = this.allCells();
+    const index = cells.findIndex((c) => c.pos === pos);
+    if (index < 0) return;
+    const old = await this.depsOf(before.lang, before.code, false);
+    const { graph } = await this.graphOf(cells, false, old ? { index, deps: old } : undefined);
+    const { descendants } = await import('../code/reactive');
+    // The cell itself has not run since its code changed.
+    const stale = [index, ...descendants(graph, [index])].map((i) => this.allCells()[i]?.pos).filter((p): p is number => p !== undefined);
+    this.view.dispatch(markCells(this.view.state.tr, { stale }));
+  }
+
+  private cellError(error: CellError, cells: number[]): string {
+    const list = cells.map((i) => i + 1).join(', ');
+    return error.kind === 'multiple' ? t('code.definedTwice', { name: error.name, cells: list }) : t('code.cycle', { cells: list });
+  }
+
+  /** Run cells in the sandbox and store their output in the document (CODE-002, CODE-005, CODE-014). */
   private async runCells(positions: number[]): Promise<void> {
     const ui = await import('../code/ui');
     if (!this.trusted) {
@@ -542,28 +605,98 @@ export class DocumentEditor implements EditorView {
       const { CodeRunner } = await import('../code/runner');
       this.runner = new CodeRunner(this.element);
     }
-    const runner = this.runner;
+    const mode = loadReactivity();
+    if (mode === 'off') return this.runInOrder(positions.map((pos) => ({ pos })));
+    const reactive = await import('../code/reactive');
+    const cells = this.allCells();
+    for (const pos of positions) {
+      const cell = (this.view.nodeDOM(pos) as HTMLElement | null)?.querySelector<HTMLElement>('.code-cell');
+      if (cell) ui.setCellStatus(cell, t('code.analysing'));
+    }
+    const { deps, graph } = await this.graphOf(cells, true);
+    const stale = new Set(stalePositions(this.view.state).map((p) => cells.findIndex((c) => c.pos === p)).filter((i) => i >= 0));
+    // A cell whose names the interpreter does not hold (never run, or run in an earlier visit) must run first too.
+    cells.forEach((c, i) => {
+      const held = this.defined.get(c.node.attrs.lang as string);
+      if ((deps[i]?.defs ?? []).some((n) => !n.startsWith('_') && !held?.has(n))) stale.add(i);
+    });
+    const targets = positions.map((p) => cells.findIndex((c) => c.pos === p)).filter((i) => i >= 0);
+    const plan = reactive.planRun(graph, targets, mode, stale);
+    // Names no cell defines any more are removed: no hidden state.
+    for (const lang of ['python', 'javascript']) {
+      const now = new Set(cells.flatMap((c, i) => (c.node.attrs.lang === lang ? (deps[i]?.defs ?? []) : [])));
+      const before = this.defined.get(lang) ?? new Set<string>();
+      this.runner.forget(lang as 'python' | 'javascript', [...before].filter((n) => !now.has(n)));
+      this.defined.set(lang, new Set([...before].filter((n) => now.has(n))));
+    }
+    // Cells in error say why, and do not run.
+    const tr = this.view.state.tr;
+    for (const i of targets) {
+      const error = graph.errors.get(i);
+      const at = cells[i]!;
+      if (error) tr.setNodeMarkup(at.pos, undefined, { ...at.node.attrs, output: { text: this.cellError(error, error.cells), error: true } });
+      else if (!plan.run.includes(i)) {
+        const el = (this.view.nodeDOM(at.pos) as HTMLElement | null)?.querySelector<HTMLElement>('.code-cell');
+        if (el) ui.setCellStatus(el, '');
+      }
+    }
+    if (plan.stale.length) markCells(tr, { stale: plan.stale.map((i) => cells[i]!.pos) });
+    if (tr.docChanged || plan.stale.length) this.view.dispatch(tr);
+    const jsNames = new Set(cells.flatMap((c, i) => (c.node.attrs.lang === 'javascript' ? (deps[i]?.defs ?? []) : [])));
+    const order = plan.run.map((i) => {
+      const d = deps[i];
+      const lang = cells[i]!.node.attrs.lang as string;
+      const code = lang === 'javascript' && d ? reactive.scriptDeps(cells[i]!.node.attrs.cell as string, { defs: d.defs, refs: d.refs.filter((r) => jsNames.has(r) && !d.defs.includes(r)) }) : undefined;
+      return { pos: cells[i]!.pos, index: i, ...(code !== undefined ? { code } : {}) };
+    });
+    await this.runInOrder(order, (index, ok) => {
+      if (ok) for (const n of deps[index]?.defs ?? []) this.defined.set(cells[index]!.node.attrs.lang as string, (this.defined.get(cells[index]!.node.attrs.lang as string) ?? new Set()).add(n));
+      // What depends on a failed cell does not run.
+      return ok ? [] : [...reactive.descendants(graph, [index])];
+    });
+  }
+
+  /**
+   * Run cells one after the other; `after` tells which of the cells to come
+   * must be skipped (they are then out of date). Without it, the first error stops.
+   */
+  private async runInOrder(list: { pos: number; index?: number; code?: string }[], after?: (index: number, ok: boolean) => number[]): Promise<void> {
+    const ui = await import('../code/ui');
+    const runner = this.runner!;
     // Positions move while cells run and the user types: follow the elements.
-    const handles = positions.map((pos) => cellHandle((this.view.nodeDOM(pos) as HTMLElement | null)?.querySelector('.code-cell') ?? null)).filter((x) => !!x);
-    for (const handle of handles) {
-      const pos = handle.getPos();
+    const handles = list.map((x) => ({ ...x, handle: cellHandle((this.view.nodeDOM(x.pos) as HTMLElement | null)?.querySelector('.code-cell') ?? null) })).filter((x) => !!x.handle);
+    for (const h of handles) ui.setCellStatus(h.handle!.element, t('code.queued'));
+    const skipped = new Set<number>();
+    for (const { handle, index, code } of handles) {
+      const pos = handle!.getPos();
       const node = pos === undefined ? null : this.view.state.doc.nodeAt(pos);
       if (pos === undefined || !node || node.type !== schema.nodes.code_cell) continue;
-      const cell = handle.element;
+      const cell = handle!.element;
+      if (index !== undefined && skipped.has(index)) {
+        ui.setCellStatus(cell, '');
+        this.view.dispatch(markCells(this.view.state.tr, { stale: [pos] }));
+        continue;
+      }
       cell.classList.add('running');
-      ui.setCellStatus(cell, t('code.queued'));
-      const result = await runner.run(node.attrs.lang as 'python' | 'javascript', node.attrs.cell as string, (status) => {
+      const result = await runner.run(node.attrs.lang as 'python' | 'javascript', code ?? (node.attrs.cell as string), (status) => {
         const text = status === 'loading-python' ? t('code.loadingPython') : status === 'running' ? t('code.running') : `${t('code.packages')} ${status.slice('packages:'.length)}`;
         ui.setCellStatus(cell, text);
       });
       const images = result.images.map((png) => addResource(this.doc, png, 'image/png'));
       const output = { text: result.text, ...(result.error ? { error: true } : {}), ...(images.length ? { images } : {}) };
-      const now = handle.getPos();
+      const now = handle!.getPos();
       const current = now === undefined ? null : this.view.state.doc.nodeAt(now);
       if (now !== undefined && current?.type === schema.nodes.code_cell) {
-        this.view.dispatch(this.view.state.tr.setNodeMarkup(now, undefined, { ...current.attrs, output }));
+        this.view.dispatch(markCells(this.view.state.tr.setNodeMarkup(now, undefined, { ...current.attrs, output }), { fresh: [now] }));
       }
-      if (result.error) break; // like a notebook's "run all": stop at the first error
+      if (!after) {
+        if (result.error) {
+          for (const rest of handles.slice(handles.findIndex((x) => x.handle === handle) + 1)) ui.setCellStatus(rest.handle!.element, '');
+          break; // like a notebook's "run all": stop at the first error
+        }
+        continue;
+      }
+      for (const i of after(index!, !result.error)) skipped.add(i);
     }
   }
 

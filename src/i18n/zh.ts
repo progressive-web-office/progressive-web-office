@@ -1179,4 +1179,13 @@ export const zh: Record<MessageKey, string> = {
   'code.hiddenNote': '代码已隐藏',
   'code.hideAll': '隐藏所有单元格的代码',
   'code.showAll': '显示所有单元格的代码',
+  'code.stale': '已过期：它使用的单元格已更改。请重新运行。',
+  'code.definedTwice': '“{name}”在多个单元格中定义（{cells}）。每个名称只能在一个单元格中定义（请重命名，或以 _ 开头使其仅限于该单元格）。',
+  'code.cycle': '这些单元格相互使用（{cells}）：无法运行。',
+  'code.analysing': '正在分析单元格使用的内容…',
+  'settings.reactivity': '代码单元格运行时',
+  'settings.reactivityHint': '单元格按其使用关系的顺序运行。每个名称只在一个单元格中定义；以 _ 开头的名称仅限于其单元格。',
+  'settings.reactLazy': '将使用它的单元格标记为已过期',
+  'settings.reactAuto': '同时运行使用它的单元格',
+  'settings.reactOff': '单独运行，按文档顺序（无依赖关系）',
 };

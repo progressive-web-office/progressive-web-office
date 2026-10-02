@@ -68,9 +68,52 @@ export type TsRequest =
   | { type: 'complete'; file: string; text: string; pos: number }
   | { type: 'details'; file: string; text: string; pos: number; name: string; source?: string }
   | { type: 'diagnostics'; file: string; text: string }
-  | { type: 'hover'; file: string; text: string; pos: number };
+  | { type: 'hover'; file: string; text: string; pos: number }
+  | { type: 'analyze'; text: string };
+
+/** Names a binding pattern declares (`const { a, b: [c] } = …`). */
+function bound(name: ts.BindingName, out: Set<string>): void {
+  if (ts.isIdentifier(name)) out.add(name.text);
+  else for (const e of name.elements) if (!ts.isOmittedExpression(e)) bound(e.name, out);
+}
+
+/** Diagnostics of a name not found (`Cannot find name`, `No value exists in scope for the shorthand property`). */
+const UNRESOLVED = new Set([2304, 2552, 18004, 2662, 2663]);
+
+/**
+ * CODE-014: the names a JavaScript cell declares at its top level, and the
+ * names it uses without declaring them (found as unresolved by the checker).
+ */
+let analyses = 0;
+
+function analyze(text: string): { defs: string[]; refs: string[] } {
+  const file = '/__cell_analysis.ts';
+  // A new version each time: the service keeps what it parsed by version.
+  files.set(file, { text, version: ++analyses });
+  const source = service.getProgram()?.getSourceFile(file);
+  const defs = new Set<string>();
+  for (const st of source?.statements ?? []) {
+    if (ts.isVariableStatement(st)) for (const d of st.declarationList.declarations) bound(d.name, defs);
+    else if ((ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st) || ts.isEnumDeclaration(st)) && st.name) defs.add(st.name.text);
+    else if (ts.isImportDeclaration(st) && st.importClause) {
+      const c = st.importClause;
+      if (c.name) defs.add(c.name.text);
+      if (c.namedBindings && ts.isNamespaceImport(c.namedBindings)) defs.add(c.namedBindings.name.text);
+      else if (c.namedBindings) for (const e of c.namedBindings.elements) defs.add(e.name.text);
+    }
+  }
+  const refs = new Set<string>();
+  for (const d of service.getSemanticDiagnostics(file)) {
+    if (!UNRESOLVED.has(d.code) || d.start === undefined || !d.length) continue;
+    const name = text.slice(d.start, d.start + d.length);
+    if (/^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(name)) refs.add(name);
+  }
+  files.delete(file);
+  return { defs: [...defs].sort(), refs: [...refs].sort() };
+}
 
 function answer(req: TsRequest): unknown {
+  if (req.type === 'analyze') return analyze(req.text);
   update(req.file, req.text);
   switch (req.type) {
     case 'complete': {
