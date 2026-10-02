@@ -58,3 +58,52 @@ test('inserts an equation with MathLive and saves it as Markdown and DOCX (MATH-
   await expect(page.locator('.doc-page span.math')).toHaveAttribute('data-latex', /a\^\{?2\}?\+b\^\{?2\}?=c\^\{?2\}?/);
   expect(errors).toEqual([]);
 });
+
+test('opens templates and examples from the gallery (FILE-018)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  const gallery = page.getByRole('dialog', { name: 'New from a template' });
+  await expect(gallery.getByRole('region', { name: 'Spreadsheets' })).toBeVisible();
+  await gallery.getByRole('button', { name: 'Report' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await expect(editor).toContainText('Table 1: Measurements of the three tests');
+  await expect(page.locator('.doc-name, .file-name').first()).toContainText('Report');
+
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Budget' }).click();
+  await expect(page.locator('td[data-r="9"][data-c="4"]')).toHaveText('2,575.00');
+  await expect(page.getByRole('figure', { name: /Expenses by month/ })).toBeVisible();
+
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'A tour of the word processor' }).click();
+  await expect(editor).toContainText('A tour of Progressive Web Office');
+  await expect(editor.locator('.diagram').first()).toBeVisible();
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/tour.png', fullPage: false });
+  expect(errors).toEqual([]);
+});
+
+test('saves a document as a template of the browser and starts from it (FILE-019)', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'New document' }).click();
+  await page.getByRole('textbox', { name: 'Document' }).click();
+  await page.keyboard.type('Weekly report of the lab');
+  page.once('dialog', (d) => void d.accept('Weekly report'));
+  await page.getByLabel('Save as format').selectOption({ label: 'Save as template…' });
+  await expect(page.getByRole('alert')).toContainText('Template “Weekly report” saved');
+
+  page.once('dialog', (d) => void d.accept()); // discard the unsaved document
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  const gallery = page.getByRole('dialog', { name: 'New from a template' });
+  const mine = gallery.getByRole('region', { name: 'My templates' });
+  await mine.getByRole('button', { name: 'Weekly report', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Document' })).toContainText('Weekly report of the lab');
+
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  page.once('dialog', (d) => void d.accept());
+  await gallery.getByRole('button', { name: 'Delete the template Weekly report' }).click();
+  await expect(mine.getByRole('button', { name: 'Weekly report', exact: true })).toHaveCount(0);
+});

@@ -406,6 +406,46 @@ export class App {
     });
   }
 
+  /** Keep the open document as a template of this browser (FILE-019). */
+  async saveAsTemplate(): Promise<void> {
+    const doc = this.current;
+    if (!doc?.view.save) return;
+    const name = window.prompt(t('tpl.namePrompt'), doc.name.replace(/\.[^.]+$/, ''))?.trim();
+    if (!name) return;
+    try {
+      const { saveTemplate } = await import('../storage/recent');
+      await saveTemplate(name, doc.format, await doc.view.save(doc.format));
+      this.showNotice(t('tpl.saved', { name }));
+    } catch (err) {
+      this.showError(t('error.save', { message: (err as Error).message }));
+    }
+  }
+
+  /** A new document from a built-in template or example (FILE-018), or from a template of the user (FILE-019). */
+  async newFromTemplate(): Promise<void> {
+    const [{ chooseTemplate }, storage] = await Promise.all([import('../templates/ui'), import('../storage/recent')]);
+    const mine = await storage.listTemplates().catch(() => []);
+    const template = await chooseTemplate(this.root, mine, (id) => storage.deleteTemplate(id));
+    if (!template || !this.confirmDiscard()) return;
+    if ('format' in template) {
+      const bytes = await storage.loadTemplate(template.id);
+      if (bytes) await this.withBusy(async () => void (await this.openBytes(`${template.name}.${fileExtension(template.format)}`, bytes)));
+      return;
+    }
+    await this.withBusy(async () => {
+      try {
+        const { contentLang } = await import('../templates/catalog');
+        const built = template.build(contentLang(getLocale()));
+        const format = defaultFormat(built.kind);
+        // The model goes straight to the editor: saving converts it like any new document.
+        const view = await newView(built.kind, this.viewContext(), format, built);
+        this.setDocument({ name: `${t(template.name)}.${fileExtension(format)}`, format, kind: built.kind, view });
+      } catch (err) {
+        this.showError((err as Error).message);
+      }
+    });
+  }
+
   async save(format?: DocumentFormat): Promise<void> {
     const doc = this.current;
     if (!doc?.view.save) return;
@@ -727,6 +767,7 @@ export class App {
           button(t('start.newDocument'), () => void this.newDocument('document'), { className: 'card doc', icon: '📝' }),
           button(t('start.newSpreadsheet'), () => void this.newDocument('spreadsheet'), { className: 'card sheet', icon: '📊' }),
           button(t('start.newPresentation'), () => void this.newDocument('presentation'), { className: 'card pres', icon: '📽️' }),
+          button(t('tpl.open'), () => void this.newFromTemplate(), { className: 'card template', icon: '🧩', title: t('tpl.openTitle') }),
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open', icon: '📂' }),
           button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
           button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
@@ -844,11 +885,13 @@ export class App {
         h('option', { value: '' }, t('file.saveAs')),
         ...saveFormatsFor(doc.kind, loadFormatFamily()).map((f) => h('option', { value: f }, formatLabel(f))),
         ...(doc.view.saveVariants?.() ?? []).map((v) => h('option', { value: `variant:${v.id}` }, v.label)),
+        ...(doc.kind !== 'pdf' ? [h('option', { value: 'template' }, t('tpl.saveAs'))] : []),
       );
       select.addEventListener('change', () => {
         const value = select.value;
         select.value = '';
-        if (value.startsWith('variant:')) void this.saveCopy(value.slice('variant:'.length));
+        if (value === 'template') void this.saveAsTemplate();
+        else if (value.startsWith('variant:')) void this.saveCopy(value.slice('variant:'.length));
         else if (value) void this.save(value as DocumentFormat);
       });
       actions.append(select);

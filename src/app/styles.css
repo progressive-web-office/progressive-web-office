@@ -152,6 +152,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .card.doc { border-left-color: var(--doc); }
 .card.sheet { border-left-color: var(--sheet); }
 .card.pres { border-left-color: var(--pres); }
+.card.template { border-left-color: #8e6ad8; }
 .hint { color: var(--muted); font-size: 0.9rem; }
 .recent h2 { font-size: 1.1rem; }
 .recent ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
@@ -839,3 +840,11 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .folder-backlinks[hidden] { display: none; }
 .folder-backlinks h3 { margin: 0 0 4px; font-size: 0.85rem; color: var(--muted); }
 .folder-backlinks ul { list-style: none; margin: 0; padding: 0; }
+
+/* FILE-018: template gallery. */
+.template-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; }
+.template-group h3 { margin: 16px 0 6px; font-size: 1rem; }
+.template-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.template-list li { display: flex; flex-direction: column; gap: 2px; }
+.template-card { justify-content: flex-start; font-weight: 600; text-align: left; padding: 10px 12px; }
+.template-list .hint { margin: 0 4px; font-size: 0.85em; }
