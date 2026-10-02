@@ -329,7 +329,7 @@ integration is ever needed.
 | SHARE-008 | S | 0.0.14 | When the user receives from another device, the system shall give QRShare a return address so that a received file can be opened directly in Progressive Web Office, accepting files only from the configured QRShare origin. |
 | SHARE-009 | S | 0.0.14 | The system shall build a link that contains the open document itself (text documents as Markdown, other documents in their format, compressed and base64url-encoded in the URL fragment), let the user copy it, and warn when it is long enough to be cut by some apps. |
 | SHARE-010 | S | 0.0.14 | When the application is opened with such a link, the system shall rebuild and open the document — the fragment is never sent to a server — remove the fragment from the address, and report a damaged link. |
-| SHARE-006 | C | — | Native, embedded implementation of the QRShare frame protocol (licences are compatible: both AGPL-3.0-or-later). |
+| SHARE-006 | C | — | Native, embedded implementation of the QRShare frame protocol (licences are compatible: QRShare is BSD-3-Clause since 0.5.0, Progressive Web Office AGPL-3.0-or-later). |
 | SHARE-011 | S | 0.0.14 | When the user gives the address of a document on a web server, the system shall check that it can be downloaded and make a link (with its QR code) that opens it read-only in the application, optionally pinned to that version by its SHA-256 fingerprint; when the linked file has changed, or cannot be read (CORS, HTTP error, over 50 MB), the system shall say so and not show it. |
 
 ## 9f. AI assistant and agent integration (AI)
