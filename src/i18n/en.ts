@@ -1012,6 +1012,20 @@ export const en = {
   'palette.placeholder': 'Type the name of an action…',
   'palette.none': 'No matching action.',
   'palette.button': 'Commands (Ctrl+Shift+P)',
+  'versions.button': 'Versions',
+  'versions.title': 'Versions of this document kept in this browser',
+  'versions.heading': 'Versions of {name}',
+  'versions.hint': 'Each save keeps a version here, in this browser only (the last 30).',
+  'versions.label': 'Name of the version',
+  'versions.labelPlaceholder': 'Name (optional), e.g. “Sent to the class”',
+  'versions.saveNow': 'Keep the current state',
+  'versions.none': 'No version yet: they are kept when you save.',
+  'versions.open': 'Open',
+  'versions.download': 'Download',
+  'versions.deleteConfirm': 'Delete this version?',
+  'versions.saved': 'Version kept.',
+  'versions.missing': 'This version is no longer available.',
+  'versions.opened': 'Version of {date} opened: save to make it the current one.',
 } as const;
 
 export type MessageKey = keyof typeof en;

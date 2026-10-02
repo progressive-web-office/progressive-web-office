@@ -255,6 +255,7 @@ export class App {
       doc.dav = { account: location.account, path, ...(result.etag ? { etag: result.etag } : {}) };
       doc.name = basename(path);
       doc.format = format;
+      this.keepVersion(doc, bytes);
       this.dirty = false;
       this.discardDraft();
       this.renderHeader();
@@ -389,6 +390,7 @@ export class App {
         doc.source = { ...location, branch, path, version: result.version };
         doc.name = basename(path);
         doc.format = format;
+        this.keepVersion(doc, bytes);
         this.dirty = false;
         this.discardDraft();
         this.renderHeader();
@@ -500,6 +502,7 @@ export class App {
       if (await saveFile(bytes, name, target, own ? { mimeType: 'text/plain', extension: ext } : undefined)) {
         doc.name = name;
         doc.format = target;
+        this.keepVersion(doc, bytes);
         this.dirty = false;
         this.discardDraft();
         this.renderHeader();
@@ -917,6 +920,8 @@ export class App {
     );
     if (doc?.view.save) {
       actions.append(button(t('file.save'), () => void this.save(), { className: 'keep', title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : doc.dav ? t('dav.saveBackTitle', { path: doc.dav.path }) : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
+      // FILE-025: the versions kept in this browser.
+      actions.append(button(t('versions.button'), () => void this.showVersions(), { title: t('versions.title'), text: '🕘', className: 'icon' }));
       if (!doc.source && !doc.grist) actions.append(button(t('dav.saveToCloud'), () => void this.saveToCloud(true), { title: t('dav.saveToCloudTitle'), text: '☁', className: 'icon' }));
       if (!doc.source && !doc.grist) actions.append(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
       const select = h(
@@ -1293,11 +1298,13 @@ export class App {
     const target = format ?? doc.format;
     const path = format ? replaceExtension(doc.folderPath, fileExtension(target)) : doc.folderPath;
     try {
-      await folder.provider.write(path, new Blob([(await doc.view.save(target)) as BlobPart]));
+      const bytes = await doc.view.save(target);
+      await folder.provider.write(path, new Blob([bytes as BlobPart]));
       if (this.archiveChanged()) this.showNotice(t('zip.savedInside'));
       doc.folderPath = path;
       doc.name = basename(path);
       doc.format = target;
+      this.keepVersion(doc, bytes);
       this.dirty = false;
       this.discardDraft();
       if (format) await folder.refresh();
@@ -1427,6 +1434,64 @@ export class App {
       await openPalette(this.root, collectCommands(this.root));
     } finally {
       this.paletteOpen = false;
+    }
+  }
+
+  // --- local version history (FILE-025) -------------------------------------------
+
+  /** Where a document lives, to group its versions. */
+  private versionKey(doc: OpenDocument): string {
+    if (doc.source) return `git:${doc.source.repo.id}:${doc.source.path}`;
+    if (doc.dav) return `dav:${doc.dav.account.id}:${doc.dav.path}`;
+    if (doc.folderPath && this.folder) return `folder:${this.folder.provider.id}:${doc.folderPath}`;
+    return `file:${doc.name}`;
+  }
+
+  /** Keep what was just saved as a version (in the background). */
+  private keepVersion(doc: OpenDocument, bytes: Uint8Array, label?: string): void {
+    void import('../storage/recent').then(({ saveVersion }) => saveVersion(this.versionKey(doc), doc.name, doc.format, bytes, label)).catch(() => undefined);
+  }
+
+  /** The versions of the open document: save one, open one, download or delete one. */
+  async showVersions(): Promise<void> {
+    const doc = this.current;
+    if (!doc?.view.save) return;
+    const [{ listVersions, loadVersion, deleteVersion, saveVersion }, { chooseVersion }] = await Promise.all([import('../storage/recent'), import('./versions-dialog')]);
+    const key = this.versionKey(doc);
+    for (;;) {
+      const choice = await chooseVersion(this.root, doc.name, await listVersions(key).catch(() => []));
+      if (!choice) return;
+      if (choice.action === 'save') {
+        const bytes = await doc.view.save(doc.format);
+        await saveVersion(key, doc.name, doc.format, bytes, choice.label || undefined);
+        this.showNotice(t('versions.saved'));
+        continue;
+      }
+      const v = choice.version!;
+      if (choice.action === 'delete') {
+        await deleteVersion(v.id);
+        continue;
+      }
+      const bytes = await loadVersion(v.id);
+      if (!bytes) return this.showError(t('versions.missing'));
+      if (choice.action === 'download') {
+        const stamp = new Date(v.savedAt).toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
+        await saveFile(bytes, v.name.replace(/(\.[^.]+)?$/, `-${stamp}$1`), v.format);
+        continue;
+      }
+      // Open: the version replaces the content; the document stays where it is.
+      if (!this.confirmDiscard()) continue;
+      const { source, dav, folderPath, grist } = doc;
+      await this.withBusy(async () => {
+        if (!(await this.openBytes(v.name, bytes))) return;
+        const now = this.current;
+        if (!now) return;
+        Object.assign(now, { ...(source ? { source } : {}), ...(dav ? { dav } : {}), ...(folderPath ? { folderPath } : {}), ...(grist ? { grist } : {}) });
+        this.dirty = true;
+        this.renderHeader();
+        this.showNotice(t('versions.opened', { date: new Date(v.savedAt).toLocaleString() }));
+      });
+      return;
     }
   }
 

@@ -446,3 +446,27 @@ test('runs an action found by name in the command palette (UI-018)', async ({ pa
   await expect(palette).toBeHidden();
   await expect(editor.locator('.toc')).toHaveCount(1);
 });
+
+test('keeps a version at each save and opens an older one (FILE-025)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('First draft.');
+  const save = async (): Promise<void> => {
+    const download = page.waitForEvent('download');
+    await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+    await download;
+  };
+  await save();
+  await page.keyboard.type(' Second part.');
+  await save();
+  await page.getByRole('button', { name: 'Versions' }).click();
+  const dialog = page.getByRole('dialog', { name: /^Versions of/ });
+  await expect(dialog.getByRole('listitem')).toHaveCount(2);
+  // A named version of the current state.
+  await dialog.getByRole('textbox', { name: 'Name of the version' }).fill('Before review');
+  await dialog.getByRole('button', { name: 'Keep the current state' }).click();
+  // The list comes back with the new version.
+  await expect(dialog.getByRole('listitem')).toHaveCount(3);
+  await expect(dialog.getByRole('listitem').first()).toContainText('Before review');
+  await dialog.getByRole('listitem').last().getByRole('button', { name: 'Open' }).click();
+  await expect(editor).toHaveText('First draft.');
+});

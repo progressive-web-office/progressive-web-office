@@ -5,7 +5,9 @@
 import type { DocumentFormat } from '../core/format';
 
 const DB_NAME = 'pwo';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
+/** Versions kept per document (FILE-025). */
+export const MAX_VERSIONS = 30;
 export const MAX_RECENT = 12;
 /** Larger files are not kept in the recent list (storage quota). */
 export const MAX_RECENT_SIZE = 25 * 1024 * 1024;
@@ -47,6 +49,8 @@ function db(): Promise<IDBDatabase> {
       if (!d.objectStoreNames.contains('folders')) d.createObjectStore('folders', { keyPath: 'id' });
       // FILE-019: the user's own templates.
       if (!d.objectStoreNames.contains('templates')) d.createObjectStore('templates', { keyPath: 'id' });
+      // FILE-025: versions of the documents, saved locally.
+      if (!d.objectStoreNames.contains('versions')) d.createObjectStore('versions', { keyPath: 'id' }).createIndex('doc', 'doc');
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -61,7 +65,7 @@ function request<T>(req: IDBRequest<T>): Promise<T> {
   });
 }
 
-async function store(name: 'recent' | 'drafts' | 'folders' | 'templates', mode: IDBTransactionMode): Promise<IDBObjectStore> {
+async function store(name: 'recent' | 'drafts' | 'folders' | 'templates' | 'versions', mode: IDBTransactionMode): Promise<IDBObjectStore> {
   return (await db()).transaction(name, mode).objectStore(name);
 }
 
@@ -170,4 +174,53 @@ export async function loadTemplate(id: string): Promise<Uint8Array | undefined> 
 
 export async function deleteTemplate(id: string): Promise<void> {
   await request((await store('templates', 'readwrite')).delete(id));
+}
+
+// --- local version history (FILE-025) ------------------------------------------
+
+export interface VersionEntry {
+  id: string;
+  /** The document's key: where it lives (file name, folder path, server path). */
+  doc: string;
+  name: string;
+  format: DocumentFormat;
+  size: number;
+  savedAt: number;
+  /** A name given to the version, if any. */
+  label?: string;
+}
+
+/** A short digest, to skip versions identical to the previous one. */
+function digest(bytes: Uint8Array): string {
+  let h = 2166136261;
+  for (let i = 0; i < bytes.length; i++) h = Math.imul(h ^ bytes[i]!, 16777619);
+  return `${bytes.length}:${(h >>> 0).toString(16)}`;
+}
+
+/** The versions of a document, newest first. */
+export async function listVersions(doc: string): Promise<VersionEntry[]> {
+  const all = (await request((await store('versions', 'readonly')).index('doc').getAll(doc))) as (VersionEntry & { data: Uint8Array; hash: string })[];
+  return all.map(({ data: _d, hash: _h, ...meta }) => meta).sort((a, b) => b.savedAt - a.savedAt);
+}
+
+/** Keep a version, unless it is the same as the last one; the oldest go beyond MAX_VERSIONS. */
+export async function saveVersion(doc: string, name: string, format: DocumentFormat, bytes: Uint8Array, label?: string): Promise<boolean> {
+  const hash = digest(bytes);
+  const all = (await request((await store('versions', 'readonly')).index('doc').getAll(doc))) as (VersionEntry & { hash: string })[];
+  all.sort((a, b) => b.savedAt - a.savedAt);
+  if (!label && all[0]?.hash === hash) return false;
+  const savedAt = Math.max(Date.now(), (all[0]?.savedAt ?? 0) + 1);
+  const os = await store('versions', 'readwrite');
+  await request(os.put({ id: `${doc}@${savedAt}`, doc, name, format, size: bytes.byteLength, savedAt, hash, data: bytes, ...(label ? { label } : {}) }));
+  for (const old of all.slice(MAX_VERSIONS - 1)) await request((await store('versions', 'readwrite')).delete(old.id));
+  return true;
+}
+
+export async function loadVersion(id: string): Promise<Uint8Array | undefined> {
+  const rec = (await request((await store('versions', 'readonly')).get(id))) as { data: Uint8Array } | undefined;
+  return rec?.data;
+}
+
+export async function deleteVersion(id: string): Promise<void> {
+  await request((await store('versions', 'readwrite')).delete(id));
 }

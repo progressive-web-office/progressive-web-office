@@ -74,6 +74,21 @@ save; otherwise the file is downloaded.
 A dot (●) next to the file name indicates unsaved changes; the browser warns
 you before closing the tab in that case.
 
+## Versions
+
+Each time you save a document (to a file, a folder, Nextcloud or a Git
+repository), the app keeps a copy of it in this browser: **🕘 Versions** lists
+them, newest first (the last 30 per document, an unchanged save adds none).
+There you can:
+
+- **Keep the current state** as a version, with an optional name ("Sent to
+  the class");
+- **Open** an older version: it replaces the content of the document, which
+  stays where it is, so saving makes it the current one;
+- **⬇ Download** a version as a file, or **✕** delete it.
+
+Versions stay in this browser only: clearing the site's data erases them.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |

@@ -22,6 +22,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   the alternative text.
 - Accessibility check of text documents: pictures, headings, tables, links,
   contrast, title and language, with a way to each issue.
+- Versions: each save keeps a copy in the browser (the last 30), listed
+  under 🕘 to open, download or name.
 - Command palette (Ctrl+Shift+P): find any button or menu entry of the
   screen by typing part of its name.
 - Random variants of exercise sheets: values drawn in the text
