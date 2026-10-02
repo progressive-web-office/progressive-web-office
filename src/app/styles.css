@@ -1066,3 +1066,23 @@ body.distraction-free .ai-panel { display: none !important; }
 .code-stale::before { content: '⟳ ' attr(data-stale); display: block; margin-top: 6pt; padding: 2px 10px; border-radius: 6px 6px 0 0; font: 600 0.78rem system-ui, sans-serif; color: #7a5200; background: #fff4d6; }
 .code-stale > .code-cell { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
 @media print { .code-stale::before { display: none; } .code-stale > .code-cell .code-cell-output { opacity: 1; } }
+
+/* CODE-015: the dependency graph of the code cells. */
+.doc-dag { margin-bottom: 16px; }
+.dag-head { display: flex; align-items: center; gap: 4px; }
+.dag-head h2 { flex: 1; font-size: 1rem; margin: 0; }
+.dag-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.78rem; margin: 6px 0; }
+.dag-key::before { content: ''; display: inline-block; width: 0.8em; height: 0.8em; margin-right: 4px; vertical-align: -0.1em; border: 2px solid; border-radius: 3px; }
+.dag-ok::before { background: #d4edda; border-color: #28a745; }
+.dag-stale::before { background: #e2e3e5; border-color: #6c757d; border-style: dashed; }
+.dag-error::before { background: #f8d7da; border-color: #dc3545; }
+.dag-blocked::before { background: #fff3cd; border-color: #c78a00; border-style: dashed; }
+.dag-new::before { background: #fff; border-color: #8a94a3; border-width: 1px; }
+.dag-graph { overflow: auto; background: #fff; border-radius: 6px; padding: 4px; }
+.dag-graph svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+.dag-graph g.dag-current { filter: drop-shadow(0 0 6px #ff6a00); }
+.dag-details { font-size: 0.85rem; margin-top: 6px; }
+.dag-list { padding-left: 1.2em; margin: 4px 0; }
+.dag-item { margin: 4px 0; }
+.dag-item.dag-ok::before, .dag-item.dag-stale::before, .dag-item.dag-error::before, .dag-item.dag-blocked::before, .dag-item.dag-new::before { content: none; }
+.dag-highlight { outline: 3px solid #ff6a00; outline-offset: 2px; border-radius: 6px; transition: outline-color 0.3s; }

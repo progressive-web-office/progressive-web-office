@@ -201,3 +201,34 @@ test('runs cells in the order of what they use, marks out-of-date cells and refu
   // Completion in the code editor asks the Pyodide CDN for jedi, out of reach here.
   expect(errors.filter((e) => !e.startsWith('Failed to load resource'))).toEqual([]);
 });
+
+test('shows the dependency graph of the cells, and goes to a cell from it (CODE-015)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = await openApp(page);
+  await openFile(page, 'graph.md', ['# Graph', '', '```python {run}', 'a = 2', '```', '', '```python {run}', 'b = a * 10', '```', '', '```python {run}', 'print(a + b)', '```', ''].join('\n'));
+  const cells = page.locator('.doc-page .code-cell');
+  await cells.first().getByRole('button', { name: 'Run all cells' }).click();
+  await page.getByRole('dialog', { name: 'Run the code of this document?' }).getByRole('button', { name: 'Run' }).click();
+  await expect(cells.nth(2).locator('.code-cell-output')).toHaveText('22\n', { timeout: 60_000 });
+
+  await page.getByRole('combobox', { name: 'View' }).selectOption({ label: 'Dependencies of the cells' });
+  const panel = page.getByRole('region', { name: 'Dependencies of the cells' });
+  await expect(panel.locator('svg g.node')).toHaveCount(3, { timeout: 30_000 });
+  await expect(panel.locator('svg .edgeLabel').filter({ hasText: /^a$/ })).toHaveCount(2);
+  await panel.getByText('As a list').click();
+  await expect(panel.locator('.dag-item').nth(2)).toContainText('uses 1 · Python (a) ; 2 · Python (b)');
+
+  // Changing the first cell: the others are out of date in the graph.
+  await cells.nth(0).getByRole('button', { name: 'Edit code' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit code cell' });
+  await dialog.getByLabel('Code').fill('a = 3');
+  await dialog.getByRole('button', { name: 'Update' }).click();
+  await expect(panel.locator('.dag-item.dag-stale')).toHaveCount(3);
+
+  // From the graph to a cell, and from a cell to the graph.
+  await panel.locator('svg g.node[data-cell="2"]').click();
+  await expect(page.locator('.dag-highlight')).toHaveCount(1);
+  await cells.nth(1).getByRole('button', { name: 'Show this cell in the dependencies' }).click();
+  await expect(panel.locator('svg g.node.dag-current')).toHaveAttribute('data-cell', '1');
+  expect(errors.filter((e) => !e.startsWith('Failed to load resource'))).toEqual([]);
+});

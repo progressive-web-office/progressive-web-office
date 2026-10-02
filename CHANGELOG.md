@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Dependency graph of the code cells (CODE-015): *View › Dependencies of the
+  cells* or 🔀 on a cell shows the cells, coloured by state, and the names
+  linking them; a click goes to the cell; also given as a list.
+
 - Reactive code cells (CODE-014): cells run in the order of the names they
   define and use; changing or running a cell marks the cells using it as out
   of date (or runs them, as chosen in *Settings › Writing*); JavaScript cells

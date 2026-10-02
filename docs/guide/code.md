@@ -72,6 +72,30 @@ A name no cell defines any more (you deleted or changed the cell defining it)
 is removed from the interpreter at the next run, so a cell still using it
 fails instead of using an old value.
 
+### Seeing the dependencies
+
+*View › Dependencies of the cells* (or **🔀** in the bar of a cell) shows,
+next to the document, the graph of the cells: one box per cell (its number,
+its language and the names it defines), an arrow from a cell to each cell
+using it, labelled with the names it carries. The colour tells the state of
+each cell:
+
+| Colour | State |
+|--------|-------|
+| green | run |
+| grey, dashed | out of date |
+| red | failed (or a name defined twice, a cycle) |
+| yellow, dashed | a cell it uses failed (the arrow carrying the failure is red) |
+| white | not run yet |
+
+Click a box to go to its cell; **🔀** on a cell draws its box out in the
+graph. The graph follows the changes of the document and the runs. *As a
+list* gives the same information as text: what each cell defines, which cells
+it uses (and through which names), and which cells use it.
+
+Showing the graph starts the Python interpreter to read the cells (no code of
+the document runs).
+
 ## Hiding the code
 
 **🙈** in the bar of a cell hides its code: only its output (text and

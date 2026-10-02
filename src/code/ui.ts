@@ -26,6 +26,8 @@ export function decorateCells(root: HTMLElement): void {
         action('run', '▶', t('code.run')),
         action('run-all', '⏩', t('code.runAll')),
         action('stop', '■', t('code.stop')),
+        // CODE-015: where the cell is in the dependency graph.
+        action('graph', '🔀', t('code.dagCell')),
         action('edit', '✎', t('code.edit')),
       ),
     );

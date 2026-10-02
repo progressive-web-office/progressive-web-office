@@ -31,9 +31,10 @@ import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReferenc
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
-import { cellStatePlugin, markCells, stalePositions } from './pm/cell-state';
+import { cellStateKey, cellStatePlugin, markCells, stalePositions } from './pm/cell-state';
 import type { CellDeps, CellError } from '../code/reactive';
 import { loadReactivity } from '../code/settings';
+import { DagPanel, type DagView } from '../code/dag-panel';
 import { listCss } from './pm/list-css';
 import { askAuthor } from '../app/author';
 import { isHistoryTransaction } from 'prosemirror-history';
@@ -117,6 +118,8 @@ export class DocumentEditor implements EditorView {
   private trusted = false;
   /** REV-001: the comments beside the page. */
   private readonly comments: CommentPanel;
+  /** CODE-015: the dependency graph of the code cells. */
+  private readonly dag: DagPanel;
   /** REV-005: tracked changes, recorded while `tracking` with this author. */
   private readonly changesPanel: ChangePanel;
   private tracking: Revision | undefined;
@@ -171,6 +174,7 @@ export class DocumentEditor implements EditorView {
     this.findBar = new FindBar(() => this.view);
     this.comments = new CommentPanel({ view: () => this.view, doc: this.doc, readOnly: () => this.readOnly, changed: () => this.changed() });
     this.changesPanel = new ChangePanel(() => this.view, () => this.readOnly);
+    this.dag = new DagPanel({ view: () => this.dagView(), goTo: (i) => this.goToCell(i) });
     this.trackButton = button(t('track.button'), () => void this.toggleTracking(), { text: '±', title: t('track.title'), className: 'track-btn' });
     this.trackButton.setAttribute('aria-pressed', 'false');
     const scroller = h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes);
@@ -198,7 +202,7 @@ export class DocumentEditor implements EditorView {
       this.review.bar,
       this.buildTableBar(),
       this.findBar.element,
-      h('div', { class: 'doc-body' }, scroller, h('div', { class: 'doc-side' }, this.changesPanel.element, this.comments.element)),
+      h('div', { class: 'doc-body' }, scroller, h('div', { class: 'doc-side' }, this.dag.element, this.changesPanel.element, this.comments.element)),
     );
     for (const strip of [this.headerStrip, this.footerStrip]) {
       strip.addEventListener('click', () => void this.editPageSetup());
@@ -478,7 +482,8 @@ export class DocumentEditor implements EditorView {
       this.citeCache = undefined;
       this.renderNotes();
       for (const toc of this.tocViews) toc.refresh();
-    }
+      this.dag.later();
+    } else if (tr.getMeta(cellStateKey)) this.dag.later();
   }
 
   /** Give the focus back to the document, without touching the selection when it already has it. */
@@ -497,6 +502,7 @@ export class DocumentEditor implements EditorView {
     if (action === 'run') void this.runCells([pos]);
     else if (action === 'run-all') void this.runCells(this.cellPositions());
     else if (action === 'stop') this.runner?.stop();
+    else if (action === 'graph') void this.dag.show(this.allCells().findIndex((c) => c.pos === pos));
     else if (action === 'edit') void this.editCell(pos, node);
     // CODE-013: show or hide the code, the output staying.
     else if (action === 'toggle-code') this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, hidden: !node.attrs.hidden }));
@@ -592,6 +598,38 @@ export class DocumentEditor implements EditorView {
   private cellError(error: CellError, cells: number[]): string {
     const list = cells.map((i) => i + 1).join(', ');
     return error.kind === 'multiple' ? t('code.definedTwice', { name: error.name, cells: list }) : t('code.cycle', { cells: list });
+  }
+
+  /** CODE-015: the cells, their states and their links, for the graph. */
+  private async dagView(): Promise<DagView> {
+    const [{ cellStates, edgesOf }, { LANG_LABEL }] = await Promise.all([import('../code/dag'), import('../code/ui')]);
+    const cells = this.allCells();
+    // Python is analysed by the interpreter: the sandbox starts, no code of the document runs.
+    if (!this.runner && cells.some((c) => c.node.attrs.lang === 'python')) {
+      const { CodeRunner } = await import('../code/runner');
+      this.runner = new CodeRunner(this.element);
+    }
+    const { deps, graph } = await this.graphOf(cells, true);
+    const now = this.allCells();
+    if (now.length !== cells.length) return this.dagView();
+    const stale = new Set(stalePositions(this.view.state).map((p) => cells.findIndex((c) => c.pos === p)).filter((i) => i >= 0));
+    const states = cellStates(graph, cells.map((c) => (c.node.attrs.output ?? undefined) as { text: string; error?: boolean } | undefined), stale);
+    const graphCells = cells.map((c, i) => ({ lang: c.node.attrs.lang as 'python' | 'javascript', ...(deps[i] ? { deps: deps[i] } : {}) }));
+    return {
+      nodes: cells.map((c, i) => ({ label: `${i + 1} · ${LANG_LABEL[c.node.attrs.lang as 'python' | 'javascript']}`, defs: deps[i]?.defs ?? [], state: states[i]! })),
+      edges: edgesOf(graphCells, graph),
+      ...(deps.some((d) => !d) ? { hint: t('code.dagUnknown') } : {}),
+    };
+  }
+
+  /** Bring a cell into view and make it stand out for a moment. */
+  private goToCell(index: number): void {
+    const at = this.allCells()[index];
+    const el = at && (this.view.nodeDOM(at.pos) as HTMLElement | null);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('dag-highlight');
+    setTimeout(() => el.classList.remove('dag-highlight'), 1500);
   }
 
   /** Run cells in the sandbox and store their output in the document (CODE-002, CODE-005, CODE-014). */
@@ -698,6 +736,7 @@ export class DocumentEditor implements EditorView {
       }
       for (const i of after(index!, !result.error)) skipped.add(i);
     }
+    this.dag.later();
   }
 
   // --- diagrams, equations, properties ----------------------------------------
@@ -837,6 +876,7 @@ export class DocumentEditor implements EditorView {
         h('option', { value: 'goal' }, t('wview.goal')),
         h('option', { value: 'hide-code' }, t('code.hideAll')),
         h('option', { value: 'show-code' }, t('code.showAll')),
+        h('option', { value: 'dag' }, `${mark(this.dag.open)}${t('code.dag')}`),
       );
     };
     fill();
@@ -846,6 +886,10 @@ export class DocumentEditor implements EditorView {
       select.value = '';
       if (value === 'goal') void this.editGoal();
       else if (value === 'hide-code' || value === 'show-code') this.setAllCodeHidden(value === 'hide-code');
+      else if (value === 'dag') {
+        if (this.dag.open) this.dag.close();
+        else void this.dag.show();
+      }
       else if (value === 'readability' || value === 'focus' || value === 'typewriter') this.setWriting({ [value]: !this.writing[value] });
       fill();
       this.refocus();
