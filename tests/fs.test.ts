@@ -70,3 +70,37 @@ describe('FOLDER-004 file system module: providers', () => {
     }
   });
 });
+
+describe('FOLDER-004 local folder and browser storage providers', async () => {
+  const { DirectoryHandleProvider, FileListProvider } = await import('../src/fs');
+  const { fakeDirectory } = await import('./fake-fsa');
+
+  for (const withMove of [false, true]) {
+    it(`reads, writes, moves and removes through a directory handle (${withMove ? 'native move' : 'move by copy'})`, async () => {
+      const p = new DirectoryHandleProvider(fakeDirectory('thesis', { 'main.md': '# T', 'ch/one.md': 'one', 'ch/img/a.png': 'png' }, withMove));
+      expect(p.label).toBe('thesis');
+      expect((await p.list('')).map((e) => e.path)).toEqual(['ch', 'main.md']);
+      expect((await p.list('ch'))[1]).toMatchObject({ name: 'one.md', kind: 'file', size: 3 });
+      expect(await readText(p, 'ch/one.md')).toBe('one');
+      await p.write('ch/two.md', new Blob(['two']));
+      await p.move('ch/two.md', 'parts/two.md');
+      expect(await listFiles(p)).toEqual(['ch/img/a.png', 'ch/one.md', 'parts/two.md', 'main.md']); // folders first
+      await p.move('ch', 'chapters');
+      expect(await readText(p, 'chapters/img/a.png')).toBe('png');
+      await expect(p.move('main.md', 'parts/two.md')).rejects.toMatchObject({ code: 'Exists' });
+      await expect(p.read('nope.md')).rejects.toMatchObject({ code: 'NotFound' });
+      await expect(p.remove('chapters')).rejects.toMatchObject({ code: 'NotEmpty' });
+      await p.remove('chapters', { recursive: true });
+      expect(await listFiles(p)).toEqual(['parts/two.md', 'main.md']);
+    });
+  }
+
+  it('reads a folder picked in any browser, read-only', async () => {
+    const f = (path: string, text: string): File => Object.defineProperty(new File([text], path.split('/').pop()!), 'webkitRelativePath', { value: `vault/${path}` });
+    const p = new FileListProvider([f('a.md', 'A'), f('notes/b.md', 'B')]);
+    expect(p.label).toBe('vault');
+    expect(p.capabilities.write).toBe(false);
+    expect(await listFiles(p)).toEqual(['notes/b.md', 'a.md']);
+    await expect(p.write('c.md')).rejects.toMatchObject({ code: 'ReadOnly' });
+  });
+});

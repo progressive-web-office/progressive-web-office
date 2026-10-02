@@ -3,3 +3,5 @@ export * from './types';
 export * from './path';
 export * from './walk';
 export { MemoryProvider } from './providers/memory';
+export { DirectoryHandleProvider, canPickDirectory, pickDirectory, privateStorage } from './providers/handle';
+export { FileListProvider, pickFileList } from './providers/files';
