@@ -916,6 +916,10 @@ export const en = {
   'comment.replyLabel': 'Reply',
   'comment.yourName': 'Your name, shown on your comments:',
   'comment.selectText': 'Select the text to comment, or put the cursor in a word.',
+  'pdf.fitPage': 'Whole page',
+  'pdf.pagesPerRow': 'Pages side by side',
+  'pdf.onePage': '1 page',
+  'pdf.nPages': '{n} pages',
 } as const;
 
 export type MessageKey = keyof typeof en;

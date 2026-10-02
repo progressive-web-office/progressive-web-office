@@ -315,6 +315,8 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 .pdf-notice { padding: 6px 12px; background: #fff4ce; color: #5c4400; border-bottom: 1px solid var(--border); }
 .pdf-scroll { flex: 1; min-height: 0; overflow: auto; background: #525659; outline: none; }
 .pdf-pages { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 12px; }
+/* PDF-016: n pages per row, as in a book when there are two. */
+.pdf-pages.spread { display: grid; grid-template-columns: repeat(var(--columns), auto); justify-content: center; align-items: start; }
 .pdf-page { position: relative; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); flex: none; }
 .pdf-canvas { position: absolute; inset: 0; }
 .page-input { width: 4em; padding: 4px; text-align: right; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }

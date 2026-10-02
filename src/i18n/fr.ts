@@ -918,4 +918,8 @@ export const fr: Record<MessageKey, string> = {
   'comment.replyLabel': 'Réponse',
   'comment.yourName': 'Votre nom, affiché sur vos commentaires :',
   'comment.selectText': 'Sélectionnez le texte à commenter, ou placez le curseur dans un mot.',
+  'pdf.fitPage': 'Page entière',
+  'pdf.pagesPerRow': 'Pages côte à côte',
+  'pdf.onePage': '1 page',
+  'pdf.nPages': '{n} pages',
 };

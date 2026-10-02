@@ -25,6 +25,26 @@ async function download(page: import('@playwright/test').Page): Promise<Buffer> 
   return Buffer.concat(chunks);
 }
 
+test('fits the whole page and shows pages side by side (PDF-016)', async ({ page }) => {
+  await openApp(page);
+  await openFile(page, 'sample.pdf', await samplePdf(), 'application/pdf');
+  const pages = page.locator('.pdf-page');
+  await expect(pages).toHaveCount(3);
+  const scroller = page.locator('.pdf-scroll');
+  await page.getByRole('button', { name: 'Whole page' }).click();
+  // The whole page is in view: its height fits the scrolling area.
+  await expect.poll(async () => (await pages.first().boundingBox())!.height).toBeLessThanOrEqual((await scroller.boundingBox())!.height);
+  await page.getByLabel('Pages side by side').selectOption('2');
+  await expect.poll(async () => (await pages.nth(1).boundingBox())!.y).toBeCloseTo((await pages.first().boundingBox())!.y, 0);
+  const [a, b] = [(await pages.first().boundingBox())!, (await pages.nth(1).boundingBox())!];
+  expect(b.x).toBeGreaterThan(a.x + a.width);
+  await expect.poll(async () => (await pages.nth(2).boundingBox())!.y).toBeGreaterThan(a.y + a.height);
+  // The choice is kept for the next PDF.
+  await page.reload();
+  await openFile(page, 'sample.pdf', await samplePdf(), 'application/pdf');
+  await expect(page.getByLabel('Pages side by side')).toHaveValue('2');
+});
+
 test('views a PDF, navigates, zooms and selects text (PDF-001..005)', async ({ page }) => {
   const errors = await openApp(page);
   await openFile(page, 'sample.pdf', await samplePdf(), 'application/pdf');

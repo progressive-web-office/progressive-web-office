@@ -11,6 +11,30 @@ import { button, h } from '../app/dom';
 import type { EditorView, SaveVariant, ViewContext } from '../app/views';
 import { applyEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from './forms';
 import { captureSignature } from './signature-pad';
+import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
+
+const VIEW_KEY = 'pwo.pdf.view';
+const GAP = 12;
+
+/** The zoom mode and pages per row chosen last (PDF-016). */
+function loadView(): { zoom: PdfZoom; columns: number } {
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as { zoom?: unknown; columns?: unknown };
+    const zoom = v.zoom === 'page' || v.zoom === 'width' ? v.zoom : 'width';
+    const columns = (PAGES_PER_ROW as readonly number[]).includes(v.columns as number) ? (v.columns as number) : 1;
+    return { zoom, columns };
+  } catch {
+    return { zoom: 'width', columns: 1 };
+  }
+}
+
+function saveView(zoom: PdfZoom, columns: number): void {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify({ zoom: typeof zoom === 'number' ? 'width' : zoom, columns }));
+  } catch {
+    /* not kept */
+  }
+}
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -51,7 +75,14 @@ export class PdfViewer implements EditorView {
   private readonly pageInput = h('input', { type: 'number', min: '1', class: 'page-input', 'aria-label': t('pdf.pageNumber') });
   private readonly zoomLabel = h('span', { class: 'zoom-label', 'aria-live': 'polite' });
   private pages: PageShell[] = [];
-  private zoom: number | 'fit' = 'fit';
+  private zoom: PdfZoom = loadView().zoom;
+  /** Pages side by side (PDF-016). */
+  private columns = loadView().columns;
+  private readonly columnsSelect = h(
+    'select',
+    { 'aria-label': t('pdf.pagesPerRow'), title: t('pdf.pagesPerRow') },
+    ...PAGES_PER_ROW.map((n) => h('option', { value: String(n) }, t(n === 1 ? 'pdf.onePage' : 'pdf.nPages', { n }))),
+  );
   private scale = 1;
   private current = 1;
   private observer: IntersectionObserver | undefined;
@@ -71,6 +102,12 @@ export class PdfViewer implements EditorView {
     const notice = info.readOnlyReason ? h('div', { class: 'pdf-notice', role: 'note' }, info.readOnlyCode ? reason[info.readOnlyCode] : info.readOnlyReason) : null;
     this.element = h('div', { class: 'pdf-viewer' }, this.toolbar(), notice, this.scroller);
     this.scroller.addEventListener('scroll', () => this.updateCurrent());
+    this.columnsSelect.value = String(this.columns);
+    this.columnsSelect.addEventListener('change', () => {
+      this.columns = Number(this.columnsSelect.value) || 1;
+      saveView(this.zoom, this.columns);
+      void this.layout();
+    });
     this.pageInput.addEventListener('change', () => this.goTo(Number(this.pageInput.value)));
   }
 
@@ -80,9 +117,12 @@ export class PdfViewer implements EditorView {
     this.layout();
     if (typeof ResizeObserver === 'function') {
       let width = this.scroller.clientWidth;
+      let height = this.scroller.clientHeight;
       this.resizeObserver = new ResizeObserver(() => {
-        if (this.zoom === 'fit' && Math.abs(this.scroller.clientWidth - width) > 16) {
+        const moved = Math.abs(this.scroller.clientWidth - width) > 16 || (this.zoom === 'page' && Math.abs(this.scroller.clientHeight - height) > 16);
+        if (typeof this.zoom !== 'number' && moved) {
           width = this.scroller.clientWidth;
+          height = this.scroller.clientHeight;
           void this.layout();
         }
       });
@@ -148,7 +188,9 @@ export class PdfViewer implements EditorView {
       button(t('pdf.zoomOut'), () => this.zoomBy(-1), { text: '−', title: t('pdf.zoomOut') }),
       this.zoomLabel,
       button(t('pdf.zoomIn'), () => this.zoomBy(1), { text: '+', title: t('pdf.zoomIn') }),
-      button(t('pdf.fit'), () => this.setZoom('fit'), { text: '↔', title: t('pdf.fit') }),
+      button(t('pdf.fit'), () => this.setZoom('width'), { text: '↔', title: t('pdf.fit') }),
+      button(t('pdf.fitPage'), () => this.setZoom('page'), { text: '↕', title: t('pdf.fitPage') }),
+      this.columnsSelect,
       ...(editable
         ? [
             h('span', { class: 'sep' }),
@@ -165,8 +207,9 @@ export class PdfViewer implements EditorView {
     this.setZoom(next);
   }
 
-  private setZoom(zoom: number | 'fit'): void {
+  private setZoom(zoom: PdfZoom): void {
     this.zoom = zoom;
+    if (typeof zoom !== 'number') saveView(zoom, this.columns);
     void this.layout();
   }
 
@@ -177,8 +220,16 @@ export class PdfViewer implements EditorView {
     this.observer?.disconnect();
     const first = await this.doc.getPage(1);
     const base = first.getViewport({ scale: pdfjs.PixelsPerInch.PDF_TO_CSS_UNITS });
-    const available = Math.max(200, (this.scroller.clientWidth || 900) - 32);
-    this.scale = this.zoom === 'fit' ? Math.min(3, available / base.width) : this.zoom;
+    this.scale = fitScale(this.zoom, {
+      width: this.scroller.clientWidth || 900,
+      height: this.scroller.clientHeight || 1100,
+      pageWidth: base.width,
+      pageHeight: base.height,
+      columns: this.columns,
+      gap: GAP,
+    });
+    this.pagesEl.style.setProperty('--columns', String(this.columns));
+    this.pagesEl.classList.toggle('spread', this.columns > 1);
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
     this.pages = [];
     const shells: HTMLElement[] = [];
@@ -456,7 +507,7 @@ export class PdfViewer implements EditorView {
     if (!page) return;
     this.current = page.index + 1;
     this.pageInput.value = String(this.current);
-    if (typeof this.scroller.scrollTo === 'function') this.scroller.scrollTo({ top: page.el.offsetTop - 8, behavior: smooth ? 'smooth' : 'auto' });
+    if (typeof this.scroller.scrollTo === 'function') this.scroller.scrollTo({ top: page.el.offsetTop - GAP, behavior: smooth ? 'smooth' : 'auto' });
     this.ctx.statusChanged();
   }
 

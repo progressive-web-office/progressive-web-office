@@ -13,6 +13,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Cell formatting in spreadsheets: bold, italic, underline, text and fill
   colours, borders and alignment, kept in Excel and OpenDocument files and
   printed. The budget, grade book and invoice templates use it.
+- PDF viewer: fit the whole page (its height) and show 2 or more pages
+  side by side.
 - Comments in text documents: comment the selection or the word at the
   cursor (Ctrl+Alt+M), reply, resolve and delete, with the threads beside
   the page. Comments are kept in Word (with replies and resolved state),

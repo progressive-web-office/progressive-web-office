@@ -918,4 +918,8 @@ export const zh: Record<MessageKey, string> = {
   'comment.replyLabel': '回复',
   'comment.yourName': '您的名字（显示在您的批注上）：',
   'comment.selectText': '请选择要批注的文本，或将光标置于某个词中。',
+  'pdf.fitPage': '整页',
+  'pdf.pagesPerRow': '并排页数',
+  'pdf.onePage': '1 页',
+  'pdf.nPages': '{n} 页',
 };
