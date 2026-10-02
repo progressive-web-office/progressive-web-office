@@ -154,6 +154,7 @@ export class DocReview {
         this.resizeObserver.observe(this.host.scroller);
       }
     } else {
+      cancelAnimationFrame(this.frame);
       this.resizeObserver?.disconnect();
       this.resizeObserver = undefined;
       if (isDistractionFree()) this.do('fullscreen');
@@ -179,6 +180,8 @@ export class DocReview {
   // --- layout ---------------------------------------------------------------------------
 
   private layout(): void {
+    // A layout asked for just before leaving the review mode must not page the editor again.
+    if (!this.active) return;
     const dom = this.host.view().dom as HTMLElement;
     const paged = this.flow === 'pages';
     this.host.root.classList.toggle('paged', paged);
