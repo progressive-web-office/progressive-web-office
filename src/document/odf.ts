@@ -134,3 +134,6 @@ export function odfText(text: string, atStart: boolean): string {
   // A trailing space would be dropped by consumers that trim paragraphs.
   return out.replace(/ $/, '<text:s/>');
 }
+
+/** BibTeX fields with an ODF attribute of the same name (`doi` goes to `custom1`). */
+export const ODF_BIB_FIELDS = ['address', 'annote', 'author', 'booktitle', 'chapter', 'edition', 'editor', 'howpublished', 'institution', 'journal', 'month', 'note', 'number', 'organizations', 'pages', 'publisher', 'school', 'series', 'title', 'report-type', 'volume', 'year', 'url', 'isbn', 'issn'];

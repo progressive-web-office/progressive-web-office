@@ -36,8 +36,12 @@ import {
   refLabel,
   seqKindOf,
   seqText,
+  isCiteRun,
+  type CiteRun,
+  type References,
   type SeqKind,
 } from './model';
+import { citations, formatEntry, type Citations } from './bibliography';
 import { diagramLangOf } from './diagram';
 import { t } from '../i18n';
 
@@ -59,18 +63,60 @@ export interface ImageInfo {
 /** Numbers and targets of the document being rendered (DOC-026). */
 let xref: ReturnType<typeof crossTargets> | undefined;
 
+/** Citations of the document being rendered (DOC-027). */
+let cites: Citations | undefined;
+
 export function blocksToDom(
   blocks: Block[],
   doc: Document,
   resolveImage: (key: string) => ImageInfo | undefined,
+  references?: References,
 ): DocumentFragment {
-  const outer = xref;
+  const outer = [xref, cites] as const;
   xref = crossTargets(blocks);
+  cites = citations(blocks, references);
   try {
     return blocksToDomInner(blocks, doc, resolveImage);
   } finally {
-    xref = outer;
+    [xref, cites] = outer;
   }
+}
+
+/** A citation as shown: `[1]` or `(Knuth, 1984)` (DOC-027). */
+export function citeElement(cite: CiteRun, text: string, doc: Document = document): HTMLElement {
+  const span = doc.createElement('span');
+  span.className = 'cite';
+  span.dataset.cite = cite.cite.join(' ');
+  if (cite.locator) span.dataset.locator = cite.locator;
+  span.textContent = text;
+  return span;
+}
+
+/** The list of cited references (DOC-027). */
+export function bibliographyElement(c: Citations, numeric: boolean, doc: Document = document): HTMLElement {
+  const section = doc.createElement('section');
+  section.className = 'bibliography';
+  section.dataset.bibliography = '';
+  const title = doc.createElement('p');
+  title.className = 'bibliography-title';
+  title.textContent = t('bib.title');
+  const list = doc.createElement(numeric ? 'ol' : 'ul');
+  for (const e of c.cited) {
+    const li = doc.createElement('li');
+    li.id = `ref-${e.key}`;
+    if (numeric) li.dataset.label = `[${c.numbers.get(e.key)}]`;
+    appendRuns(li, formatEntry(e), doc, () => undefined);
+    if (li.lastChild?.nodeName === 'BR') li.lastChild.remove();
+    list.append(li);
+  }
+  section.append(title, list);
+  if (!c.cited.length) {
+    const hint = doc.createElement('p');
+    hint.className = 'bibliography-empty';
+    hint.textContent = t('bib.empty');
+    section.append(hint);
+  }
+  return section;
 }
 
 function blocksToDomInner(
@@ -90,6 +136,8 @@ function blocksToDomInner(
       frag.append(tableToDom(group, doc, resolveImage));
     } else if (group.type === 'toc') {
       frag.append(tocElement(blocks, group.levels ?? 3, doc));
+    } else if (group.type === 'bibliography') {
+      frag.append(bibliographyElement(cites ?? citations([], undefined), cites?.numeric ?? true, doc));
     } else if (group.type === 'rule') {
       const hr = doc.createElement('hr');
       if (group.page) {
@@ -210,6 +258,10 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
     }
     if (isSeqRun(run)) {
       el.append(seqElement(run.seq, xref?.numbers.get(run) ?? 1, doc));
+      continue;
+    }
+    if (isCiteRun(run)) {
+      el.append(citeElement(run, cites ? cites.text(run) : `[${run.cite.join(', ')}]`, doc));
       continue;
     }
     if (isRefRun(run)) {
@@ -492,6 +544,16 @@ export function domToBlocks(
     }
     if (el.dataset?.seq !== undefined && el.classList.contains('seq')) {
       open(ctx).runs.push({ seq: seqKindOf(el.dataset.seq) });
+      return;
+    }
+    if (el.dataset?.cite !== undefined && el.classList.contains('cite')) {
+      const keys = el.dataset.cite.split(/\s+/).filter(Boolean);
+      if (keys.length) open(ctx).runs.push(el.dataset.locator ? { cite: keys, locator: el.dataset.locator } : { cite: keys });
+      return;
+    }
+    if (el.dataset?.bibliography !== undefined && el.classList.contains('bibliography')) {
+      flush();
+      blocks.push({ type: 'bibliography' });
       return;
     }
     if (el.dataset?.ref !== undefined && el.classList.contains('xref')) {

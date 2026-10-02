@@ -13,6 +13,7 @@ import {
   isFootnoteRun,
   isSeqRun,
   isRefRun,
+  isCiteRun,
   crossTargets,
   anchorSpan,
   SEQ_NAMES,
@@ -36,6 +37,8 @@ import { mathmlToOmml, OMML_NS } from '../math/convert';
 import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { APP_XML, coreXml, EMU_PER_PX, NS, REL } from './ooxml';
+import { citations, formatEntry, type Citations } from './bibliography';
+import { citationInstr, SOURCES_PROPS, sourcesXml } from './word-sources';
 
 const STYLE_IDS: Record<string, string> = {
   h1: 'Heading1',
@@ -65,6 +68,8 @@ class DocxWriter {
   /** Cross-reference targets and numbers (DOC-026). */
   private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
   private bookmarkId = 0;
+  /** Citation numbers and texts (DOC-027). */
+  private cites: Citations = citations([], undefined);
 
   constructor(
     private readonly doc: RichDocument,
@@ -79,6 +84,10 @@ class DocxWriter {
     this.rels.push({ id: this.nextRid(), type: REL.styles, target: 'styles.xml' });
     this.rels.push({ id: this.nextRid(), type: REL.numbering, target: 'numbering.xml' });
     this.xref = crossTargets(this.doc.blocks);
+    this.cites = citations(this.doc.blocks, this.doc.references);
+    const sources = this.doc.references?.entries.length ? this.doc.references.entries : undefined;
+    // DOC-027: Word's sources part, so that Word manages the bibliography.
+    if (sources) this.rels.push({ id: this.nextRid(), type: REL.customXml, target: '../customXml/item1.xml' });
     const body = this.blocks(this.doc.blocks);
     if (this.footnotes.length) this.rels.push({ id: this.nextRid(), type: REL.footnotes, target: 'footnotes.xml' });
     // DOC-024: header and footer parts.
@@ -111,6 +120,11 @@ class DocxWriter {
       { path: 'word/_rels/document.xml.rels', data: this.relsXml() },
     ];
     if (this.footnotes.length) entries.push({ path: 'word/footnotes.xml', data: this.footnotesXml() });
+    if (sources) {
+      entries.push({ path: 'customXml/item1.xml', data: sourcesXml(sources) });
+      entries.push({ path: 'customXml/itemProps1.xml', data: SOURCES_PROPS });
+      entries.push({ path: 'customXml/_rels/item1.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="${NS.rel}"><Relationship Id="rId1" Type="${REL.customXmlProps}" Target="itemProps1.xml"/></Relationships>` });
+    }
     for (const f of furniture) entries.push({ path: `word/${f.kind}1.xml`, data: f.xml });
     for (const [key, m] of this.media) {
       const res = this.doc.resources.get(key);
@@ -134,6 +148,7 @@ class DocxWriter {
       '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
       (this.footnotes.length ? '<Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>' : '') +
       this.furnitureKinds.map((k) => `<Override PartName="/word/${k}1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.${k}+xml"/>`).join('') +
+      (this.doc.references?.entries.length ? '<Override PartName="/customXml/itemProps1.xml" ContentType="application/vnd.openxmlformats-officedocument.customXmlProperties+xml"/>' : '') +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
       '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
       '</Types>'
@@ -195,6 +210,8 @@ class DocxWriter {
         out += this.table(group);
       } else if (group.type === 'toc') {
         out += this.toc(group.levels ?? 3);
+      } else if (group.type === 'bibliography') {
+        out += this.bibliography();
       } else if (group.page) {
         out += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
       } else {
@@ -202,6 +219,21 @@ class DocxWriter {
       }
     }
     return out;
+  }
+
+  /**
+   * The list of references (DOC-027): Word's BIBLIOGRAPHY field in its
+   * building block, the current list as its result.
+   */
+  private bibliography(): string {
+    const items = this.cites.cited.map((e) => {
+      const label = this.doc.references?.style === 'author-year' ? [] : [{ text: `[${this.cites.numbers.get(e.key)}]\t` }];
+      return [...label, ...formatEntry(e)].map((r) => this.run(r)).join('');
+    });
+    const begin = '<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve"> BIBLIOGRAPHY </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>';
+    const end = '<w:r><w:fldChar w:fldCharType="end"/></w:r>';
+    const paras = (items.length ? items : ['']).map((runs, i, all) => `<w:p><w:pPr><w:pStyle w:val="Bibliography"/></w:pPr>${i === 0 ? begin : ''}${runs}${i === all.length - 1 ? end : ''}</w:p>`);
+    return `<w:sdt><w:sdtPr><w:docPartObj><w:docPartGallery w:val="Bibliographies"/><w:docPartUnique/></w:docPartObj></w:sdtPr><w:sdtContent>${paras.join('')}</w:sdtContent></w:sdt>`;
   }
 
   /**
@@ -314,6 +346,10 @@ class DocxWriter {
       const n = this.xref.numbers.get(run) ?? 1;
       const field = `<w:fldSimple w:instr=" SEQ ${SEQ_NAMES[run.seq]} \\* ARABIC "><w:r><w:t>${n}</w:t></w:r></w:fldSimple>`;
       return run.seq === 'equation' ? `<w:r><w:t>(</w:t></w:r>${field}<w:r><w:t>)</w:t></w:r>` : field;
+    }
+    if (isCiteRun(run)) {
+      // DOC-027: a CITATION field, in the content control Word gives citations.
+      return `<w:sdt><w:sdtPr><w:citation/></w:sdtPr><w:sdtContent><w:fldSimple w:instr="${esc(citationInstr(run))}"><w:r><w:t xml:space="preserve">${esc(this.cites.text(run))}</w:t></w:r></w:fldSimple></w:sdtContent></w:sdt>`;
     }
     if (isRefRun(run)) {
       const target = this.xref.targets.get(run.ref);
@@ -479,6 +515,7 @@ const STYLES_XML =
   '<w:pPr><w:ind w:left="720" w:right="720"/></w:pPr><w:rPr><w:i/><w:iCs/><w:color w:val="404040"/></w:rPr></w:style>' +
   '<w:style w:type="paragraph" w:styleId="Caption"><w:name w:val="caption"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="35"/><w:unhideWhenUsed/><w:qFormat/>' +
   '<w:pPr><w:spacing w:after="200" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:i/><w:iCs/><w:color w:val="44546A"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="Bibliography"><w:name w:val="Bibliography"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="37"/><w:unhideWhenUsed/><w:pPr><w:ind w:left="720" w:hanging="720"/></w:pPr></w:style>' +
   '<w:style w:type="paragraph" w:styleId="Code"><w:name w:val="Code"/><w:basedOn w:val="Normal"/><w:qFormat/>' +
   '<w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/></w:pPr>' +
   '<w:rPr><w:rFonts w:ascii="Courier New" w:hAnsi="Courier New" w:cs="Courier New"/><w:sz w:val="20"/></w:rPr></w:style>' +

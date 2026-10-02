@@ -27,8 +27,10 @@ import {
   crossTargets,
   isSeqRun,
   isRefRun,
+  isCiteRun,
   seqText,
 } from './model';
+import { writeBibtex } from './bibliography';
 import { cellsAsBlocks } from './code-cells';
 import { diagramLangOf, diagramsAsPictures } from './diagram';
 
@@ -65,10 +67,14 @@ class LatexWriter {
   private imagePaths = new Map<string, string>();
   private multirow = false;
   private captions = false;
+  /** Citations by author and year use natbib (DOC-027). */
+  private readonly authorYear: boolean;
   /** Cross-reference targets and numbers (DOC-026). */
   private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
 
-  constructor(private readonly doc: RichDocument) {}
+  constructor(private readonly doc: RichDocument) {
+    this.authorYear = doc.references?.style === 'author-year';
+  }
 
   /** Header and footer with fancyhdr (DOC-024). */
   private furniture(): string[] {
@@ -96,7 +102,11 @@ class LatexWriter {
     const body = this.blocks(this.doc.blocks);
     const cjk = /[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/.test(body);
     const meta = this.doc.meta;
+    // DOC-027: the sources travel inside the .tex file, so that it compiles on its own.
+    const entries = this.doc.references?.entries ?? [];
+    const bib = entries.length ? [`\\begin{filecontents*}[overwrite]{references.bib}\n${writeBibtex(entries).trimEnd()}\n\\end{filecontents*}`] : [];
     return [
+      ...bib,
       '\\documentclass{article}',
       '\\usepackage{iftex}',
       '\\ifPDFTeX',
@@ -113,6 +123,7 @@ class LatexWriter {
       '\\usepackage{hyperref}',
       ...(this.multirow ? ['\\usepackage{multirow}'] : []),
       ...(this.captions ? ['\\usepackage{caption}'] : []),
+      ...(this.authorYear && JSON.stringify(this.doc.blocks).includes('"cite"') ? ['\\usepackage{natbib}'] : []),
       ...this.furniture(),
       ...(meta.title ? [`\\title{${escapeLatex(meta.title)}}`] : []),
       ...(meta.author ? [`\\author{${escapeLatex(meta.author)}}`] : []),
@@ -143,6 +154,9 @@ class LatexWriter {
         out.push(this.table(group));
       } else if (group.type === 'toc') {
         out.push('\\tableofcontents');
+      } else if (group.type === 'bibliography') {
+        // DOC-027: BibTeX builds the list from references.bib.
+        if (this.doc.references?.entries.length) out.push(`\\bibliographystyle{${this.authorYear ? 'plainnat' : 'plain'}}\n\\bibliography{references}`);
       } else if (group.type === 'rule') {
         out.push(group.page ? '\\newpage' : '\\noindent\\rule{\\linewidth}{0.4pt}');
       } else if (group.style === 'quote') {
@@ -255,6 +269,10 @@ class LatexWriter {
         out += seqText(run.seq, this.xref.numbers.get(run) ?? 1);
         continue;
       }
+      if (isCiteRun(run)) {
+        out += `\\${this.authorYear ? 'citep' : 'cite'}${run.locator ? `[${escapeLatex(run.locator)}]` : ''}{${run.cite.join(',')}}`;
+        continue;
+      }
       if (isRefRun(run)) {
         const target = this.xref.targets.get(run.ref);
         if (!target) out += '??';
@@ -320,5 +338,7 @@ function pdfMetadata(meta: DocumentMeta): string[] {
 export function writeLatex(doc: RichDocument, opts: WriteOptions = {}): LatexOutput {
   const writer = new LatexWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)));
   const tex = writer.write();
+  // DOC-027: the sources, next to main.tex.
+  if (doc.references?.entries.length) writer.images.set('references.bib', new TextEncoder().encode(writeBibtex(doc.references.entries)));
   return { tex, images: writer.images };
 }

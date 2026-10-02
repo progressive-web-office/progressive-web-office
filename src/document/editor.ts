@@ -9,6 +9,8 @@ import { EditorView as PmView } from 'prosemirror-view';
 import { toggleMark } from 'prosemirror-commands';
 import { addColumnAfter, addColumnBefore, addRowAfter, addRowBefore, deleteColumn, deleteRow, deleteTable, isInTable, mergeCells, splitCell, toggleHeaderRow } from 'prosemirror-tables';
 import { editCaption, pickReference, seqWord, type ReferenceTarget } from './xref-dialog';
+import { manageReferences, pickCitation } from './bib-dialog';
+import { citationsOf, type Citations } from './bibliography';
 import { redo, undo } from 'prosemirror-history';
 import { applyDocumentParts, documentParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { documentTools, type AgentTool } from '../ai/tools';
@@ -22,9 +24,9 @@ import { decodeDataUri } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
 import { addResource, newAnchor, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument } from './model';
 import type { CodeRunner } from '../code/runner';
-import { blockToPm, blocksToPm, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
+import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
-import { inDisplayEquation, insertCaption, insertCrossReference, numberEquation, insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
+import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReference, numberEquation, insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
@@ -150,6 +152,8 @@ export class DocumentEditor implements EditorView {
           cellAction: (action, pos, node) => this.onCellAction(action, pos, node),
           xref: () => this.crossRefs(),
           gotoAnchor: (id) => this.gotoAnchor(id),
+          citations: () => this.citations(),
+          editCitation: (pos, node) => void this.editCitation(pos, node),
         }),
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
         dispatchTransaction: (tr) => this.dispatch(tr),
@@ -204,6 +208,51 @@ export class DocumentEditor implements EditorView {
     if (at === undefined) return;
     this.view.dispatch(this.view.state.tr.setSelection(TextSelection.near(this.view.state.doc.resolve(at + 1))).scrollIntoView());
     this.view.focus();
+  }
+
+  /** Citation numbers and texts, recomputed after a change (DOC-027). */
+  private citeCache: Citations | undefined;
+
+  private citations(): Citations {
+    if (!this.view) return citationsOf([], this.doc.references);
+    this.citeCache ??= citationsOf(pmCiteRuns(this.view.state.doc), this.doc.references);
+    return this.citeCache;
+  }
+
+  /** The sources changed: renumber the citations and the list. */
+  private referencesChanged(): void {
+    this.citeCache = undefined;
+    for (const v of this.tocViews) v.refresh();
+  }
+
+  /** The document's sources and citation style (DOC-027). */
+  private async editReferences(): Promise<void> {
+    const cited = new Set(pmCiteRuns(this.view.state.doc).flatMap((c) => c.cite));
+    const choice = await manageReferences(this.element, this.doc.references, cited);
+    if (!choice) return;
+    if (choice.references.entries.length || choice.references.style) this.doc.references = choice.references;
+    else delete this.doc.references;
+    this.referencesChanged();
+    if (choice.insertList) this.command(insertBlockAfter(schema.nodes.bibliography!.create()));
+    else this.changed();
+    this.refocus();
+  }
+
+  /** Cite sources at the cursor, or change the citation at `pos` (DOC-027). */
+  private async editCitation(pos?: number, node?: PmNode): Promise<void> {
+    const initial = node ? { cite: node.attrs.keys as string[], ...(node.attrs.locator ? { locator: node.attrs.locator as string } : {}) } : undefined;
+    const result = await pickCitation(this.element, this.doc.references?.entries ?? [], initial);
+    if (!result) return this.refocus();
+    const tr = this.view.state.tr;
+    if (result === 'remove') {
+      if (pos !== undefined && node) tr.delete(pos, pos + node.nodeSize);
+    } else {
+      const cite = schema.nodes.cite!.create({ keys: result.cite, locator: result.locator ?? null });
+      if (pos !== undefined && node) tr.replaceWith(pos, pos + node.nodeSize, cite);
+      else tr.replaceSelectionWith(cite, false);
+    }
+    this.view.dispatch(tr.scrollIntoView());
+    this.refocus();
   }
 
   /** Number a figure, table or equation (DOC-026). */
@@ -284,6 +333,7 @@ export class DocumentEditor implements EditorView {
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
     if (tr.docChanged) {
       this.xrefCache = undefined;
+      this.citeCache = undefined;
       this.renderNotes();
       for (const toc of this.tocViews) toc.refresh();
     }
@@ -459,6 +509,7 @@ export class DocumentEditor implements EditorView {
       write: (parts) => {
         this.replaceBlocks(applyDocumentParts(this.doc, parts), true);
         this.renderFurniture();
+        this.referencesChanged();
       },
       cursor: () => ({ block: this.view.state.selection.$from.index(0) }),
       showPeers: (peers: PeerCursor[]) => {
@@ -610,6 +661,8 @@ export class DocumentEditor implements EditorView {
       act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
       act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
       act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),
+      act(t('bib.cite'), '❝', () => void this.editCitation(), t('bib.citeTitle')),
+      act(t('bib.title_'), '📚', () => void this.editReferences(), t('bib.buttonTitle')),
       act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
       act(t('common.insertImage'), '🖼', () => void this.pickImage()),
       act(t('doc.insertTable'), '▦', () => this.command(insertTable()), t('doc.insertTableTitle')),

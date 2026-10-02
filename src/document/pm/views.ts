@@ -5,7 +5,8 @@
  */
 import type { Node as PmNode } from 'prosemirror-model';
 import type { EditorView, NodeView, NodeViewConstructor } from 'prosemirror-view';
-import { codeCellElement, diagramElement, mathElement, type ImageInfo } from '../html';
+import { bibliographyElement, codeCellElement, diagramElement, mathElement, type ImageInfo } from '../html';
+import type { Citations } from '../bibliography';
 import { seqText, type CodeCellRun, type Run, type SeqKind } from '../model';
 import type { PmCrossRefs } from './convert';
 import { t } from '../../i18n';
@@ -26,6 +27,9 @@ export interface ViewHooks {
   xref(): PmCrossRefs;
   /** Show the paragraph with this anchor. */
   gotoAnchor(id: string): void;
+  /** Current citation numbers and texts (DOC-027). */
+  citations(): Citations;
+  editCitation(pos: number, node: PmNode): void;
 }
 
 /** The code cell element of a node view, with its position (for running cells in order). */
@@ -225,6 +229,66 @@ class XrefView extends AtomView {
   }
 }
 
+/** A citation, renumbered after every change; a click edits it (DOC-027). */
+class CiteView extends AtomView {
+  constructor(node: PmNode, view: EditorView, getPos: () => number | undefined, hooks: ViewHooks) {
+    super(node, view, getPos, hooks);
+    hooks.tocViews.add(this);
+  }
+
+  protected override render(): void {
+    this.refresh();
+    this.dom.onclick = () => {
+      const pos = this.getPos();
+      if (pos !== undefined) this.hooks.editCitation(pos, this.node);
+    };
+  }
+
+  refresh(): void {
+    const keys = this.node.attrs.keys as string[];
+    const cite = { cite: keys, ...(this.node.attrs.locator ? { locator: this.node.attrs.locator as string } : {}) };
+    const c = this.hooks.citations();
+    const text = c.text(cite);
+    if (this.dom.textContent !== text) this.dom.textContent = text;
+    const missing = keys.some((k) => !c.numbers.has(k));
+    this.dom.classList.toggle('broken', missing);
+    this.dom.title = missing ? t('bib.missing', { keys: keys.join(', ') }) : keys.join(', ');
+  }
+
+  destroy(): void {
+    this.hooks.tocViews.delete(this);
+  }
+}
+
+/** The list of cited references, rebuilt after every change (DOC-027). */
+class BibliographyView implements NodeView {
+  dom: HTMLElement;
+  constructor(private readonly hooks: ViewHooks) {
+    this.dom = document.createElement('section');
+    this.dom.className = 'bibliography';
+    this.dom.contentEditable = 'false';
+    hooks.tocViews.add(this);
+    this.refresh();
+  }
+
+  refresh(): void {
+    const c = this.hooks.citations();
+    this.dom.replaceChildren(...Array.from(bibliographyElement(c, c.numeric, document).childNodes));
+  }
+
+  update(node: PmNode): boolean {
+    return node.type.name === 'bibliography';
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+
+  destroy(): void {
+    this.hooks.tocViews.delete(this);
+  }
+}
+
 /** A footnote reference: a superscript number (CSS counter); the text shows on hover (DOC-022). */
 class FootnoteView extends AtomView {
   protected override render(): void {
@@ -299,6 +363,8 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     toc: (node) => new TocView(node, hooks),
     seq: (node, view, getPos) => new SeqView(node, view, getPos, hooks),
     xref: (node, view, getPos) => new XrefView(node, view, getPos, hooks),
+    cite: (node, view, getPos) => new CiteView(node, view, getPos, hooks),
+    bibliography: () => new BibliographyView(hooks),
     image: (node) => new ImageView(node, hooks),
   };
 }

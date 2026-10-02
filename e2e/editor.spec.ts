@@ -304,3 +304,37 @@ test('captions number figures and cross-references follow them (DOC-026)', async
   expect(xml).toContain('SEQ Figure');
   expect(xml).toMatch(/REF _Ref_fig_\w+ \\h/);
 });
+
+test('cites BibTeX sources and lists the references (DOC-027)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('As shown by ');
+  await page.getByRole('button', { name: 'Bibliography' }).click();
+  const sources = page.getByRole('dialog', { name: 'Bibliography' });
+  await sources.getByLabel('Paste BibTeX entries').fill('@book{knuth1984, author = {Knuth, Donald E.}, title = {The TeXbook}, year = 1984, publisher = {Addison-Wesley}}\n@article{lamport1994, author = {Leslie Lamport}, title = {LaTeX}, journal = {J. Tests}, year = {1994}}');
+  await sources.getByRole('button', { name: 'Add the pasted entries' }).click();
+  await expect(sources.getByText('2 sources')).toBeVisible();
+  await sources.getByRole('button', { name: 'OK' }).click();
+
+  await page.getByRole('button', { name: 'Cite', exact: true }).click();
+  const cite = page.getByRole('dialog', { name: 'Cite' });
+  await cite.getByLabel('Search the sources').fill('lamport');
+  await cite.getByLabel(/Lamport \(1994\)/).check();
+  await cite.getByLabel('Page or section').fill('p. 3');
+  await cite.getByRole('button', { name: 'OK' }).click();
+  await page.keyboard.type(' and ');
+  await page.getByRole('button', { name: 'Cite', exact: true }).click();
+  await cite.getByLabel(/Knuth \(1984\)/).check();
+  await cite.getByRole('button', { name: 'OK' }).click();
+  await expect(editor.locator('p').first()).toHaveText('As shown by [1, p. 3] and [2]');
+
+  await page.getByRole('button', { name: 'Bibliography' }).click();
+  await sources.getByLabel('Citations').selectOption('author-year');
+  await sources.getByRole('button', { name: 'Insert the list of references here' }).click();
+  await expect(editor.locator('p').first()).toHaveText('As shown by (Lamport, 1994, p. 3) and (Knuth, 1984)');
+  await expect(editor.locator('section.bibliography li')).toHaveText(['Knuth, D. E. (1984). The TeXbook. Addison-Wesley.', 'Lamport, L. (1994). LaTeX. J. Tests.']);
+
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
+  expect(md).toContain('As shown by [@lamport1994, p. 3] and [@knuth1984]');
+  expect(md).toContain('<div id="refs"></div>');
+  expect(md).toContain('references:');
+});

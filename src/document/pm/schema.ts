@@ -114,6 +114,15 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'nav.toc', getAttrs: (d: HTMLElement) => ({ levels: Number(d.dataset.levels) || 3 }) }],
       toDOM: (n) => ['nav', { class: 'toc', 'data-levels': String(n.attrs.levels) }],
     },
+    /** The list of cited references (DOC-027). */
+    bibliography: {
+      group: 'block',
+      atom: true,
+      selectable: true,
+      draggable: true,
+      parseDOM: [{ tag: 'section.bibliography' }],
+      toDOM: () => ['section', { class: 'bibliography', 'data-bibliography': '' }],
+    },
     ...tableNodes({ tableGroup: 'block', cellContent: 'paragraph+', cellAttributes: {} }),
     text: { group: 'inline' },
     hard_break: { inline: true, group: 'inline', selectable: false, parseDOM: [{ tag: 'br' }], toDOM: () => ['br'] },
@@ -166,6 +175,15 @@ export const schema = new Schema({
       attrs: { ref: { default: '' } },
       parseDOM: [{ tag: 'a.xref[data-ref]', priority: 60, getAttrs: (d: HTMLElement) => ({ ref: d.dataset.ref }) }],
       toDOM: (n) => ['a', { class: 'xref', 'data-ref': n.attrs.ref, href: `#${n.attrs.ref as string}` }, '??'],
+    },
+    /** A citation of bibliography entries (DOC-027). */
+    cite: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { keys: { default: [] }, locator: { default: null } },
+      parseDOM: [{ tag: 'span.cite[data-cite]', priority: 60, getAttrs: (d: HTMLElement) => ({ keys: (d.dataset.cite ?? '').split(/\s+/).filter(Boolean), locator: d.dataset.locator ?? null }) }],
+      toDOM: (n) => ['span', { class: 'cite', 'data-cite': (n.attrs.keys as string[]).join(' '), ...(n.attrs.locator ? { 'data-locator': n.attrs.locator as string } : {}) }, `[${(n.attrs.keys as string[]).join(', ')}]`],
     },
     footnote: {
       inline: true,

@@ -27,9 +27,11 @@ import {
   crossTargets,
   isSeqRun,
   isRefRun,
+  isCiteRun,
   seqText,
   type MathRun,
 } from './model';
+import { toCsl } from './bibliography';
 
 export interface MarkdownWriteOptions {
   /**
@@ -119,6 +121,9 @@ class MarkdownWriter {
         }
       } else if (group.type === 'table') {
         parts.push(this.table(group));
+      } else if (group.type === 'bibliography') {
+        // pandoc puts the list of references here.
+        parts.push('<div id="refs"></div>');
       } else if (group.type === 'toc') {
         // GitLab, Typora, MkDocs and others render a table of contents here (DOC-023).
         parts.push('[[_TOC_]]');
@@ -255,6 +260,10 @@ class MarkdownWriter {
         out += seqText(run.seq, this.xref.numbers.get(run) ?? 1);
         continue;
       }
+      if (isCiteRun(run)) {
+        out += `[${run.cite.map((k) => `@${k}`).join('; ')}${run.locator ? `, ${run.locator}` : ''}]`;
+        continue;
+      }
       if (isRefRun(run)) {
         const target = this.xref.targets.get(run.ref);
         out += target ? `[${escapeInline(target.label)}](#${run.ref})` : '??';
@@ -334,7 +343,11 @@ function markdownFrontMatter(doc: RichDocument): string {
   const furniture = (['header', 'footer'] as const).flatMap((kind) =>
     (['left', 'center', 'right'] as const).flatMap((k) => (page?.[kind]?.[k] ? [`${kind}-${k}: ${JSON.stringify(page[kind]![k])}`] : [])),
   );
-  const extra = [kept, ...furniture].filter(Boolean).join('\n');
+  // DOC-027: the sources as pandoc's references (one CSL JSON item per line).
+  const refs = doc.references;
+  const bibliography = refs?.entries.length ? ['references:', ...refs.entries.map((e) => `- ${JSON.stringify(toCsl(e))}`)] : [];
+  if (refs?.style === 'author-year') bibliography.push('citation-style: author-year');
+  const extra = [kept, ...furniture, ...bibliography].filter(Boolean).join('\n');
   const firstHeading = doc.blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   const onlyHeadingTitle = Object.keys(meta).length === 1 && meta.title !== undefined && firstHeading !== undefined && paragraphText(firstHeading) === meta.title;
   if (!extra && (Object.keys(meta).length === 0 || onlyHeadingTitle)) return '';

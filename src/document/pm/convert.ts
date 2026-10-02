@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CrossTarget, type Paragraph, type Run, type SeqKind, type Table, type TableCell, type TextFormat } from '../model';
+import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type Table, type TableCell, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -65,6 +65,8 @@ function runsToInline(runs: Run[]): PmNode[] {
       out.push(schema.nodes.seq!.create({ kind: run.seq }));
     } else if ('ref' in run) {
       out.push(schema.nodes.xref!.create({ ref: run.ref }));
+    } else if ('cite' in run) {
+      out.push(schema.nodes.cite!.create({ keys: run.cite, locator: run.locator ?? null }));
     } else {
       out.push(schema.nodes.code_cell!.create({ cell: run.cell, lang: run.lang, output: run.output ?? null }));
     }
@@ -99,6 +101,7 @@ export function blockToPm(b: Block): PmNode {
   if (b.type === 'paragraph') return paragraphToPm(b);
   if (b.type === 'table') return tableToPm(b);
   if (b.type === 'toc') return schema.nodes.toc!.create({ levels: b.levels ?? 3 });
+  if (b.type === 'bibliography') return schema.nodes.bibliography!.create();
   return schema.nodes.horizontal_rule!.create({ page: !!b.page });
 }
 
@@ -144,6 +147,9 @@ function inlineToRuns(node: PmNode): Run[] {
       case 'xref':
         runs.push({ ref: a.ref as string });
         break;
+      case 'cite':
+        runs.push(a.locator ? { cite: [...(a.keys as string[])], locator: a.locator as string } : { cite: [...(a.keys as string[])] });
+        break;
       case 'code_cell':
         runs.push({ cell: a.cell as string, lang: a.lang as 'python', ...(a.output ? { output: a.output as NonNullable<Extract<Run, { cell: string }>['output']> } : {}) });
         break;
@@ -185,6 +191,7 @@ function pmToBlock(node: PmNode): Block {
     const header = !!first && first.childCount > 0 && Array.from({ length: first.childCount }, (_, i) => first.child(i)).every((c) => c.type.name === 'table_header');
     return header ? { type: 'table', rows, header } : { type: 'table', rows };
   }
+  if (node.type.name === 'bibliography') return { type: 'bibliography' };
   if (node.type.name === 'toc') return node.attrs.levels === 3 ? { type: 'toc' } : { type: 'toc', levels: node.attrs.levels as number };
   if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : { type: 'rule' };
   return pmToParagraph(node);
@@ -231,4 +238,21 @@ export function pmCrossTargets(doc: PmNode): PmCrossRefs {
     return false;
   });
   return { numbers, targets };
+}
+
+/** Citations of an editor document in reading order, footnotes included (DOC-027). */
+export function pmCiteRuns(doc: PmNode): CiteRun[] {
+  const out: CiteRun[] = [];
+  const fromRuns = (runs: Run[]): void => {
+    for (const r of runs) {
+      if ('cite' in r) out.push(r);
+      else if ('footnote' in r) fromRuns(r.footnote);
+    }
+  };
+  doc.descendants((node) => {
+    if (node.type.name === 'cite') out.push({ cite: node.attrs.keys as string[], ...(node.attrs.locator ? { locator: node.attrs.locator as string } : {}) });
+    else if (node.type.name === 'footnote') fromRuns(node.attrs.runs as Run[]);
+    return true;
+  });
+  return out;
 }

@@ -726,3 +726,22 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .doc-page p:has(> .pm-display):has(> .pm-seq[data-seq='equation']),
 .doc-page p:has(> .math.display):has(> .seq[data-seq='equation']) { display: flex; align-items: center; gap: 1em; }
 .doc-page p:has(> .pm-display) > .pm-display, .doc-page p:has(> .math.display) > .math.display { flex: 1; }
+
+/* Citations and the list of references (DOC-027) */
+.doc-page .pm-cite, .doc-page span.cite { color: var(--accent); cursor: pointer; }
+.doc-page .pm-cite.broken { color: var(--danger); }
+.doc-page section.bibliography { margin: 12pt 0; }
+.doc-page .bibliography-title { font-size: 14pt; font-weight: 600; margin: 0 0 6pt; }
+.doc-page section.bibliography ol, .doc-page section.bibliography ul { list-style: none; padding: 0; margin: 0; }
+.doc-page section.bibliography li { padding-left: 2.5em; text-indent: -2.5em; margin: 0 0 4pt; }
+.doc-page section.bibliography li[data-label]::before { content: attr(data-label); display: inline-block; min-width: 2.5em; text-indent: 0; }
+.doc-page .bibliography-empty { color: #6b7685; font-style: italic; }
+.doc-page section.bibliography.ProseMirror-selectednode { outline: 2px solid var(--accent); }
+.bib-dialog .bib-entries, .cite-dialog .bib-choices { list-style: none; padding: 0; margin: 8px 0; max-height: 40vh; overflow: auto; }
+.bib-dialog .bib-entries li { display: flex; gap: 6px; align-items: baseline; padding: 2px 0; }
+.bib-dialog .bib-key { font-family: ui-monospace, monospace; font-size: 0.85em; color: var(--muted); }
+.bib-dialog .bib-remove { margin-left: auto; min-width: 28px; }
+.bib-dialog .bib-cited { color: var(--muted); font-size: 0.85em; }
+.bib-dialog .bib-paste { width: 100%; font-family: ui-monospace, monospace; }
+.bib-dialog .bib-import { margin: 6px 0; }
+.cite-dialog input[type='search'], .cite-dialog input[type='text'] { width: 100%; }

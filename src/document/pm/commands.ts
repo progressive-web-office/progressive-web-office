@@ -371,3 +371,14 @@ export const insertCrossReference =
     dispatch(tr.scrollIntoView());
     return true;
   };
+
+/** Insert a block (e.g. the list of references) after the current top-level block. */
+export const insertBlockAfter =
+  (node: PmNode): Command =>
+  (state, dispatch) => {
+    if (!dispatch) return true;
+    const $from = state.selection.$from;
+    const pos = $from.depth > 0 ? $from.after(1) : state.doc.content.size;
+    dispatch(state.tr.insert(pos, node).scrollIntoView());
+    return true;
+  };

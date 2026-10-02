@@ -4,6 +4,7 @@
  * `<br>` which map to underline and line breaks.
  */
 import { parseFrontMatter } from './frontmatter';
+import { fromCsl, type BibEntry } from './bibliography';
 import footnotePlugin from 'markdown-it-footnote';
 import MarkdownItCallable, { type MarkdownIt, type StateBlock, type StateInline, type Token } from 'markdown-it';
 import {
@@ -156,7 +157,30 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   // DOC-024: header-left / footer-center… keys are the header and footer.
   const kept: string[] = [];
   const page: PageSetup = {};
-  for (const line of front.extra ? front.extra.split('\n') : []) {
+  // DOC-027: `references:` as one JSON (CSL) item per line, as written by PWO;
+  // other YAML forms are kept as they are.
+  const lines = front.extra ? front.extra.split('\n') : [];
+  const refsAt = lines.findIndex((l) => /^references:\s*$/.test(l));
+  if (refsAt >= 0) {
+    let end = refsAt + 1;
+    while (end < lines.length && /^(-|\s)/.test(lines[end]!)) end++;
+    const items = lines.slice(refsAt + 1, end);
+    try {
+      const entries = items.map((l) => fromCsl(JSON.parse(l.replace(/^-\s*/, '')) as Record<string, unknown>));
+      if (entries.every(Boolean)) {
+        doc.references = { entries: entries as BibEntry[] };
+        lines.splice(refsAt, end - refsAt);
+      }
+    } catch {
+      /* not PWO's form: keep it */
+    }
+  }
+  const styleAt = lines.findIndex((l) => /^citation-style:\s*author-year\s*$/.test(l));
+  if (styleAt >= 0) {
+    doc.references = { entries: doc.references?.entries ?? [], style: 'author-year' };
+    lines.splice(styleAt, 1);
+  }
+  for (const line of lines) {
     const m = /^(header|footer)-(left|center|right):\s*(.*)$/.exec(line);
     if (!m) {
       kept.push(line);
@@ -308,6 +332,11 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         break;
       }
       case 'html_block': {
+        // DOC-027: pandoc puts the references in the div with id "refs".
+        if (/^<div\s+id\s*=\s*"refs"\s*>\s*<\/div>\s*$/.test(tok.content.trim())) {
+          blocks.push({ type: 'bibliography' });
+          break;
+        }
         const p = newParagraph();
         const html = tok.content.replace(/\n+$/, '');
         if (html) p.runs = [{ text: html }];
@@ -481,4 +510,25 @@ function crossReferences(blocks: Block[]): void {
   };
   for (const p of allParagraphs(blocks)) p.runs = visit(p.runs);
   resolveAnchors(blocks, new Map());
+  // DOC-027: pandoc citations, [@key] and [see @a; @b, p. 12].
+  const cites = (runs: Run[]): Run[] =>
+    runs.flatMap((r): Run[] => {
+      if (isFootnoteRun(r)) return [{ footnote: cites(r.footnote) }];
+      if (!isTextRun(r) || r.code || r.link || !r.text.includes('[@') && !r.text.includes('[-@')) return [r];
+      const out: Run[] = [];
+      let last = 0;
+      for (const m of r.text.matchAll(/\[(-?@[^\[\]]+)\]/g)) {
+        const parts = m[1]!.split(';').map((x) => x.trim());
+        const keys = parts.map((x) => /^-?@([\w:.#$%&+?<>~/-]*\w)/.exec(x)?.[1]);
+        if (keys.some((k) => !k)) continue;
+        const loc = /^-?@[\w:.#$%&+?<>~/-]*\w\s*,\s*(.+)$/.exec(parts[parts.length - 1]!)?.[1];
+        if (m.index! > last) out.push({ ...r, text: r.text.slice(last, m.index) });
+        out.push(loc ? { cite: keys as string[], locator: loc } : { cite: keys as string[] });
+        last = m.index! + m[0].length;
+      }
+      if (!out.length) return [r];
+      if (last < r.text.length) out.push({ ...r, text: r.text.slice(last) });
+      return out;
+    });
+  for (const p of allParagraphs(blocks)) p.runs = cites(p.runs);
 }

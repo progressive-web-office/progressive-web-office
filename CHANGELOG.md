@@ -42,6 +42,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   `\captionof` / `equation` / `\label` / `\ref` / `\eqref` / `\nameref` in
   LaTeX, and anchors, links and `\tag` in Markdown; read back from Word,
   LibreOffice and LaTeX files (`figure` and `table` floats included).
+- Citations and bibliography in text documents: 📚 imports BibTeX sources
+  (or pasted entries) and sets numbered or author-year citations, ❝ cites
+  one or more sources with a page, and the list of references follows the
+  citations. Kept as Word sources with CITATION and BIBLIOGRAPHY fields,
+  OpenDocument bibliography marks and index, LaTeX `\cite` / `\citep` with
+  `references.bib` (also embedded in the `.tex` with `filecontents`), and
+  pandoc citations with `references:` in Markdown; read back from these
+  formats, from Zotero and Mendeley citations in Word files and from
+  `thebibliography`.
 - Table of contents in text documents (§): generated from the headings,
   updated as you type, entries jump to their heading. Written as Word's TOC
   field (recomputed with page numbers when Word opens the file), an ODF

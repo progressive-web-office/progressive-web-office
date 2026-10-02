@@ -104,6 +104,7 @@ export function partsWorkbook(parts: CollabParts): Workbook {
 export function documentParts(doc: RichDocument, blocks: Block[]): CollabParts {
   const keys: Record<string, string> = { meta: stringify(doc.meta) };
   if (doc.page) keys.page = stringify(doc.page);
+  if (doc.references) keys.references = stringify(doc.references);
   for (const [key, res] of doc.resources) keys[`r:${key}`] = stringify(res);
   return { keys, list: blocks.map((b) => stringify(b)) };
 }
@@ -113,6 +114,8 @@ export function applyDocumentParts(doc: RichDocument, parts: CollabParts): Block
   if (parts.keys.meta) doc.meta = parse(parts.keys.meta);
   if (parts.keys.page) doc.page = parse(parts.keys.page);
   else delete doc.page;
+  if (parts.keys.references) doc.references = parse(parts.keys.references);
+  else delete doc.references;
   for (const [key, text] of Object.entries(parts.keys)) {
     if (key.startsWith('r:') && !doc.resources.has(key.slice(2))) doc.resources.set(key.slice(2), parse(text));
   }

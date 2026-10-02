@@ -24,6 +24,8 @@ import {
   type TextFormat,
 } from './model';
 import { ommlToLatex } from '../math/convert';
+import type { BibEntry } from './bibliography';
+import { parseCitation, parseCslCitation, readSources } from './word-sources';
 import { diagramLangOf } from './diagram';
 import { EMU_PER_PX, IMAGE_CONTENT_TYPES, onOff, readCoreProps, readRels, type Relationship } from './ooxml';
 
@@ -164,6 +166,24 @@ class DocxReader {
     return 'normal';
   }
 
+  /** Bibliography items found in Zotero / Mendeley citations (DOC-027). */
+  private cslEntries: BibEntry[] = [];
+  /** Whether citations read like "(Author, 2020)". */
+  private authorYear = false;
+
+  /** A field's runs: SEQ, REF, CITATION… (DOC-026, DOC-027). */
+  private field(instr: string, result: Run[]): Run[] {
+    const csl = parseCslCitation(instr);
+    if (csl) this.cslEntries.push(...csl.entries);
+    const cite = csl?.cite ?? parseCitation(instr);
+    if (cite) {
+      const shown = result.map((r) => ('text' in r ? r.text : '')).join('');
+      if (/^\(.*\d{4}/.test(shown.trim())) this.authorYear = true;
+      return [cite];
+    }
+    return fieldRuns(instr, result);
+  }
+
   /** Open complex fields of the current paragraph (DOC-026). */
   private fields: { instr: string; start: number; result: boolean }[] = [];
   /** Other bookmarks of a target paragraph → its anchor. */
@@ -176,6 +196,17 @@ class DocxReader {
     if (!body) throw new Error('Not a Word document: missing body.');
     this.doc.blocks = this.readBlocks(body);
     resolveAnchors(this.doc.blocks, this.anchorAlias);
+    // DOC-027: Word's sources, and the items carried by Zotero / Mendeley citations.
+    const entries = new Map<string, BibEntry>();
+    for (const path of Object.keys(this.zip).filter((p) => /^customXml\/item\d+\.xml$/.test(p)).sort()) {
+      try {
+        for (const e of readSources(readZipText(this.zip, path) ?? '')) entries.set(e.key, e);
+      } catch {
+        /* another kind of custom XML */
+      }
+    }
+    for (const e of this.cslEntries) if (!entries.has(e.key)) entries.set(e.key, e);
+    if (entries.size) this.doc.references = { entries: [...entries.values()], ...(this.authorYear ? { style: 'author-year' as const } : {}) };
     const page = this.readFurniture(body);
     if (page) this.doc.page = page;
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
@@ -196,6 +227,11 @@ class DocxReader {
         case 'sdt': {
           // DOC-023: a table of contents is regenerated from the headings.
           const gallery = descendants(child(el, 'sdtPr') ?? el, 'docPartGallery')[0];
+          if (gallery && /bibliograph/i.test(attr(gallery, 'val') ?? '')) {
+            // DOC-027: the list of references is regenerated from the citations.
+            out.push({ type: 'bibliography' });
+            break;
+          }
           if (gallery && /table of contents/i.test(attr(gallery, 'val') ?? '')) {
             const instr = descendants(el, 'instrText').map((i) => i.textContent ?? '').join('');
             const m = /\\o\s+"\d+-(\d+)"/.exec(instr);
@@ -300,7 +336,7 @@ class DocxReader {
         case 'fldSimple': {
           const result: Run[] = [];
           this.readInline(el, fmt, result);
-          out.push(...fieldRuns(attr(el, 'instr') ?? '', result));
+          out.push(...this.field(attr(el, 'instr') ?? '', result));
           break;
         }
         case 'oMath':
@@ -385,7 +421,7 @@ class DocxReader {
           else if (type === 'end' && this.fields.length) {
             const f = this.fields.pop()!;
             const result = f.result ? out.splice(f.start) : [];
-            out.push(...fieldRuns(f.instr, result));
+            out.push(...this.field(f.instr, result));
           }
           break;
         }

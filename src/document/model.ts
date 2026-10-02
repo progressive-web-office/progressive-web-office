@@ -2,6 +2,7 @@
  * Format-neutral rich-text document model shared by the DOCX, ODT, Markdown
  * and MDZ readers/writers and by the WYSIWYG editor.
  */
+import type { BibEntry } from './bibliography';
 
 export type ParagraphStyle = 'normal' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'quote' | 'code' | 'caption';
 export type Align = 'left' | 'center' | 'right' | 'justify';
@@ -100,7 +101,15 @@ export interface RefRun {
   ref: string;
 }
 
-export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun;
+/** A citation of bibliography entries (DOC-027). */
+export interface CiteRun {
+  /** Keys of the cited entries. */
+  cite: string[];
+  /** Page or section: "p. 12". */
+  locator?: string;
+}
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun | CiteRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -193,7 +202,19 @@ export interface Toc {
   levels?: number;
 }
 
-export type Block = Paragraph | Table | Rule | Toc;
+/** The list of cited references (DOC-027). */
+export interface Bibliography {
+  type: 'bibliography';
+}
+
+export type Block = Paragraph | Table | Rule | Toc | Bibliography;
+
+/** The bibliography of a document (DOC-027). */
+export interface References {
+  entries: BibEntry[];
+  /** Citations as `[1]` (default) or `(Author, year)`. */
+  style?: 'numeric' | 'author-year';
+}
 
 export interface Resource {
   data: Uint8Array;
@@ -294,6 +315,8 @@ export interface RichDocument {
   blocks: Block[];
   /** Header and footer (DOC-024). */
   page?: PageSetup;
+  /** Bibliography entries and citation style (DOC-027). */
+  references?: References;
   /** Embedded binary resources (images), content-addressed. */
   resources: Map<string, Resource>;
   meta: DocumentMeta;
@@ -309,6 +332,7 @@ export const isTextRun = (run: Run): run is TextRun => 'text' in run;
 export const isFootnoteRun = (run: Run): run is FootnoteRun => 'footnote' in run;
 export const isSeqRun = (run: Run): run is SeqRun => 'seq' in run;
 export const isRefRun = (run: Run): run is RefRun => 'ref' in run;
+export const isCiteRun = (run: Run): run is CiteRun => 'cite' in run;
 
 /** What a cross-reference can point to (DOC-026). */
 export interface CrossTarget {

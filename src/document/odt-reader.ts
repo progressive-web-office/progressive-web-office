@@ -1,4 +1,5 @@
 /** OpenDocument Text (.odt) reader (DOC-002). */
+import type { BibEntry } from './bibliography';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText, type ZipEntries } from '../core/zip';
 import {
@@ -24,7 +25,7 @@ import {
   type TextFormat,
 } from './model';
 import { diagramLangOf } from './diagram';
-import { lengthToPx, ODF_NS, readOdfMeta } from './odf';
+import { lengthToPx, ODF_BIB_FIELDS, ODF_NS, readOdfMeta } from './odf';
 import { mathmlToLatex } from '../math/convert';
 
 interface OdfStyle {
@@ -111,6 +112,9 @@ class OdtReader {
 
   constructor(private readonly zip: ZipEntries) {}
 
+  /** Sources carried by bibliography marks (DOC-027). */
+  private entries = new Map<string, BibEntry>();
+  private authorYear = false;
   /** Anchors met in the current paragraph (DOC-026). */
   private anchors: string[] = [];
   private anchorAlias = new Map<string, string>();
@@ -126,6 +130,7 @@ class OdtReader {
     if (!body) throw new Error('Not an OpenDocument text: no office:text body.');
     this.doc.blocks = this.readBlocks(body, undefined, 0);
     resolveAnchors(this.doc.blocks, this.anchorAlias);
+    if (this.entries.size) this.doc.references = { entries: [...this.entries.values()], ...(this.authorYear ? { style: 'author-year' as const } : {}) };
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
     this.doc.meta = readOdfMeta(this.zip);
     if (stylesText) {
@@ -260,6 +265,10 @@ class OdtReader {
             }
             break;
           }
+          case 'bibliography':
+            // DOC-027: regenerated from the citations.
+            out.push({ type: 'bibliography' });
+            break;
           case 'table-of-content': {
             // DOC-023: regenerated from the headings.
             const source = child(el, 'table-of-content-source');
@@ -373,6 +382,25 @@ class OdtReader {
             }
             const note = normalizeRuns(runs);
             if (note.length) out.push({ footnote: note });
+            break;
+          }
+          case 'bibliography-mark': {
+            // DOC-027: the mark carries the source; neighbouring marks make one citation.
+            const key = attr(c, 'identifier');
+            if (!key) break;
+            const fields: Record<string, string> = {};
+            for (const f of ODF_BIB_FIELDS) {
+              const v = attr(c, f);
+              if (v) fields[f] = v;
+            }
+            const doi = attr(c, 'custom1');
+            if (doi) fields.doi = doi;
+            const type = attr(c, 'bibliography-type') ?? 'misc';
+            if (!this.entries.has(key)) this.entries.set(key, { key, type: type === 'www' ? 'online' : type, fields });
+            if (/^\(.*\d{4}/.test(c.textContent?.trim() ?? '')) this.authorYear = true;
+            const prev = out[out.length - 1];
+            if (prev && 'cite' in prev) prev.cite.push(key);
+            else out.push({ cite: [key] });
             break;
           }
           case 'sequence': {

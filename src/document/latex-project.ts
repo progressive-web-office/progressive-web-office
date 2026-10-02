@@ -39,6 +39,10 @@ export function readLatexZip(bytes: Uint8Array): RichDocument {
     return all;
   });
   return readLatex(source, {
+    resolveFile: (ref) => {
+      const p = lookup.get((dir + ref.replace(/^\.\//, '')).toLowerCase());
+      return p && isSafeArchivePath(p) ? strFromU8(zip[p]!) : undefined;
+    },
     resolveImage: (ref) => {
       for (const ext of IMAGE_EXTENSIONS) {
         const p = lookup.get((dir + ref.replace(/^\.\//, '') + ext).toLowerCase());

@@ -34,6 +34,7 @@ and any ZIP archive of Markdown files.
 | Footnote | ¹ | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> |
 | Caption (numbered figure, table or equation) | 🏷 | |
 | Cross-reference | ↪ | |
+| Citation / bibliography | ❝ 📚 | |
 | Table of contents | § | |
 | Header and footer | ▤ | |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
@@ -99,6 +100,34 @@ in LaTeX.
 
 Captions, `\label` and `\ref` of Word, LibreOffice and LaTeX files are
 read back as numbers and references.
+
+### Citations and bibliography
+
+📚 holds the document's **sources**: import a BibTeX file (exported by
+Zotero, JabRef, Mendeley, Google Scholar…) or paste BibTeX entries, remove
+sources, and choose how citations look:
+
+- **numbered**: `[1]`, `[2, 3, p. 12]`, numbered in the order they are first
+  cited;
+- **author and year**: `(Knuth, 1984; Lamport et al., 1994)`.
+
+❝ inserts a **citation**: search the sources, tick one or more, and give a
+page if needed. Click a citation to change it; untick everything to remove
+it. *Insert the list of references here* (in 📚) adds the list of the cited
+sources, which updates as you cite.
+
+| Format | Sources | Citations | List |
+|--------|---------|-----------|------|
+| Word (`.docx`) | Word sources (*References › Manage Sources*) | `CITATION` fields | `BIBLIOGRAPHY` field |
+| OpenDocument (`.odt`) | in the bibliography marks | bibliography marks | bibliography index |
+| LaTeX | `references.bib`, also embedded with `filecontents` | `\cite` (`\citep` with natbib) | `\bibliography{references}` |
+| Markdown | `references:` in the front matter (pandoc) | `[@key]`, `[@a; @b, p. 12]` | `<div id="refs"></div>` |
+
+Opening a file reads its sources and citations back: Word sources and
+citations, Zotero and Mendeley citations in Word files, LibreOffice
+bibliography marks, LaTeX `\cite`, `\citep`, `\parencite`… with
+`\bibliography`, `\addbibresource` or `thebibliography`. OpenDocument keeps
+no page in a citation.
 
 ### Tables
 
@@ -192,6 +221,7 @@ accepted.
 | Table of contents | ✅ (field) | ✅ | ✅ (`[[_TOC_]]`) | ✅ (`[[_TOC_]]`) |
 | Header and footer | ✅ | ✅ | ✅ (front matter) | ✅ (front matter) |
 | Captions and cross-references | ✅ (fields) | ✅ | ✅ (anchors and links) | ✅ (anchors and links) |
+| Citations and bibliography | ✅ (Word sources) | ✅ | ✅ (pandoc) | ✅ (pandoc) |
 
 Other features of Word/LibreOffice files (comments, tracked changes, named
 styles beyond headings, sections and page layout) are **not** preserved

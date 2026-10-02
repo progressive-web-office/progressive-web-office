@@ -2,6 +2,7 @@
  * LaTeX import (TEX-003, TEX-004): the common subset of `article` documents.
  * Unsupported constructs are kept as visible source text.
  */
+import { parseBibtex, type BibEntry } from './bibliography';
 import { addResource, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
 
 type Node =
@@ -26,7 +27,7 @@ const ARITY: Record<string, [boolean, number]> = {
   thanks: [false, 1], phantom: [false, 1], hyperref: [true, 1], newpage: [false, 0], clearpage: [false, 0],
   fancyhead: [true, 1], fancyfoot: [true, 1], lhead: [false, 1], chead: [false, 1], rhead: [false, 1], lfoot: [false, 1], cfoot: [false, 1], rfoot: [false, 1],
   fancyhf: [true, 1], pageref: [false, 1],
-  captionof: [true, 2], autoref: [false, 1], cref: [false, 1], Cref: [false, 1], nameref: [false, 1], vref: [false, 1],
+  captionof: [true, 2], citep: [true, 1], citet: [true, 1], parencite: [true, 1], autocite: [true, 1], textcite: [true, 1], footcite: [true, 1], citeauthor: [false, 1], bibliography: [false, 1], addbibresource: [true, 1], bibliographystyle: [false, 1], bibitem: [true, 1], autoref: [false, 1], cref: [false, 1], Cref: [false, 1], nameref: [false, 1], vref: [false, 1],
 };
 
 const FANCY = new Set(['fancyhead', 'fancyfoot', 'lhead', 'chead', 'rhead', 'lfoot', 'cfoot', 'rfoot']);
@@ -317,6 +318,8 @@ function typography(text: string): string {
 export interface LatexReadOptions {
   /** Resolve an \includegraphics path (without or with extension). */
   resolveImage?: (path: string) => { data: Uint8Array; mediaType: string; name?: string } | undefined;
+  /** Read a text file of the project (e.g. a .bib file), by its path. */
+  resolveFile?: (path: string) => string | undefined;
 }
 
 interface Ctx {
@@ -340,6 +343,17 @@ class Builder {
     private readonly doc: RichDocument,
     private readonly opts: LatexReadOptions,
   ) {}
+
+  /** Sources from .bib files and \bibitem (DOC-027). */
+  readonly bib = new Map<string, BibEntry>();
+  authorYear = false;
+
+  private loadBib(name: string): void {
+    if (!name) return;
+    const file = this.opts.resolveFile?.(name.endsWith('.bib') ? name : `${name}.bib`);
+    if (!file) return;
+    for (const e of parseBibtex(file)) if (!this.bib.has(e.key)) this.bib.set(e.key, e);
+  }
 
   /** Floats being read (figure, table), for their captions (DOC-026). */
   private floats: SeqKind[] = [];
@@ -617,7 +631,34 @@ class Builder {
       case 'thanks':
         return;
       case 'cite':
-        return void this.text(node.raw, fmt, ctx);
+      case 'citep':
+      case 'citet':
+      case 'parencite':
+      case 'autocite':
+      case 'textcite':
+      case 'footcite': {
+        // DOC-027: a citation; the optional argument is the page.
+        const keys = (args[0] ?? '').split(',').map((k) => k.trim()).filter(Boolean);
+        if (!keys.length) return;
+        const locator = node.opt?.replace(/~/g, ' ').trim();
+        return void this.run(locator ? { cite: keys, locator } : { cite: keys }, ctx);
+      }
+      case 'bibliography':
+      case 'addbibresource':
+        // Sources from the .bib files of the project.
+        for (const name of (args[0] ?? '').split(',')) this.loadBib(name.trim());
+        if (name === 'bibliography') {
+          this.flush();
+          this.blocks.push({ type: 'bibliography' });
+        }
+        return;
+      case 'printbibliography':
+        this.flush();
+        this.blocks.push({ type: 'bibliography' });
+        return;
+      case 'bibliographystyle':
+        if (/nat|apalike|apa|harvard|chicago|authoryear/i.test(args[0] ?? '')) this.authorYear = true;
+        return;
       default:
         if (name in SYMBOLS) return void this.text(SYMBOLS[name]!, fmt, ctx);
         if (IGNORED.has(name)) return;
@@ -652,6 +693,18 @@ class Builder {
       if (label) p.id = label;
       this.blocks.push(p);
       this.lastTarget = p;
+      return;
+    }
+    if (name === 'thebibliography') {
+      // DOC-027: a hand-written list: each \bibitem becomes a source with its text.
+      this.flush();
+      for (const item of body.split(/\\bibitem\b/).slice(1)) {
+        const m = /^\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}([\s\S]*)$/.exec(item);
+        if (!m) continue;
+        const note = this.plain(m[2]!.trim());
+        if (m[1]!.trim()) this.bib.set(m[1]!.trim(), { key: m[1]!.trim(), type: 'misc', fields: note ? { note } : {} });
+      }
+      this.blocks.push({ type: 'bibliography' });
       return;
     }
     if (VERBATIM_ENVS.has(name)) {
@@ -815,7 +868,10 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
   const begin = src.indexOf('\\begin{document}');
   const end = src.lastIndexOf('\\end{document}');
   const body = begin >= 0 ? src.slice(begin + '\\begin{document}'.length, end > begin ? end : undefined) : src;
-  const builder = new Builder(doc, opts);
+  // DOC-027: files embedded with filecontents (e.g. the .bib file).
+  const embedded = new Map<string, string>();
+  for (const m of src.matchAll(/\\begin\{filecontents\*?\}(?:\[[^\]]*\])?\{([^}]+)\}\n?([\s\S]*?)\\end\{filecontents\*?\}/g)) embedded.set(m[1]!.trim(), m[2]!);
+  const builder = new Builder(doc, { ...opts, resolveFile: (path) => embedded.get(path) ?? opts.resolveFile?.(path) });
   // Metadata from the whole source (preamble or body).
   for (const node of parse(src.slice(0, end > 0 ? end : undefined))) {
     if (node.k !== 'cmd' && node.k !== 'env') continue;
@@ -870,5 +926,10 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
     p.runs = normalizeRuns(p.runs);
   }
   resolveAnchors(doc.blocks, new Map());
+  if (builder.bib.size) {
+    const natbib = /\\usepackage(?:\[(?![^\]]*numbers)[^\]]*\])?\{natbib\}/.test(src) && /\\cite[pt]\b/.test(src);
+    const biblatex = /\\usepackage\[[^\]]*style\s*=\s*(?:authoryear|apa)[^\]]*\]\{biblatex\}/.test(src);
+    doc.references = { entries: [...builder.bib.values()], ...(builder.authorYear || natbib || biblatex ? { style: 'author-year' as const } : {}) };
+  }
   return doc;
 }
