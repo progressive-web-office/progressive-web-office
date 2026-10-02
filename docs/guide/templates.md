@@ -51,6 +51,12 @@ oscillations, a Bode plot, a histogram of repeated measurements, a field map
 and a differential equation solved symbolically. The output and figures are
 already there when it opens; **⏩** runs every cell again in the browser.
 
+**Interactive widgets** shows [widgets](./code.md#widgets) in cells: a
+slider written in Python with anywidget, made reactive with `pwo.ui`, drives
+a plot that is drawn again when the slider moves; a button written in a
+JavaScript cell counts clicks with a cell that follows it. Press **⏩**, then
+play with them. It also tells how to use the anywidget instruments.
+
 **Measurements and charts** is a workbook: a damped signal computed by
 formulas (`EXP`, `SIN`) from two parameters you can change, with its line
 chart, and a linear fit of measurements (`SLOPE`, `INTERCEPT`, `RSQ`,

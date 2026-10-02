@@ -877,6 +877,8 @@ export const en = {
   'tpl.tourDesc': 'Equations, captions and cross-references, a diagram, a code cell, citations.',
   'tpl.lab': 'Lab report with Python plots',
   'tpl.labDesc': 'Python cells with figures already drawn: fit, damped oscillations, Bode plot, histogram, field map, SymPy.',
+  'tpl.widgets': 'Interactive widgets',
+  'tpl.widgetsDesc': 'A slider in Python driving a plot and a button in JavaScript, built on anywidget; how to use the anywidget instruments.',
   'tpl.measurements': 'Measurements and charts',
   'tpl.measurementsDesc': 'A signal computed by formulas and a linear fit (SLOPE, RSQ), with line and scatter charts.',
   'tpl.saveAs': 'Save as template…',

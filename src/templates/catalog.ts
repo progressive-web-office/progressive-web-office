@@ -10,6 +10,7 @@ import { applyCellStyle } from '../sheet/ops';
 import { contentSlide, DEFAULT_SIZE, textShape, titleSlide, type Presentation, type Slide } from '../slides/model';
 import { DOCUMENT_TEXTS, LABELS, type DocumentTexts, type TemplateLang } from './content';
 import { labMarkdown } from './lab';
+import { widgetsMarkdown } from './widgets';
 
 export type Built = { kind: 'document'; doc: RichDocument } | { kind: 'spreadsheet'; wb: Workbook } | { kind: 'presentation'; pres: Presentation };
 
@@ -42,6 +43,13 @@ function documentFrom(text: keyof DocumentTexts, after?: (doc: RichDocument, lan
 /** The lab report example: Python cells with their figures already drawn. */
 function lab(lang: TemplateLang): Built {
   const doc = readMarkdown(labMarkdown(lang));
+  if (doc.extras) delete doc.extras.frontMatter;
+  return { kind: 'document', doc };
+}
+
+/** The interactive widgets example (CODE-016): a Python slider driving a plot, a JavaScript widget. */
+function widgets(lang: TemplateLang): Built {
+  const doc = readMarkdown(widgetsMarkdown(lang));
   if (doc.extras) delete doc.extras.frontMatter;
   return { kind: 'document', doc };
 }
@@ -311,5 +319,6 @@ export const TEMPLATES: Template[] = [
   { id: 'race-signs', kind: 'presentation', icon: '🏁', name: 'tpl.signs', description: 'tpl.signsDesc', build: (lang) => ({ kind: 'presentation', pres: raceSigns(lang) }) },
   { id: 'tour', kind: 'document', example: true, icon: '🧭', name: 'tpl.tour', description: 'tpl.tourDesc', build: documentFrom('tour') },
   { id: 'lab', kind: 'document', example: true, icon: '🧪', name: 'tpl.lab', description: 'tpl.labDesc', build: lab },
+  { id: 'widgets', kind: 'document', example: true, icon: '🎛️', name: 'tpl.widgets', description: 'tpl.widgetsDesc', build: widgets },
   { id: 'measurements', kind: 'spreadsheet', example: true, icon: '📈', name: 'tpl.measurements', description: 'tpl.measurementsDesc', build: (lang) => ({ kind: 'spreadsheet', wb: measurements(lang) }) },
 ];

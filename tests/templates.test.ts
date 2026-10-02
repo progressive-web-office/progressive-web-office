@@ -86,6 +86,16 @@ describe('FILE-018 examples with plots', () => {
     expect(runs(back).filter(isCodeCellRun).filter((c) => c.output?.images?.length)).toHaveLength(5);
   });
 
+  it.each(['en', 'fr'] as const)('widgets (%s): a reactive Python slider driving a plot, and a JavaScript widget (CODE-016)', (lang) => {
+    const cells = runs(doc('widgets', lang)).filter(isCodeCellRun);
+    expect(cells.map((c) => c.lang)).toEqual(['python', 'python', 'javascript', 'javascript']);
+    expect(cells[0]!.cell).toContain('class Slider(anywidget.AnyWidget)');
+    expect(cells[0]!.cell).toContain('freq = pwo.ui(Slider(');
+    expect(cells[1]!.cell).toContain('freq.value');
+    expect(cells[2]!.cell).toContain('const clicks = ui(widget(');
+    expect(cells[3]!.cell).toContain('clicks.get("count")');
+  });
+
   it('measurements: scientific functions and charts drawn from the data', () => {
     const built = byId('measurements').build('fr') as Extract<Built, { kind: 'spreadsheet' }>;
     const charts = built.wb.sheets.flatMap((s) => s.charts ?? []);

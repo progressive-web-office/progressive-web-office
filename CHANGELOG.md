@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Example *Interactive widgets* (CODE-016, FILE-018): a reactive Python
+  slider (anywidget) driving a plot, and a widget written in a JavaScript
+  cell.
+
 - Widgets in code cells (CODE-016): anywidget widgets from Python (anywidget,
   ipywidgets, comm and psygnal bundled; ipywidgets boxes, grid and layouts)
   and from JavaScript cells (`widget`, `display`, `ui`, `importWidget`), each

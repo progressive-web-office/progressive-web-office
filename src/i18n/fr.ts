@@ -879,6 +879,8 @@ export const fr: Record<MessageKey, string> = {
   'tpl.tourDesc': 'Équations, légendes et renvois, diagramme, cellule de code, citations.',
   'tpl.lab': 'Compte rendu de TP avec tracés Python',
   'tpl.labDesc': 'Cellules Python aux figures déjà tracées : ajustement, oscillations amorties, Bode, histogramme, carte de champ, SymPy.',
+  'tpl.widgets': 'Widgets interactifs',
+  'tpl.widgetsDesc': 'Un curseur en Python qui pilote un tracé et un bouton en JavaScript, avec anywidget ; comment utiliser les anywidget instruments.',
   'tpl.measurements': 'Mesures et graphiques',
   'tpl.measurementsDesc': 'Un signal calculé par formules et un ajustement linéaire (PENTE, COEFFICIENT.DETERMINATION), avec courbes et nuage de points.',
   'tpl.saveAs': 'Enregistrer comme modèle…',

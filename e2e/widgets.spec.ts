@@ -141,3 +141,34 @@ test('shows a widget from a JavaScript cell and re-runs the cells using it (CODE
   await expect(cells.nth(1).locator('.code-cell-output')).toHaveText('square 25\n', { timeout: 30_000 });
   expect(errors.filter((e) => !e.startsWith('Failed to load resource'))).toEqual([]);
 });
+
+test('opens the interactive widgets example and brings its widgets to life (CODE-016, FILE-018)', async ({ page }) => {
+  test.setTimeout(180_000);
+  const python = await usePyodidePackages(page);
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: /Interactive widgets/ }).click();
+  const cells = page.locator('.doc-page .code-cell');
+  await expect(cells).toHaveCount(4);
+  // The JavaScript widget needs no download.
+  await cells.nth(2).getByRole('button', { name: 'Run cell' }).click();
+  await page.getByRole('dialog', { name: 'Run the code of this document?' }).getByRole('button', { name: 'Run' }).click();
+  const button = page.frameLocator('.code-widget-frame').first().getByRole('button');
+  await expect(button).toHaveText('👍 0', { timeout: 60_000 });
+  await cells.nth(3).getByRole('button', { name: 'Run cell' }).click();
+  await expect(cells.nth(3).locator('.code-cell-output')).toHaveText('clicks so far: 0\n');
+  await button.click();
+  await expect(cells.nth(3).locator('.code-cell-output')).toHaveText('clicks so far: 1\n', { timeout: 30_000 });
+  // The Python slider and its plot, when Python packages can be had (numpy, matplotlib from the CDN).
+  if (python) {
+    await cells.nth(0).getByRole('button', { name: 'Run cell' }).click();
+    const slider = page.frameLocator('.code-widget-frame').first().getByRole('slider');
+    await expect(slider).toHaveValue('2', { timeout: 120_000 });
+    await expect(page.frameLocator('.code-widget-frame').first().locator('output')).toHaveText(' 2');
+  }
+  if (python && process.env.CI) {
+    await cells.nth(1).getByRole('button', { name: 'Run cell' }).click();
+    await expect(cells.nth(1).locator('.code-cell-figures img')).toHaveCount(1, { timeout: 120_000 });
+  }
+  expect(errors.filter((e) => !e.startsWith('Failed to load resource'))).toEqual([]);
+});
