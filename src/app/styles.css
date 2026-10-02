@@ -252,6 +252,15 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 .grid th.hl { background: var(--sel); color: var(--text); }
 .grid tr.spacer td, .grid tr.spacer { border: 0; padding: 0; }
 .grid td { cursor: cell; }
+/* SHEET-017: frozen rows and columns. */
+.grid td.frz-r, .grid td.frz-c { position: sticky; background: var(--surface); }
+.grid th.frz-r { position: sticky; }
+.grid td.frz-c { z-index: 1; }
+.grid td.frz-r { z-index: 2; }
+.grid th.rowhead.frz-r { z-index: 3; }
+.grid td.frz-r.frz-c, .grid thead th.frz-c { z-index: 3; }
+.grid .frz-last-r { border-bottom: 2px solid var(--muted); }
+.grid .frz-last-c { border-right: 2px solid var(--muted); }
 .grid td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .grid td.bool { text-align: center; }
 .grid td.err { color: var(--danger); text-align: center; }

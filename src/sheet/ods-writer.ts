@@ -63,6 +63,40 @@ function durationFromSerial(serial: number): string {
   return `PT${String(h).padStart(2, '0')}H${String(m).padStart(2, '0')}M${String(s).padStart(2, '0')}S`;
 }
 
+const CONFIG_NS = 'urn:oasis:names:tc:opendocument:xmlns:config:1.0';
+
+/** settings.xml with the frozen panes of each sheet, as LibreOffice writes them (SHEET-017); undefined without any. */
+function settingsXml(wb: Workbook): string | undefined {
+  const frozen = wb.sheets.filter((s) => s.freeze && (s.freeze.rows || s.freeze.cols));
+  if (!frozen.length) return undefined;
+  const item = (name: string, type: string, value: number | string): string => `<config:config-item config:name="${name}" config:type="${type}">${value}</config:config-item>`;
+  const tables = frozen
+    .map((s) => {
+      const { rows, cols } = s.freeze!;
+      return (
+        `<config:config-item-map-entry config:name="${esc(s.name)}">` +
+        item('HorizontalSplitMode', 'short', cols ? 2 : 0) +
+        item('VerticalSplitMode', 'short', rows ? 2 : 0) +
+        item('HorizontalSplitPosition', 'int', cols) +
+        item('VerticalSplitPosition', 'int', rows) +
+        item('ActiveSplitRange', 'short', 2) +
+        item('PositionLeft', 'int', 0) +
+        item('PositionRight', 'int', cols) +
+        item('PositionTop', 'int', 0) +
+        item('PositionBottom', 'int', rows) +
+        '</config:config-item-map-entry>'
+      );
+    })
+    .join('');
+  return (
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    `<office:document-settings xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:config="${CONFIG_NS}" office:version="1.3"><office:settings>` +
+    '<config:config-item-set config:name="ooo:view-settings"><config:config-item-map-indexed config:name="Views"><config:config-item-map-entry>' +
+    `${item('ViewId', 'string', 'view1')}<config:config-item-map-named config:name="Tables">${tables}</config:config-item-map-named>` +
+    '</config:config-item-map-entry></config:config-item-map-indexed></config:config-item-set></office:settings></office:document-settings>'
+  );
+}
+
 export function writeOds(wb: Workbook): Uint8Array {
   const calc = new Calculator(wb);
   const formats = new Map<string, string>(); // fmt -> cell style name
@@ -196,6 +230,7 @@ export function writeOds(wb: Workbook): Uint8Array {
     '<style:style style:name="Default" style:family="table-cell"/>' +
     '</office:styles></office:document-styles>';
 
+  const settings = settingsXml(wb);
   return writeZip([
     { path: 'mimetype', data: MIME_TYPES.ods, store: true },
     {
@@ -204,6 +239,7 @@ export function writeOds(wb: Workbook): Uint8Array {
         { path: 'content.xml', mediaType: 'text/xml' },
         { path: 'styles.xml', mediaType: 'text/xml' },
         { path: 'meta.xml', mediaType: 'text/xml' },
+        ...(settings ? [{ path: 'settings.xml', mediaType: 'text/xml' }] : []),
         ...objects.flatMap((o) => [
           { path: `${o.dir}/`, mediaType: CHART_MIME },
           { path: `${o.dir}/content.xml`, mediaType: 'text/xml' },
@@ -213,6 +249,7 @@ export function writeOds(wb: Workbook): Uint8Array {
     { path: 'content.xml', data: content },
     { path: 'styles.xml', data: stylesXml },
     { path: 'meta.xml', data: metaXml({}) },
+    ...(settings ? [{ path: 'settings.xml', data: settings }] : []),
     ...objects.map((o) => ({ path: `${o.dir}/content.xml`, data: o.xml })),
   ]);
 }

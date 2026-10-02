@@ -50,3 +50,27 @@ test('sorts the table around the active cell by a column, keeping the header (SH
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect.poll(() => col(0)).toEqual(['Name', 'Chloé', 'alice', 'Bob']);
 });
+
+test('freezes the first row and column, which stay in view while scrolling (SHEET-017)', async ({ page }) => {
+  await openApp(page);
+  const csv = ['Name,' + Array.from({ length: 30 }, (_, i) => `Q${i + 1}`).join(','), ...Array.from({ length: 200 }, (_, r) => `Row ${r + 1},` + Array.from({ length: 30 }, (_, c) => r * c).join(','))].join('\n');
+  await openFile(page, 'big.csv', csv, 'text/csv');
+  await page.locator('td[data-r="1"][data-c="1"]').click();
+  await page.getByRole('button', { name: 'Freeze panes' }).click();
+  await expect(page.getByRole('button', { name: 'Freeze panes' })).toHaveAttribute('aria-pressed', 'true');
+  const viewport = page.locator('.grid-viewport');
+  await viewport.evaluate((el) => el.scrollTo(2000, 3000));
+  const vp = (await viewport.boundingBox())!;
+  const header = page.locator('td[data-r="0"][data-c="0"]');
+  await expect(header).toHaveText('Name');
+  const box = (await header.boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(vp.y);
+  expect(box.y).toBeLessThan(vp.y + 60);
+  expect(box.x).toBeLessThan(vp.x + 120);
+  await expect(page.locator('td[data-r="150"][data-c="0"]')).toHaveText('Row 150');
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/freeze.png' });
+
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const xlsx = unzipSync(new Uint8Array((await saveAs(page, 'Excel workbook (.xlsx)')).data));
+  expect(strFromU8(xlsx['xl/worksheets/sheet1.xml']!)).toContain('<pane xSplit="1" ySplit="1" topLeftCell="B2" activePane="bottomRight" state="frozen"/>');
+});

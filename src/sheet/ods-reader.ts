@@ -224,5 +224,22 @@ export function readOds(bytes: Uint8Array): Workbook {
     sheets.push(sheet);
   }
   if (!sheets.length) sheets.push({ name: 'Sheet1', cells: new Map() });
+  readFrozenPanes(zip, sheets);
   return { sheets };
+}
+
+/** Frozen panes from settings.xml (SHEET-017). */
+function readFrozenPanes(zip: ReturnType<typeof readZip>, sheets: Sheet[]): void {
+  const text = readZipText(zip, 'settings.xml');
+  if (!text) return;
+  const tables = descendants(parseXml(text), 'config-item-map-named').find((m) => attr(m, 'name') === 'Tables');
+  if (!tables) return;
+  for (const entry of children(tables, 'config-item-map-entry')) {
+    const sheet = sheets.find((s) => s.name === attr(entry, 'name'));
+    if (!sheet) continue;
+    const value = (name: string): number => Number(children(entry, 'config-item').find((i) => attr(i, 'name') === name)?.textContent ?? 0) || 0;
+    const cols = value('HorizontalSplitMode') === 2 ? value('HorizontalSplitPosition') : 0;
+    const rows = value('VerticalSplitMode') === 2 ? value('VerticalSplitPosition') : 0;
+    if (rows > 0 || cols > 0) sheet.freeze = { rows: Math.max(0, rows), cols: Math.max(0, cols) };
+  }
 }

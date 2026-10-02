@@ -72,6 +72,11 @@ class XlsxReader {
       if (xml && rel) {
         const sheetDoc = parseXml(xml);
         this.readSheet(sheetDoc, sheet);
+        // SHEET-017: frozen panes.
+        const pane = descendants(sheetDoc, 'pane').find((p) => /^frozen/.test(attr(p, 'state') ?? ''));
+        const rows = pane ? Math.max(0, Math.round(Number(attr(pane, 'ySplit') ?? 0))) : 0;
+        const cols = pane ? Math.max(0, Math.round(Number(attr(pane, 'xSplit') ?? 0))) : 0;
+        if (rows || cols) sheet.freeze = { rows, cols };
         const charts = readSheetCharts(this.zip, rel.target, sheetDoc);
         if (charts.length) sheet.charts = charts;
       }

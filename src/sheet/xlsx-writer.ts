@@ -4,13 +4,24 @@ import { writeZip } from '../core/zip';
 import { APP_XML, coreXml, NS, REL } from '../document/ooxml';
 import { parseKey, refName } from './address';
 import { Calculator } from './engine';
-import { isError, type Workbook } from './model';
+import { isError, type Sheet, type Workbook } from './model';
 import { BUILTIN_FORMATS, pxToWidth } from './xlsx-reader';
 import { chartXml, CT_CHART, CT_DRAWING, drawingXml, REL_DRAWING } from './chart-ooxml';
 
 /** Functions that Excel stores with a `_xlfn.` prefix. */
 const FUTURE_FUNCTIONS = ['CONCAT', 'IFS', 'SWITCH', 'TEXTJOIN', 'MAXIFS', 'MINIFS', 'XLOOKUP'];
 const addFn = (f: string): string => f.replace(new RegExp(`\\b(${FUTURE_FUNCTIONS.join('|')})\\(`, 'g'), '_xlfn.$1(');
+
+/** The sheet view: the selected tab and frozen panes (SHEET-017). */
+function sheetViews(sheet: Sheet, selected: boolean): string {
+  const f = sheet.freeze;
+  const pane =
+    f && (f.rows || f.cols)
+      ? `<pane${f.cols ? ` xSplit="${f.cols}"` : ''}${f.rows ? ` ySplit="${f.rows}"` : ''} topLeftCell="${refName(f.rows, f.cols)}" activePane="${f.rows && f.cols ? 'bottomRight' : f.rows ? 'bottomLeft' : 'topRight'}" state="frozen"/>`
+      : '';
+  if (!selected && !pane) return '';
+  return `<sheetViews><sheetView workbookViewId="0"${selected ? ' tabSelected="1"' : ''}${pane ? `>${pane}</sheetView>` : '/>'}</sheetViews>`;
+}
 
 export function writeXlsx(wb: Workbook): Uint8Array {
   const calc = new Calculator(wb);
@@ -87,7 +98,7 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${NS.r}">` +
-      `${si === 0 ? '<sheetViews><sheetView workbookViewId="0" tabSelected="1"/></sheetViews>' : ''}` +
+      sheetViews(sheet, si === 0) +
       `<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData>${sheet.charts?.length ? '<drawing r:id="rId1"/>' : ''}</worksheet>`
     );
   });

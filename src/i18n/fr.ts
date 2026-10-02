@@ -835,4 +835,6 @@ export const fr: Record<MessageKey, string> = {
   'sort.descending': 'Décroissant (Z à A, 9 à 0)',
   'sort.header': 'La première ligne est un en-tête (elle reste en place)',
   'sort.apply': 'Trier',
+  'freeze.button': 'Figer les volets',
+  'freeze.title': 'Garder visibles les lignes au-dessus et les colonnes à gauche de la cellule active (depuis A1 : la première ligne) ; à nouveau pour libérer',
 };

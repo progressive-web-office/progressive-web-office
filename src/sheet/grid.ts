@@ -255,9 +255,13 @@ export class SheetEditor implements EditorView {
     this.updateSize();
     const colgroup = h('colgroup', {}, h('col', { style: 'width: 48px' }));
     const head = h('tr', {}, h('th', { class: 'corner', 'aria-label': t('sheet.selectAll') }));
+    const frozen = this.frozen();
+    this.freezeButton.setAttribute('aria-pressed', String(!!this.wb.sheets[this.si]!.freeze));
     for (let c = 0; c < this.nCols; c++) {
       colgroup.append(h('col', { style: `width: ${this.width(c)}px` }));
-      head.append(h('th', { class: 'colhead', 'data-col': String(c), scope: 'col' }, colName(c)));
+      const th = h('th', { class: 'colhead', 'data-col': String(c), scope: 'col' }, colName(c));
+      if (c < frozen.cols) this.freezeCell(th, -1, c, frozen);
+      head.append(th);
     }
     this.table.replaceChildren(colgroup, h('thead', {}, head), h('tbody'));
     this.lastRow = -1;
@@ -267,10 +271,33 @@ export class SheetEditor implements EditorView {
     this.renderCharts();
   }
 
+  /** Frozen rows and columns of the current sheet, within its size (SHEET-017). */
+  private frozen(): { rows: number; cols: number } {
+    const f = this.wb.sheets[this.si]!.freeze;
+    return { rows: Math.min(f?.rows ?? 0, this.nRows), cols: Math.min(f?.cols ?? 0, this.nCols) };
+  }
+
+  /** Keep a cell of a frozen row (below the column headings) or column (right of the row headings) in view. */
+  private freezeCell(el: HTMLElement, row: number, col: number, frozen: { rows: number; cols: number }): void {
+    if (row >= 0 && row < frozen.rows) {
+      el.classList.add('frz-r');
+      el.style.top = `${(row + 1) * ROW_H}px`;
+      if (row === frozen.rows - 1) el.classList.add('frz-last-r');
+    }
+    if (col >= 0 && col < frozen.cols) {
+      let left = 48;
+      for (let c = 0; c < col; c++) left += this.width(c);
+      el.classList.add('frz-c');
+      el.style.left = `${left}px`;
+      if (col === frozen.cols - 1) el.classList.add('frz-last-c');
+    }
+  }
+
   private renderBody(force = false): void {
     const vh = this.viewport.clientHeight;
     const visible = vh > 0 ? Math.ceil(vh / ROW_H) : MIN_RENDER_ROWS;
-    const first = Math.max(0, Math.floor(this.viewport.scrollTop / ROW_H) - OVERSCAN);
+    const frozen = this.frozen();
+    const first = Math.max(frozen.rows, Math.floor(this.viewport.scrollTop / ROW_H) - OVERSCAN);
     const last = Math.min(this.nRows - 1, first + visible + OVERSCAN * 2);
     if (!force && first === this.firstRow && last === this.lastRow) return;
     this.firstRow = first;
@@ -278,12 +305,15 @@ export class SheetEditor implements EditorView {
     const sheet = this.wb.sheets[this.si]!;
     const tbody = this.table.tBodies[0]!;
     let hasMath = false;
-    const rows: HTMLTableRowElement[] = [h('tr', { class: 'spacer', style: `height: ${first * ROW_H}px`, 'aria-hidden': 'true' })];
-    for (let r = first; r <= last; r++) {
-      const tr = h('tr', { style: `height: ${ROW_H}px` }, h('th', { class: 'rowhead', 'data-row': String(r), scope: 'row' }, String(r + 1)));
+    const rows: HTMLTableRowElement[] = [];
+    const row = (r: number): HTMLTableRowElement => {
+      const head = h('th', { class: 'rowhead', 'data-row': String(r), scope: 'row' }, String(r + 1));
+      this.freezeCell(head, r, -1, frozen);
+      const tr = h('tr', { style: `height: ${ROW_H}px` }, head);
       for (let c = 0; c < this.nCols; c++) {
         const cell = sheet.cells.get(cellKey(r, c));
         const td = h('td', { 'data-r': String(r), 'data-c': String(c) });
+        if (r < frozen.rows || c < frozen.cols) this.freezeCell(td, r, c, frozen);
         if (cell) {
           const v = this.calc.value(this.si, [r, c]);
           if (fillWithMath(td, formatValue(v, cell.numFmt))) hasMath = true;
@@ -293,9 +323,13 @@ export class SheetEditor implements EditorView {
         }
         tr.append(td);
       }
-      rows.push(tr);
-    }
-    rows.push(h('tr', { class: 'spacer', style: `height: ${(this.nRows - 1 - last) * ROW_H}px`, 'aria-hidden': 'true' }));
+      return tr;
+    };
+    // SHEET-017: frozen rows are always there, above the scrolling ones.
+    for (let r = 0; r < frozen.rows; r++) rows.push(row(r));
+    rows.push(h('tr', { class: 'spacer', style: `height: ${(first - frozen.rows) * ROW_H}px`, 'aria-hidden': 'true' }));
+    for (let r = first; r <= last; r++) rows.push(row(r));
+    rows.push(h('tr', { class: 'spacer', style: `height: ${Math.max(0, this.nRows - 1 - last) * ROW_H}px`, 'aria-hidden': 'true' }));
     tbody.replaceChildren(...rows);
     if (hasMath) void typesetMath(tbody);
     this.renderSelection();
@@ -480,6 +514,22 @@ export class SheetEditor implements EditorView {
     return r;
   }
 
+  /** Freeze the rows above and the columns left of the active cell, or unfreeze (SHEET-017). */
+  private toggleFreeze(): void {
+    const sheet = this.wb.sheets[this.si]!;
+    this.commitEdit();
+    this.snapshot();
+    if (sheet.freeze) delete sheet.freeze;
+    else {
+      const { row, col } = this.focusCell;
+      // From A1, the usual case: the first row.
+      sheet.freeze = row === 0 && col === 0 ? { rows: 1, cols: 0 } : { rows: row, cols: col };
+    }
+    this.changed(true);
+  }
+
+  private readonly freezeButton = button(t('freeze.button'), () => this.toggleFreeze(), { text: '❄', title: t('freeze.title') });
+
   /** Sort the rows of the data around the selection by a column (SHEET-016). */
   private async sort(): Promise<void> {
     this.commitEdit();
@@ -589,11 +639,19 @@ export class SheetEditor implements EditorView {
     if (!vp.clientHeight) return;
     const top = row * ROW_H;
     const headH = ROW_H;
-    if (top < vp.scrollTop) vp.scrollTop = top;
+    // SHEET-017: frozen rows and columns are always visible and cover the top and left.
+    const frozen = this.frozen();
+    const frozenH = frozen.rows * ROW_H;
+    let frozenW = 0;
+    for (let c = 0; c < frozen.cols; c++) frozenW += this.width(c);
+    if (row >= frozen.rows && top - frozenH < vp.scrollTop) vp.scrollTop = top - frozenH;
     else if (top + ROW_H > vp.scrollTop + vp.clientHeight - headH) vp.scrollTop = top + ROW_H - vp.clientHeight + headH;
     let left = 0;
     for (let c = 0; c < col; c++) left += this.width(c);
-    if (left < vp.scrollLeft) vp.scrollLeft = left;
+    if (col >= frozen.cols && left - frozenW < vp.scrollLeft) vp.scrollLeft = left - frozenW;
+    else if (col < frozen.cols) {
+      /* always in view */
+    } else if (left < vp.scrollLeft) vp.scrollLeft = left;
     else if (left + this.width(col) > vp.scrollLeft + vp.clientWidth - 48) vp.scrollLeft = left + this.width(col) - vp.clientWidth + 48;
     this.renderBody();
   }
@@ -759,6 +817,7 @@ export class SheetEditor implements EditorView {
       act(t('sheet.autoSum'), 'Σ', () => this.autoSum()),
       act(t('sheet.insertChart'), '📊', () => void this.insertChart()),
       act(t('sort.button'), '⇅', () => void this.sort()),
+      this.freezeButton,
     );
   }
 

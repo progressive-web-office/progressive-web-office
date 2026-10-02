@@ -835,4 +835,6 @@ export const zh: Record<MessageKey, string> = {
   'sort.descending': '降序（Z 到 A，9 到 0）',
   'sort.header': '第一行是标题（保持不动）',
   'sort.apply': '排序',
+  'freeze.button': '冻结窗格',
+  'freeze.title': '保持活动单元格上方的行和左侧的列可见（从 A1：第一行）；再次点击取消冻结',
 };

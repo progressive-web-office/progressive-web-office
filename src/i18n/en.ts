@@ -833,6 +833,8 @@ export const en = {
   'sort.descending': 'Descending (Z to A, 9 to 0)',
   'sort.header': 'The first row is a header (it stays in place)',
   'sort.apply': 'Sort',
+  'freeze.button': 'Freeze panes',
+  'freeze.title': 'Keep the rows above and the columns left of the active cell in view (from A1: the first row); again to unfreeze',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -39,6 +39,8 @@ export interface Sheet {
   /** Column widths in pixels, by column index. */
   colWidths?: Map<number, number>;
   charts?: Chart[];
+  /** Rows above and columns left of the scrolling area, always shown (SHEET-017). */
+  freeze?: { rows: number; cols: number };
 }
 
 export interface Workbook {
