@@ -92,8 +92,8 @@ group is not a commitment.
 ### Teaching
 
 - ✅ Exercise sheets and answer keys from one document (TEACH-001)
-- Random variants: parameterised values (`{{R=rand(1..10)}}`) give each
-  student a different version, with its computed answer key
+- ✅ Random variants (TEACH-002): parameterised values give each student a
+  different version, with its computed answer key
 - Quiz export to Moodle XML and AMC (Auto Multiple Choice)
 - Hand out and collect work in class over QRShare / peer-to-peer
   collaboration, without a learning platform

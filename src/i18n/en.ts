@@ -994,6 +994,20 @@ export const en = {
   'a11y.contrast': 'Coloured text is hard to read (contrast {detail}, 4.5:1 needed).',
   'a11y.title': 'The document has no title (properties).',
   'a11y.language': 'The document’s language is not set (properties).',
+  'variants.button': 'Random variants',
+  'variants.buttonTitle': 'Random variants: {{R=rand(1..10)}} in the text draws a value, {{R}} shows it, {{=R*2}} computes; generates a sheet and an answer key per student',
+  'variants.title': 'Random variants',
+  'variants.found': 'Values drawn: {names}',
+  'variants.count': 'Number of variants',
+  'variants.format': 'Format',
+  'variants.seed': 'Seed',
+  'variants.seedHint': 'The same seed gives the same variants again.',
+  'variants.keys': 'With an answer key per variant (the solutions)',
+  'variants.generate': 'Generate',
+  'variants.none': 'No value to draw: write for example {{R=rand(1..10)}} in the text, then {{R}} or {{=R*2}} where the value or a result goes.',
+  'variants.error': 'A value cannot be drawn: {message}',
+  'variants.stem': 'sheet',
+  'variants.keySuffix': 'key',
 } as const;
 
 export type MessageKey = keyof typeof en;

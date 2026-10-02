@@ -583,6 +583,34 @@ export class DocumentEditor implements EditorView {
     }));
   }
 
+  /** N variants of the sheet and their answer keys, in a ZIP (TEACH-002). */
+  private async generateVariants(): Promise<void> {
+    const doc = { ...this.doc, blocks: this.currentBlocks() };
+    const [{ definitions, draw, random, substitute, checkDefinitions }, { chooseVariants }] = await Promise.all([import('../teach/variants'), import('../teach/variants-dialog')]);
+    const defs = definitions(doc);
+    if (!defs.length) return window.alert(t('variants.none'));
+    const problems = checkDefinitions(defs);
+    if (problems.length) return window.alert(t('variants.error', { message: problems.join('\n') }));
+    const choice = await chooseVariants(this.element, defs, this.hasSolutions());
+    if (!choice) return this.refocus();
+    const [{ writeZip }, { saveFile }] = await Promise.all([import('../core/zip'), import('../storage/file-io')]);
+    const stem = (doc.meta.title || t('variants.stem')).replace(/[\\/:*?"<>|]+/g, '-').trim();
+    const pad = (n: number): string => String(n).padStart(String(choice.count).length, '0');
+    const entries: { path: string; data: Uint8Array | string }[] = [];
+    const rows: string[] = [['variant', ...defs.map((d) => d.name)].join(',')];
+    for (let i = 1; i <= choice.count; i++) {
+      const values = draw(defs, random(choice.seed + i));
+      const variant = substitute(doc, values);
+      pruneComments(variant);
+      entries.push({ path: `${stem}-${pad(i)}.${choice.format}`, data: await writeDocumentAsync(withoutSolutions(variant), choice.format) });
+      if (choice.keys) entries.push({ path: `${stem}-${pad(i)}-${t('variants.keySuffix')}.${choice.format}`, data: await writeDocumentAsync(variant, choice.format) });
+      rows.push([String(i), ...defs.map((d) => JSON.stringify(String(values[d.name] ?? '')))].join(','));
+    }
+    entries.push({ path: `${stem}-values.csv`, data: `${rows.join('\n')}\n` });
+    await saveFile(writeZip(entries), `${stem}-variants.zip`, 'texzip', { mimeType: 'application/zip', extension: 'zip' });
+    this.refocus();
+  }
+
   private hasSolutions(): boolean {
     let found = false;
     this.view?.state.doc.descendants((node) => {
@@ -859,6 +887,7 @@ export class DocumentEditor implements EditorView {
       h('span', { class: 'sep' }),
       state(t('solution.button'), '✓', (s, d) => setParagraphAttrs({ solution: !paragraphAttr(s, 'solution') })(s, d), () => !!paragraphAttr(this.view.state, 'solution'), t('solution.title')),
       this.solutionsButton,
+      act(t('variants.button'), '🎲', () => void this.generateVariants(), t('variants.buttonTitle')),
       act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
       act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
       act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),

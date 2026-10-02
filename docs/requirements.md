@@ -4,6 +4,7 @@ description: EARS requirements with MoSCoW priorities and roadmap milestones.
 
 <!-- Generated from specs/spec.md by scripts/sync-requirements.mjs — edit the source. -->
 
+::: v-pre
 # Requirements specification
 
 - Status: Draft v1 (2026-10-01)
@@ -421,9 +422,10 @@ integration is ever needed.
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
 | TEACH-001 | S | 0.2.0 | The system shall let the user mark paragraphs of a text document as solutions, shown framed and labelled, hide or show them on screen and in print, and save copies without them (the exercise sheet) in ODT, DOCX and Markdown; solutions shall be kept as Word content controls (tag `pwo:solution`, alias Solution), ODF sections named Solution*n*, and Markdown fenced divs (`::: solution`, `::: {.solution}`). |
-| TEACH-002 | C | — | Random variants: parameterised values give each student a different version of a sheet, with its computed answer key. |
+| TEACH-002 | S | 0.2.0 | The system shall generate N random variants of a text document: `{{X=rand(a..b[, step])}}`, `{{X=choice(…)}}` and `{{X=expression}}` define values drawn per variant with a seeded generator, `{{X}}` and `{{=expression[\|digits]}}` show values and computed results (arithmetic and common functions, no code run), numbers being formatted for the document's language; the result shall be a ZIP of the sheets (without solutions), their answer keys and a CSV of the values, in ODT, DOCX or Markdown. |
 
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.
 - Legacy binary formats (`.doc`, `.xls`).
+:::

@@ -405,3 +405,32 @@ test('describes and captions an inserted picture, then checks accessibility (IMG
   await page.getByRole('button', { name: 'OK' }).click();
   await expect(editor.locator('img[data-resource]')).toHaveAttribute('alt', '');
 });
+
+test('generates random variants of a sheet with their answer keys (TEACH-002)', async ({ page }) => {
+  await newDocument(page);
+  await page.keyboard.type('A resistor of {{R=rand(10..20)}} ohms carries 2 A. Find U.');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('U = {{R}} x 2 = {{=R*2}} V');
+  await page.getByRole('button', { name: 'Solution', exact: true }).click();
+  await page.getByRole('button', { name: 'Random variants' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Random variants' });
+  await expect(dialog).toContainText('R = rand(10..20)');
+  await dialog.getByLabel('Number of variants').fill('3');
+  await dialog.getByLabel('Format').selectOption('md');
+  await dialog.getByLabel('Seed').fill('7');
+  const download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Generate' }).click();
+  const d = await download;
+  expect(d.suggestedFilename()).toBe('sheet-variants.zip');
+  const chunks: Buffer[] = [];
+  for await (const c of await d.createReadStream()) chunks.push(c as Buffer);
+  const { unzipSync } = await import('fflate');
+  const files = unzipSync(new Uint8Array(Buffer.concat(chunks)));
+  expect(Object.keys(files).sort()).toEqual(['sheet-1-key.md', 'sheet-1.md', 'sheet-2-key.md', 'sheet-2.md', 'sheet-3-key.md', 'sheet-3.md', 'sheet-values.csv']);
+  const text = (name: string): string => new TextDecoder().decode(files[name]);
+  const r = /resistor of (\d+) ohms/.exec(text('sheet-1.md'))![1]!;
+  expect(Number(r)).toBeGreaterThanOrEqual(10);
+  expect(text('sheet-1.md')).not.toContain('U =');
+  expect(text('sheet-1-key.md')).toContain(`U = ${r} x 2 = ${Number(r) * 2} V`);
+  expect(text('sheet-values.csv').split('\n')[0]).toBe('variant,R');
+});

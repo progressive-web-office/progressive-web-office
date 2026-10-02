@@ -14,6 +14,7 @@ await writeFile(
   dst,
   '---\ndescription: EARS requirements with MoSCoW priorities and roadmap milestones.\n---\n\n' +
     '<!-- Generated from specs/spec.md by scripts/sync-requirements.mjs — edit the source. -->\n\n' +
-    body,
+    // Shown as written: `{{X}}` in requirements is text, not a Vue interpolation.
+    `::: v-pre\n${body.trimEnd()}\n:::\n`,
 );
 console.log('docs/requirements.md updated');

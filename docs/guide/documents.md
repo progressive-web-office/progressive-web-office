@@ -282,6 +282,31 @@ Compute 2 + 3.
 :::
 ```
 
+### Random variants
+
+::: v-pre
+Give each student different values. In the text, write:
+
+| Write | It gives |
+|-------|----------|
+| `{{R=rand(10..20)}}` | a whole number from 10 to 20, shown here |
+| `{{I=rand(0.5..2, 0.5)}}` | 0.5, 1, 1.5 or 2 (with a step) |
+| `{{C=choice(red, green, blue)}}` | one of the values |
+| `{{P=R*I^2}}` | a value computed from others |
+| `{{R}}` | the value of R, again |
+| `{{=R*I}}` | a result, computed (in a solution, typically) |
+| `{{=R/3\|2}}` | a result with 2 decimals |
+
+Expressions use `+ - * / ^ %`, parentheses and `sqrt`, `abs`, `exp`, `ln`,
+`log`, `sin`, `cos`, `tan`, `round(x, n)`, `min`, `max`, `pi`, `e`. Numbers
+are written in the document's language (`1,5` in French).
+
+**🎲 Random variants** asks for the number of variants, the format and a
+*seed* (the same seed gives the same variants again), then downloads a ZIP
+with one sheet per variant (without the solutions), its answer key (with
+them), and a CSV table of the values drawn for each variant.
+:::
+
 ## Tracking changes
 
 Click **±** (Track changes) to record your edits instead of applying them:
