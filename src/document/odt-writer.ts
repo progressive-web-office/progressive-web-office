@@ -31,6 +31,7 @@ import {
   type Paragraph,
   type ParagraphLayout,
   type DocComment,
+  type Revision,
   type RichDocument,
   type Run,
   type Table,
@@ -79,6 +80,8 @@ class OdtWriter {
   private ranges = new CommentRanges(new Set());
   /** The runs written are those of a paragraph (not of a note inside it). */
   private inParagraph = false;
+  /** Tracked changes (REV-005), as changed regions. */
+  private regions: string[] = [];
 
   /** Citation numbers and texts, and the sources (DOC-027). */
   private cites: Citations = citations([], undefined);
@@ -99,7 +102,8 @@ class OdtWriter {
       const at = Math.max(text.lastIndexOf('</text:p>'), text.lastIndexOf('</text:h>'));
       if (at >= 0) text = text.slice(0, at) + this.annotationEnds(open) + text.slice(at);
     }
-    const body = decls + this.firstPageStyle(text);
+    const tracked = this.regions.length ? `<text:tracked-changes>${this.regions.join('')}</text:tracked-changes>` : '';
+    const body = tracked + decls + this.firstPageStyle(text);
     const content =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       `<office:document-content ${ODF_XMLNS} office:version="1.3">` +
@@ -290,6 +294,14 @@ class OdtWriter {
     }
   }
 
+  /** A changed region; its id. */
+  private changeRegion(kind: 'insertion' | 'deletion', by: Revision, content: string): string {
+    const id = `ct${this.regions.length + 1}`;
+    const info = `<office:change-info>${by.author ? `<dc:creator>${esc(by.author)}</dc:creator>` : ''}${by.date ? `<dc:date>${esc(by.date)}</dc:date>` : ''}</office:change-info>`;
+    this.regions.push(`<text:changed-region xml:id="${id}" text:id="${id}"><text:${kind}>${info}${content}</text:${kind}></text:changed-region>`);
+    return id;
+  }
+
   private annotationName(id: string): string {
     return `__Annotation__${this.comments.findIndex((c) => c.id === id) + 1}`;
   }
@@ -403,12 +415,23 @@ class OdtWriter {
         atStart = false;
         continue;
       }
+      // REV-005: a deletion keeps its text in its changed region.
+      const change = run.inserted ?? run.deleted;
+      if (run.deleted) {
+        const id = this.changeRegion('deletion', run.deleted, `<text:p>${odfText(run.text, true)}</text:p>`);
+        out += `<text:change text:change-id="${id}"/>`;
+        continue;
+      }
       let xml = odfText(run.text, atStart);
       atStart = run.text.endsWith('\n');
       const style = this.textStyle(run);
       if (style) xml = `<text:span text:style-name="${style}">${xml}</text:span>`;
       if (run.code) xml = `<text:span text:style-name="Source_20_Text">${xml}</text:span>`;
       if (run.link) xml = `<text:a xlink:type="simple" xlink:href="${esc(run.link)}">${xml}</text:a>`;
+      if (change) {
+        const id = this.changeRegion('insertion', change, '');
+        xml = `<text:change-start text:change-id="${id}"/>${xml}<text:change-end text:change-id="${id}"/>`;
+      }
       out += xml;
     }
     return out;

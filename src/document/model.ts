@@ -25,6 +25,16 @@ export interface TextFormat {
   highlight?: string;
   /** Comments on this text (REV-001): ids into `RichDocument.comments`. */
   comments?: string[];
+  /** A tracked insertion or deletion (REV-005). */
+  inserted?: Revision;
+  deleted?: Revision;
+}
+
+/** Who made a tracked change, and when (REV-005). */
+export interface Revision {
+  author?: string;
+  /** ISO 8601 timestamp. */
+  date?: string;
 }
 
 /** A comment on a range of text, or a reply to one (REV-001). */
@@ -574,9 +584,15 @@ export function paragraph(text: string, opts: Partial<Omit<Paragraph, 'type' | '
 const FORMAT_KEYS: (keyof TextFormat)[] = ['bold', 'italic', 'underline', 'strike', 'code', 'link', 'size', 'color', 'font', 'highlight'];
 
 const commentKey = (f: TextFormat): string => (f.comments?.length ? [...f.comments].sort().join(' ') : '');
+const revisionKey = (r: Revision | undefined): string => (r ? `${r.author ?? ''}\u0000${r.date ?? ''}` : '');
 
 export function sameFormat(a: TextFormat, b: TextFormat): boolean {
-  return FORMAT_KEYS.every((k) => (a[k] || undefined) === (b[k] || undefined)) && commentKey(a) === commentKey(b);
+  return (
+    FORMAT_KEYS.every((k) => (a[k] || undefined) === (b[k] || undefined)) &&
+    commentKey(a) === commentKey(b) &&
+    revisionKey(a.inserted) === revisionKey(b.inserted) &&
+    revisionKey(a.deleted) === revisionKey(b.deleted)
+  );
 }
 
 /** Copy only the truthy formatting flags (keeps objects minimal). */
@@ -587,6 +603,8 @@ export function cleanFormat(f: TextFormat): TextFormat {
     if (v) (out as Record<string, unknown>)[k] = v;
   }
   if (f.comments?.length) out.comments = [...f.comments];
+  if (f.inserted) out.inserted = { ...f.inserted };
+  if (f.deleted) out.deleted = { ...f.deleted };
   return out;
 }
 

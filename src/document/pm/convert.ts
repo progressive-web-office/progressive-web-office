@@ -16,6 +16,8 @@ function marksFor(f: TextFormat): Mark[] {
   if (f.font) marks.push(schema.marks.font!.create({ family: f.font }));
   if (f.highlight) marks.push(schema.marks.highlight!.create({ hex: f.highlight }));
   for (const id of f.comments ?? []) marks.push(schema.marks.comment!.create({ id }));
+  if (f.inserted) marks.push(schema.marks.insertion!.create({ author: f.inserted.author ?? null, date: f.inserted.date ?? null }));
+  if (f.deleted) marks.push(schema.marks.deletion!.create({ author: f.deleted.author ?? null, date: f.deleted.date ?? null }));
   return marks;
 }
 
@@ -40,6 +42,10 @@ function formatOf(marks: readonly Mark[]): TextFormat {
         break;
       case 'comment':
         (f.comments ??= []).push(m.attrs.id as string);
+        break;
+      case 'insertion':
+      case 'deletion':
+        f[m.type.name === 'insertion' ? 'inserted' : 'deleted'] = { ...(m.attrs.author ? { author: m.attrs.author as string } : {}), ...(m.attrs.date ? { date: m.attrs.date as string } : {}) };
         break;
       default:
         (f as Record<string, unknown>)[m.type.name] = true;

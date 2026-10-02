@@ -1,4 +1,5 @@
 /** Read/write a rich document in any supported text format. */
+import { acceptAll } from './changes';
 import type { DocumentFormat } from '../core/format';
 import { readDocx } from './docx-reader';
 import { writeDocx } from './docx-writer';
@@ -43,10 +44,11 @@ export function writeDocument(doc: RichDocument, format: TextFormat, opts: Write
       return new TextEncoder().encode(writeMarkdown(doc));
     case 'mdz':
       return writeMdz(doc);
+    // REV-005: LaTeX has no tracked changes: they are accepted.
     case 'tex':
-      return new TextEncoder().encode(writeLatex(doc).tex);
+      return new TextEncoder().encode(writeLatex(acceptAll(doc)).tex);
     case 'texzip':
-      return writeLatexZip(doc, opts);
+      return writeLatexZip(acceptAll(doc), opts);
   }
 }
 

@@ -75,6 +75,8 @@ class DocxWriter {
   private comments: DocComment[] = [];
   private commentIds = new Map<string, number>();
   private ranges = new CommentRanges(new Set());
+  /** Ids of tracked changes (REV-005), after those of the comments. */
+  private revisionId = 1;
   /** Citation numbers and texts (DOC-027). */
   private cites: Citations = citations([], undefined);
 
@@ -99,6 +101,7 @@ class DocxWriter {
     const anchored = anchoredComments(this.doc);
     this.comments = (this.doc.comments ?? []).filter((c) => anchored.has(c.parent ?? c.id));
     this.comments.forEach((c, i) => this.commentIds.set(c.id, i));
+    this.revisionId = this.comments.length + 1;
     this.ranges = new CommentRanges(new Set(this.comments.filter((c) => !c.parent).map((c) => c.id)));
     let body = this.blocks(this.doc.blocks);
     const open = this.ranges.close();
@@ -475,7 +478,14 @@ class DocxWriter {
       else if (part === '\n') content += '<w:br/>';
       else if (part) content += `<w:t xml:space="preserve">${esc(part)}</w:t>`;
     }
-    const r = `<w:r>${rPr ? `<w:rPr>${rPr}</w:rPr>` : ''}${content}</w:r>`;
+    let r = `<w:r>${rPr ? `<w:rPr>${rPr}</w:rPr>` : ''}${content}</w:r>`;
+    // REV-005: tracked changes; deleted text is written as w:delText.
+    const change = run.inserted ?? run.deleted;
+    if (change) {
+      const tag = run.inserted ? 'ins' : 'del';
+      if (run.deleted) r = r.replace(/<w:t xml:space="preserve">([^<]*)<\/w:t>/g, '<w:delText xml:space="preserve">$1</w:delText>');
+      r = `<w:${tag} w:id="${this.revisionId++}" w:author="${escapeXmlAttr(change.author ?? '')}"${change.date ? ` w:date="${escapeXmlAttr(change.date)}"` : ''}>${r}</w:${tag}>`;
+    }
     if (!run.link) return r;
     if (run.link.startsWith('#')) return `<w:hyperlink w:anchor="${esc(run.link.slice(1))}">${r}</w:hyperlink>`;
     let rid = this.linkIds.get(run.link);

@@ -258,5 +258,20 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'span[data-comment]', getAttrs: (d: HTMLElement) => ({ id: d.dataset.comment }) }],
       toDOM: (m: Mark) => ['span', { class: 'comment-anchor', 'data-comment': m.attrs.id }, 0],
     },
+    /** Tracked changes (REV-005): text inserted, or deleted but kept until accepted. */
+    insertion: {
+      attrs: { author: { default: null }, date: { default: null } },
+      inclusive: false,
+      excludes: 'insertion deletion',
+      parseDOM: [{ tag: 'ins.tracked', priority: 60, getAttrs: (d: HTMLElement) => ({ author: d.dataset.author ?? null, date: d.dataset.date ?? null }) }],
+      toDOM: (m: Mark) => ['ins', { class: 'tracked', ...(m.attrs.author ? { 'data-author': m.attrs.author, title: m.attrs.author } : {}), ...(m.attrs.date ? { 'data-date': m.attrs.date } : {}) }, 0],
+    },
+    deletion: {
+      attrs: { author: { default: null }, date: { default: null } },
+      inclusive: false,
+      excludes: 'insertion deletion',
+      parseDOM: [{ tag: 'del.tracked', priority: 60, getAttrs: (d: HTMLElement) => ({ author: d.dataset.author ?? null, date: d.dataset.date ?? null }) }],
+      toDOM: (m: Mark) => ['del', { class: 'tracked', ...(m.attrs.author ? { 'data-author': m.attrs.author, title: m.attrs.author } : {}), ...(m.attrs.date ? { 'data-date': m.attrs.date } : {}) }, 0],
+    },
   },
 });

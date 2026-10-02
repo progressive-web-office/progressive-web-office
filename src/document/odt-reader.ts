@@ -18,6 +18,7 @@ import {
   type ParagraphLayout,
   type ParagraphStyle,
   type DocComment,
+  type Revision,
   type RichDocument,
   type Run,
   type TableCell,
@@ -150,6 +151,7 @@ class OdtReader {
     const body = xml.getElementsByTagNameNS(ODF_NS.office, 'text')[0];
     if (!body) throw new Error('Not an OpenDocument text: no office:text body.');
     for (const end of descendants(body, 'annotation-end')) this.annotationEnds.add(attr(end, 'name') ?? '');
+    this.readChangedRegions(body);
     this.doc.blocks = this.readBlocks(body, undefined, 0);
     this.finishComments();
     resolveAnchors(this.doc.blocks, this.anchorAlias);
@@ -383,7 +385,27 @@ class OdtReader {
   private runFormat(fmt: TextFormat): TextFormat {
     const f = cleanFormat(fmt);
     if (this.openComments.length) f.comments = [...this.openComments];
+    if (this.insertion && !f.deleted) f.inserted = { ...this.insertion };
     return f;
+  }
+
+  /** Tracked changes (REV-005): changed regions by id, the insertion being read. */
+  private regions = new Map<string, { kind: string; by: Revision; content: Element }>();
+  private insertion: Revision | undefined;
+
+  private readChangedRegions(body: Element): void {
+    for (const region of descendants(body, 'changed-region')) {
+      const id = attr(region, 'id');
+      const change = children(region).find((c) => ['insertion', 'deletion', 'format-change'].includes(c.localName));
+      if (!id || !change) continue;
+      const info = children(change, 'change-info')[0];
+      const by: Revision = {};
+      const creator = info && children(info).find((c) => c.localName === 'creator')?.textContent?.trim();
+      const date = info && children(info).find((c) => c.localName === 'date')?.textContent?.trim();
+      if (creator) by.author = creator;
+      if (date) by.date = date;
+      this.regions.set(id, { kind: change.localName, by, content: change });
+    }
   }
 
   private readAnnotation(el: Element, out: Run[]): void {
@@ -504,6 +526,27 @@ class OdtReader {
             const name = attr(c, 'ref-name');
             if (name && c.localName !== 'note-ref') out.push({ ref: name });
             else this.readInline(c, fmt, out, pre);
+            break;
+          }
+          case 'change-start': {
+            const region = this.regions.get(attr(c, 'change-id') ?? '');
+            if (region?.kind === 'insertion') this.insertion = region.by;
+            break;
+          }
+          case 'change-end':
+            this.insertion = undefined;
+            break;
+          case 'change': {
+            // The deleted text, kept in its changed region.
+            const region = this.regions.get(attr(c, 'change-id') ?? '');
+            if (region?.kind !== 'deletion') break;
+            const deleted = { ...cleanFormat(fmt), deleted: region.by };
+            children(region.content, 'p').forEach((p, i) => {
+              if (i > 0) out.push({ text: ' ', ...deleted });
+              const runs: Run[] = [];
+              this.readInline(p, deleted, runs, pre);
+              out.push(...runs);
+            });
             break;
           }
           case 'annotation':

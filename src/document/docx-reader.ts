@@ -20,6 +20,7 @@ import {
   type Paragraph,
   type ParagraphStyle,
   type DocComment,
+  type Revision,
   type RichDocument,
   type Run,
   type TableCell,
@@ -403,7 +404,19 @@ class DocxReader {
           this.openComments = this.openComments.filter((x) => x !== id);
           break;
         }
-        case 'del':
+        case 'ins':
+        case 'del': {
+          // REV-005: tracked insertions and deletions.
+          const by: Revision = {};
+          if (attr(el, 'author')) by.author = attr(el, 'author')!;
+          if (attr(el, 'date')) by.date = attr(el, 'date')!;
+          const f = { ...fmt };
+          delete f.inserted;
+          delete f.deleted;
+          f[el.localName === 'ins' ? 'inserted' : 'deleted'] = by;
+          this.readInline(el, f, out);
+          break;
+        }
         case 'moveFrom':
         case 'pPr':
         case 'rPr':
@@ -487,6 +500,7 @@ class DocxReader {
     for (const el of children(r)) {
       switch (el.localName) {
         case 't':
+        case 'delText':
           out.push({ text: el.textContent ?? '', ...fmt });
           break;
         case 'tab':

@@ -53,7 +53,10 @@ describe('DOC-001 DOCX reader', () => {
           { text: 'us', underline: true, strike: true },
           { text: '\tx\ny' },
           { text: 'link', link: 'https://example.org' },
-          { text: '+ins!' },
+          // REV-005: tracked changes are kept.
+          { text: '+ins', inserted: {} },
+          { text: 'gone', deleted: {} },
+          { text: '!' },
         ],
       },
       { type: 'paragraph', style: 'normal', list: { ordered: false, level: 0 }, runs: [{ text: 'bullet' }] },
