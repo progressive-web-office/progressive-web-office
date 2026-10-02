@@ -1149,7 +1149,7 @@ export const zh: Record<MessageKey, string> = {
   'collab.searching': '正在寻找其他参与者…',
   'collab.noRelay': '无法连接用于相互发现的服务器',
   'collab.noRelayHelp': '此设备无法连接用于相互发现的中继（无网络，或网络阻止了它们）。请检查连接，或在“设置 › 协作”中设置其他中继。',
-  'collab.nobodyHelp': '尚未找到任何人。请确认对方已打开该链接页面。某些网络（公司、学校、移动数据）会阻止浏览器之间的直接连接：请尝试同一 Wi-Fi 网络，或在“设置 › 协作”中设置 TURN 服务器。没有网络时，请使用“无网络同步”。',
+  'collab.nobodyHelp': '尚未找到任何人。请确认对方已打开该链接页面。当浏览器无法直接连接时（例如公司网络与移动数据），会话也会通过中继进行，已加密但较慢；TURN 服务器（设置 › 协作）可使其更快。没有网络时，请使用“无网络同步”。',
   'collab.incompatible': '有人使用其他应用或其他版本加入',
   'collab.incompatibleHelp': '有参与者使用不同的协议，或编辑不同类型的文档：其更改不可信。双方都应重新加载页面以使用相同版本。',
   'settings.cat.collab': '协作',
@@ -1161,4 +1161,5 @@ export const zh: Record<MessageKey, string> = {
   'settings.turnUser': 'TURN 用户名',
   'settings.turnPassword': 'TURN 密码',
   'settings.collabNext': '用于之后的协作会话。',
+  'collab.connectedRelays': '已通过中继连接 · 其他 {n} 人（较慢）',
 };

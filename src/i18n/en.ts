@@ -1147,7 +1147,7 @@ export const en = {
   'collab.searching': 'Looking for the others…',
   'collab.noRelay': 'Cannot reach the servers used to find each other',
   'collab.noRelayHelp': 'This device cannot reach the relays used to find each other (no Internet, or a network that blocks them). Check the connection, or set other relays in Settings › Collaboration.',
-  'collab.nobodyHelp': 'Nobody found yet. Check that the other person has the page of the link open. Some networks (company, school, mobile data) block direct connections between browsers: try the same Wi-Fi network, or set a TURN server in Settings › Collaboration. Without a network, use “Synchronise without a network”.',
+  'collab.nobodyHelp': 'Nobody found yet. Check that the other person has the page of the link open. When browsers cannot connect directly (a company network and mobile data, for example), the session also goes through the relays, encrypted and slower; a TURN server (Settings › Collaboration) makes it faster. Without a network, use “Synchronise without a network”.',
   'collab.incompatible': 'Someone joined with another app or another version',
   'collab.incompatibleHelp': 'A participant does not speak the same protocol, or edits another kind of document: their changes are not trusted. Both should reload the page to use the same version.',
   'settings.cat.collab': 'Collaboration',
@@ -1159,6 +1159,7 @@ export const en = {
   'settings.turnUser': 'TURN user name',
   'settings.turnPassword': 'TURN password',
   'settings.collabNext': 'Used by the next collaboration sessions.',
+  'collab.connectedRelays': 'Connected through the relays · {n} other(s) (slower)',
 } as const;
 
 export type MessageKey = keyof typeof en;

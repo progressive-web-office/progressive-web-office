@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Real-time collaboration between devices that cannot connect directly (a
+  company network and mobile data, for example): after 15 seconds alone,
+  the session also goes through the relays, encrypted with the secret of the
+  invitation.
 - What QRShare or the share sheet hands over is checked before it opens: a
   file the app opens, whose content is what its name says, shown with where
   it comes from (QRShare address, name, size, format) and opened only when

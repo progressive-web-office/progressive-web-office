@@ -32,7 +32,13 @@ interface Transport {
   leave(): void;
   /** Relays reached, to tell "no network" from "nobody else yet" (COLLAB-009). */
   relays?(): { open: number; total: number };
+  /** COLLAB-011: also go through the relays, when nobody could be reached directly. */
+  useRelays?(): Promise<void>;
+  mode?(): 'direct' | 'relays';
 }
+
+/** Seconds without anyone reached directly before the relays carry the session too. */
+const RELAY_AFTER = 15;
 
 /** COLLAB-010: what peers tell each other first, to be sure they speak the same protocol about the same kind of document. */
 const PROTOCOL = 1;
@@ -64,12 +70,39 @@ async function connect(link: CollabLink): Promise<Transport> {
   const { joinRoom, selfId } = trystero;
   // Exported by the Nostr strategy, not declared in the package's types.
   const getRelaySockets = (trystero as unknown as { getRelaySockets?: () => Record<string, WebSocket> }).getRelaySockets ?? (() => ({}));
-  const room = joinRoom({ appId: APP_ID, password: link.secret, ...trysteroOptions(loadCollabNetwork()) }, link.room);
+  const network = loadCollabNetwork();
+  const direct = joinRoom({ appId: APP_ID, password: link.secret, ...trysteroOptions(network) }, link.room);
+  // COLLAB-011: when browsers cannot connect directly (a company network and a
+  // mobile one…), the encrypted messages also go through the relays.
+  const { hybridRoom } = await import('./hybrid-room');
+  const room = hybridRoom(direct as unknown as CollabRoom, async () => {
+    const [{ relayRoom }, strategy] = await Promise.all([import('./relay-room'), import('trystero/nostr')]);
+    // Exported by the Nostr strategy (signed ephemeral events), not declared in its types.
+    const nostr = strategy as unknown as { defaultRelayUrls: string[]; createEvent(topic: string, content: string): Promise<string>; subscribe(subId: string, topic: string): string };
+    const urls = network.relays.length ? network.relays : nostr.defaultRelayUrls.slice(0, 8);
+    return relayRoom(link.room, link.secret, selfId, {
+      urls,
+      socket: (url) => new WebSocket(url) as never,
+      event: (topic, content) => nostr.createEvent(topic, content),
+      req: (subId, topic) => nostr.subscribe(subId, topic),
+    });
+  });
   const relays = (): { open: number; total: number } => {
     const sockets = Object.values(getRelaySockets() as Record<string, WebSocket>);
-    return { open: sockets.filter((s) => s.readyState === WebSocket.OPEN).length, total: sockets.length };
+    const own = room.relay()?.relays() ?? { open: 0, total: 0 };
+    return { open: sockets.filter((s) => s.readyState === WebSocket.OPEN).length + own.open, total: sockets.length + own.total };
   };
-  return { room: room as unknown as CollabRoom, selfId, leave: () => void room.leave(), relays };
+  return {
+    room,
+    selfId,
+    leave: () => {
+      room.leave();
+      void direct.leave();
+    },
+    relays,
+    useRelays: () => room.useRelays(),
+    mode: () => room.mode(),
+  };
 }
 
 export class Collaboration {
@@ -195,11 +228,16 @@ export class Collaboration {
   /** COLLAB-009: where the connection is, and what to check when nobody comes. */
   private renderState(): void {
     const n = this.others().length;
+    // COLLAB-011: nobody reached directly for a while: the relays carry the session too.
+    if (!n && !this.session.peerCount && this.transport.useRelays && this.transport.mode?.() === 'direct' && (Date.now() - this.startedAt) / 1000 > RELAY_AFTER) {
+      void this.transport.useRelays().then(() => this.renderState(), () => undefined);
+    }
+    const viaRelays = this.transport.mode?.() === 'relays';
     const relays = this.transport.relays?.();
     const offline = !!relays && relays.total > 0 && relays.open === 0;
     let text: string;
     if (this.strangers.size) text = t('collab.incompatible');
-    else if (this.binding.isReady) text = n ? t('collab.connected', { n }) : offline ? t('collab.noRelay') : t('collab.alone');
+    else if (this.binding.isReady) text = n ? t(viaRelays ? 'collab.connectedRelays' : 'collab.connected', { n }) : offline ? t('collab.noRelay') : t('collab.alone');
     else if (n || this.session.peerCount) text = t('collab.waiting');
     else text = offline ? t('collab.noRelay') : t('collab.searching');
     this.state.textContent = text;

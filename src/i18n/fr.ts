@@ -1149,7 +1149,7 @@ export const fr: Record<MessageKey, string> = {
   'collab.searching': 'Recherche des autres participants…',
   'collab.noRelay': 'Impossible de joindre les serveurs qui permettent de se retrouver',
   'collab.noRelayHelp': 'Cet appareil ne joint pas les relais qui permettent de se retrouver (pas d’Internet, ou un réseau qui les bloque). Vérifiez la connexion, ou indiquez d’autres relais dans Paramètres › Collaboration.',
-  'collab.nobodyHelp': 'Personne n’a encore été trouvé. Vérifiez que l’autre personne a bien la page du lien ouverte. Certains réseaux (entreprise, établissement, données mobiles) bloquent les connexions directes entre navigateurs : essayez le même réseau Wi-Fi, ou indiquez un serveur TURN dans Paramètres › Collaboration. Sans réseau, utilisez « Synchroniser sans réseau ».',
+  'collab.nobodyHelp': 'Personne n’a encore été trouvé. Vérifiez que l’autre personne a bien la page du lien ouverte. Quand les navigateurs ne peuvent pas se connecter directement (réseau d’entreprise et données mobiles, par exemple), la session passe aussi par les relais, chiffrée et plus lente ; un serveur TURN (Paramètres › Collaboration) la rend plus rapide. Sans réseau, utilisez « Synchroniser sans réseau ».',
   'collab.incompatible': 'Quelqu’un a rejoint avec une autre application ou une autre version',
   'collab.incompatibleHelp': 'Un participant ne parle pas le même protocole, ou modifie un autre type de document : ses changements ne sont pas fiables. Rechargez la page des deux côtés pour utiliser la même version.',
   'settings.cat.collab': 'Collaboration',
@@ -1161,4 +1161,5 @@ export const fr: Record<MessageKey, string> = {
   'settings.turnUser': 'Utilisateur TURN',
   'settings.turnPassword': 'Mot de passe TURN',
   'settings.collabNext': 'Utilisé par les prochaines sessions de collaboration.',
+  'collab.connectedRelays': 'Connecté via les relais · {n} autre(s) (plus lent)',
 };

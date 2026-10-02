@@ -49,6 +49,14 @@ The bar says where the connection is:
 - **Cannot reach the servers used to find each other**: no Internet, or a
   network that blocks the relays.
 
+When nobody can be reached directly for 15 seconds — browsers that cannot
+connect to each other, typically a company network on one side and mobile
+data on the other — the session **also goes through the relays**: the
+messages are encrypted with the secret of the invitation (the relays see
+neither the room nor the content), cut into small pieces and passed on
+without being kept. The bar then says *Connected through the relays
+(slower)*. A TURN server makes such connections direct again, and faster.
+
 After 20 seconds without anyone, it explains what to check: the other person
 must have the page of the link open; some networks (company, school, mobile
 data) block direct connections between browsers — try the same Wi-Fi
