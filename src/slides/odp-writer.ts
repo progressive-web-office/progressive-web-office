@@ -4,7 +4,7 @@ import { writeZip, type ZipEntryInput } from '../core/zip';
 import { MIME_TYPES } from '../core/format';
 import { extensionForType, groupBlocks, isTextRun, nestLists, splitListSegments, type ListNode, type Paragraph, type TextRun } from '../document/model';
 import { manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from '../document/odf';
-import type { Presentation, Shape } from './model';
+import { slideOrientation, type Presentation, type Shape } from './model';
 
 class OdpWriter {
   private styles = new Map<string, string>(); // xml -> name
@@ -159,7 +159,7 @@ class OdpWriter {
       `<office:document-styles ${ODF_XMLNS} office:version="1.3"><office:styles>` +
       '<style:default-style style:family="graphic"><style:text-properties fo:font-size="18pt" style:font-name="Liberation Sans"/></style:default-style>' +
       '</office:styles><office:automatic-styles>' +
-      `<style:page-layout style:name="PM1"><style:page-layout-properties fo:margin-top="0in" fo:margin-bottom="0in" fo:margin-left="0in" fo:margin-right="0in" fo:page-width="${pxToIn(this.pres.width)}" fo:page-height="${pxToIn(this.pres.height)}" style:print-orientation="landscape"/></style:page-layout>` +
+      `<style:page-layout style:name="PM1"><style:page-layout-properties fo:margin-top="0in" fo:margin-bottom="0in" fo:margin-left="0in" fo:margin-right="0in" fo:page-width="${pxToIn(this.pres.width)}" fo:page-height="${pxToIn(this.pres.height)}" style:print-orientation="${slideOrientation(this.pres)}"/></style:page-layout>` +
       '<style:style style:name="Mdp1" style:family="drawing-page"><style:drawing-page-properties draw:fill="solid" draw:fill-color="#ffffff"/></style:style>' +
       '</office:automatic-styles><office:master-styles><style:master-page style:name="Default" style:page-layout-name="PM1" draw:style-name="Mdp1"/></office:master-styles></office:document-styles>';
     const files: ZipEntryInput[] = [];

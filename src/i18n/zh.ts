@@ -873,4 +873,13 @@ export const zh: Record<MessageKey, string> = {
   'tpl.fromFile': '由模板创建的新文档：保存它不会修改模板（{name}）。',
   'tpl.saveFile': '另存为模板文件（.{ext}）…',
   'tpl.fileSaved': '模板文件 {name} 已保存。',
+  'tpl.signs': '赛事指示牌',
+  'tpl.signsDesc': '起点、箭头、里程、补给站和终点，超大字号，每张一页 A4。',
+  'slides.size': '幻灯片大小',
+  'slides.size.16:9': '宽屏 16:9',
+  'slides.size.4:3': '标准 4:3',
+  'slides.size.A4': 'A4 纸',
+  'slides.size.Letter': 'Letter 纸',
+  'slides.size.custom': '自定义大小',
+  'slides.orientation': '方向',
 };

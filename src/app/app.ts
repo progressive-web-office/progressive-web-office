@@ -639,7 +639,8 @@ export class App {
     const view = doc.view;
     if (view.printContent && doc.kind !== 'pdf') {
       const { openPrintPreview } = await import('../print/preview');
-      await openPrintPreview(this.root, doc.kind, (s) => view.printContent!(s));
+      const orientation = view.printOrientation?.();
+      await openPrintPreview(this.root, doc.kind, (s) => view.printContent!(s), orientation ? { orientation } : {});
     } else if (view.print) {
       view.print();
     } else {

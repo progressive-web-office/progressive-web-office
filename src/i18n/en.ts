@@ -871,6 +871,15 @@ export const en = {
   'tpl.fromFile': 'New document from a template: saving it does not change the template ({name}).',
   'tpl.saveFile': 'Save as template file (.{ext})…',
   'tpl.fileSaved': 'Template file {name} saved.',
+  'tpl.signs': 'Race signs',
+  'tpl.signsDesc': 'Start, arrows, distances, water station and finish in very large letters, one A4 page each.',
+  'slides.size': 'Slide size',
+  'slides.size.16:9': 'Widescreen 16:9',
+  'slides.size.4:3': 'Standard 4:3',
+  'slides.size.A4': 'A4 paper',
+  'slides.size.Letter': 'Letter paper',
+  'slides.size.custom': 'Custom size',
+  'slides.orientation': 'Orientation',
 } as const;
 
 export type MessageKey = keyof typeof en;

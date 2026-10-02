@@ -102,3 +102,48 @@ export function slideText(slide: Slide): string {
     .flatMap((s) => s.paragraphs.map((p) => p.runs.map((r) => ('text' in r ? r.text : '')).join('')))
     .join('\n');
 }
+
+/** Slide sizes in CSS pixels, landscape (PRES-013); A4 and Letter are paper sizes, for printed slides. */
+export const SLIDE_SIZES = [
+  { id: '16:9', width: 1280, height: 720 },
+  { id: '4:3', width: 960, height: 720 },
+  { id: 'A4', width: 1123, height: 794 },
+  { id: 'Letter', width: 1056, height: 816 },
+] as const;
+export type SlideSizeId = (typeof SLIDE_SIZES)[number]['id'];
+export type Orientation = 'portrait' | 'landscape';
+
+export const slideOrientation = (size: { width: number; height: number }): Orientation => (size.height > size.width ? 'portrait' : 'landscape');
+
+export function slideSizeFor(id: SlideSizeId, orientation: Orientation): { width: number; height: number } {
+  const s = SLIDE_SIZES.find((x) => x.id === id)!;
+  return orientation === 'portrait' ? { width: s.height, height: s.width } : { width: s.width, height: s.height };
+}
+
+/** The named size of a presentation, whatever its orientation; undefined for another size. */
+export function slideSizeId(size: { width: number; height: number }): SlideSizeId | undefined {
+  const [long, short] = [Math.max(size.width, size.height), Math.min(size.width, size.height)];
+  return SLIDE_SIZES.find((s) => Math.abs(s.width - long) < 2 && Math.abs(s.height - short) < 2)?.id;
+}
+
+/**
+ * Give the slides a new size (PRES-013): positions and sizes follow each
+ * axis, text sizes the smaller factor, so that what fitted still fits.
+ */
+export function resizePresentation(pres: Presentation, width: number, height: number): void {
+  const sx = width / pres.width;
+  const sy = height / pres.height;
+  const sf = Math.min(sx, sy);
+  for (const slide of pres.slides) {
+    for (const s of slide.shapes) {
+      s.x = r(s.x * sx);
+      s.y = r(s.y * sy);
+      s.width = r(s.width * sx);
+      s.height = r(s.height * sy);
+      s.fontSize = Math.max(1, Math.round(s.fontSize * sf));
+      for (const p of s.paragraphs) for (const run of p.runs) if ('size' in run && run.size) run.size = Math.max(1, Math.round(run.size * sf));
+    }
+  }
+  pres.width = width;
+  pres.height = height;
+}

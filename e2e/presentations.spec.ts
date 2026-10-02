@@ -60,3 +60,30 @@ test('very large font sizes on a text box and on selected text (UI-016)', async 
   expect(slide).toContain('sz="25000"');
   expect(slide).toContain('sz="30000"');
 });
+
+test('race signs in very large letters, turned to portrait and back (FILE-018, PRES-013)', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Race signs' }).click();
+  await expect(page.locator('.slide-thumb')).toHaveCount(8);
+  await expect(page.getByLabel('Slide size')).toHaveValue('A4');
+  await expect(page.getByLabel('Orientation')).toHaveValue('landscape');
+  const slide = page.locator('.stage-slide');
+  const landscape = (await slide.boundingBox())!;
+  expect(landscape.width).toBeGreaterThan(landscape.height);
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/signs-landscape.png' });
+
+  await page.getByLabel('Orientation').selectOption('portrait');
+  const portrait = (await slide.boundingBox())!;
+  expect(portrait.height).toBeGreaterThan(portrait.width);
+  await page.locator('.slide-thumb').nth(1).click();
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/signs-portrait.png' });
+
+  await page.getByRole('button', { name: 'Print', exact: true }).click();
+  await expect(page.getByRole('dialog').getByRole('combobox', { name: 'Orientation' })).toHaveValue('portrait');
+  await page.keyboard.press('Escape');
+
+  await page.locator('.stage-wrap').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Control+z');
+  await expect(page.getByLabel('Orientation').first()).toHaveValue('landscape');
+});

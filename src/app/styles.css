@@ -325,7 +325,7 @@ textarea.pdf-field { resize: none; }
 .slide-editor { display: flex; flex-direction: column; height: 100%; }
 .slide-body { flex: 1; min-height: 0; display: flex; }
 .slide-list { width: 200px; flex: none; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; background: var(--bg); border-right: 1px solid var(--border); }
-.slide-thumb { display: flex; gap: 6px; align-items: flex-start; padding: 4px; background: transparent; border: 2px solid transparent; }
+.slide-thumb { flex: none; display: flex; gap: 6px; align-items: flex-start; padding: 4px; background: transparent; border: 2px solid transparent; }
 .slide-thumb[aria-current='true'] { border-color: var(--accent); background: var(--sel); }
 .thumb-num { color: var(--muted); font-size: 0.8rem; min-width: 1.2em; }
 .thumb-frame { position: relative; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); pointer-events: none; flex: none; }

@@ -10,7 +10,13 @@ import { bytesToBase64 } from '../document/markdown-writer';
 import { addResource, type Paragraph } from '../document/model';
 import { imageSize } from '../core/image-size';
 import { writePresentation, type SlidesFormat } from './io';
-import { contentSlide, newShapeId, slideText, textShape, type Presentation, type Shape, type Slide } from './model';
+import { contentSlide, newShapeId, resizePresentation, SLIDE_SIZES, slideOrientation, slideSizeFor, slideSizeId, slideText, textShape, type Orientation, type Presentation, type Shape, type Slide, type SlideSizeId } from './model';
+
+interface UndoState {
+  slides: Slide[];
+  width: number;
+  height: number;
+}
 import { renderShapeContent, renderSlide } from './render';
 import { typesetMath } from '../math/inline';
 
@@ -35,8 +41,9 @@ export class SlideEditor implements EditorView {
   private editing: { shape: Shape; content: HTMLElement } | null = null;
   private scale = 0.5;
   private urls = new Map<string, string>();
-  private undoStack: Slide[][] = [];
-  private redoStack: Slide[][] = [];
+  /** Undo states: the slides and their size (PRES-013). */
+  private undoStack: UndoState[] = [];
+  private redoStack: UndoState[] = [];
   private resizeObserver: ResizeObserver | undefined;
 
   constructor(
@@ -61,7 +68,15 @@ export class SlideEditor implements EditorView {
     this.stageWrap.addEventListener('pointerdown', (e) => {
       if (e.target === this.stageWrap || e.target === this.stage.firstChild) this.select(null);
     });
+    this.sizeChoice.addEventListener('change', () => this.resize());
+    this.orientationChoice.addEventListener('change', () => this.resize());
+    this.syncSizeControls();
     this.render();
+  }
+
+  /** Print in the orientation of the slides (PRES-013). */
+  printOrientation(): Orientation {
+    return slideOrientation(this.pres);
   }
 
   // --- EditorView -----------------------------------------------------------------
@@ -166,17 +181,58 @@ export class SlideEditor implements EditorView {
     return url;
   }
 
+  private state(): UndoState {
+    return { slides: structuredClone(this.pres.slides), width: this.pres.width, height: this.pres.height };
+  }
+
+  // PRES-013: slide size and orientation.
+  private readonly sizeChoice = h(
+    'select',
+    { 'aria-label': t('slides.size'), title: t('slides.size') },
+    ...SLIDE_SIZES.map((s) => h('option', { value: s.id }, t(`slides.size.${s.id}`))),
+    h('option', { value: '', disabled: true }, t('slides.size.custom')),
+  );
+  private readonly orientationChoice = h(
+    'select',
+    { 'aria-label': t('slides.orientation'), title: t('slides.orientation') },
+    h('option', { value: 'landscape' }, t('print.landscape')),
+    h('option', { value: 'portrait' }, t('print.portrait')),
+  );
+
+  private syncSizeControls(): void {
+    this.sizeChoice.value = slideSizeId(this.pres) ?? '';
+    this.orientationChoice.value = slideOrientation(this.pres);
+  }
+
+  /** Give the slides another size or orientation; shapes and text follow (PRES-013). */
+  private resize(): void {
+    const orientation = this.orientationChoice.value as Orientation;
+    const id = (this.sizeChoice.value || undefined) as SlideSizeId | undefined;
+    // A custom size keeps its dimensions and only turns.
+    const size = id ? slideSizeFor(id, orientation) : slideOrientation(this.pres) === orientation ? this.pres : { width: this.pres.height, height: this.pres.width };
+    if (size.width === this.pres.width && size.height === this.pres.height) return;
+    this.finishEditing();
+    this.snapshot();
+    resizePresentation(this.pres, size.width, size.height);
+    this.syncSizeControls();
+    this.changed();
+    this.fit();
+  }
+
   private snapshot(): void {
-    this.undoStack.push(structuredClone(this.pres.slides));
+    this.undoStack.push(this.state());
     if (this.undoStack.length > MAX_UNDO) this.undoStack.shift();
     this.redoStack = [];
   }
 
-  private restore(from: Slide[][], to: Slide[][]): void {
+  private restore(from: UndoState[], to: UndoState[]): void {
     const state = from.pop();
     if (!state) return;
-    to.push(structuredClone(this.pres.slides));
-    this.pres.slides = state;
+    to.push(this.state());
+    this.pres.slides = state.slides;
+    this.pres.width = state.width;
+    this.pres.height = state.height;
+    this.syncSizeControls();
     this.current = Math.min(this.current, this.pres.slides.length - 1);
     this.selected = null;
     this.changed();
@@ -204,12 +260,13 @@ export class SlideEditor implements EditorView {
   }
 
   private renderList(): void {
-    const scale = THUMB_W / this.pres.width;
+    // Portrait slides (PRES-013) keep a thumbnail of reasonable height.
+    const scale = Math.min(THUMB_W / this.pres.width, (THUMB_W * 0.8) / this.pres.height);
     this.list.replaceChildren(
       ...this.pres.slides.map((slide, i) => {
         const inner = renderSlide(slide, this.pres, (k) => this.resolve(k));
         inner.style.transform = `scale(${scale})`;
-        const frame = h('div', { class: 'thumb-frame', style: `width: ${THUMB_W}px; height: ${this.pres.height * scale}px` }, inner);
+        const frame = h('div', { class: 'thumb-frame', style: `width: ${this.pres.width * scale}px; height: ${this.pres.height * scale}px` }, inner);
         const b = button(t('slides.slide', { n: i + 1 }), () => this.goTo(i), { className: 'slide-thumb', title: slideText(slide).split('\n')[0] || t('slides.slide', { n: i + 1 }) });
         b.replaceChildren(h('span', { class: 'thumb-num' }, String(i + 1)), frame);
         b.setAttribute('role', 'option');
@@ -597,6 +654,9 @@ export class SlideEditor implements EditorView {
       b(t('slides.moveUp'), '↑', () => this.moveSlide(-1)),
       b(t('slides.moveDown'), '↓', () => this.moveSlide(1)),
       b(t('slides.delete'), '🗑', () => this.deleteSlide()),
+      h('span', { class: 'sep' }),
+      this.sizeChoice,
+      this.orientationChoice,
       h('span', { class: 'sep' }),
       b(t('slides.addText'), 'T', () => this.addShape(textShape(t('slides.newText'), { x: w * 0.3, y: hh * 0.4, width: w * 0.4, height: 60, fontSize: 24 }))),
       b(t('slides.addRect'), '▭', () => this.addShape({ ...textShape('', { kind: 'rect', fill: '#4472c4', x: w * 0.4, y: hh * 0.4, width: 200, height: 120, anchor: 'middle' }), paragraphs: [] })),

@@ -60,8 +60,10 @@ export async function openPrintPreview(
   host: HTMLElement,
   kind: PrintKind,
   build: (settings: PrintSettings) => HTMLElement | Promise<HTMLElement>,
+  /** Settings imposed by the content, e.g. the orientation of the slides (PRES-013). */
+  overrides: Partial<PrintSettings> = {},
 ): Promise<PreviewHandle> {
-  let settings = loadPrintSettings();
+  let settings = { ...loadPrintSettings(), ...overrides };
   const frame = h('iframe', { class: 'print-frame', title: t('print.preview') });
   const frameWrap = h('div', { class: 'print-frame-wrap' }, frame);
   const form = h('form', { class: 'print-settings' });

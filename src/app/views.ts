@@ -28,6 +28,8 @@ export interface EditorView {
   print?(): void;
   /** Printable content for the print preview (PRINT-001). */
   printContent?(settings: PrintSettings): HTMLElement | Promise<HTMLElement>;
+  /** Page orientation that suits the content, used by default when printing (PRES-013). */
+  printOrientation?(): 'portrait' | 'landscape';
   /** Extra "Save as" entries writing copies (PDF-010). */
   saveVariants?(): SaveVariant[];
   /** Real-time collaboration on this document (COLLAB-002). */

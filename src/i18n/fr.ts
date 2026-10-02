@@ -873,4 +873,13 @@ export const fr: Record<MessageKey, string> = {
   'tpl.fromFile': 'Nouveau document créé à partir d’un modèle : l’enregistrer ne modifie pas le modèle ({name}).',
   'tpl.saveFile': 'Enregistrer comme fichier modèle (.{ext})…',
   'tpl.fileSaved': 'Fichier modèle {name} enregistré.',
+  'tpl.signs': 'Panneaux de course',
+  'tpl.signsDesc': 'Départ, flèches, kilomètres, ravitaillement et arrivée en très gros caractères, une page A4 chacun.',
+  'slides.size': 'Format des diapositives',
+  'slides.size.16:9': 'Écran large 16:9',
+  'slides.size.4:3': 'Standard 4:3',
+  'slides.size.A4': 'Papier A4',
+  'slides.size.Letter': 'Papier Letter',
+  'slides.size.custom': 'Format personnalisé',
+  'slides.orientation': 'Orientation',
 };
