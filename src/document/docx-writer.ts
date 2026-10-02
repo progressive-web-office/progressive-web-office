@@ -29,6 +29,7 @@ import {
   type ImageRun,
   type Paragraph,
   type ParagraphLayout,
+  type DocComment,
   type RichDocument,
   type Run,
   type WriteOptions,
@@ -36,6 +37,7 @@ import {
 import { mathmlToOmml, OMML_NS } from '../math/convert';
 import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
+import { anchoredComments, CommentRanges } from './comments';
 import { APP_XML, coreXml, DOCX_NUMBER_FORMAT, EMU_PER_PX, NS, REL } from './ooxml';
 import { citations, formatEntry, type Citations } from './bibliography';
 import { citationInstr, SOURCES_PROPS, sourcesXml } from './word-sources';
@@ -69,6 +71,10 @@ class DocxWriter {
   /** Cross-reference targets and numbers (DOC-026). */
   private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
   private bookmarkId = 0;
+  /** Comments written (REV-002): Word ids are their indexes. */
+  private comments: DocComment[] = [];
+  private commentIds = new Map<string, number>();
+  private ranges = new CommentRanges(new Set());
   /** Citation numbers and texts (DOC-027). */
   private cites: Citations = citations([], undefined);
 
@@ -89,7 +95,21 @@ class DocxWriter {
     const sources = this.doc.references?.entries.length ? this.doc.references.entries : undefined;
     // DOC-027: Word's sources part, so that Word manages the bibliography.
     if (sources) this.rels.push({ id: this.nextRid(), type: REL.customXml, target: '../customXml/item1.xml' });
-    const body = this.blocks(this.doc.blocks);
+    // REV-002: comments whose text is in the document, with their replies.
+    const anchored = anchoredComments(this.doc);
+    this.comments = (this.doc.comments ?? []).filter((c) => anchored.has(c.parent ?? c.id));
+    this.comments.forEach((c, i) => this.commentIds.set(c.id, i));
+    this.ranges = new CommentRanges(new Set(this.comments.filter((c) => !c.parent).map((c) => c.id)));
+    let body = this.blocks(this.doc.blocks);
+    const open = this.ranges.close();
+    if (open.length) {
+      const at = body.lastIndexOf('</w:p>');
+      if (at >= 0) body = body.slice(0, at) + this.commentEnds(open) + body.slice(at);
+    }
+    if (this.comments.length) {
+      this.rels.push({ id: this.nextRid(), type: REL.comments, target: 'comments.xml' });
+      this.rels.push({ id: this.nextRid(), type: REL.commentsExtended, target: 'commentsExtended.xml' });
+    }
     if (this.footnotes.length) this.rels.push({ id: this.nextRid(), type: REL.footnotes, target: 'footnotes.xml' });
     // DOC-024: header and footer parts.
     const furniture: { kind: 'header' | 'footer'; type: 'default' | 'first'; file: string; rid: string; xml: string }[] = [];
@@ -129,6 +149,10 @@ class DocxWriter {
       { path: 'word/_rels/document.xml.rels', data: this.relsXml() },
     ];
     if (this.footnotes.length) entries.push({ path: 'word/footnotes.xml', data: this.footnotesXml() });
+    if (this.comments.length) {
+      entries.push({ path: 'word/comments.xml', data: this.commentsXml() });
+      entries.push({ path: 'word/commentsExtended.xml', data: this.commentsExtendedXml() });
+    }
     if (sources) {
       entries.push({ path: 'customXml/item1.xml', data: sourcesXml(sources) });
       entries.push({ path: 'customXml/itemProps1.xml', data: SOURCES_PROPS });
@@ -156,6 +180,10 @@ class DocxWriter {
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
       '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
       (this.footnotes.length ? '<Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/>' : '') +
+      (this.comments.length
+        ? '<Override PartName="/word/comments.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"/>' +
+          '<Override PartName="/word/commentsExtended.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml"/>'
+        : '') +
       this.furnitureFiles.map((f) => `<Override PartName="/word/${f.file}" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.${f.kind}+xml"/>`).join('') +
       (this.doc.references?.entries.length ? '<Override PartName="/customXml/itemProps1.xml" ContentType="application/vnd.openxmlformats-officedocument.customXmlProperties+xml"/>' : '') +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
@@ -283,7 +311,11 @@ class DocxWriter {
     if (numId) pPr += `<w:numPr><w:ilvl w:val="${Math.min(8, p.list?.level ?? 0)}"/><w:numId w:val="${numId}"/></w:numPr>`;
     pPr += layoutPPr(p);
     if (p.align && p.align !== 'left') pPr += `<w:jc w:val="${p.align === 'justify' ? 'both' : p.align}"/>`;
-    let runs = p.runs.map((r) => this.run(r));
+    // REV-002: comment ranges open and close around the runs, across paragraphs.
+    let runs = p.runs.map((r) => {
+      const { end, start } = this.ranges.step(r);
+      return this.commentEnds(end) + this.commentStarts(start) + this.run(r);
+    });
     if (p.id && this.xref.targets.get(p.id)) {
       // DOC-026: a bookmark around the label and number, or the heading text.
       const [start, end] = anchorSpan(p.runs);
@@ -291,6 +323,50 @@ class DocxWriter {
       runs = [...runs.slice(0, start), `<w:bookmarkStart w:id="${id}" w:name="${bookmarkName(p.id)}"/>`, ...runs.slice(start, end), `<w:bookmarkEnd w:id="${id}"/>`, ...runs.slice(end)];
     }
     return `<w:p>${pPr ? `<w:pPr>${pPr}</w:pPr>` : ''}${runs.join('')}</w:p>`;
+  }
+
+  /** A comment and its replies, by Word id. */
+  private withReplies(id: string): number[] {
+    return [id, ...this.comments.filter((c) => c.parent === id).map((c) => c.id)].map((x) => this.commentIds.get(x)!);
+  }
+
+  private commentStarts(ids: string[]): string {
+    return ids.flatMap((id) => this.withReplies(id)).map((n) => `<w:commentRangeStart w:id="${n}"/>`).join('');
+  }
+
+  private commentEnds(ids: string[]): string {
+    return ids
+      .flatMap((id) => this.withReplies(id))
+      .map((n) => `<w:commentRangeEnd w:id="${n}"/><w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:commentReference w:id="${n}"/></w:r>`)
+      .join('');
+  }
+
+  /** Comment paragraphs; the last one carries the id threads and states refer to. */
+  private commentsXml(): string {
+    const body = this.comments
+      .map((c, n) => {
+        const paras = c.text.split('\n');
+        const ps = paras.map(
+          (text, i) =>
+            `<w:p${i === paras.length - 1 ? ` w14:paraId="${paraId(n)}"` : ''}><w:pPr><w:pStyle w:val="CommentText"/></w:pPr>` +
+            (i === 0 ? '<w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:annotationRef/></w:r>' : '') +
+            `<w:r><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`,
+        );
+        return `<w:comment w:id="${n}" w:author="${escapeXmlAttr(c.author ?? '')}"${c.date ? ` w:date="${escapeXmlAttr(c.date)}"` : ''}${c.initials ? ` w:initials="${escapeXmlAttr(c.initials)}"` : ''}>${ps.join('')}</w:comment>`;
+      })
+      .join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:comments xmlns:w="${NS.w}" xmlns:w14="${W14}">${body}</w:comments>`;
+  }
+
+  /** Replies and resolved comments (Word 2013 and later). */
+  private commentsExtendedXml(): string {
+    const body = this.comments
+      .map((c, n) => {
+        const parent = c.parent ? this.commentIds.get(c.parent) : undefined;
+        return `<w15:commentEx w15:paraId="${paraId(n)}"${parent !== undefined ? ` w15:paraIdParent="${paraId(parent)}"` : ''} w15:done="${c.resolved ? 1 : 0}"/>`;
+      })
+      .join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w15:commentsEx xmlns:w15="${W15}">${body}</w15:commentsEx>`;
   }
 
   private furnitureFiles: { kind: 'header' | 'footer'; file: string }[] = [];
@@ -511,6 +587,11 @@ const heading = (n: number, size: number): string =>
   `<w:pPr><w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="80"/><w:outlineLvl w:val="${n - 1}"/></w:pPr>` +
   `<w:rPr><w:b/><w:bCs/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:style>`;
 
+const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
+const W15 = 'http://schemas.microsoft.com/office/word/2012/wordml';
+/** The `w14:paraId` of the n-th comment's last paragraph. */
+const paraId = (n: number): string => (0x10000000 + n).toString(16).toUpperCase();
+
 const STYLES_XML =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
   `<w:styles xmlns:w="${NS.w}">` +
@@ -549,6 +630,8 @@ const STYLES_XML =
   [1, 2, 3, 4, 5, 6].map((n) => `<w:style w:type="paragraph" w:styleId="TOC${n}"><w:name w:val="toc ${n}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:spacing w:after="100"/><w:ind w:left="${(n - 1) * 220}"/></w:pPr></w:style>`).join('') +
   '<w:style w:type="paragraph" w:styleId="FootnoteText"><w:name w:val="footnote text"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr></w:style>' +
   '<w:style w:type="character" w:styleId="FootnoteReference"><w:name w:val="footnote reference"/><w:rPr><w:vertAlign w:val="superscript"/></w:rPr></w:style>' +
+  '<w:style w:type="paragraph" w:styleId="CommentText"><w:name w:val="annotation text"/><w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:style>' +
+  '<w:style w:type="character" w:styleId="CommentReference"><w:name w:val="annotation reference"/><w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:style>' +
   '</w:styles>';
 
 export function writeDocx(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {

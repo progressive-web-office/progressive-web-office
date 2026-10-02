@@ -23,6 +23,22 @@ export interface TextFormat {
   font?: string;
   /** Background (highlight) colour as `#rrggbb`. */
   highlight?: string;
+  /** Comments on this text (REV-001): ids into `RichDocument.comments`. */
+  comments?: string[];
+}
+
+/** A comment on a range of text, or a reply to one (REV-001). */
+export interface DocComment {
+  id: string;
+  author?: string;
+  initials?: string;
+  /** ISO 8601 timestamp. */
+  date?: string;
+  /** Plain text; `\n` separates paragraphs. */
+  text: string;
+  /** The comment this one replies to; a reply has no range of its own. */
+  parent?: string;
+  resolved?: boolean;
 }
 
 export interface TextRun extends TextFormat {
@@ -368,6 +384,8 @@ export interface RichDocument {
   meta: DocumentMeta;
   /** Format-specific data preserved for round-trips (e.g. MDZ extras). */
   extras?: Record<string, unknown>;
+  /** Comments and replies, in creation order (REV-001). */
+  comments?: DocComment[];
 }
 
 export const isImageRun = (run: Run): run is ImageRun => 'image' in run;
@@ -555,8 +573,10 @@ export function paragraph(text: string, opts: Partial<Omit<Paragraph, 'type' | '
 
 const FORMAT_KEYS: (keyof TextFormat)[] = ['bold', 'italic', 'underline', 'strike', 'code', 'link', 'size', 'color', 'font', 'highlight'];
 
+const commentKey = (f: TextFormat): string => (f.comments?.length ? [...f.comments].sort().join(' ') : '');
+
 export function sameFormat(a: TextFormat, b: TextFormat): boolean {
-  return FORMAT_KEYS.every((k) => (a[k] || undefined) === (b[k] || undefined));
+  return FORMAT_KEYS.every((k) => (a[k] || undefined) === (b[k] || undefined)) && commentKey(a) === commentKey(b);
 }
 
 /** Copy only the truthy formatting flags (keeps objects minimal). */
@@ -566,6 +586,7 @@ export function cleanFormat(f: TextFormat): TextFormat {
     const v = f[k];
     if (v) (out as Record<string, unknown>)[k] = v;
   }
+  if (f.comments?.length) out.comments = [...f.comments];
   return out;
 }
 

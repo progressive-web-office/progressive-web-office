@@ -17,6 +17,7 @@ import {
   type Paragraph,
   type ParagraphLayout,
   type ParagraphStyle,
+  type DocComment,
   type RichDocument,
   type Run,
   type TableCell,
@@ -26,6 +27,7 @@ import {
   type TextFormat,
 } from './model';
 import { diagramLangOf } from './diagram';
+import { anchorOnWordBefore, pruneComments, renameComments } from './comments';
 import { lengthToPx, ODF_BIB_FIELDS, ODF_NS, ODF_NUMBER_FORMAT, readOdfMeta } from './odf';
 import { mathmlToLatex } from '../math/convert';
 
@@ -147,7 +149,9 @@ class OdtReader {
     this.collectStyles(xml, true);
     const body = xml.getElementsByTagNameNS(ODF_NS.office, 'text')[0];
     if (!body) throw new Error('Not an OpenDocument text: no office:text body.');
+    for (const end of descendants(body, 'annotation-end')) this.annotationEnds.add(attr(end, 'name') ?? '');
     this.doc.blocks = this.readBlocks(body, undefined, 0);
+    this.finishComments();
     resolveAnchors(this.doc.blocks, this.anchorAlias);
     if (this.entries.size) this.doc.references = { entries: [...this.entries.values()], ...(this.authorYear ? { style: 'author-year' as const } : {}) };
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
@@ -370,11 +374,58 @@ class OdtReader {
     return f;
   }
 
+  /** Annotations (REV-003): names with an end are ranges, the others points. */
+  private annotationEnds = new Set<string>();
+  private annotationNames = new Map<string, string>();
+  private openComments: string[] = [];
+  private comments: (DocComment & { parentName?: string })[] = [];
+
+  private runFormat(fmt: TextFormat): TextFormat {
+    const f = cleanFormat(fmt);
+    if (this.openComments.length) f.comments = [...this.openComments];
+    return f;
+  }
+
+  private readAnnotation(el: Element, out: Run[]): void {
+    const id = `a${this.comments.length + 1}`;
+    const name = attr(el, 'name');
+    const text = (local: string): string | undefined => children(el).find((c) => c.localName === local)?.textContent?.trim() || undefined;
+    const comment: DocComment & { parentName?: string } = { id, text: children(el, 'p').map((p) => p.textContent ?? '').join('\n') };
+    const author = text('creator');
+    if (author) comment.author = author;
+    const initials = text('creator-initials');
+    if (initials) comment.initials = initials;
+    const date = text('date');
+    if (date) comment.date = date;
+    if (attr(el, 'resolved') === 'true') comment.resolved = true;
+    const parent = attr(el, 'parent-name');
+    if (parent) comment.parentName = parent;
+    this.comments.push(comment);
+    if (name) this.annotationNames.set(name, id);
+    if (parent) return;
+    if (name && this.annotationEnds.has(name)) this.openComments.push(id);
+    else anchorOnWordBefore(out, id);
+  }
+
+  /** Comments numbered in the order they were written (by date), replies attached. */
+  private finishComments(): void {
+    if (!this.comments.length) return;
+    const time = (c: DocComment): number => (c.date ? Date.parse(c.date) || Infinity : Infinity);
+    const sorted = [...this.comments].sort((a, b) => time(a) - time(b));
+    const ids = new Map(sorted.map((c, i) => [c.id, `c${i + 1}`]));
+    this.doc.comments = sorted.map(({ parentName, ...c }) => {
+      const parent = parentName ? this.annotationNames.get(parentName) : undefined;
+      return parent ? { ...c, parent } : c;
+    });
+    renameComments(this.doc, ids);
+    pruneComments(this.doc);
+  }
+
   private readInline(el: Element, fmt: TextFormat, out: Run[], pre: boolean): void {
     for (let n = el.firstChild; n; n = n.nextSibling) {
       if (n.nodeType === 3) {
         const text = pre ? (n.nodeValue ?? '') : (n.nodeValue ?? '').replace(/[ \t\r\n]+/g, ' ');
-        if (text) out.push({ text, ...cleanFormat(fmt) });
+        if (text) out.push({ text, ...this.runFormat(fmt) });
         continue;
       }
       if (n.nodeType !== 1) continue;
@@ -382,13 +433,13 @@ class OdtReader {
       if (c.namespaceURI === ODF_NS.text) {
         switch (c.localName) {
           case 's':
-            out.push({ text: ' '.repeat(Math.max(1, Number(attr(c, 'c') ?? 1) || 1)), ...cleanFormat(fmt) });
+            out.push({ text: ' '.repeat(Math.max(1, Number(attr(c, 'c') ?? 1) || 1)), ...this.runFormat(fmt) });
             break;
           case 'tab':
-            out.push({ text: '\t', ...cleanFormat(fmt) });
+            out.push({ text: '\t', ...this.runFormat(fmt) });
             break;
           case 'line-break':
-            out.push({ text: '\n', ...cleanFormat(fmt) });
+            out.push({ text: '\n', ...this.runFormat(fmt) });
             break;
           case 'span':
             this.readInline(c, this.textFormat(attr(c, 'style-name'), fmt), out, pre);
@@ -465,6 +516,11 @@ class OdtReader {
             // fields (date, page-number...), meta, ruby... -> keep their text
             this.readInline(c, fmt, out, pre);
         }
+      } else if (c.namespaceURI === ODF_NS.office && c.localName === 'annotation') {
+        this.readAnnotation(c, out);
+      } else if (c.namespaceURI === ODF_NS.office && c.localName === 'annotation-end') {
+        const id = this.annotationNames.get(attr(c, 'name') ?? '');
+        this.openComments = this.openComments.filter((x) => x !== id);
       } else if (c.namespaceURI === ODF_NS.draw && c.localName === 'frame') {
         this.readFrame(c, out);
       } else if (c.namespaceURI === ODF_NS.draw && c.localName === 'a') {

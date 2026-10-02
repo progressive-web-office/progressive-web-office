@@ -15,6 +15,7 @@ function marksFor(f: TextFormat): Mark[] {
   if (f.color) marks.push(schema.marks.color!.create({ hex: f.color }));
   if (f.font) marks.push(schema.marks.font!.create({ family: f.font }));
   if (f.highlight) marks.push(schema.marks.highlight!.create({ hex: f.highlight }));
+  for (const id of f.comments ?? []) marks.push(schema.marks.comment!.create({ id }));
   return marks;
 }
 
@@ -36,6 +37,9 @@ function formatOf(marks: readonly Mark[]): TextFormat {
         break;
       case 'highlight':
         f.highlight = m.attrs.hex as string;
+        break;
+      case 'comment':
+        (f.comments ??= []).push(m.attrs.id as string);
         break;
       default:
         (f as Record<string, unknown>)[m.type.name] = true;

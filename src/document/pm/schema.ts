@@ -250,5 +250,13 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'mark[data-highlight]', getAttrs: (d: HTMLElement) => ({ hex: d.dataset.highlight }) }],
       toDOM: (m: Mark) => ['mark', { style: `background-color: ${m.attrs.hex}`, 'data-highlight': m.attrs.hex }, 0],
     },
+    /** The text of a comment (REV-001); several comments can cover the same text. */
+    comment: {
+      attrs: { id: {} },
+      inclusive: false,
+      excludes: '',
+      parseDOM: [{ tag: 'span[data-comment]', getAttrs: (d: HTMLElement) => ({ id: d.dataset.comment }) }],
+      toDOM: (m: Mark) => ['span', { class: 'comment-anchor', 'data-comment': m.attrs.id }, 0],
+    },
   },
 });

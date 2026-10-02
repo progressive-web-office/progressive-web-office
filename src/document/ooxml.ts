@@ -20,6 +20,8 @@ export const REL = {
   numbering: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering',
   hyperlink: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink',
   footnotes: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes',
+  comments: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments',
+  commentsExtended: 'http://schemas.microsoft.com/office/2011/relationships/commentsExtended',
   header: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/header',
   footer: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer',
   image: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image',

@@ -30,6 +30,7 @@ import {
   type ListNode,
   type Paragraph,
   type ParagraphLayout,
+  type DocComment,
   type RichDocument,
   type Run,
   type Table,
@@ -41,6 +42,7 @@ import { MATHML_NS } from '../math/convert';
 import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { citations, formatEntry, writeNames, parseNames, type BibEntry, type Citations } from './bibliography';
+import { anchoredComments, CommentRanges } from './comments';
 import { ODF_BIB_FIELDS, ODF_NUMBER_FORMAT, manifestXml, metaXml, ODF_XMLNS, odfText, pxToIn } from './odf';
 
 const PARA_STYLE: Record<string, string> = {
@@ -72,6 +74,11 @@ class OdtWriter {
   private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
   /** Anchor of the paragraph being written, named on its sequence. */
   private anchor: string | undefined;
+  /** Comments written (REV-003), named `__Annotation__n` by their position here. */
+  private comments: DocComment[] = [];
+  private ranges = new CommentRanges(new Set());
+  /** The runs written are those of a paragraph (not of a note inside it). */
+  private inParagraph = false;
 
   /** Citation numbers and texts, and the sources (DOC-027). */
   private cites: Citations = citations([], undefined);
@@ -82,7 +89,17 @@ class OdtWriter {
     this.cites = citations(this.doc.blocks, this.doc.references);
     this.entries = new Map((this.doc.references?.entries ?? []).map((e) => [e.key, e]));
     const decls = `<text:sequence-decls>${SEQ_KINDS.map((k) => `<text:sequence-decl text:display-outline-level="0" text:name="${SEQ_NAMES[k]}"/>`).join('')}</text:sequence-decls>`;
-    const body = decls + this.firstPageStyle(this.blocks(this.doc.blocks));
+    const anchored = anchoredComments(this.doc);
+    this.comments = (this.doc.comments ?? []).filter((c) => anchored.has(c.parent ?? c.id));
+    this.ranges = new CommentRanges(new Set(this.comments.filter((c) => !c.parent).map((c) => c.id)));
+    let text = this.blocks(this.doc.blocks);
+    const open = this.ranges.close();
+    if (open.length) {
+      // REV-003: ranges still open end with the last paragraph.
+      const at = Math.max(text.lastIndexOf('</text:p>'), text.lastIndexOf('</text:h>'));
+      if (at >= 0) text = text.slice(0, at) + this.annotationEnds(open) + text.slice(at);
+    }
+    const body = decls + this.firstPageStyle(text);
     const content =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       `<office:document-content ${ODF_XMLNS} office:version="1.3">` +
@@ -265,6 +282,47 @@ class OdtWriter {
   }
 
   private paragraph(p: Paragraph): string {
+    this.inParagraph = true;
+    try {
+      return this.paragraphXml(p);
+    } finally {
+      this.inParagraph = false;
+    }
+  }
+
+  private annotationName(id: string): string {
+    return `__Annotation__${this.comments.findIndex((c) => c.id === id) + 1}`;
+  }
+
+  /** A comment and its replies, each an annotation (REV-003). */
+  private annotationStarts(ids: string[]): string {
+    return ids
+      .flatMap((id) => this.comments.filter((c) => c.id === id || c.parent === id))
+      .map((c) => {
+        const attrs = `office:name="${this.annotationName(c.id)}"${c.parent ? ` loext:parent-name="${this.annotationName(c.parent)}"` : ''}${c.resolved ? ' loext:resolved="true"' : ''}`;
+        return (
+          `<office:annotation ${attrs}>` +
+          (c.author ? `<dc:creator>${esc(c.author)}</dc:creator>` : '') +
+          (c.date ? `<dc:date>${esc(c.date)}</dc:date>` : '') +
+          (c.initials ? `<meta:creator-initials>${esc(c.initials)}</meta:creator-initials>` : '') +
+          c.text
+            .split('\n')
+            .map((line) => `<text:p>${odfText(line, true)}</text:p>`)
+            .join('') +
+          '</office:annotation>'
+        );
+      })
+      .join('');
+  }
+
+  private annotationEnds(ids: string[]): string {
+    return ids
+      .flatMap((id) => this.comments.filter((c) => c.id === id || c.parent === id))
+      .map((c) => `<office:annotation-end office:name="${this.annotationName(c.id)}"/>`)
+      .join('');
+  }
+
+  private paragraphXml(p: Paragraph): string {
     let runs: string;
     if (p.id && this.xref.targets.get(p.id)) {
       // DOC-026: a bookmark around the label and number, or the heading text.
@@ -286,9 +344,24 @@ class OdtWriter {
   }
 
   private runs(runs: Run[]): string {
+    // Notes inside the paragraph are written by a nested call: no comment there.
+    const track = this.inParagraph;
+    this.inParagraph = false;
+    try {
+      return this.runsXml(runs, track);
+    } finally {
+      this.inParagraph = track;
+    }
+  }
+
+  private runsXml(runs: Run[], track: boolean): string {
     let out = '';
     let atStart = true;
     for (const run of runs) {
+      if (track) {
+        const { end, start } = this.ranges.step(run);
+        out += this.annotationEnds(end) + this.annotationStarts(start);
+      }
       if (isImageRun(run)) {
         out += this.image(run.image, run.alt, run.width, run.height, run.title);
         atStart = false;

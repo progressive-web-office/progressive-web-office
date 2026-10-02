@@ -19,6 +19,7 @@ import {
   type ListInfo,
   type Paragraph,
   type ParagraphStyle,
+  type DocComment,
   type RichDocument,
   type Run,
   type TableCell,
@@ -28,6 +29,7 @@ import { ommlToLatex } from '../math/convert';
 import type { BibEntry } from './bibliography';
 import { parseCitation, parseCslCitation, readSources } from './word-sources';
 import { diagramLangOf } from './diagram';
+import { pruneComments } from './comments';
 import { DOCX_NUMBER_FORMAT, EMU_PER_PX, IMAGE_CONTENT_TYPES, onOff, readCoreProps, readRels, type Relationship } from './ooxml';
 
 interface StyleInfo {
@@ -76,6 +78,56 @@ class DocxReader {
     const titlePg = children(sect, 'titlePg')[0];
     if (titlePg && !/^(0|false|off)$/.test(attr(titlePg, 'val') ?? '')) setup.hideOnFirstPage = true;
     return cleanPageSetup(setup);
+  }
+
+  /** Word comment id → model id (REV-002). */
+  private commentIds = new Map<string, string>();
+  private commentList: DocComment[] = [];
+  /** Replies are not anchored by themselves: their ranges are left out. */
+  private replyIds = new Set<string>();
+  private openComments: string[] = [];
+
+  /** Comments, their replies and resolved states (comments.xml, commentsExtended.xml). */
+  private readComments(): void {
+    const part = (suffix: string, fallback: string): string | undefined => readZipText(this.zip, [...this.rels.values()].find((r) => r.type.endsWith(suffix))?.target ?? fallback);
+    const text = part('/comments', 'word/comments.xml');
+    if (!text) return;
+    const ext = part('/commentsExtended', 'word/commentsExtended.xml');
+    const states = new Map<string, { parent?: string; done: boolean }>();
+    if (ext) {
+      for (const c of descendants(parseXml(ext), 'commentEx')) {
+        const id = attr(c, 'paraId');
+        if (id) states.set(id.toUpperCase(), { ...(attr(c, 'paraIdParent') ? { parent: attr(c, 'paraIdParent')!.toUpperCase() } : {}), done: /^(1|true)$/.test(attr(c, 'done') ?? '') });
+      }
+    }
+    const byPara = new Map<string, string>();
+    const parents: [DocComment, string][] = [];
+    for (const el of descendants(parseXml(text), 'comment')) {
+      const wid = attr(el, 'id');
+      if (wid === null) continue;
+      const id = `c${this.commentList.length + 1}`;
+      this.commentIds.set(wid, id);
+      const paras = children(el, 'p');
+      const comment: DocComment = { id, text: '' };
+      const author = attr(el, 'author');
+      if (author) comment.author = author;
+      if (attr(el, 'initials')) comment.initials = attr(el, 'initials')!;
+      if (attr(el, 'date')) comment.date = attr(el, 'date')!;
+      comment.text = paras.map((p) => descendants(p, 't').map((t) => t.textContent ?? '').join('')).join('\n');
+      const paraId = paras.length ? attr(paras[paras.length - 1]!, 'paraId')?.toUpperCase() : undefined;
+      const state = paraId ? states.get(paraId) : undefined;
+      if (paraId) byPara.set(paraId, id);
+      if (state?.done) comment.resolved = true;
+      if (state?.parent) parents.push([comment, state.parent]);
+      this.commentList.push(comment);
+    }
+    for (const [comment, parentPara] of parents) {
+      const parent = byPara.get(parentPara);
+      if (parent && parent !== comment.id) {
+        comment.parent = parent;
+        this.replyIds.add(comment.id);
+      }
+    }
   }
 
   private footnoteXml: Map<string, Element> | undefined;
@@ -204,7 +256,12 @@ class DocxReader {
     if (!text) throw new Error('Not a Word document: word/document.xml is missing.');
     const body = descendants(parseXml(text), 'body')[0];
     if (!body) throw new Error('Not a Word document: missing body.');
+    this.readComments();
     this.doc.blocks = this.readBlocks(body);
+    if (this.commentIds.size) {
+      this.doc.comments = this.commentList;
+      pruneComments(this.doc);
+    }
     resolveAnchors(this.doc.blocks, this.anchorAlias);
     // DOC-027: Word's sources, and the items carried by Zotero / Mendeley citations.
     const entries = new Map<string, BibEntry>();
@@ -336,6 +393,16 @@ class DocxReader {
           this.readInline(el, f, out);
           break;
         }
+        case 'commentRangeStart': {
+          const id = this.commentIds.get(attr(el, 'id') ?? '');
+          if (id && !this.replyIds.has(id) && !this.openComments.includes(id)) this.openComments.push(id);
+          break;
+        }
+        case 'commentRangeEnd': {
+          const id = this.commentIds.get(attr(el, 'id') ?? '');
+          this.openComments = this.openComments.filter((x) => x !== id);
+          break;
+        }
         case 'del':
         case 'moveFrom':
         case 'pPr':
@@ -343,8 +410,6 @@ class DocxReader {
         case 'bookmarkStart':
         case 'bookmarkEnd':
         case 'proofErr':
-        case 'commentRangeStart':
-        case 'commentRangeEnd':
           break;
         case 'AlternateContent': {
           const choice = children(el)[0];
@@ -418,6 +483,7 @@ class DocxReader {
 
   private readRun(r: Element, parent: TextFormat, out: Run[]): void {
     const fmt = cleanFormat(this.runFormat(r, parent));
+    if (this.openComments.length) fmt.comments = [...this.openComments];
     for (const el of children(r)) {
       switch (el.localName) {
         case 't':

@@ -3,6 +3,7 @@
  * markdown-it. Raw HTML is kept as literal text (MD-003), except `<u>` and
  * `<br>` which map to underline and line breaks.
  */
+import { readCriticComments } from './critic';
 import { parseFrontMatter } from './frontmatter';
 import { fromCsl, type BibEntry } from './bibliography';
 import { wikiRuns } from './wiki-links';
@@ -404,6 +405,8 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
     if (m && b.runs.every(isTextRun)) blocks[i] = { type: 'include', src: m[1]! };
   }
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
+  // REV-004: CriticMarkup comments.
+  readCriticComments(doc);
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   if (firstHeading && !doc.meta.title) doc.meta.title = firstHeading.runs.map((r) => ('text' in r ? r.text : '')).join('');
   return doc;

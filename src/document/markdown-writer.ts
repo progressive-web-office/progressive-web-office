@@ -1,4 +1,5 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { CriticComments } from './critic';
 import { writeFrontMatter } from './frontmatter';
 import {
   cleanMeta,
@@ -135,7 +136,7 @@ class MarkdownWriter {
         // \newpage is understood by Pandoc and most Markdown-to-PDF tools (DOC-021).
         parts.push(group.page ? '\\newpage' : '---');
       } else if (isQuote) {
-        quote.push(this.inline(group.runs, true));
+        quote.push(this.commented(group.runs, true));
       } else if (isCode) {
         code.push(group.runs.map((r) => (isTextRun(r) ? r.text : '')).join(''));
       } else {
@@ -164,7 +165,7 @@ class MarkdownWriter {
     if (only && isDiagramRun(only)) return fenced(only.diagram, only.lang);
     if (only && isCodeCellRun(only)) return this.cell(only);
     const heading = /^h(\d)$/.exec(p.style);
-    const inline = this.inline(p.runs, true);
+    const inline = this.commented(p.runs, true);
     if (heading) return `${'#'.repeat(Number(heading[1]))} ${anchor}${inline.replace(/\n/g, ' ')}`;
     return anchor + inline || '<br>';
   }
@@ -189,7 +190,7 @@ class MarkdownWriter {
     for (const item of list.items) {
       const marker = list.ordered ? `${n++}. ` : '- ';
       const pad = indent + ' '.repeat(marker.length);
-      const text = item.paragraph ? this.inline(item.paragraph.runs, false) : '';
+      const text = item.paragraph ? this.commented(item.paragraph.runs, false) : '';
       const [first = '', ...rest] = text.split('\n');
       lines.push(`${indent}${marker}${first}`.trimEnd(), ...rest.map((l) => `${pad}${l}`));
       for (const child of item.children) lines.push(this.list(child, pad));
@@ -202,7 +203,7 @@ class MarkdownWriter {
     const { cols, slots } = tableGrid(t.rows);
     const cell = (c: TableCell | undefined): string =>
       (c?.blocks ?? [])
-        .map((p) => this.inline(p.runs, false).replace(/\n/g, '<br>'))
+        .map((p) => this.commented(p.runs, false).replace(/\n/g, '<br>'))
         .join('<br>')
         .replace(/\|/g, '\\|') || ' ';
     const line = (r: number): string =>
@@ -215,6 +216,14 @@ class MarkdownWriter {
     return [head, `|${' --- |'.repeat(cols)}`, ...body].join('\n');
   }
 
+
+  /** Comments as CriticMarkup (REV-004). */
+  private critic: CriticComments | undefined;
+
+  private commented(runs: Run[], escapeStarts: boolean): string {
+    this.critic ??= new CriticComments(this.doc);
+    return this.critic.write(runs, (part, first) => this.inline(part, escapeStarts && first));
+  }
 
   /** Render runs with a minimal, always-valid nesting of emphasis markers. */
   private inline(runs: Run[], escapeStarts: boolean): string {
