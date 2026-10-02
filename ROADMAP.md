@@ -68,12 +68,8 @@ group is not a commitment.
 ### Writing aids
 
 - ✅ Typography as you type (DOC-031) and text transforms (DOC-032)
-- Readability: per-paragraph difficulty (Flesch and Kandel-Moles for French,
-  Gunning-Fog, Coleman-Liau, ARI) shown in the margin
-- Writing goals and statistics: a word target per document, words written
-  per day, a focus timer (Pomodoro)
-- Focus and typewriter modes: the current paragraph highlighted, the line
-  kept in the middle of the screen, the rest of the interface hidden
+- ✅ Readability (DOC-033), writing goals and statistics with a focus timer
+  (DOC-034), focus and typewriter modes (DOC-035)
 - Snippets with fields (`${1:title}`, date, clipboard) inserted from a list,
   and autocompletion of citations (`@`), tags (`#`), links (`[[`) and emoji
 - Citation styles from CSL files (APA, Chicago, ISO 690…) and a reference

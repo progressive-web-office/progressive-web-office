@@ -38,6 +38,9 @@ import { ChangePanel } from './change-panel';
 import { trackTransaction, UNTRACKED } from './changes';
 import { withoutSolutions } from './solutions';
 import { TRANSFORMS, transformText, typographyRules, type TransformId } from './text-tools';
+import { writingKey, writingPlugin } from './pm/writing-plugin';
+import { readability } from './readability';
+import { addWritten, loadGoal, saveGoal } from './writing-stats';
 import { CommentPanel } from './comment-panel';
 import { pruneComments } from './comments';
 import { FindBar } from './find-bar';
@@ -125,6 +128,14 @@ export class DocumentEditor implements EditorView {
   /** DOC-031: typography as you type (kept for the next documents). */
   private typography = loadTypography();
   private readonly textTools = h('select', { 'aria-label': t('text.tools'), title: t('text.toolsTitle'), class: 'text-tools' });
+  /** DOC-033..DOC-035: how the document is shown while writing. */
+  private readonly viewMenu = h('select', { 'aria-label': t('wview.menu'), title: t('wview.menuTitle'), class: 'text-tools' });
+  private writing = { readability: false, focus: false, typewriter: false };
+  private goal: number | undefined;
+  private lastWords: number | undefined;
+  private wordsTimer: ReturnType<typeof setTimeout> | undefined;
+  private timerEnd = 0;
+  private timerTick: ReturnType<typeof setInterval> | undefined;
   /** TEACH-001: solutions shown (answer key) or hidden (exercise sheet). */
   private readonly solutionsButton = button(t('solution.hide'), () => this.toggleSolutions(), { text: '👁', title: t('solution.hideTitle') });
   private hadSolutions = false;
@@ -192,6 +203,8 @@ export class DocumentEditor implements EditorView {
           plugins: [
             // DOC-031: typography as you type, in the document's language.
             typographyRules({ enabled: () => this.typography, lang: () => this.lang() }),
+            // DOC-033, DOC-035: readability and focus decorations.
+            writingPlugin((score, level, wps) => t('read.label', { score, level: t(`read.${level}` as MessageKey), wps })),
             ...basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
           ],
         }),
@@ -241,6 +254,12 @@ export class DocumentEditor implements EditorView {
     this.comments.refresh();
     this.changesPanel.refresh();
     this.hadSolutions = this.hasSolutions();
+    // DOC-034: the goal of this document, and the words it starts with.
+    this.goal = loadGoal(this.goalKey());
+    this.lastWords = this.words();
+    this.element.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.writing.focus) this.setWriting({ focus: false });
+    });
     this.element.style.setProperty('--solution-label', JSON.stringify(t('solution.label')));
     for (const toc of this.tocViews) toc.refresh();
   }
@@ -416,7 +435,9 @@ export class DocumentEditor implements EditorView {
     else if (tr.selectionSet) this.statusSoon();
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
+    if (this.writing.typewriter && (tr.docChanged || tr.selectionSet)) this.centerCursor();
     if (tr.docChanged) {
+      this.countWords();
       this.comments.refresh();
       this.changesPanel.refresh();
       // TEACH-001: the sheet variants appear with the first solution.
@@ -576,7 +597,18 @@ export class DocumentEditor implements EditorView {
 
   status(): string {
     const { words, characters } = wordCount({ ...this.doc, blocks: this.currentBlocks() });
-    return t(words === 1 ? 'doc.word' : 'doc.words', { words, characters }) + (this.tracking ? ` · ${t('track.on')}` : '');
+    const extra: string[] = [];
+    if (this.goal) extra.push(t('goal.status', { words, goal: this.goal, pct: Math.min(100, Math.round((words / this.goal) * 100)) }));
+    if (this.timerEnd) {
+      const left = Math.max(0, Math.ceil((this.timerEnd - Date.now()) / 1000));
+      extra.push(`⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
+    }
+    if (this.writing.readability) {
+      const r = readability(this.view.state.doc.textBetween(0, this.view.state.doc.content.size, '\n', ' '), this.lang());
+      if (r) extra.push(t('read.status', { score: r.score, level: t(`read.${r.level}` as MessageKey) }));
+    }
+    if (this.tracking) extra.push(t('track.on'));
+    return [t(words === 1 ? 'doc.word' : 'doc.words', { words, characters }), ...extra].join(' · ');
   }
 
   async save(format: Parameters<EditorView['save'] & object>[0]): Promise<Uint8Array> {
@@ -619,6 +651,110 @@ export class DocumentEditor implements EditorView {
       this.refocus();
     });
     return select;
+  }
+
+  /** "View" menu: readability, focus and typewriter modes, writing goal (DOC-033..DOC-035). */
+  private viewToolsMenu(): HTMLSelectElement {
+    const select = this.viewMenu;
+    const mark = (on: boolean): string => (on ? '✓ ' : '');
+    const fill = (): void => {
+      select.replaceChildren(
+        h('option', { value: '' }, t('wview.menu')),
+        h('option', { value: 'readability' }, `${mark(this.writing.readability)}${t('wview.readability')}`),
+        h('option', { value: 'focus' }, `${mark(this.writing.focus)}${t('wview.focus')}`),
+        h('option', { value: 'typewriter' }, `${mark(this.writing.typewriter)}${t('wview.typewriter')}`),
+        h('option', { value: 'goal' }, t('wview.goal')),
+      );
+    };
+    fill();
+    select.addEventListener('refill', fill);
+    select.addEventListener('change', () => {
+      const value = select.value;
+      select.value = '';
+      if (value === 'goal') void this.editGoal();
+      else if (value === 'readability' || value === 'focus' || value === 'typewriter') this.setWriting({ [value]: !this.writing[value] });
+      fill();
+      this.refocus();
+    });
+    return select;
+  }
+
+  private setWriting(patch: Partial<typeof this.writing>): void {
+    this.writing = { ...this.writing, ...patch };
+    this.element.classList.toggle('focus-mode', this.writing.focus);
+    this.element.classList.toggle('typewriter', this.writing.typewriter);
+    this.view.dispatch(this.view.state.tr.setMeta(writingKey, { readability: this.writing.readability, focus: this.writing.focus, lang: this.lang() }));
+    if (this.writing.typewriter) this.centerCursor();
+    this.viewMenu.dispatchEvent(new Event('refill'));
+    this.ctx.statusChanged();
+  }
+
+  /** Typewriter mode: the line of the cursor stays in the middle of the screen. */
+  private centerCursor(): void {
+    let scroller: HTMLElement | null = this.page.parentElement;
+    while (scroller && !(scroller.scrollHeight > scroller.clientHeight && /auto|scroll/.test(getComputedStyle(scroller).overflowY))) scroller = scroller.parentElement;
+    const target = scroller ?? (document.scrollingElement as HTMLElement | null);
+    if (!target) return;
+    try {
+      const at = this.view.coordsAtPos(this.view.state.selection.head);
+      const box = scroller ? scroller.getBoundingClientRect() : { top: 0, height: window.innerHeight };
+      target.scrollTop += at.top - (box.top + box.height / 2);
+    } catch {
+      /* not laid out */
+    }
+  }
+
+  /** The key of the document's goal: its title or first heading. */
+  private goalKey(): string {
+    let first = '';
+    this.view.state.doc.descendants((node) => {
+      if (first) return false;
+      if (node.type === schema.nodes.paragraph && /^h\d$/.test(node.attrs.style as string)) first = node.textContent.trim();
+      return !first;
+    });
+    return this.doc.meta.title?.trim() || first || 'untitled';
+  }
+
+  private words(): number {
+    return wordCount({ ...this.doc, blocks: this.currentBlocks() }).words;
+  }
+
+  private async editGoal(): Promise<void> {
+    const { editGoal } = await import('./goal-dialog');
+    const choice = await editGoal(this.element, { goal: this.goal, words: this.words() });
+    if (!choice) return this.refocus();
+    this.goal = choice.goal;
+    saveGoal(this.goalKey(), choice.goal);
+    if (choice.timer) this.startTimer(choice.timer);
+    this.ctx.statusChanged();
+    this.refocus();
+  }
+
+  /** A focus timer shown in the status bar. */
+  private startTimer(minutes: number): void {
+    clearInterval(this.timerTick);
+    this.timerEnd = Date.now() + minutes * 60_000;
+    this.timerTick = setInterval(() => {
+      if (Date.now() >= this.timerEnd) {
+        clearInterval(this.timerTick);
+        this.timerEnd = 0;
+        this.ctx.statusChanged();
+        window.alert(t('goal.timerDone'));
+        return;
+      }
+      this.ctx.statusChanged();
+    }, 1000);
+    this.ctx.statusChanged();
+  }
+
+  /** Words added since the last count go to today's statistics. */
+  private countWords(): void {
+    clearTimeout(this.wordsTimer);
+    this.wordsTimer = setTimeout(() => {
+      const now = this.words();
+      if (this.lastWords !== undefined) addWritten(now - this.lastWords);
+      this.lastWords = now;
+    }, 2000);
   }
 
   /** Show or hide the solutions, on screen and in print (TEACH-001). */
@@ -943,6 +1079,7 @@ export class DocumentEditor implements EditorView {
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
       this.textToolsMenu(),
+      this.viewToolsMenu(),
       act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`),
       this.trackButton,
       h('span', { class: 'sep' }),

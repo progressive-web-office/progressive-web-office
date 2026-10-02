@@ -943,3 +943,18 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .version-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 6px 0; border-top: 1px solid var(--border); }
 .version-list small { color: var(--muted); }
 .version-actions { margin-left: auto; display: flex; gap: 4px; }
+
+/* DOC-033: readability of the paragraphs, in the margin. */
+.doc-page .read-easy, .doc-page .read-fair, .doc-page .read-hard, .doc-page .read-veryHard { box-shadow: -10px 0 0 -6px var(--read); }
+.doc-page .read-easy { --read: #2e8b4e; }
+.doc-page .read-fair { --read: #c9a400; }
+.doc-page .read-hard { --read: #d9730d; }
+.doc-page .read-veryHard { --read: #b3261e; }
+/* DOC-035: focus mode (only the text, the current paragraph in full) and typewriter mode. */
+.doc-editor.focus-mode > .toolbar, .doc-editor.focus-mode .doc-side, .doc-editor.focus-mode .table-bar { display: none; }
+.doc-editor.focus-mode .doc-page > :not(.is-current) { opacity: 0.35; transition: opacity 0.2s; }
+.doc-editor.typewriter .doc-scroll { padding-bottom: 50vh; }
+.goal-days { list-style: none; padding: 0; margin: 0; }
+.goal-days li { display: grid; grid-template-columns: 6em 1fr 4em; align-items: center; gap: 8px; font-size: 0.85rem; }
+.goal-bar { display: block; height: 10px; min-width: 1px; background: var(--accent); border-radius: 3px; }
+.goal-count { text-align: right; color: var(--muted); }

@@ -24,6 +24,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   contrast, title and language, with a way to each issue.
 - Versions: each save keeps a copy in the browser (the last 30), listed
   under 🕘 History to open, download or name.
+- View menu of text documents: readability of each paragraph, focus mode,
+  typewriter mode, a word goal with daily statistics and a focus timer.
 - Typography as you type (curly quotes per language, dashes, ellipsis,
   French no-break spaces) and a Text menu of transforms: quotes, spacing,
   invisible characters, joining lines pasted from a PDF, case.

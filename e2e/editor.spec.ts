@@ -491,3 +491,21 @@ test('corrects the typography as you type and transforms text (DOC-031, DOC-032)
   await page.getByLabel('Text', { exact: true }).selectOption({ label: 'UPPERCASE' });
   await expect(editor.locator('p')).toHaveText(['IL DIT «\u00a0OUI\u00a0»\u202f! VOIR\u00a0: LA SUITE… 1–2 LE MOTEUR TOURNE VITE.']);
 });
+
+test('shows readability, focus mode and a writing goal (DOC-033..DOC-035)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('The cat sat on the mat. It was warm. The dog ran to it.');
+  const view = page.getByLabel('View', { exact: true });
+  await view.selectOption({ label: 'Readability of the paragraphs' });
+  await expect(editor.locator('p.read-easy')).toHaveCount(1);
+  await expect(page.getByRole('contentinfo')).toContainText('Reading ease');
+  await view.selectOption({ label: 'Writing goal and statistics…' });
+  const dialog = page.getByRole('dialog', { name: 'Writing goal' });
+  await dialog.getByLabel('Words to reach in this document').fill('100');
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(page.getByRole('contentinfo')).toContainText('/100 words');
+  await view.selectOption({ label: 'Focus mode (Esc to leave)' });
+  await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeHidden();
+  await editor.press('Escape');
+  await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
+});

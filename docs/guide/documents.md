@@ -229,6 +229,23 @@ characters, **join broken lines** (text pasted from a PDF: lines that do not
 end a sentence are joined, a word cut with a hyphen is put back together),
 sentence case, title case, upper and lower case.
 
+### Writing aids
+
+The **View** menu of the toolbar offers:
+
+- **Readability of the paragraphs**: a mark in the margin of each paragraph,
+  green (easy), yellow, orange or red (very difficult), with its reading
+  ease, from the length of the sentences and of the words (Flesch in
+  English, its Kandel–Moles adaptation in French; hover a paragraph for the
+  details). The status bar gives the document's score.
+- **Focus mode**: only the text, the paragraph of the cursor in full and the
+  others dimmed; <kbd>Esc</kbd> leaves it.
+- **Typewriter mode**: the line you write stays in the middle of the screen.
+- **Writing goal and statistics**: a number of words to reach in this
+  document (its progress shows in the status bar), the words written on each
+  of the last 14 days, and a focus timer (25 minutes of work, 5 of break).
+  Goals and statistics stay in this browser.
+
 ### Typing shortcuts
 
 At the start of a line, type:
