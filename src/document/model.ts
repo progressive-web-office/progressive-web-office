@@ -77,7 +77,8 @@ export interface MathRun {
 }
 
 /** Languages of executable code cells (CODE-001). */
-export type CodeLang = 'python' | 'javascript';
+/** `julia`: cells of KaimonSlate notebooks (DOC-038), kept and edited, run by KaimonSlate itself. */
+export type CodeLang = 'python' | 'javascript' | 'julia';
 
 /** Diagram languages understood by the editor (DIAG-001). */
 export type DiagramLang = 'mermaid';
@@ -113,6 +114,8 @@ export interface CodeCellRun {
   output?: CellOutput;
   /** CODE-013: the code is hidden, only its output is shown (and printed, and exported). */
   hidden?: boolean;
+  /** DOC-038: the KaimonSlate cell header after `#%% ` (kind, id and tags), kept as written. */
+  header?: string;
 }
 
 /** A footnote, numbered automatically where it is referenced (DOC-022). */
@@ -174,6 +177,9 @@ export interface Paragraph extends ParagraphLayout {
   solution?: boolean;
   /** Anchor of cross-references to this paragraph (DOC-026). */
   id?: string;
+  /** DOC-038: first block of a KaimonSlate text cell: its header after `#%% `, and its Markdown as written. */
+  cellHeader?: string;
+  cellSource?: string;
   align?: Align;
   list?: ListInfo;
   runs: Run[];

@@ -232,3 +232,28 @@ test('shows the dependency graph of the cells, and goes to a cell from it (CODE-
   await expect(panel.locator('svg g.node.dag-current')).toHaveAttribute('data-cell', '1');
   expect(errors.filter((e) => !e.startsWith('Failed to load resource'))).toEqual([]);
 });
+
+test('opens a KaimonSlate notebook as a document and saves it back unchanged (DOC-038)', async ({ page }) => {
+  const nb = '#%% md id=intro\n# Widgets\n\nDrag the **sliders**.\n\n#%% code id=controls collapsed\n@bind n Slider(20:5:200)\n\n#%% md id=more\n* kept as written\n';
+  const errors = await openApp(page);
+  await openFile(page, 'demo.jl', nb, 'text/plain');
+  await expect(page.locator('.doc-page h1')).toHaveText('Widgets');
+  const cell = page.locator('.code-cell[data-lang="julia"]');
+  await expect(cell.locator('.code-cell-lang')).toHaveText('Julia');
+  await expect(cell.locator('.code-cell-header')).toHaveText('#%% code id=controls collapsed');
+  await expect(cell.getByRole('button', { name: 'Run cell' })).toHaveCount(0);
+  const saved = await saveAs(page, 'KaimonSlate notebook (.jl)');
+  expect(saved.name).toBe('demo.jl');
+  expect(saved.data.toString()).toBe(nb);
+  // Editing a Julia cell keeps its language and its header.
+  await cell.getByRole('button', { name: 'Edit code' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Edit code cell' });
+  await expect(dialog.getByLabel('Language')).toHaveValue('julia');
+  await dialog.locator('.cm-content').click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('\n@bind m Slider(1:3)');
+  await dialog.getByRole('button', { name: 'Update' }).click();
+  const again = await saveAs(page, 'KaimonSlate notebook (.jl)');
+  expect(again.data.toString()).toContain('#%% code id=controls collapsed\n@bind n Slider(20:5:200)\n@bind m Slider(1:3)\n');
+  expect(errors).toEqual([]);
+});

@@ -5,7 +5,7 @@ import { readZipText, type ZipEntries } from './zip';
 const EMPTY = new Uint8Array();
 import { t } from '../i18n';
 
-export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf' | 'text' | 'image';
+export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf' | 'text' | 'image';
 /** `file`: text and source files (FILE-022) and pictures (FILE-023), which keep their own name and extension. */
 export type DocumentKind = 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'file';
 
@@ -20,6 +20,7 @@ export const MIME_TYPES: Record<DocumentFormat, string> = {
   md: 'text/markdown',
   mdz: 'application/x-mdz',
   tex: 'application/x-tex',
+  jl: 'text/x-julia',
   texzip: 'application/zip',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ods: 'application/vnd.oasis.opendocument.spreadsheet',
@@ -38,7 +39,7 @@ export function formatLabel(format: DocumentFormat): string {
 
 
 /** File extensions accepted by the open dialog. */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.tex', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
 
 export function formatKind(format: DocumentFormat): DocumentKind {
   switch (format) {
@@ -48,6 +49,7 @@ export function formatKind(format: DocumentFormat): DocumentKind {
     case 'mdz':
     case 'tex':
     case 'texzip':
+    case 'jl':
       return 'document';
     case 'xlsx':
     case 'ods':
@@ -68,7 +70,7 @@ export function formatKind(format: DocumentFormat): DocumentKind {
 /** Formats a document can be saved in, the preferred family first (FILE-016). */
 export function saveFormatsFor(kind: DocumentKind, family: 'open' | 'microsoft' = 'open'): DocumentFormat[] {
   const pair = (open: DocumentFormat, ms: DocumentFormat): DocumentFormat[] => (family === 'open' ? [open, ms] : [ms, open]);
-  if (kind === 'document') return [...pair('odt', 'docx'), 'md', 'mdz', 'tex', 'texzip'];
+  if (kind === 'document') return [...pair('odt', 'docx'), 'md', 'mdz', 'tex', 'texzip', 'jl'];
   if (kind === 'spreadsheet') return [...pair('ods', 'xlsx'), 'csv'];
   if (kind === 'presentation') return pair('odp', 'pptx');
   if (kind === 'file') return [];
@@ -101,6 +103,8 @@ export function detectFormat(name: string, bytes: Uint8Array): DocumentFormat | 
   if (ext === 'csv' || ext === 'tsv') return 'csv';
   if (ext === 'md' || ext === 'markdown') return 'md';
   if (ext === 'tex' || ext === 'latex' || ext === 'ltx') return 'tex';
+  // DOC-038: a Julia file made of `#%%` cells is a KaimonSlate notebook; other Julia files are source files.
+  if (ext === 'jl' && /^\s*#%%/.test(new TextDecoder().decode(bytes.subarray(0, 4096)))) return 'jl';
   if (ext === 'svg' && /<svg[\s>]/.test(new TextDecoder().decode(bytes.subarray(0, 4096)))) return 'image';
   if (TEXT_EXTENSIONS.has(ext) || TEXT_NAMES.test(baseName(name))) return 'text';
   return null;

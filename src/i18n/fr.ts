@@ -1018,6 +1018,8 @@ export const fr: Record<MessageKey, string> = {
   'textfile.figure': 'Figure {n}',
   'code.stopped': 'Arrêté.',
   'textfile.noCompiler': 'TypeScript n’a pas pu être compilé ici.',
+  'kslate.runHint': 'Les cellules Julia s’exécutent dans KaimonSlate : ouvrez-y le notebook avec « slate notebook.jl ». Ici, vous pouvez le lire, le modifier et l’enregistrer.',
+  'format.jl': 'Notebook KaimonSlate (.jl)',
   'tpl.mine': 'Mes modèles',
   'tpl.mineEmpty': 'Aucun pour l’instant : ouvrez un document et choisissez « Enregistrer comme modèle… » dans Enregistrer sous.',
   'tpl.delete': 'Supprimer le modèle {name}',

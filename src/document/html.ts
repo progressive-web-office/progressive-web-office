@@ -334,6 +334,7 @@ export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (
   const cell = doc.createElement('span');
   cell.className = 'code-cell';
   cell.dataset.lang = run.lang;
+  if (run.header !== undefined) cell.dataset.header = run.header;
   cell.contentEditable = 'false';
   // CODE-013: only the output of a cell whose code is hidden is shown (and printed).
   if (run.hidden) {
@@ -385,12 +386,12 @@ export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (
   return cell;
 }
 
-const CODE_LANGS: readonly CodeLang[] = ['python', 'javascript'];
+const CODE_LANGS: readonly CodeLang[] = ['python', 'javascript', 'julia'];
 
 function codeCellFromDom(el: HTMLElement, lookupImage: (img: HTMLImageElement) => string | undefined): CodeCellRun | undefined {
   const lang = CODE_LANGS.find((l) => l === el.dataset.lang);
   if (!lang) return undefined;
-  const run: CodeCellRun = { cell: el.querySelector('.code-cell-source')?.textContent ?? '', lang };
+  const run: CodeCellRun = { cell: el.querySelector('.code-cell-source')?.textContent ?? '', lang, ...(el.dataset.header !== undefined ? { header: el.dataset.header } : {}) };
   // A run in progress shows its status there: not part of the document.
   const output = el.querySelector<HTMLElement>('.code-cell-output:not(.pending)');
   if (output) {

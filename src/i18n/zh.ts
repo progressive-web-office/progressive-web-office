@@ -1018,6 +1018,8 @@ export const zh: Record<MessageKey, string> = {
   'textfile.figure': '图 {n}',
   'code.stopped': '已停止。',
   'textfile.noCompiler': '无法在此编译 TypeScript。',
+  'kslate.runHint': 'Julia 单元格在 KaimonSlate 中运行：使用“slate notebook.jl”在其中打开笔记本。在这里可以阅读、编辑和保存它。',
+  'format.jl': 'KaimonSlate 笔记本 (.jl)',
   'tpl.mine': '我的模板',
   'tpl.mineEmpty': '暂无：打开文档并在“另存为”中选择“另存为模板…”。',
   'tpl.delete': '删除模板 {name}',

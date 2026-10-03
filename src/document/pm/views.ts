@@ -361,7 +361,7 @@ class FootnoteView extends AtomView {
 class CodeCellView extends AtomView {
   protected override render(): void {
     const a = this.node.attrs;
-    const run: CodeCellRun = { cell: a.cell as string, lang: a.lang as CodeCellRun['lang'], ...(a.output ? { output: a.output as CodeCellRun['output'] } : {}), ...(a.hidden ? { hidden: true } : {}) };
+    const run: CodeCellRun = { cell: a.cell as string, lang: a.lang as CodeCellRun['lang'], ...(a.output ? { output: a.output as CodeCellRun['output'] } : {}), ...(a.hidden ? { hidden: true } : {}), ...(a.header !== null ? { header: a.header as string } : {}) };
     const el = codeCellElement(run, document, (key) => this.hooks.resolve(key));
     (el as HTMLElement & { [CELL_HANDLE]?: CellHandle })[CELL_HANDLE] = { element: el, getPos: this.getPos, refresh: () => this.render() };
     this.dom.replaceChildren(el);

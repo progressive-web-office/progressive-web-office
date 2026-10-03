@@ -518,6 +518,7 @@ export class DocumentEditor implements EditorView {
 
   private onCellAction(action: string, pos: number, node: PmNode): void {
     if (this.readOnly) return;
+    if ((action === 'run' || action === 'run-all') && node.attrs.lang === 'julia') return void window.alert(t('kslate.runHint'));
     if (action === 'run') void this.runCells([pos]);
     else if (action === 'run-all') void this.runCells(this.cellPositions());
     else if (action === 'stop') this.runner?.stop();
@@ -539,7 +540,8 @@ export class DocumentEditor implements EditorView {
   private cellPositions(): number[] {
     const out: number[] = [];
     this.view.state.doc.descendants((n, pos) => {
-      if (n.type === schema.nodes.code_cell) out.push(pos);
+      // DOC-038: Julia cells run in KaimonSlate, not here.
+      if (n.type === schema.nodes.code_cell && n.attrs.lang !== 'julia') out.push(pos);
     });
     return out;
   }
@@ -555,7 +557,8 @@ export class DocumentEditor implements EditorView {
     // Changing the code makes the previous output stale.
     const unchanged = current && current.cell === value.code && current.lang === value.lang;
     const attrs = { cell: value.code, lang: value.lang, output: unchanged ? current.output : null };
-    if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, attrs));
+    // The other attributes (hidden code, KaimonSlate header) stay.
+    if (pos !== undefined) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...node?.attrs, ...attrs }));
     else this.command(insertOnOwnLine(schema.nodes.code_cell!.create(attrs)));
     this.refocus();
     // CODE-014: the cells using what it defined (before or now) are out of date.
@@ -572,7 +575,7 @@ export class DocumentEditor implements EditorView {
   private allCells(): { pos: number; node: PmNode }[] {
     const out: { pos: number; node: PmNode }[] = [];
     this.view.state.doc.descendants((node, pos) => {
-      if (node.type === schema.nodes.code_cell) out.push({ pos, node });
+      if (node.type === schema.nodes.code_cell && node.attrs.lang !== 'julia') out.push({ pos, node });
     });
     return out;
   }

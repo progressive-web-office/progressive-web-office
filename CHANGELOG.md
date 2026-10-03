@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- KaimonSlate notebooks (DOC-038): a `.jl` file of `#%%` cells opens as a
+  document (text cells, Julia code cells with their headers) and saves back
+  unchanged where it was not edited.
+
 - Running source files (CODE-017): a `.py`, `.js` or `.ts` file opened in the
   code viewer runs (whole or selection) in the code-cell sandbox, with its
   output, errors and figures below the code.

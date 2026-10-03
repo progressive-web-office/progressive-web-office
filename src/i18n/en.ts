@@ -1016,6 +1016,8 @@ export const en = {
   'textfile.figure': 'Figure {n}',
   'code.stopped': 'Stopped.',
   'textfile.noCompiler': 'TypeScript could not be compiled here.',
+  'kslate.runHint': 'Julia cells run in KaimonSlate: open the notebook there with “slate notebook.jl”. Here you can read, edit and save it.',
+  'format.jl': 'KaimonSlate notebook (.jl)',
   'tpl.mine': 'My templates',
   'tpl.mineEmpty': 'None yet: open a document and choose “Save as template…” in Save as.',
   'tpl.delete': 'Delete the template {name}',

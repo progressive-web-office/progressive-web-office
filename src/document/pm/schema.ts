@@ -63,6 +63,7 @@ function paragraphDom(node: PmNode): DOMOutputSpec {
   for (const k of LAYOUT_KEYS) if (node.attrs[k] !== null) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(node.attrs[k]);
   if (style === 'caption') attrs.class = 'caption';
   if (node.attrs.solution) attrs['data-solution'] = 'true';
+  if (node.attrs.cellHeader !== null) attrs['data-cell-header'] = node.attrs.cellHeader as string;
   if (listOrdered !== null) {
     attrs.class = `${attrs.class ?? ''} list-item`.trim();
     attrs['data-list'] = listOrdered ? 'ol' : 'ul';
@@ -93,6 +94,9 @@ export const schema = new Schema({
         anchor: { default: null },
         /** Part of the answer key (TEACH-001). */
         solution: { default: false },
+        /** DOC-038: first block of a KaimonSlate text cell (its header and Markdown as written). */
+        cellHeader: { default: null },
+        cellSource: { default: null },
       },
       parseDOM: [
         ...STYLES.filter((s) => /^h\d$/.test(s)).map((s) => ({ tag: s, getAttrs: (d: HTMLElement) => paragraphAttrs(d, s) })),
@@ -211,14 +215,14 @@ export const schema = new Schema({
       inline: true,
       group: 'inline',
       atom: true,
-      attrs: { cell: { default: '' }, lang: { default: 'python' }, output: { default: null }, hidden: { default: false } },
+      attrs: { cell: { default: '' }, lang: { default: 'python' }, output: { default: null }, hidden: { default: false }, header: { default: null } },
       parseDOM: [
         {
           tag: 'span.code-cell[data-cell]',
           getAttrs: (d: HTMLElement) => ({ cell: d.dataset.cell ?? '', lang: d.dataset.lang ?? 'python', output: d.dataset.output ? (JSON.parse(d.dataset.output) as CellOutput) : null, hidden: d.dataset.hidden === 'true' }),
         },
       ],
-      toDOM: (n) => ['span', { class: 'code-cell', 'data-lang': n.attrs.lang, 'data-cell': n.attrs.cell, ...(n.attrs.output ? { 'data-output': json(n.attrs.output) } : {}), ...(n.attrs.hidden ? { 'data-hidden': 'true' } : {}) }, n.attrs.cell],
+      toDOM: (n) => ['span', { class: 'code-cell', 'data-lang': n.attrs.lang, 'data-cell': n.attrs.cell, ...(n.attrs.header !== null ? { 'data-header': n.attrs.header } : {}), ...(n.attrs.output ? { 'data-output': json(n.attrs.output) } : {}), ...(n.attrs.hidden ? { 'data-hidden': 'true' } : {}) }, n.attrs.cell],
     },
   },
   // The order is the nesting order: links outermost.

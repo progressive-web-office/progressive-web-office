@@ -70,6 +70,10 @@ export function createCellEditor(parent: HTMLElement, opts: { doc: string; lang:
 }
 
 async function loadLanguage(lang: CodeLang, complete?: SmartComplete): Promise<Extension> {
+  if (lang === 'julia') {
+    const [{ StreamLanguage }, { julia }] = await Promise.all([import('@codemirror/language'), import('@codemirror/legacy-modes/mode/julia')]);
+    return StreamLanguage.define(julia);
+  }
   if (lang === 'python') {
     const [{ python }, sources] = await Promise.all([import('@codemirror/lang-python'), pythonSources(complete)]);
     return [python(), completionSupport(sources)];

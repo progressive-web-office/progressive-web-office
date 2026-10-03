@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { button, h } from '../app/dom';
 import type { CodeLang } from '../document/model';
 
-export const LANG_LABEL: Record<CodeLang, string> = { python: 'Python', javascript: 'JavaScript' };
+export const LANG_LABEL: Record<CodeLang, string> = { python: 'Python', javascript: 'JavaScript', julia: 'Julia' };
 
 /** Add the Run / Edit bar to every cell under `root` that has none. */
 export function decorateCells(root: HTMLElement): void {
@@ -23,11 +23,16 @@ export function decorateCells(root: HTMLElement): void {
         { class: 'code-cell-bar', contenteditable: 'false' },
         h('span', { class: 'code-cell-lang' }, LANG_LABEL[lang] ?? lang, cell.classList.contains('code-hidden') ? h('span', { class: 'code-cell-hidden-note' }, ` · ${t('code.hiddenNote')}`) : ''),
         action('toggle-code', cell.classList.contains('code-hidden') ? '👁' : '🙈', t(cell.classList.contains('code-hidden') ? 'code.showCode' : 'code.hideCode')),
-        action('run', '▶', t('code.run')),
-        action('run-all', '⏩', t('code.runAll')),
-        action('stop', '■', t('code.stop')),
-        // CODE-015: where the cell is in the dependency graph.
-        action('graph', '🔀', t('code.dagCell')),
+        // DOC-038: a Julia cell of a KaimonSlate notebook shows its header (id, tags); it runs in KaimonSlate.
+        ...(lang === 'julia'
+          ? [h('span', { class: 'code-cell-header', title: t('kslate.runHint') }, `#%% ${cell.dataset.header ?? 'code'}`)]
+          : [
+              action('run', '▶', t('code.run')),
+              action('run-all', '⏩', t('code.runAll')),
+              action('stop', '■', t('code.stop')),
+              // CODE-015: where the cell is in the dependency graph.
+              action('graph', '🔀', t('code.dagCell')),
+            ]),
         action('edit', '✎', t('code.edit')),
       ),
     );
@@ -77,7 +82,7 @@ export async function editCell(host: HTMLElement, initial?: CellValue, complete?
   const { createCellEditor } = await import('./cell-editor');
   return new Promise((resolve) => {
     const m = modal(host, 'code-title');
-    const lang = h('select', { 'aria-label': t('code.language') }, ...(['python', 'javascript'] as CodeLang[]).map((l) => h('option', { value: l }, LANG_LABEL[l])));
+    const lang = h('select', { 'aria-label': t('code.language') }, ...((initial?.lang === 'julia' ? ['julia'] : ['python', 'javascript']) as CodeLang[]).map((l) => h('option', { value: l }, LANG_LABEL[l])));
     lang.value = initial?.lang ?? 'python';
     const source = h('div', { class: 'code-source' });
     const editor = createCellEditor(source, { doc: initial?.code ?? '', lang: lang.value as CodeLang, label: t('code.source'), ...(complete ? { complete } : {}) });

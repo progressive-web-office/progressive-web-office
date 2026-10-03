@@ -7,6 +7,7 @@ import { readLatexZip, writeLatexZip } from './latex-project';
 import { readLatex } from './latex-reader';
 import { writeLatex } from './latex-writer';
 import { readMarkdown } from './markdown-reader';
+import { readKaimonSlate, writeKaimonSlate } from './kslate';
 import { writeMarkdown } from './markdown-writer';
 import { readMdz, type MdzReadOptions } from './mdz-reader';
 import type { MarkdownReadOptions } from './markdown-reader';
@@ -15,7 +16,7 @@ import { collectDiagrams, collectMath, type RenderedDiagram, type RichDocument, 
 import { readOdt } from './odt-reader';
 import { writeOdt } from './odt-writer';
 
-export type TextFormat = Extract<DocumentFormat, 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip'>;
+export type TextFormat = Extract<DocumentFormat, 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl'>;
 
 export async function readDocument(format: TextFormat, bytes: Uint8Array, opts: MdzReadOptions & MarkdownReadOptions = {}): Promise<RichDocument> {
   switch (format) {
@@ -31,6 +32,8 @@ export async function readDocument(format: TextFormat, bytes: Uint8Array, opts: 
       return readLatex(new TextDecoder().decode(bytes));
     case 'texzip':
       return readLatexZip(bytes);
+    case 'jl':
+      return readKaimonSlate(new TextDecoder().decode(bytes));
   }
 }
 
@@ -49,6 +52,9 @@ export function writeDocument(doc: RichDocument, format: TextFormat, opts: Write
       return new TextEncoder().encode(writeLatex(acceptAll(doc)).tex);
     case 'texzip':
       return writeLatexZip(acceptAll(doc), opts);
+    // DOC-038: a KaimonSlate notebook, its cells and headers kept.
+    case 'jl':
+      return new TextEncoder().encode(writeKaimonSlate(acceptAll(doc)));
   }
 }
 

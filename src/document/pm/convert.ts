@@ -78,7 +78,7 @@ function runsToInline(runs: Run[]): PmNode[] {
     } else if ('cite' in run) {
       out.push(schema.nodes.cite!.create({ keys: run.cite, locator: run.locator ?? null }));
     } else {
-      out.push(schema.nodes.code_cell!.create({ cell: run.cell, lang: run.lang, output: run.output ?? null, hidden: !!run.hidden }));
+      out.push(schema.nodes.code_cell!.create({ cell: run.cell, lang: run.lang, output: run.output ?? null, hidden: !!run.hidden, header: run.header ?? null }));
     }
   }
   return out;
@@ -87,7 +87,7 @@ function runsToInline(runs: Run[]): PmNode[] {
 export function paragraphToPm(p: Paragraph): PmNode {
   const layout = Object.fromEntries(LAYOUT_KEYS.map((k) => [k, p[k] ?? null]));
   return schema.nodes.paragraph!.create(
-    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, anchor: p.id ?? null, solution: !!p.solution, ...layout },
+    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, anchor: p.id ?? null, solution: !!p.solution, cellHeader: p.cellHeader ?? null, cellSource: p.cellSource ?? null, ...layout },
     runsToInline(p.runs),
   );
 }
@@ -162,7 +162,7 @@ function inlineToRuns(node: PmNode): Run[] {
         runs.push(a.locator ? { cite: [...(a.keys as string[])], locator: a.locator as string } : { cite: [...(a.keys as string[])] });
         break;
       case 'code_cell':
-        runs.push({ cell: a.cell as string, lang: a.lang as 'python', ...(a.output ? { output: a.output as NonNullable<Extract<Run, { cell: string }>['output']> } : {}), ...(a.hidden ? { hidden: true } : {}) });
+        runs.push({ cell: a.cell as string, lang: a.lang as 'python', ...(a.output ? { output: a.output as NonNullable<Extract<Run, { cell: string }>['output']> } : {}), ...(a.hidden ? { hidden: true } : {}), ...(a.header !== null && a.header !== undefined ? { header: a.header as string } : {}) });
         break;
     }
   });
@@ -176,6 +176,8 @@ export function pmToParagraph(node: PmNode): Paragraph {
     style: a.style,
     ...(node.attrs.anchor ? { id: node.attrs.anchor as string } : {}),
     ...(node.attrs.solution ? { solution: true } : {}),
+    ...(node.attrs.cellHeader !== null ? { cellHeader: node.attrs.cellHeader as string } : {}),
+    ...(node.attrs.cellSource !== null ? { cellSource: node.attrs.cellSource as string } : {}),
     ...(a.align ? { align: a.align } : {}),
     ...(a.listOrdered !== null ? { list: { ordered: a.listOrdered, level: a.listLevel } } : {}),
     ...Object.fromEntries(LAYOUT_KEYS.filter((k) => node.attrs[k] !== null).map((k) => [k, node.attrs[k] as number])),

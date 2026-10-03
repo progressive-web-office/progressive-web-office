@@ -106,7 +106,8 @@ export async function openView(
     case 'md':
     case 'mdz':
     case 'tex':
-    case 'texzip': {
+    case 'texzip':
+    case 'jl': {
       const [{ DocumentEditor }, { readDocument }] = await Promise.all([import('../document/editor'), import('../document/io')]);
       const doc = await readDocument(format, bytes, {
         chooseEntry: (candidates, preselected) =>

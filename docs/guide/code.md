@@ -280,6 +280,20 @@ application. Other pure-Python packages can be installed by a cell with
 package index, once you allowed the site (see [widgets](#packages-of-widgets)).
 Packages with compiled code are only those of Pyodide.
 
+## KaimonSlate notebooks (Julia)
+
+A [KaimonSlate](https://github.com/kahliburke/KaimonSlate.jl) notebook — a
+`.jl` file whose cells start with `#%% md` or `#%% code` lines — opens as a
+document: text cells as formatted text, code cells as **Julia** cells showing
+their header (`#%% code id=… tags`). You can read, edit, comment, version and
+share it like any document, and **Save** writes the notebook back: headers,
+ids and tags are kept, and the text cells you did not change keep their
+Markdown exactly as written. A `.jl` file without `#%%` cells opens as Julia
+source code.
+
+Julia does not run in the browser: run the notebook in KaimonSlate itself
+(`slate notebook.jl`). Here, Julia cells have no ▶ button.
+
 ## Storage in each format
 
 | Format | Cell | Output |
