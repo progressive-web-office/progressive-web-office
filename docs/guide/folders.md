@@ -107,6 +107,12 @@ A folder of Markdown notes works as a set of linked notes:
   what you type first; typing `#` and a letter lists the tags already used.
   <kbd>↑</kbd>/<kbd>↓</kbd> choose, <kbd>Enter</kbd> or <kbd>Tab</kbd>
   insert, <kbd>Esc</kbd> closes the list.
+- **Note identifiers**: **🆔** in the explorer (or *New note with an
+  identifier* in its menu) creates a note named after the date and time,
+  `202410031530 Untitled.md`, with `id: 202410031530` in its front matter.
+  `[[202410031530]]` links to it whatever its title becomes: a link made of
+  8 to 14 digits goes to the note whose name starts with them, or whose front
+  matter has that `id`.
 - `![[picture.png]]` shows a picture of the folder; `![[Note]]` is kept as a
   link to that note.
 - The panel lists the notes **linked from** the open note (backlinks), and

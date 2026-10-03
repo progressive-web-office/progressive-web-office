@@ -3,7 +3,7 @@
  * and links kept up to date when a note is renamed.
  */
 import { readText, resolve as resolvePath, type StorageProvider } from '../fs';
-import { frontMatterAliases, noteName, parseWikiLinks, renameWikiLinks, resolveNote } from '../document/wiki-links';
+import { frontMatterAliases, frontMatterId, noteName, parseWikiLinks, renameWikiLinks, resolveNote } from '../document/wiki-links';
 import { noteTags, renameTag } from './tags';
 
 export const isNote = (path: string): boolean => /\.(md|markdown)$/i.test(path);
@@ -34,7 +34,9 @@ export class NoteVault {
   async aliases(notes: string[]): Promise<Map<string, string[]>> {
     const out = new Map<string, string[]>();
     for (const n of notes) {
-      const a = frontMatterAliases(await this.text(n));
+      const text = await this.text(n);
+      // FOLDER-024: the identifier of the front matter works as an alias.
+      const a = [...frontMatterAliases(text), ...[frontMatterId(text)].filter((x): x is string => !!x)];
       if (a.length) out.set(n, a);
     }
     return out;

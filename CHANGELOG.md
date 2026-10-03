@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Note identifiers (FOLDER-024): new notes named and marked with the date and
+  time, and `[[202410031530]]` links by identifier. The file explorer can
+  offer several kinds of new files.
+
 - Tags shown as tags in the notes of a folder, with colours chosen in the
   folder panel (FOLDER-023).
 

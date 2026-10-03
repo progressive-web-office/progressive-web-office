@@ -942,6 +942,7 @@ export const en = {
   'colour.blue': 'Blue',
   'colour.purple': 'Purple',
   'colour.grey': 'Grey',
+  'folder.newNoteId': 'New note with an identifier',
   'tpl.mine': 'My templates',
   'tpl.mineEmpty': 'None yet: open a document and choose “Save as template…” in Save as.',
   'tpl.delete': 'Delete the template {name}',

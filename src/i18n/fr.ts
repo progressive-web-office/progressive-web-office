@@ -944,6 +944,7 @@ export const fr: Record<MessageKey, string> = {
   'colour.blue': 'Bleu',
   'colour.purple': 'Violet',
   'colour.grey': 'Gris',
+  'folder.newNoteId': 'Nouvelle note avec un identifiant',
   'tpl.mine': 'Mes modèles',
   'tpl.mineEmpty': 'Aucun pour l’instant : ouvrez un document et choisissez « Enregistrer comme modèle… » dans Enregistrer sous.',
   'tpl.delete': 'Supprimer le modèle {name}',

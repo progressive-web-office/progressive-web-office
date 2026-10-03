@@ -210,3 +210,24 @@ describe('FOLDER-016 file explorer: collapse all, show the open document', () =>
     expect(document.activeElement).toBe(row('a/b/c.md'));
   });
 });
+
+describe('FOLDER-024 kinds of new files', () => {
+  it('offers the other kinds in the toolbar and creates them with a computed name and content', async () => {
+    const { x, provider, opened } = await explorer(
+      {},
+      {
+        prompt: async (_m, value) => value,
+        newFiles: [
+          { label: 'New note', name: 'Untitled.md', content: () => new Blob(['# U\n']) },
+          { label: 'New dated note', icon: '🆔', name: () => '202410031530 Untitled.md', content: (name) => new Blob([`id from ${name}`]) },
+        ],
+      },
+    );
+    const button = x.element.querySelector<HTMLButtonElement>('[aria-label="New dated note"]')!;
+    expect(button.textContent).toBe('🆔');
+    button.click();
+    await settle();
+    expect(await (await provider.read('202410031530 Untitled.md')).text()).toBe('id from 202410031530 Untitled.md');
+    expect(opened).toEqual(['202410031530 Untitled.md']);
+  });
+});

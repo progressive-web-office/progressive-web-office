@@ -8,6 +8,7 @@ import { basename, dirname, Explorer, listFiles, walk, type Entry, type Explorer
 import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault, noteName } from './vault';
+import { newNoteId, newNoteText, noteId } from '../document/wiki-links';
 import { loadTagColours, setTagColour, TAG_COLOURS, type TagColour } from './tags';
 
 /** Files the app opens, by extension. */
@@ -115,7 +116,20 @@ export class FolderPanel {
         await this.reindex();
         await hooks.changed(change);
       },
-      newFiles: [{ label: t('folder.newFile'), name: `${t('folder.untitled')}.md`, content: () => new Blob([`# ${t('folder.untitled')}\n`]) }],
+      newFiles: [
+        { label: t('folder.newFile'), name: `${t('folder.untitled')}.md`, content: () => new Blob([`# ${t('folder.untitled')}\n`]) },
+        // FOLDER-024: a note named and marked with an identifier from the date and time.
+        {
+          label: t('folder.newNoteId'),
+          icon: '🆔',
+          name: () => `${newNoteId()} ${t('folder.untitled')}.md`,
+          content: (name) => {
+            const stem = name.replace(/\.(md|markdown)$/i, '');
+            const id = noteId(name) ?? newNoteId();
+            return new Blob([newNoteText(id, stem.slice(stem.startsWith(id) ? id.length : 0).trim() || id)]);
+          },
+        },
+      ],
       prompt: hooks.prompt,
       confirm: hooks.confirm,
       onError: hooks.error,

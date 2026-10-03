@@ -101,7 +101,7 @@ group is not a commitment.
   (FOLDER-023)
 - ✅ Related notes (shared tags and links) beside the open note (FOLDER-019)
 - ✅ A graph of the links between the notes of a folder (FOLDER-018)
-- Note identifiers (timestamps) and links by identifier
+- ✅ Note identifiers (timestamps) and links by identifier (FOLDER-024)
 
 ### Working on several documents
 

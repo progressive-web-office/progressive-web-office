@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readMarkdown } from '../src/document/markdown-reader';
 import { writeMarkdown } from '../src/document/markdown-writer';
-import { frontMatterAliases, parseWikiLinks, renameWikiLinks, resolveNote } from '../src/document/wiki-links';
+import { frontMatterAliases, frontMatterId, newNoteId, newNoteText, noteId, parseWikiLinks, renameWikiLinks, resolveNote } from '../src/document/wiki-links';
 
 const MD = 'See [[PID control]], [[notes/Tuning#Ziegler|the method]] and [[#Intro]].\n\n![[diagram.png]] ![[Glossary]]\n';
 
@@ -71,5 +71,27 @@ describe('FOLDER-005 note vault', async () => {
     expect(await vault.renameLinks('notes/control.md', 'notes/regulation.md', moved)).toEqual(['index.md', 'notes/plan.md']);
     expect(await readText(p, 'notes/plan.md')).toContain('See [[regulation#PID|PID]].');
     expect(await readText(p, 'index.md')).toContain('[[regulation]] and');
+  });
+});
+
+describe('FOLDER-024 note identifiers', () => {
+  it('reads the identifier at the start of a note name, or in its front matter', () => {
+    expect(noteId('notes/202410031530 Entropy.md')).toBe('202410031530');
+    expect(noteId('20241003-entropy.md')).toBe('20241003');
+    expect(noteId('2024 plan.md')).toBeUndefined();
+    expect(noteId('Entropy.md')).toBeUndefined();
+    expect(frontMatterId('---\nid: 202410031530\ntitle: E\n---\n# E\n')).toBe('202410031530');
+    expect(frontMatterId('# E\n')).toBeUndefined();
+  });
+
+  it('links by identifier: [[202410031530]] goes to the note named or marked with it', () => {
+    const notes = ['index.md', 'z/202410031530 Entropy.md', 'other.md'];
+    expect(resolveNote('202410031530', notes, 'index.md')).toBe('z/202410031530 Entropy.md');
+    expect(resolveNote('20991231', notes, 'index.md', new Map([['other.md', ['20991231']]]))).toBe('other.md');
+  });
+
+  it('gives a new note an identifier from the date and time', () => {
+    expect(newNoteId(new Date(2024, 9, 3, 15, 30, 12))).toBe('202410031530');
+    expect(newNoteText('202410031530', 'Entropy')).toBe('---\nid: 202410031530\n---\n# Entropy\n');
   });
 });

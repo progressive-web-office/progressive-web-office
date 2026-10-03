@@ -944,6 +944,7 @@ export const zh: Record<MessageKey, string> = {
   'colour.blue': '蓝色',
   'colour.purple': '紫色',
   'colour.grey': '灰色',
+  'folder.newNoteId': '带标识符的新笔记',
   'tpl.mine': '我的模板',
   'tpl.mineEmpty': '暂无：打开文档并在“另存为”中选择“另存为模板…”。',
   'tpl.delete': '删除模板 {name}',

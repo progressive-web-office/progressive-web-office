@@ -93,8 +93,30 @@ export function resolveNote(target: string, notes: string[], from: string, alias
     return candidates.find((c) => c.startsWith(dir) && !c.slice(dir.length).includes('/')) ?? candidates.sort((a, b) => a.split('/').length - b.split('/').length)[0];
   }
   for (const [note, names] of aliases) if (names.some((a) => a.toLowerCase() === t)) return note;
+  // FOLDER-024: a link by identifier, to the note whose name starts with it.
+  if (/^\d{8,14}$/.test(t)) return notes.find((n) => noteId(n) === t);
   return undefined;
 }
+
+/** FOLDER-024: the identifier a note name starts with (a date and time, 8 to 14 digits), if any. */
+export function noteId(path: string): string | undefined {
+  return /^(\d{8,14})(?=[\s_-]|$)/.exec(noteName(path))?.[1];
+}
+
+/** FOLDER-024: the `id:` of a note's front matter, if any. */
+export function frontMatterId(text: string): string | undefined {
+  const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1];
+  const id = fm && /^id:[ \t]*(\S.*?)[ \t]*$/m.exec(fm)?.[1];
+  return id ? id.replace(/^["']|["']$/g, '') : undefined;
+}
+
+const pad = (n: number): string => String(n).padStart(2, '0');
+
+/** FOLDER-024: an identifier for a new note, from the date and time (`YYYYMMDDHHmm`). */
+export const newNoteId = (d = new Date()): string => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+
+/** FOLDER-024: the text of a new note with an identifier. */
+export const newNoteText = (id: string, title: string): string => `---\nid: ${id}\n---\n# ${title}\n`;
 
 /** Rename the wiki links to a note (`[[old…]]` → `[[new…]]`); returns the new text and the number of links changed. */
 export function renameWikiLinks(text: string, oldName: string, newName: string): { text: string; count: number } {

@@ -345,3 +345,21 @@ test('shows the #tags of a note as tags, in the colours given to them (FOLDER-02
   await panel.getByText('Tags', { exact: true }).click();
   await expect(panel.getByLabel('Colour of the tag todo')).toHaveValue('red');
 });
+
+test('creates notes with an identifier and follows links by identifier (FOLDER-024)', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2024, 9, 3, 15, 30));
+  await fakeFolder(page, { 'index.md': '# Index\n\nSee [[202301011200]].\n', 'z/202301011200 Entropy.md': '# Entropy\n' });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'index.md' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await editor.getByRole('link', { name: '202301011200' }).click({ modifiers: ['Control'] });
+  await expect(page.locator('.doc-page h1')).toHaveText('Entropy');
+  // A new note named and marked with the date and time.
+  await panel.getByRole('button', { name: 'z', exact: true }).click();
+  page.once('dialog', (d) => void d.accept('202410031530 Heat.md'));
+  await panel.getByRole('button', { name: 'New note with an identifier' }).click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Heat');
+  const files = () => page.evaluate(() => Object.fromEntries((window as unknown as { __folder: Map<string, string> }).__folder));
+  expect((await files())['z/202410031530 Heat.md']).toBe('---\nid: 202410031530\n---\n# Heat\n');
+});

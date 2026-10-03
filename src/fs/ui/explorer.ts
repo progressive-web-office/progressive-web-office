@@ -87,9 +87,12 @@ export interface ExplorerChange {
 
 export interface NewFileKind {
   label: string;
-  /** Default name, e.g. `Untitled.md`. */
-  name: string;
-  content: () => Blob | Promise<Blob>;
+  /** Default name, e.g. `Untitled.md`, or a function giving it (a name with the date). */
+  name: string | (() => string);
+  /** Content of the new file, given its name. */
+  content: (name: string) => Blob | Promise<Blob>;
+  /** Other kinds than the first: with an icon, a button of the toolbar too (all are in the menu). */
+  icon?: string;
 }
 
 export interface ExplorerOptions {
@@ -217,6 +220,7 @@ export class Explorer {
       ...(writable
         ? [
             tool(this.strings.newFile, '＋', () => void this.createFile()),
+            ...(this.opts.newFiles ?? []).slice(1).flatMap((kind) => (kind.icon ? [tool(kind.label, kind.icon, () => void this.createFile(kind))] : [])),
             tool(this.strings.newFolder, '📁＋', () => void this.createFolder()),
             tool(this.strings.importFiles, '📥', () => this.picker.click()),
             tool(this.strings.rename, '✎', () => void this.renameSelected()),
@@ -583,12 +587,12 @@ export class Explorer {
 
   async createFile(kind: NewFileKind = this.opts.newFiles?.[0] ?? { label: this.strings.newFile, name: 'Untitled.txt', content: () => new Blob([]) }): Promise<Entry | undefined> {
     const dir = this.targetDir();
-    const name = await this.prompt(this.strings.namePrompt, await freeName(this.provider, dir, kind.name));
+    const name = await this.prompt(this.strings.namePrompt, await freeName(this.provider, dir, typeof kind.name === 'function' ? kind.name() : kind.name));
     if (!name) return undefined;
     try {
       const path = join(dir, checkName(name));
       if ((await this.provider.list(dir)).some((e) => e.name.toLowerCase() === basename(path).toLowerCase())) throw new FsError('Exists', path, `“${basename(path)}” already exists.`);
-      await this.provider.write(path, await kind.content());
+      await this.provider.write(path, await kind.content(basename(path)));
       const entry: Entry = { name: basename(path), path, kind: 'file' };
       this.select(entry);
       await this.changed({ type: 'create', path, kind: 'file' });
@@ -893,7 +897,12 @@ export class Explorer {
     const items: [string, () => unknown][] = [];
     if (one) items.push([this.strings.open, () => (one.kind === 'file' ? this.opts.onOpen(one) : this.row(one.path) && this.toggle(one, this.row(one.path)!, true))]);
     if (writable && (!entries.length || one?.kind === 'directory')) {
-      items.push([this.strings.newFile, () => this.createFile()], [this.strings.newFolder, () => this.createFolder()], [this.strings.importFiles, () => this.picker.click()]);
+      items.push(
+        [this.strings.newFile, () => this.createFile()],
+        ...(this.opts.newFiles ?? []).slice(1).map((kind): [string, () => unknown] => [kind.label, () => this.createFile(kind)]),
+        [this.strings.newFolder, () => this.createFolder()],
+        [this.strings.importFiles, () => this.picker.click()],
+      );
     }
     if (entries.length) {
       if (writable && one) items.push([this.strings.rename, () => this.renameSelected()]);
