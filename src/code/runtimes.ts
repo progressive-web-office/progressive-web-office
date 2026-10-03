@@ -22,8 +22,9 @@ export interface Runtime {
 }
 
 const jsdelivr = (pkg: string, path: string): string => `https://cdn.jsdelivr.net/npm/${pkg}/${path}`;
+const CLANG = '@yowasp/clang@22.0.0-git20542-10';
 
-export const RUNTIMES: Record<'lua' | 'sql', Runtime> = {
+export const RUNTIMES: Record<'lua' | 'sql' | 'cpp', Runtime> = {
   lua: {
     name: 'Lua 5.4 (wasmoon 1.16.0)',
     size: '0.5 MB',
@@ -40,7 +41,26 @@ export const RUNTIMES: Record<'lua' | 'sql', Runtime> = {
       wasm: { url: jsdelivr('sql.js@1.14.2', 'dist/sql-wasm.wasm'), sha256: '38c14f6e379210bc942bdc4ebca44e7bfdb4318ecc1c72ca666a28fdce96670a' },
     },
   },
+  // Clang and LLD compiled to WebAssembly (YoWASP); the bundle fetches the other files itself.
+  cpp: {
+    name: 'Clang/LLD 22 (YoWASP)',
+    size: '105 MB',
+    files: {
+      js: { url: jsdelivr(CLANG, 'gen/bundle.js'), sha256: 'c7ce70fb627eedc9bd6159928743da85eac7b4729aa2e776ae3771ae76c91dd6' },
+      'llvm-resources.tar': { url: jsdelivr(CLANG, 'gen/llvm-resources.tar'), sha256: '79eef0c336fe55cf03ff8f5b42b784c8168f929a3603138b2c6301f4601e4c86' },
+      'llvm.core.wasm': { url: jsdelivr(CLANG, 'gen/llvm.core.wasm'), sha256: '24fbed474c7b5b4968fd73fc4827440b93fb351c1b6264516130300eff3e7bf5' },
+      'llvm.core2.wasm': { url: jsdelivr(CLANG, 'gen/llvm.core2.wasm'), sha256: '960c326eb9b5db7aedbc169540421587a2d3f3ff987e93d6ad5b4da43430ffd4' },
+      'llvm.core3.wasm': { url: jsdelivr(CLANG, 'gen/llvm.core3.wasm'), sha256: '63680c043192abac4700bbda6a78e4c19b139fa086b1e872d1c6915d37a428a8' },
+      'llvm.core4.wasm': { url: jsdelivr(CLANG, 'gen/llvm.core4.wasm'), sha256: 'f544dc9cc46f88a0f22d1b839a4fb0853dce2d6e231d880bd19754c59a5a234d' },
+    },
+  },
 };
+
+/** Where the files of the C/C++ toolchain are; its bundle asks for them relative to this. */
+export const CLANG_BASE = `https://cdn.jsdelivr.net/npm/${CLANG}/gen/`;
+
+/** C++ rather than C: what the code uses tells. */
+export const isCpp = (code: string): boolean => /#\s*include\s*<(iostream|vector|string|map|set|algorithm|memory|sstream|fstream|iomanip|array|cmath|cstdio|cstdlib)>|\bstd::|\bnamespace\b|\btemplate\s*<|\bclass\s+\w+\s*[{:]|\bcout\b/.test(code);
 
 /** The SHA-256 expected for a runtime file, by URL. */
 export function runtimeHash(url: string): string | undefined {

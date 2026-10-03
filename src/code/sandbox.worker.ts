@@ -6,7 +6,8 @@
  * other network access. (Small modules without imports of their own, like
  * `runtimes.ts`, are bundled into it.)
  */
-import { RUNTIMES, textTable, umdModule, type Runtime } from './runtimes';
+import { CLANG_BASE, isCpp, RUNTIMES, textTable, umdModule, type Runtime } from './runtimes';
+import { runWasi } from './wasi';
 
 interface RunRequest {
   type: 'run';
@@ -689,6 +690,55 @@ async function runSql(id: number, code: string): Promise<Output> {
   }
 }
 
+type Tree = Record<string, Uint8Array | string | object>;
+type RunClang = (args: string[], files: Tree, options: { stdout(b: Uint8Array | null): void; stderr(b: Uint8Array | null): void; decodeASCII?: boolean }) => Promise<Tree>;
+let clang: Promise<RunClang> | undefined;
+
+/** C/C++: compiled by Clang to WebAssembly, then run with a small WASI (output only). */
+async function runCpp(id: number, code: string): Promise<Output> {
+  clang ??= (async () => {
+    report(id, `packages:${RUNTIMES.cpp.name} (${RUNTIMES.cpp.size})`);
+    // The toolchain's own downloads go through the application too (asked, checked, kept offline).
+    const native = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (!url.startsWith(CLANG_BASE)) return native(input, init);
+      report(id, `packages:${url.slice(CLANG_BASE.length)}`);
+      const [bytes] = await fetchFiles(url, 'module');
+      return new Response(bytes, { headers: { 'content-type': url.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream', 'content-length': String(bytes!.byteLength) } });
+    }) as typeof fetch;
+    const [bundle] = await fetchFiles(RUNTIMES.cpp.files.js!.url, 'module');
+    const source = new TextDecoder().decode(bundle).replaceAll('import.meta.url', JSON.stringify(`${CLANG_BASE}bundle.js`));
+    const mod = (await import(/* @vite-ignore */ blobModule(source))) as { runClang: RunClang };
+    return mod.runClang;
+  })();
+  clang.catch(() => (clang = undefined));
+  const runClang = await clang;
+  report(id, 'running');
+  const cpp = isCpp(code);
+  const source = cpp ? 'main.cpp' : 'main.c';
+  const log: string[] = [];
+  const dec = new TextDecoder();
+  const collect = (b: Uint8Array | null): void => void (b && log.push(dec.decode(b, { stream: true })));
+  let program: Uint8Array;
+  try {
+    // The C++ library of WASI has no exceptions.
+    const files = await runClang([...(cpp ? ['clang++', '-fno-exceptions'] : ['clang']), '-O2', source, '-o', 'main.wasm'], { [source]: code }, { stdout: collect, stderr: collect, decodeASCII: false });
+    program = files['main.wasm'] as Uint8Array;
+  } catch (err) {
+    return { text: `${log.join('') || (err as Error)?.message || String(err)}\n`, error: true, images: [] };
+  }
+  // Warnings of the compiler come first.
+  const out: string[] = log.length ? [log.join('')] : [];
+  try {
+    const status = runWasi(await WebAssembly.compile(program as BufferSource), [source.replace(/\..*/, '')], (_fd, text) => out.push(text));
+    if (status !== 0) out.push(`\n(exit status ${status})\n`);
+    return { text: out.join(''), images: [], ...(status !== 0 ? { error: true } : {}) };
+  } catch (err) {
+    return { text: `${out.join('')}${(err as Error)?.message ?? String(err)}\n`, error: true, images: [] };
+  }
+}
+
 // --- protocol -----------------------------------------------------------------
 
 interface Output {
@@ -751,7 +801,9 @@ scope.addEventListener('message', (event: MessageEvent) => {
               ? await runLua(message.id, message.code)
               : message.lang === 'sql'
                 ? await runSql(message.id, message.code)
-                : await runJavaScript(message.id, message.code);
+                : message.lang === 'cpp'
+                  ? await runCpp(message.id, message.code)
+                  : await runJavaScript(message.id, message.code);
       } catch (err) {
         output = { text: `${(err as Error)?.message ?? String(err)}\n`, error: true, images: [] };
       }

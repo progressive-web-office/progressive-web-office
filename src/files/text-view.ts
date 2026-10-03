@@ -123,7 +123,7 @@ export class TextView implements PwoView {
     this.decoded = decodeText(bytes);
     // CODE-017, CODE-018: Python and JavaScript in the sandbox; Lua and SQL with a runtime downloaded when first needed.
     const runtime = runtimeOf(fileName);
-    this.lang = /\.pyw?$/i.test(fileName) ? 'python' : /\.(m?js|m?ts)$/i.test(fileName) ? 'javascript' : runtime === 'lua' || runtime === 'sql' ? runtime : undefined;
+    this.lang = /\.pyw?$/i.test(fileName) ? 'python' : /\.(m?js|m?ts)$/i.test(fileName) ? 'javascript' : runtime === 'lua' || runtime === 'sql' || runtime === 'cpp' ? runtime : undefined;
     const entry = languageOf(fileName);
     const info = h('span', { class: 'code-info' }, [entry?.name ?? t('textfile.plain'), this.decoded.encoding === 'utf-8' ? 'UTF-8' : 'Windows-1252', this.decoded.crlf ? 'CRLF' : 'LF'].join(' · '));
     const wrap = h('input', { type: 'checkbox' });
@@ -198,7 +198,7 @@ export class TextView implements PwoView {
   }
 
   /** CODE-017: the language the file runs in, if any. */
-  private readonly lang: 'python' | 'javascript' | 'lua' | 'sql' | undefined;
+  private readonly lang: 'python' | 'javascript' | 'lua' | 'sql' | 'cpp' | undefined;
   private runner: import('../code/runner').CodeRunner | undefined;
   private stopButton: HTMLButtonElement | undefined;
   private readonly output = h('section', { class: 'code-file-output', 'aria-label': t('textfile.output'), 'aria-live': 'polite', hidden: true });

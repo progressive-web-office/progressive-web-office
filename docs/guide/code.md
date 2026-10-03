@@ -280,7 +280,7 @@ application. Other pure-Python packages can be installed by a cell with
 package index, once you allowed the site (see [widgets](#packages-of-widgets)).
 Packages with compiled code are only those of Pyodide.
 
-## Other languages: Lua, SQL, R, C/C++
+## Other languages: Lua, SQL, C/C++, R
 
 Python and JavaScript are part of the application. Other languages run with a
 **runtime downloaded the first time it is needed**, from the npm CDN
@@ -292,12 +292,19 @@ SHA-256 before use.
 | --- | --- | --- | --- |
 | Lua 5.4 | `.lua`, ```` ```lua {run} ```` cells | wasmoon | about 0.5 MB |
 | SQL (SQLite) | `.sql`, ```` ```sql {run} ```` cells | sql.js | about 0.7 MB |
+| C, C++ | `.c`, `.cpp`, ```` ```cpp {run} ```` cells | Clang/LLD (YoWASP) | about 105 MB |
 
 A `.lua` or `.sql` file opened in the code viewer shows **▶ Run**; in a
 document, cells of these languages run like the others, in document order
 (they share no names with Python or JavaScript cells). Successive runs share
 their state: Lua globals, and the tables of the SQL database (in memory,
 for the session). A SQL query shows its rows as a table.
+
+C and C++ code is compiled by Clang to WebAssembly, then run: what it prints
+appears below, compiler errors and warnings first. Programs read no input and
+no files; C++ is built without exceptions (`-fno-exceptions`), as the C++
+library for WebAssembly has none. Whether code is C++ is told by what it uses
+(`#include <iostream>`, `std::`, classes…).
 
 ## marimo notebooks
 

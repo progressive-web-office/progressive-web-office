@@ -79,7 +79,7 @@ export async function useRuntimePackages(page: Page): Promise<boolean> {
   await page.route('https://cdn.jsdelivr.net/npm/**', (route) => {
     // /npm/<name>@<version>/<path> → <local>/<name>-<version>/package/<path>
     const m = /^\/npm\/((?:@[^/]+\/)?[^@/]+)@([^/]+)\/(.+)$/.exec(new URL(route.request().url()).pathname);
-    const file = m && `${local}/${m[1]!.replace('/', '-')}-${m[2]}/package/${m[3]}`;
+    const file = m && `${local}/${m[1]!.replace(/^@/, '').replace('/', '-')}-${m[2]}/package/${m[3]}`;
     if (!file || !existsSync(file)) return route.abort();
     return route.fulfill({ body: readFileSync(file), headers: { 'Access-Control-Allow-Origin': '*' } });
   });

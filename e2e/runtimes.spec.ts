@@ -23,3 +23,21 @@ test('runs Lua and SQL files with runtimes downloaded when first needed (CODE-01
   await expect(page.getByRole('region', { name: 'Output' })).toContainText('(2 rows)');
   expect(errors).toEqual([]);
 });
+
+test('compiles and runs C and C++ files with Clang downloaded when first needed (CODE-018)', async ({ page }) => {
+  test.setTimeout(300_000);
+  test.skip(!(await useRuntimePackages(page)), 'needs RUNTIME_PACKAGES or network access to the npm CDN');
+  const errors = await openApp(page);
+  await openFile(page, 'hello.cpp', '#include <iostream>\n#include <vector>\nint main() {\n  std::vector<int> v{1, 2, 3};\n  int s = 0;\n  for (int x : v) s += x * x;\n  std::cout << "sum of squares: " << s << std::endl;\n}\n', 'text/plain');
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.getByRole('dialog').filter({ hasText: 'cdn.jsdelivr.net' }).getByRole('button', { name: 'Allow' }).click();
+  const output = page.getByRole('region', { name: 'Output' });
+  await expect(output).toContainText('sum of squares: 14', { timeout: 240_000 });
+
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await openFile(page, 'oops.c', '#include <stdio.h>\nint main(void) { printf("%d\\n", 6 * 7); return missing; }\n', 'text/plain');
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  // Compiler errors are shown.
+  await expect(page.getByRole('region', { name: 'Output' }).locator('.code-file-text.error')).toContainText("use of undeclared identifier 'missing'", { timeout: 120_000 });
+  expect(errors).toEqual([]);
+});
