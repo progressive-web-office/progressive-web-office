@@ -151,10 +151,15 @@ export class Rulers {
     };
     node.addEventListener('pointerup', end);
     node.addEventListener('pointercancel', () => (start = undefined));
+    // The position moved by the keys, kept here: several keys pressed before the
+    // ruler is drawn again each move it one more millimetre.
+    let pos = x;
     node.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       e.preventDefault();
-      moved(x + (e.key === 'ArrowLeft' ? -k : k));
+      pos += e.key === 'ArrowLeft' ? -k : k;
+      node.style.left = `${pos}px`;
+      moved(pos);
     });
     return node;
   }

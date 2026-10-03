@@ -415,6 +415,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Rulers: arrow keys pressed quickly on a margin or indent handle could lose
+  steps (each one moved from the position the ruler was last drawn at).
 - The scientific article template lost the backslashes of its LaTeX: its
   equation showed `ytnfty left(…)`, `τ` and `y∞` were broken, and the
   affiliations ran into the corresponding author; the references had two
