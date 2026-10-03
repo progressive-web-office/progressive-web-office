@@ -12,11 +12,13 @@ const safeDecode = (s: string): string => {
   }
 };
 import { solutionSegments } from './solutions';
+import { columnsFence } from './columns';
 import { CriticComments } from './critic';
 import { writeFrontMatter } from './frontmatter';
 import {
   cleanMeta,
   groupBlocks,
+  columnSegments,
   paragraphText,
   isImageRun,
   isCodeCellRun,
@@ -127,10 +129,16 @@ class MarkdownWriter {
   write(): string {
     const parts: string[] = [];
     // TEACH-001: solutions in fenced divs, as in Pandoc and Quarto.
-    for (const segment of solutionSegments(this.doc.blocks)) {
-      const inner = this.parts(segment.blocks);
-      if (segment.solution) parts.push('::: solution', ...inner, ':::');
-      else parts.push(...inner);
+    // DOC-049: text in columns in fenced divs too.
+    for (const set of columnSegments(this.doc.blocks)) {
+      const inSet: string[] = [];
+      for (const segment of solutionSegments(set.blocks)) {
+        const inner = this.parts(segment.blocks);
+        if (segment.solution) inSet.push('::: solution', ...inner, ':::');
+        else inSet.push(...inner);
+      }
+      if (set.columns) parts.push(columnsFence(set.columns), ...inSet, ':::');
+      else parts.push(...inSet);
     }
     // Notes may hold notes' text only, so their definitions are complete now.
     parts.push(...this.notes);
@@ -176,7 +184,7 @@ class MarkdownWriter {
         parts.push('[[_TOC_]]');
       } else if (group.type === 'rule') {
         // \newpage is understood by Pandoc and most Markdown-to-PDF tools (DOC-021).
-        parts.push(group.page ? '\\newpage' : '---');
+        parts.push(group.page ? '\\newpage' : group.column ? '\\columnbreak' : '---');
       } else if (isQuote) {
         // MD-019: a callout starts a quote of its own; its marker is written as is.
         const first = group.runs[0];

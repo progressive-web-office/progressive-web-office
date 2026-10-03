@@ -89,6 +89,8 @@ export function editorKeymap(actions: EditorActions): Plugin[] {
       'Mod-k': run(actions.link),
       'Mod-Space': clearFormatting,
       'Mod-Enter': insertRule(true),
+      // DOC-049: a column break, as in Word.
+      'Mod-Shift-Enter': insertRule(false, true),
       'Mod-]': changeIndent(1),
       'Mod-[': changeIndent(-1),
       'Mod-f': run(() => actions.find(false)),

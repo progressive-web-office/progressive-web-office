@@ -13,6 +13,8 @@ import {
   type FieldKind,
   type InputRun,
   PAGE_BREAK,
+  cleanColumns,
+  inColumns,
   cleanPageSetup,
   type PageSetup,
   type PageNumberFormat,
@@ -60,8 +62,11 @@ class DocxReader {
 
   /** Default header and footer of the (last) section, as zones (DOC-024). */
   private readFurniture(body: Element): PageSetup | undefined {
-    const sect = descendants(body, 'sectPr').pop();
+    const sections = descendants(body, 'sectPr');
+    const sect = sections.pop();
     if (!sect) return undefined;
+    // DOC-049: with several sections (columns), the first one numbers the pages.
+    const first = sections[0] ?? sect;
     const setup: PageSetup = {};
     for (const kind of ['header', 'footer'] as const) {
       const refs = children(sect, `${kind}Reference`);
@@ -73,7 +78,7 @@ class DocxReader {
       if (zones) setup[kind] = zones;
     }
     // DOC-029: page number style, first number, title page.
-    const numbering = children(sect, 'pgNumType')[0];
+    const numbering = children(first, 'pgNumType')[0];
     const fmt = numbering ? attr(numbering, 'fmt') : undefined;
     const format = (Object.entries(DOCX_NUMBER_FORMAT) as [PageNumberFormat, string][]).find(([, v]) => v === fmt)?.[0];
     if (format) setup.numberFormat = format;
@@ -88,7 +93,7 @@ class DocxReader {
     };
     const [width, height] = [mm(size, 'w'), mm(size, 'h')];
     if (width && height) setup.geometry = { width, height, top: mm(margins, 'top') ?? 25.4, right: mm(margins, 'right') ?? 25.4, bottom: mm(margins, 'bottom') ?? 25.4, left: mm(margins, 'left') ?? 25.4 };
-    const titlePg = children(sect, 'titlePg')[0];
+    const titlePg = children(first, 'titlePg')[0];
     if (titlePg && !/^(0|false|off)$/.test(attr(titlePg, 'val') ?? '')) setup.hideOnFirstPage = true;
     return cleanPageSetup(setup);
   }
@@ -294,6 +299,19 @@ class DocxReader {
     return this.doc;
   }
 
+  /** Where the current section of the body starts (DOC-049). */
+  private sectionStart = 0;
+
+  /** The blocks of a section in its columns (DOC-049). */
+  private endSection(out: Block[], sect: Element): void {
+    const cols = child(sect, 'cols');
+    const count = cols ? Number(attr(cols, 'num')) || 1 : 1;
+    const space = cols ? pt(attr(cols, 'space')) : undefined;
+    const columns = cleanColumns({ count, ...(space !== undefined ? { gap: space } : {}), ...(cols && /^(1|true|on)$/.test(attr(cols, 'sep') ?? '') ? { rule: true } : {}) });
+    if (columns) out.splice(this.sectionStart, Infinity, ...inColumns(out.slice(this.sectionStart), columns));
+    this.sectionStart = out.length;
+  }
+
   private readBlocks(container: Element): Block[] {
     const out: Block[] = [];
     for (const el of children(container)) {
@@ -306,9 +324,18 @@ class DocxReader {
             out.push({ type: 'include', src: decodeURI(rel.target.replace(/^file:\/+/, '')) });
             break;
           }
-          out.push(...withPageBreaks(this.readParagraph(el), el));
+          const pPr = child(el, 'pPr');
+          const sect = pPr ? child(pPr, 'sectPr') : undefined;
+          const blocks = withPageBreaks(this.readParagraph(el), el);
+          // DOC-049: a paragraph ending a section; Word keeps an empty one for the break alone.
+          const only = blocks.length === 1 ? blocks[0] : undefined;
+          if (!(sect && only?.type === 'paragraph' && !only.runs.length)) out.push(...blocks);
+          if (sect && container.localName === 'body') this.endSection(out, sect);
           break;
         }
+        case 'sectPr':
+          this.endSection(out, el);
+          break;
         case 'tbl':
           out.push(this.readTable(el));
           break;
@@ -549,7 +576,7 @@ class DocxReader {
         case 'br':
         case 'cr':
           // A page break is marked with a form feed; the paragraph is split there.
-          out.push({ text: attr(el, 'type') === 'page' ? '\f' : '\n', ...fmt });
+          out.push({ text: attr(el, 'type') === 'page' ? '\f' : attr(el, 'type') === 'column' ? '\v' : '\n', ...fmt });
           break;
         case 'fldChar': {
           // Complex fields (DOC-026): SEQ and REF become numbers and references.
@@ -737,7 +764,8 @@ function furnitureZones(root: Element): PageZones | undefined {
 function withPageBreaks(block: Block, p: Element): Block[] {
   const pPr = child(p, 'pPr');
   const before = pPr && child(pPr, 'pageBreakBefore') && onOff(child(pPr, 'pageBreakBefore')) !== false ? [PAGE_BREAK] : [];
-  if (block.type !== 'paragraph' || !block.runs.some((r) => 'text' in r && r.text.includes('\f'))) return [...before, block];
+  // DOC-049: column breaks (`\v`) likewise.
+  if (block.type !== 'paragraph' || !block.runs.some((r) => 'text' in r && /[\f\v]/.test(r.text))) return [...before, block];
   const out: Block[] = [...before];
   let runs: Run[] = [];
   const emit = (): void => {
@@ -746,17 +774,16 @@ function withPageBreaks(block: Block, p: Element): Block[] {
     runs = [];
   };
   for (const run of block.runs) {
-    if (!('text' in run) || !run.text.includes('\f')) {
+    if (!('text' in run) || !/[\f\v]/.test(run.text)) {
       runs.push(run);
       continue;
     }
-    run.text.split('\f').forEach((part, i) => {
-      if (i > 0) {
+    for (const part of run.text.split(/([\f\v])/)) {
+      if (part === '\f' || part === '\v') {
         emit();
-        out.push({ ...PAGE_BREAK });
-      }
-      if (part) runs.push({ ...run, text: part });
-    });
+        out.push(part === '\f' ? { ...PAGE_BREAK } : { type: 'rule', column: true });
+      } else if (part) runs.push({ ...run, text: part });
+    }
   }
   emit();
   // A paragraph holding only a page break is just the break.

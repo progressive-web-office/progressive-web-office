@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type FieldKind, type InputKind, type InputRun, type Table, type TableCell, type TextFormat } from '../model';
+import { LAYOUT_KEYS, cleanColumns, columnSegments, inColumns, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type FieldKind, type InputKind, type InputRun, type Table, type TableCell, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -121,12 +121,15 @@ export function blockToPm(b: Block): PmNode {
   if (b.type === 'bibliography') return schema.nodes.bibliography!.create();
   if (b.type === 'include') return schema.nodes.include!.create({ src: b.src });
   if (b.type === 'space') return schema.nodes.space!.create({ stretch: b.stretch ?? null, size: b.size ?? null, fraction: b.fraction ?? null });
-  return schema.nodes.horizontal_rule!.create({ page: !!b.page });
+  return schema.nodes.horizontal_rule!.create({ page: !!b.page, column: !b.page && !!b.column });
 }
 
 /** The ProseMirror document for model blocks. */
 export function blocksToPm(blocks: Block[]): PmNode {
-  const content = blocks.map(blockToPm);
+  // DOC-049: consecutive blocks in the same columns share a columns node.
+  const content = columnSegments(blocks).flatMap((s) =>
+    s.columns ? [schema.nodes.columns!.create({ count: s.columns.count, gap: s.columns.gap ?? null, rule: !!s.columns.rule }, s.blocks.map(blockToPm))] : s.blocks.map(blockToPm),
+  );
   return schema.nodes.doc!.create(null, content.length ? content : [schema.nodes.paragraph!.create()]);
 }
 
@@ -235,14 +238,21 @@ function pmToBlock(node: PmNode): Block {
     return { type: 'space', ...(stretch ? { stretch } : {}), ...(!stretch && fraction ? { fraction } : {}), ...(size !== null ? { size } : {}) };
   }
   if (node.type.name === 'toc') return node.attrs.levels === 3 ? { type: 'toc' } : { type: 'toc', levels: node.attrs.levels as number };
-  if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : { type: 'rule' };
+  if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : node.attrs.column ? { type: 'rule', column: true } : { type: 'rule' };
   return pmToParagraph(node);
 }
 
 /** Model blocks for a ProseMirror document (or slice content). */
 export function pmToBlocks(doc: PmNode): Block[] {
   const blocks: Block[] = [];
-  doc.forEach((node) => blocks.push(pmToBlock(node)));
+  doc.forEach((node) => {
+    if (node.type.name !== 'columns') return void blocks.push(pmToBlock(node));
+    // DOC-049: each block of a columns node carries its layout.
+    const columns = cleanColumns({ count: node.attrs.count as number, ...(node.attrs.gap !== null ? { gap: node.attrs.gap as number } : {}), ...(node.attrs.rule ? { rule: true } : {}) });
+    const inner: Block[] = [];
+    node.forEach((child) => inner.push(pmToBlock(child)));
+    blocks.push(...inColumns(inner, columns));
+  });
   return blocks;
 }
 

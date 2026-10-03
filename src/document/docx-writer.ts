@@ -7,6 +7,9 @@ import { t } from '../i18n';
 import {
   extensionForType,
   groupBlocks,
+  columnSegments,
+  DEFAULT_COLUMN_GAP,
+  type ColumnLayout,
   splitListSegments,
   isCodeCellRun,
   isDiagramRun,
@@ -124,7 +127,7 @@ class DocxWriter {
     this.comments.forEach((c, i) => this.commentIds.set(c.id, i));
     this.revisionId = this.comments.length + 1;
     this.ranges = new CommentRanges(new Set(this.comments.filter((c) => !c.parent).map((c) => c.id)));
-    let body = this.blocks(this.doc.blocks);
+    let body = this.sectionBlocks(this.doc.blocks);
     const open = this.ranges.close();
     if (open.length) {
       const at = body.lastIndexOf('</w:p>');
@@ -158,8 +161,8 @@ class DocxWriter {
     const documentXml =
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<w:document xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}" xmlns:w14="${W14}">` +
-      `<w:body>${body}<w:sectPr>${refs}${pageGeometryXml(page?.geometry)}` +
-      `${numbering}${page?.hideOnFirstPage ? '<w:titlePg/>' : ''}</w:sectPr></w:body></w:document>`;
+      `<w:body>${body.replace(SECTION_MARK, (_, i: string) => `<w:p><w:pPr>${this.sectionXml(Number(i), refs, numbering)}</w:pPr></w:p>`)}` +
+      `${this.sectionXml(Math.max(0, this.sections.length - 1), refs, numbering)}</w:body></w:document>`;
 
     const entries: ZipEntryInput[] = [
       { path: '[Content_Types].xml', data: this.contentTypes() },
@@ -256,6 +259,30 @@ class DocxWriter {
     return String(id);
   }
 
+  /** DOC-049: the column layout of each section (one when there are no columns). */
+  private sections: (ColumnLayout | undefined)[] = [];
+
+  /**
+   * DOC-049: text in columns as continuous sections; every section but the last
+   * ends with an empty paragraph holding its properties.
+   */
+  private sectionBlocks(blocks: Block[]): string {
+    const sets = columnSegments(blocks);
+    this.sections = sets.map((set) => set.columns);
+    return sets.map((set, i) => this.blocks(set.blocks) + (i < sets.length - 1 ? `<!--pwo-section-${i}-->` : '')).join('');
+  }
+
+  /** The properties of the i-th section. */
+  private sectionXml(i: number, refs: string, numbering: string): string {
+    const page = cleanPageSetup(this.doc.page);
+    const c = this.sections[i];
+    const cols = c ? `<w:cols w:num="${c.count}" w:space="${twips(c.gap ?? DEFAULT_COLUMN_GAP)}"${c.rule ? ' w:sep="1"' : ''}/>` : '';
+    // Only the first section numbers the pages and has a title page.
+    const pages = i === 0 ? numbering : '';
+    const title = i === 0 && page?.hideOnFirstPage ? '<w:titlePg/>' : '';
+    return `<w:sectPr>${refs}${i > 0 ? '<w:type w:val="continuous"/>' : ''}${pageGeometryXml(page?.geometry)}${pages}${cols}${title}</w:sectPr>`;
+  }
+
   /** Solutions in a content control named Solution (TEACH-001). */
   private blocks(blocks: Block[]): string {
     return solutionSegments(blocks)
@@ -290,6 +317,9 @@ class DocxWriter {
         out += `<w:p><w:subDoc r:id="${rid}"/></w:p>`;
       } else if (group.page) {
         out += '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+      } else if (group.column) {
+        // DOC-049: a column break.
+        out += '<w:p><w:r><w:br w:type="column"/></w:r></w:p>';
       } else {
         out += '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="auto"/></w:pBdr></w:pPr></w:p>';
       }
@@ -662,6 +692,8 @@ const heading = (n: number, size: number): string =>
   `<w:rPr><w:b/><w:bCs/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:style>`;
 
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
+
+const SECTION_MARK = /<!--pwo-section-(\d+)-->/g;
 
 /** DOC-046: the paper and its margins; A4 with 2.54 cm margins by default. */
 export function pageGeometryXml(g: import('./model').PageGeometry | undefined): string {

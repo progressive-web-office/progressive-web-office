@@ -811,6 +811,19 @@ button.qr-zoom img { display: block; margin: 0; }
 .doc-page hr.page-break::after { content: attr(data-label); position: absolute; left: 50%; top: -0.75em; transform: translateX(-50%); padding: 0 8px; background: #fff; color: #6b7686; font-size: 8pt; letter-spacing: 0.05em; text-transform: uppercase; }
 .doc-page hr.page-break.ProseMirror-selectednode { border-top-color: var(--accent); }
 @media print { .doc-page hr.page-break { break-after: page; visibility: hidden; margin: 0; } }
+/* DOC-049: text in columns, a newspaper's; the column break marked on screen only. */
+.doc-page div.columns { column-fill: balance; margin: 6pt 0; outline: 1px dotted transparent; outline-offset: 3px; }
+.doc-page div.columns:hover { outline-color: #c3cad5; }
+.doc-page div.columns > :first-child { margin-top: 0; }
+.doc-page div.columns > p, .doc-page div.columns > li { orphans: 2; widows: 2; }
+.doc-page div.columns table, .doc-page div.columns img { max-width: 100%; }
+.doc-page hr.column-break { position: relative; break-after: column; border: 0; border-top: 1px dashed #9aa5b5; margin: 6pt 0; overflow: visible; }
+.doc-page hr.column-break::after { content: attr(data-label); position: absolute; left: 50%; top: -0.75em; transform: translateX(-50%); padding: 0 6px; background: #fff; color: #6b7686; font-size: 7pt; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
+.doc-page hr.column-break.ProseMirror-selectednode { border-top-color: var(--accent); }
+@media print { .doc-page hr.column-break { visibility: hidden; height: 0; margin: 0; } }
+.columns-preview { display: flex; gap: 12px; height: 64px; padding: 8px; border: 1px solid var(--border, #ccc); border-radius: 4px; background: #fff; margin: 8px 0; }
+.columns-preview span { flex: 1; background: repeating-linear-gradient(to bottom, #b8c0cc 0 2px, transparent 2px 7px); }
+.columns-preview.ruled span + span { box-shadow: -7px 0 0 -6px #555; }
 
 /* Footnotes (DOC-022) */
 .doc-page .pm-footnote { cursor: pointer; color: var(--accent); padding: 0 1px; }

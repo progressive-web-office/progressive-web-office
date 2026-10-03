@@ -2,7 +2,9 @@
 import { geometryOptions } from './geometry';
 import { inputLatex } from './inputs';
 import { fillText, spaceText } from './springs';
+import { multicols } from './columns';
 import {
+  columnSegments,
   cleanMeta,
   extensionForType,
   groupBlocks,
@@ -146,6 +148,7 @@ class LatexWriter {
       '\\usepackage[normalem]{ulem}',
       '\\usepackage{hyperref}',
       ...(this.multirow ? ['\\usepackage{multirow}'] : []),
+      ...(this.multicol ? ['\\usepackage{multicol}'] : []),
       ...(this.captions ? ['\\usepackage{caption}'] : []),
       ...[...this.fieldPackages].filter((p) => !this.furniture().some((l) => l.includes(`{${p}}`))).map((p) => `\\usepackage{${p}}`),
       ...(this.authorYear && JSON.stringify(this.doc.blocks).includes('"cite"') ? ['\\usepackage{natbib}'] : []),
@@ -166,7 +169,21 @@ class LatexWriter {
     ].join('\n');
   }
 
+  private multicol = false;
+
+  /** DOC-049: text in columns in multicols environments. */
   private blocks(blocks: Block[]): string {
+    return columnSegments(blocks)
+      .map((s) => {
+        if (!s.columns) return this.plainBlocks(s.blocks);
+        this.multicol = true;
+        const env = multicols(s.columns);
+        return `${env.open}\n${this.plainBlocks(s.blocks).trimEnd()}\n${env.close}\n`;
+      })
+      .join('\n');
+  }
+
+  private plainBlocks(blocks: Block[]): string {
     const out: string[] = [];
     let quote: string[] = [];
     const flushQuote = (): void => {
@@ -192,7 +209,7 @@ class LatexWriter {
         const name = group.src.replace(/\.tex$/i, '');
         out.push(/\.tex$/i.test(group.src) ? `\\include{${name}}` : `% ${escapeLatex(group.src)}\n\\input{${name.replace(/\.[^./]+$/, '')}}`);
       } else if (group.type === 'rule') {
-        out.push(group.page ? '\\newpage' : '\\noindent\\rule{\\linewidth}{0.4pt}');
+        out.push(group.page ? '\\newpage' : group.column ? '\\columnbreak' : '\\noindent\\rule{\\linewidth}{0.4pt}');
       } else if (group.style === 'quote') {
         quote.push(this.inline(group.runs));
       } else {

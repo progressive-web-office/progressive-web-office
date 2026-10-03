@@ -258,7 +258,24 @@ export interface ParagraphLayout {
   lineHeight?: number;
 }
 
-export interface Paragraph extends ParagraphLayout {
+/** DOC-049: text set in columns, as in a newspaper. */
+export interface ColumnLayout {
+  /** Two to six columns. */
+  count: number;
+  /** Space between the columns, in points (12 pt when left out). */
+  gap?: number;
+  /** A line between the columns. */
+  rule?: boolean;
+}
+
+export const DEFAULT_COLUMN_GAP = 12;
+
+/** Blocks that may be set in columns (DOC-049): consecutive blocks with the same layout share them. */
+interface InColumns {
+  columns?: ColumnLayout;
+}
+
+export interface Paragraph extends ParagraphLayout, InColumns {
   type: 'paragraph';
   style: ParagraphStyle;
   /** Part of the answer key, left out of the exercise sheet (TEACH-001). */
@@ -285,7 +302,7 @@ export interface TableCell {
   rowSpan?: number;
 }
 
-export interface Table {
+export interface Table extends InColumns {
   type: 'table';
   rows: TableCell[][];
   /** The first row is a header row, repeated on each page (DOC-025). */
@@ -321,23 +338,64 @@ export function tableGrid(rows: TableCell[][]): { cols: number; slots: (GridSlot
   return { cols: Math.max(1, cols), slots };
 }
 
-export interface Rule {
+export interface Rule extends InColumns {
   type: 'rule';
   /** A page break rather than a horizontal line (DOC-021). */
   page?: boolean;
+  /** DOC-049: a column break: what follows starts the next column. */
+  column?: boolean;
 }
 
 export const PAGE_BREAK: Rule = { type: 'rule', page: true };
 
+/** A valid column layout, or nothing for a single column (DOC-049). */
+export function cleanColumns(c: ColumnLayout | undefined): ColumnLayout | undefined {
+  const count = Math.round(Number(c?.count) || 1);
+  if (!c || count < 2) return undefined;
+  const out: ColumnLayout = { count: Math.min(6, count) };
+  if (c.gap !== undefined && Number.isFinite(c.gap) && c.gap >= 0 && c.gap !== DEFAULT_COLUMN_GAP) out.gap = c.gap;
+  if (c.rule) out.rule = true;
+  return out;
+}
+
+export const sameColumns = (a: ColumnLayout | undefined, b: ColumnLayout | undefined): boolean => {
+  const x = cleanColumns(a);
+  const y = cleanColumns(b);
+  return x?.count === y?.count && x?.gap === y?.gap && x?.rule === y?.rule;
+};
+
+/** Runs of consecutive blocks sharing a column layout (DOC-049), in order. */
+export function columnSegments(blocks: Block[]): { columns?: ColumnLayout; blocks: Block[] }[] {
+  const out: { columns?: ColumnLayout; blocks: Block[] }[] = [];
+  for (const b of blocks) {
+    const last = out[out.length - 1];
+    if (last && sameColumns(last.columns, b.columns)) last.blocks.push(b);
+    else {
+      const columns = cleanColumns(b.columns);
+      out.push(columns ? { columns, blocks: [b] } : { blocks: [b] });
+    }
+  }
+  return out;
+}
+
+/** The blocks set in these columns, or in a single column. */
+export function inColumns<T extends Block>(blocks: T[], columns: ColumnLayout | undefined): T[] {
+  const c = cleanColumns(columns);
+  return blocks.map((b) => {
+    const { columns: _, ...rest } = b;
+    return (c ? { ...rest, columns: c } : rest) as T;
+  });
+}
+
 /** A table of contents, generated from the headings (DOC-023). */
-export interface Toc {
+export interface Toc extends InColumns {
   type: 'toc';
   /** Deepest heading level listed (default 3). */
   levels?: number;
 }
 
 /** The list of cited references (DOC-027). */
-export interface Bibliography {
+export interface Bibliography extends InColumns {
   type: 'bibliography';
 }
 
@@ -345,7 +403,7 @@ export interface Bibliography {
  * A sub-document of a master document (DOC-028): its path, relative to the
  * master document; its content is assembled on export.
  */
-export interface Include {
+export interface Include extends InColumns {
   type: 'include';
   src: string;
 }
@@ -356,7 +414,7 @@ export interface Include {
  * the page, in proportion to their `stretch`; its `size` is then its height
  * as last shown (for formats without springs).
  */
-export interface Space {
+export interface Space extends InColumns {
   type: 'space';
   stretch?: number;
   /** Height in points: of a fixed space, or as last shown (springs, fractions). */

@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Text in **columns** (DOC-049), for newsletters and school newspapers:
+  ▥ *Columns…* sets the selected paragraphs in two to six columns, with
+  their gap and an optional line between them, changed again or removed
+  from the context menu; **column breaks** (Ctrl+Shift+Enter). Kept in
+  ODT (sections with columns), DOCX (continuous sections), LaTeX
+  (`multicols`) and Markdown (`::: {.columns}` fenced divs), on screen and
+  in print. A **Newspaper** template.
 - Zotero (BIB-010): search the Zotero library from ❝ and cite what is
   found (its sources join the document's, with their citation keys), or
   import a whole collection from 📚 — with an API key kept only in this

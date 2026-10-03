@@ -20,6 +20,8 @@ body { font-family: Calibri, Carlito, 'Segoe UI', system-ui, sans-serif; font-si
 .print-document table, .print-document img, .print-document pre, .print-document blockquote, .print-document .math.display { break-inside: avoid; page-break-inside: avoid; }
 .print-document table { border-collapse: collapse; width: 100%; margin-bottom: 8pt; }
 .print-document hr.page-break { break-after: page; page-break-after: always; border: 0; margin: 0; height: 0; visibility: hidden; }
+.print-document hr.column-break { break-after: column; border: 0; margin: 0; height: 0; visibility: hidden; }
+.print-document div.columns { column-fill: balance; }
 .print-document td, .print-document th { border: 1px solid #777; padding: 3px 6px; vertical-align: top; }
 .print-document img { max-width: 100%; height: auto; }
 .print-document pre, .print-document code { font-family: 'Liberation Mono', Consolas, monospace; font-size: 9.5pt; }

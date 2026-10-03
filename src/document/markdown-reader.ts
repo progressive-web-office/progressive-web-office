@@ -7,6 +7,7 @@ import { parseGeometryOptions } from './geometry';
 import { parseInputMarkdown } from './inputs';
 import { parseFill, parseSpaceLine } from './springs';
 import { FENCE_CLOSE, SOLUTION_OPEN } from './solutions';
+import { COLUMN_BREAK, COLUMNS_OPEN, parseColumnsAttrs } from './columns';
 import { readCriticComments } from './critic';
 import { parseFrontMatter } from './frontmatter';
 import { fromCsl, type BibEntry } from './bibliography';
@@ -34,6 +35,7 @@ import {
   runsText,
   cleanPageSetup,
   type PageSetup,
+  type ColumnLayout,
   type PageZones,
   type PageNumberFormat,
   PAGE_NUMBER_FORMATS,
@@ -383,8 +385,8 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   if (setup) doc.page = setup;
   if (kept.join('\n').trim()) doc.extras = { ...doc.extras, frontMatter: kept.join('\n') };
   const env: { footnotes?: { list?: { tokens?: Token[] }[] } } = {};
-  // TEACH-001: fenced div lines (`::: solution`, `:::`) become paragraphs of their own.
-  const fenced = text.replace(/^(:{3,}[^\S\n]*(?:solution|\{\s*\.solution\s*\})?[^\S\n]*)$/gm, '\n$1\n');
+  // TEACH-001, DOC-049: fenced div lines (`::: solution`, `::: {.columns}`, `:::`) become paragraphs of their own.
+  const fenced = text.replace(/^(:{3,}[^\S\n]*(?:solution|\{\s*\.(?:solution|columns)\b[^}\n]*\})?[^\S\n]*)$/gm, '\n$1\n');
   const tokens = getParser().parse(fenced, env);
   // DOC-022: footnote contents, gathered before the text that refers to them.
   const notes = new Map<number, Run[]>();
@@ -578,6 +580,8 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
       // `[[_TOC_]]` reads as "[[" + italic "TOC" + "]]": look at the text only.
       const text = runsText(b.runs).trim();
       if (b.runs.length === 1 && PAGE.test(text)) blocks[i] = { type: 'rule', page: true };
+      // DOC-049: LaTeX's column break.
+      else if (b.runs.length === 1 && COLUMN_BREAK.test(text)) blocks[i] = { type: 'rule', column: true };
       // DOC-023: GitLab's [[_TOC_]], Typora's / MkDocs' [TOC].
       else if (/^(?:\[\[_?TOC_?\]\]|\[TOC\]|\[toc\])$/.test(text)) blocks[i] = { type: 'toc' };
     }
@@ -601,14 +605,24 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   doc.blocks = blocks.length ? blocks : emptyDocument().blocks;
   // REV-004: CriticMarkup comments.
   readCriticComments(doc);
-  // TEACH-001: the paragraphs between `::: solution` and `:::` are solutions.
-  let inSolution = false;
+  // TEACH-001: the paragraphs between `::: solution` and `:::` are solutions;
+  // DOC-049: the blocks between `::: {.columns count=2}` and `:::` are set in columns.
+  const open: ('solution' | 'columns')[] = [];
+  let columns: ColumnLayout | undefined;
   const outside: Block[] = [];
   for (const b of doc.blocks) {
     const text = b.type === 'paragraph' && b.runs.length && b.runs.every(isTextRun) ? b.runs.map((r) => (r as { text: string }).text).join('').trim() : undefined;
-    if (text !== undefined && SOLUTION_OPEN.test(text)) inSolution = true;
-    else if (text !== undefined && inSolution && FENCE_CLOSE.test(text)) inSolution = false;
-    else outside.push(inSolution && b.type === 'paragraph' ? { ...b, solution: true } : b);
+    const cols = text !== undefined ? COLUMNS_OPEN.exec(text) : null;
+    if (text !== undefined && SOLUTION_OPEN.test(text)) open.push('solution');
+    else if (cols) {
+      open.push('columns');
+      columns = parseColumnsAttrs(cols[1]!);
+    } else if (text !== undefined && open.length && FENCE_CLOSE.test(text)) {
+      if (open.pop() === 'columns') columns = undefined;
+    } else {
+      const solved = open.includes('solution') && b.type === 'paragraph' ? { ...b, solution: true } : b;
+      outside.push(columns ? { ...solved, columns } : solved);
+    }
   }
   if (outside.length !== doc.blocks.length) doc.blocks = outside.length ? outside : emptyDocument().blocks;
   const firstHeading = blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');

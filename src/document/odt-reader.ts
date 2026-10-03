@@ -10,6 +10,9 @@ import {
   mediaTypeForName,
   normalizeRuns,
   PAGE_BREAK,
+  cleanColumns,
+  inColumns,
+  type ColumnLayout,
   cleanPageSetup,
   type PageSetup,
   type PageNumberFormat,
@@ -47,6 +50,11 @@ interface OdfStyle {
   /** fo:break-before / fo:break-after="page" (DOC-021). */
   pageBefore?: boolean;
   pageAfter?: boolean;
+  /** fo:break-before / fo:break-after="column" (DOC-049). */
+  columnBefore?: boolean;
+  columnAfter?: boolean;
+  /** The columns of a section style (DOC-049). */
+  columns?: ColumnLayout;
 }
 
 /** Header and footer of the first master page, as zones split at tabs (DOC-024). */
@@ -249,6 +257,19 @@ class OdtReader {
       else if (ta === 'start' || ta === 'left') style.align = 'left';
       if (pp && attr(pp, 'break-before') === 'page') style.pageBefore = true;
       if (pp && attr(pp, 'break-after') === 'page') style.pageAfter = true;
+      if (pp && attr(pp, 'break-before') === 'column') style.columnBefore = true;
+      if (pp && attr(pp, 'break-after') === 'column') style.columnAfter = true;
+      // DOC-049: the columns of a section.
+      const sp = child(s, 'section-properties');
+      const cols = sp ? child(sp, 'columns') : undefined;
+      if (cols) {
+        const count = Number(attr(cols, 'column-count')) || 1;
+        const gap = lengthPt(attr(cols, 'column-gap'));
+        const sep = child(cols, 'column-sep');
+        const sepWidth = sep ? lengthPt(attr(sep, 'width')) : undefined;
+        const columns = cleanColumns({ count, gap: gap !== undefined ? Math.round(gap * 100) / 100 : undefined, rule: !!sep && sepWidth !== 0 && attr(sep, 'style') !== 'none' });
+        if (columns) style.columns = columns;
+      }
       if (pp && style.automatic) {
         const layout: ParagraphLayout = {};
         const left = lengthPt(attr(pp, 'margin-left'));
@@ -321,8 +342,13 @@ class OdtReader {
             const after = chain.some((s) => s.pageAfter);
             const empty = b.type === 'paragraph' && !b.runs.length;
             if (before && out.length) out.push({ ...PAGE_BREAK });
-            if (!(empty && (before || after))) out.push(b);
+            // DOC-049: column breaks likewise.
+            const colBefore = !before && chain.some((s) => s.columnBefore);
+            const colAfter = !after && chain.some((s) => s.columnAfter);
+            if (colBefore && out.length) out.push({ type: 'rule', column: true });
+            if (!(empty && (before || after || colBefore || colAfter))) out.push(b);
             if (after) out.push({ ...PAGE_BREAK });
+            if (colAfter) out.push({ type: 'rule', column: true });
             break;
           }
           case 'list': {
@@ -355,7 +381,10 @@ class OdtReader {
             }
             // TEACH-001: a section named Solution… holds solutions.
             const solution = /^(solution|corrig|answer)/i.test(attr(el, 'name') ?? '');
-            out.push(...this.readBlocks(el, listStyle, depth).map((b) => (solution && b.type === 'paragraph' ? { ...b, solution: true } : b)));
+            const inner = this.readBlocks(el, listStyle, depth).map((b) => (solution && b.type === 'paragraph' ? { ...b, solution: true } : b));
+            // DOC-049: a section in columns.
+            const columns = this.chain('section', attr(el, 'style-name')).find((st) => st.columns)?.columns;
+            out.push(...(columns ? inColumns(inner, columns) : inner));
             break;
           }
           case 'index-body':

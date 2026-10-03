@@ -358,6 +358,7 @@ export const TEMPLATES: Template[] = [
   { id: 'minutes', kind: 'document', icon: '🗒️', name: 'tpl.minutes', description: 'tpl.minutesDesc', build: documentFrom('minutes') },
   { id: 'exercises', kind: 'document', icon: '✏️', name: 'tpl.exercises', description: 'tpl.exercisesDesc', build: documentFrom('exercises') },
   { id: 'article', kind: 'document', icon: '🔬', name: 'tpl.article', description: 'tpl.articleDesc', build: documentFrom('article') },
+  { id: 'newspaper', kind: 'document', icon: '📰', name: 'tpl.newspaper', description: 'tpl.newspaperDesc', build: documentFrom('newspaper') },
   { id: 'budget', kind: 'spreadsheet', icon: '💶', name: 'tpl.budget', description: 'tpl.budgetDesc', build: (lang) => ({ kind: 'spreadsheet', wb: budget(lang) }) },
   { id: 'grades', kind: 'spreadsheet', icon: '🎓', name: 'tpl.grades', description: 'tpl.gradesDesc', build: (lang) => ({ kind: 'spreadsheet', wb: grades(lang) }) },
   { id: 'invoice', kind: 'spreadsheet', icon: '🧾', name: 'tpl.invoice', description: 'tpl.invoiceDesc', build: (lang) => ({ kind: 'spreadsheet', wb: invoice(lang) }) },

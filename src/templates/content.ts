@@ -14,6 +14,7 @@ export interface DocumentTexts {
   exercises: string;
   tour: string;
   article: string;
+  newspaper: string;
 }
 
 const EN: DocumentTexts = {
@@ -240,6 +241,59 @@ Funding, help received, data or software used.
 ## References
 
 <div id="refs"></div>
+`,
+  newspaper: `---
+title: The School Gazette
+papersize: a4
+geometry: "margin=15mm"
+footer-center: "The School Gazette · {page}"
+---
+
+# The School Gazette
+
+[Issue 12 · {date} · Free]{.smallcaps}
+
+---
+
+## The garden club harvests its first pumpkins
+
+::: {.columns count=3 gap=14 rule}
+**After a whole season of work,** the pupils of the garden club picked forty-two pumpkins on Friday. The largest weighs eleven kilos: it will be shown at the entrance hall until the holidays.
+
+The club meets every Tuesday at lunchtime. Anyone may join: no experience is needed, only a pair of boots.
+
+"We learnt that a pumpkin drinks a lot," says Léa, in year 7. The club now plans a rainwater tank, paid for by the sale of soup at the autumn fair.
+
+\\columnbreak
+
+## In brief
+
+**Library.** New comics have arrived; the library is open every day from 12:30.
+
+**Sports day.** The cross-country race takes place on the 14th. Parents are welcome along the course.
+
+**Lost and found.** Forty-three water bottles are waiting for their owners at the reception desk.
+
+## Agenda
+
+- **Mon.** Chess club, room 104
+- **Wed.** Choir rehearsal
+- **Fri.** Film club: *The Kid*
+:::
+
+---
+
+::: {.columns count=2 gap=18}
+## Interview: the new cook
+
+Since September, the canteen serves a vegetarian dish every day. We asked the new cook how the menus are chosen, and what the most popular dish is so far — the answer may surprise you.
+
+Write your questions for the next interview and leave them in the box by the library door.
+
+## Puzzle of the week
+
+What has a neck but no head, and wears a cap? *Answer in the next issue.*
+:::
 `,
   tour: `---
 title: A tour of Progressive Web Office
@@ -545,6 +599,59 @@ Financements, aides reçues, données ou logiciels utilisés.
 ## Références
 
 <div id="refs"></div>
+`,
+  newspaper: `---
+title: La Gazette du collège
+papersize: a4
+geometry: "margin=15mm"
+footer-center: "La Gazette du collège · {page}"
+---
+
+# La Gazette du collège
+
+[Numéro 12 · {date} · Gratuit]{.smallcaps}
+
+---
+
+## Le club jardin récolte ses premières citrouilles
+
+::: {.columns count=3 gap=14 rule}
+**Après toute une saison de travail,** les élèves du club jardin ont cueilli quarante-deux citrouilles vendredi. La plus grosse pèse onze kilos : elle sera exposée dans le hall jusqu’aux vacances.
+
+Le club se réunit chaque mardi à midi. Tout le monde peut venir : aucune expérience n’est demandée, seulement une paire de bottes.
+
+« Nous avons appris qu’une citrouille boit beaucoup », raconte Léa, en sixième. Le club prévoit maintenant une cuve d’eau de pluie, payée par la vente de soupe à la fête d’automne.
+
+\\columnbreak
+
+## En bref
+
+**CDI.** De nouvelles bandes dessinées sont arrivées ; le CDI est ouvert tous les jours dès 12 h 30.
+
+**Cross.** Le cross du collège a lieu le 14. Les parents sont les bienvenus le long du parcours.
+
+**Objets trouvés.** Quarante-trois gourdes attendent leurs propriétaires à l’accueil.
+
+## Agenda
+
+- **Lun.** Club d’échecs, salle 104
+- **Mer.** Répétition de la chorale
+- **Ven.** Ciné-club : *Le Kid*
+:::
+
+---
+
+::: {.columns count=2 gap=18}
+## Entretien : le nouveau cuisinier
+
+Depuis septembre, la cantine sert chaque jour un plat végétarien. Nous avons demandé au nouveau cuisinier comment les menus sont choisis, et quel plat a le plus de succès — la réponse pourrait vous surprendre.
+
+Écrivez vos questions pour le prochain entretien et déposez-les dans la boîte près de la porte du CDI.
+
+## Devinette de la semaine
+
+Qu’est-ce qui a un col mais pas de tête, et porte un bouchon ? *Réponse dans le prochain numéro.*
+:::
 `,
   tour: `---
 title: Découverte de Progressive Web Office

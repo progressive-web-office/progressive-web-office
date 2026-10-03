@@ -3,8 +3,8 @@
  * Unsupported constructs are kept as visible source text.
  */
 import { parseGeometryOptions } from './geometry';
-import { defaultGeometry } from './model';
-import { spaceOf, stretchOf } from './springs';
+import { cleanColumns, defaultGeometry, inColumns } from './model';
+import { lengthPt, spaceOf, stretchOf } from './springs';
 import { parseBibtex, type BibEntry } from './bibliography';
 import { addResource, type PageNumberFormat, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
 
@@ -29,7 +29,7 @@ const ARITY: Record<string, [boolean, number]> = {
   c: [false, 1], v: [false, 1], H: [false, 1], u: [false, 1], k: [false, 1], r: [false, 1], d: [false, 1], b: [false, 1],
   thanks: [false, 1], phantom: [false, 1], hyperref: [true, 1], newpage: [false, 0], clearpage: [false, 0],
   fancyhead: [true, 1], fancyfoot: [true, 1], lhead: [false, 1], chead: [false, 1], rhead: [false, 1], lfoot: [false, 1], cfoot: [false, 1], rfoot: [false, 1],
-  fancyhf: [true, 1], pageref: [false, 1],
+  fancyhf: [true, 1], pageref: [false, 1], setlength: [false, 2], columnbreak: [false, 0],
   include: [false, 1], input: [false, 1], captionof: [true, 2], citep: [true, 1], citet: [true, 1], parencite: [true, 1], autocite: [true, 1], textcite: [true, 1], footcite: [true, 1], citeauthor: [false, 1], bibliography: [false, 1], addbibresource: [true, 1], bibliographystyle: [false, 1], bibitem: [true, 1], autoref: [false, 1], cref: [false, 1], Cref: [false, 1], nameref: [false, 1], vref: [false, 1],
 };
 
@@ -275,7 +275,7 @@ class Parser {
     let opt: string | undefined;
     const args: string[] = [];
     if (s[this.pos] === '[') opt = this.balanced('[', ']');
-    if (/^(tabular\*?|tabularx|longtable|array|minipage|minted|adjustbox)$/.test(name)) {
+    if (/^(tabular\*?|tabularx|longtable|array|minipage|minted|adjustbox|multicols\*?)$/.test(name)) {
       if (name === 'tabularx' || name === 'tabular*' || name === 'adjustbox') args.push(this.mandatory());
       if (name === 'minipage' && s[this.pos] === '[') this.balanced('[', ']');
       args.push(this.mandatory());
@@ -343,6 +343,9 @@ const HEADING_LEVEL: Record<string, ParagraphStyle> = {
 
 class Builder {
   readonly blocks: Block[] = [];
+  /** DOC-049: `\columnsep` and `\columnseprule` as last set. */
+  private columnGap: number | undefined;
+  private columnRule = false;
   private current: Paragraph | null = null;
   private listInfo: { ordered: boolean; level: number } | undefined;
 
@@ -492,6 +495,18 @@ class Builder {
       // DOC-021: page breaks between paragraphs.
       this.flush();
       if (this.blocks.length) this.blocks.push({ type: 'rule', page: true });
+      return;
+    }
+    // DOC-049: a column break, and the gap and rule of the next columns.
+    if (name === 'columnbreak') {
+      this.flush();
+      this.blocks.push({ type: 'rule', column: true });
+      return;
+    }
+    if (name === 'setlength') {
+      const length = lengthPt(args[1] ?? '');
+      if (/^\s*\\columnsep\s*$/.test(args[0] ?? '') && length !== undefined) this.columnGap = length;
+      else if (/^\s*\\columnseprule\s*$/.test(args[0] ?? '')) this.columnRule = (length ?? 0) > 0;
       return;
     }
     // DOC-042: springs and spaces.
@@ -776,6 +791,19 @@ class Builder {
         this.walk(nodes(), fmt, { ...ctx, style: 'quote', inList: false });
         this.flush();
         return;
+      case 'multicols':
+      case 'multicols*': {
+        // DOC-049: text in columns.
+        this.flush();
+        const from = this.blocks.length;
+        this.walk(parse(node.body), fmt, ctx);
+        this.flush();
+        const columns = cleanColumns({ count: Number(node.args[0]) || 2, ...(this.columnGap !== undefined ? { gap: this.columnGap } : {}), ...(this.columnRule ? { rule: true } : {}) });
+        this.blocks.splice(from, Infinity, ...inColumns(this.blocks.slice(from), columns));
+        this.columnGap = undefined;
+        this.columnRule = false;
+        return;
+      }
       case 'center':
       case 'flushright':
       case 'flushleft':

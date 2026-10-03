@@ -3,9 +3,12 @@
  * to sanitise pasted HTML (DOC-008): anything outside the supported subset is
  * reduced to text, and unsafe URLs/elements are dropped.
  */
+import { columnsCss } from './columns';
 import {
   cleanFormat,
   groupBlocks,
+  columnSegments,
+  inColumns,
   isImageRun,
   isCodeCellRun,
   isDiagramRun,
@@ -92,7 +95,24 @@ export function blocksToDom(
   cites = citations(blocks, references);
   fieldCtx = fields;
   try {
-    return blocksToDomInner(blocks, doc, resolveImage);
+    // DOC-049: text in columns in a div with CSS columns.
+    const frag = doc.createDocumentFragment();
+    for (const set of columnSegments(blocks)) {
+      const inner = blocksToDomInner(set.blocks, doc, resolveImage, blocks);
+      if (!set.columns) {
+        frag.append(inner);
+        continue;
+      }
+      const div = doc.createElement('div');
+      div.className = 'columns';
+      div.dataset.count = String(set.columns.count);
+      if (set.columns.gap !== undefined) div.dataset.gap = String(set.columns.gap);
+      if (set.columns.rule) div.dataset.rule = '';
+      div.setAttribute('style', columnsCss(set.columns.count, set.columns.gap, !!set.columns.rule));
+      div.append(inner);
+      frag.append(div);
+    }
+    return frag;
   } finally {
     [xref, cites, fieldCtx] = outer;
   }
@@ -200,6 +220,7 @@ function blocksToDomInner(
   blocks: Block[],
   doc: Document,
   resolveImage: (key: string) => ImageInfo | undefined,
+  all: Block[] = blocks,
 ): DocumentFragment {
   const frag = doc.createDocumentFragment();
   let quote: HTMLElement | null = null;
@@ -212,7 +233,7 @@ function blocksToDomInner(
     } else if (group.type === 'table') {
       frag.append(tableToDom(group, doc, resolveImage));
     } else if (group.type === 'toc') {
-      frag.append(tocElement(blocks, group.levels ?? 3, doc));
+      frag.append(tocElement(all, group.levels ?? 3, doc));
     } else if (group.type === 'space') {
       frag.append(spaceElement(group, doc));
     } else if (group.type === 'include') {
@@ -224,6 +245,9 @@ function blocksToDomInner(
       if (group.page) {
         hr.className = 'page-break';
         hr.style.breakAfter = 'page';
+      } else if (group.column) {
+        hr.className = 'column-break';
+        hr.style.breakAfter = 'column';
       }
       frag.append(hr);
     } else if (isQuote) {
@@ -758,7 +782,19 @@ export function domToBlocks(
     if (tag === 'hr') {
       flush();
       const page = el.classList.contains('page-break') || /page/.test(`${el.style.breakAfter} ${el.style.pageBreakAfter}`);
-      blocks.push(page ? { type: 'rule', page: true } : { type: 'rule' });
+      const column = !page && (el.classList.contains('column-break') || /column/.test(el.style.breakAfter));
+      blocks.push(page ? { type: 'rule', page: true } : column ? { type: 'rule', column: true } : { type: 'rule' });
+      return;
+    }
+    if (tag === 'div' && el.classList.contains('columns')) {
+      // DOC-049: text in columns.
+      flush();
+      const from = blocks.length;
+      for (const c of Array.from(el.childNodes)) walk(c, fmt, ctx);
+      flush();
+      const count = Number(el.dataset.count) || Number(el.style.columnCount) || 2;
+      const gap = el.dataset.gap !== undefined ? Number(el.dataset.gap) : undefined;
+      blocks.splice(from, Infinity, ...inColumns(blocks.slice(from), { count, ...(gap !== undefined ? { gap } : {}), ...(el.dataset.rule !== undefined ? { rule: true } : {}) }));
       return;
     }
     if (tag === 'table') {

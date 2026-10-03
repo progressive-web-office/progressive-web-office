@@ -19,6 +19,7 @@ where you want. The templates are written in the language of the interface
 | Meeting minutes | Attendees, agenda, discussion, a table of actions |
 | Exercise sheet | Numbered exercises with equations, a name field in the header |
 | Scientific article | A4 with 2.5 cm margins, title, authors and affiliations, abstract, keywords, introduction, methods with a numbered equation, results with a captioned table, discussion, conclusion, acknowledgements, citations and the list of references |
+| Newspaper | A school newspaper or newsletter on A4 with 15 mm margins: masthead with the issue and the date, an article in three columns with a rule between them and a column break, news in brief, an agenda, an interview in two columns (see [Columns](./documents.md#columns)) |
 
 ## Spreadsheets
 

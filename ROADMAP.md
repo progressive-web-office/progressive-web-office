@@ -176,8 +176,8 @@ group is not a commitment.
 
 ### Desktop publishing
 
-- Text in columns (two to four, gap, rule between), column breaks, kept in
-  OpenDocument, Word and LaTeX: a newsletter, a school newspaper
+- ✅ Text in columns (two to six, gap, rule between), column breaks, kept in
+  OpenDocument, Word, LaTeX and Markdown; a newspaper template (DOC-049)
 - Frames placed on the page, text flowing from one frame to the next,
   pictures with text around them, master pages
 - Colours for print: RGB and CMYK (values typed in either), a print preview

@@ -297,6 +297,33 @@ The text is set with the care of TeX, on screen and on paper:
   `[…]{.smallcaps}` in Markdown (as Pandoc), and the small capitals of
   OpenDocument and Word.
 
+### Columns
+
+For a newsletter, a school newspaper or a leaflet, part of a document can be
+set in **columns**, as in desktop publishing software:
+
+1. select the paragraphs (or put the cursor in one);
+2. **▥ Columns…** (in *Insert*, the context menu or the command palette):
+   two to six columns, the gap between them (in mm) and an optional line
+   between them; a small picture shows the result.
+
+The text flows from one column to the next and the columns are balanced.
+A **column break** (**⫼**, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd>)
+makes what follows start the next column; it is marked on screen only.
+The context menu, inside columns, offers **Change the columns…** and **Back
+to one column**. A heading above the columns stays across the whole page —
+the *Newspaper* template shows a masthead, an article in three columns with
+a rule between them and an interview in two.
+
+Columns are kept in every format:
+
+| Format | Columns | Column break |
+|--------|---------|--------------|
+| OpenDocument (`.odt`) | a section with columns | `fo:break-after="column"` |
+| Word (`.docx`) | continuous sections with `w:cols` | `w:br w:type="column"` |
+| LaTeX (`.tex`) | `multicols` (package `multicol`), `\columnsep`, `\columnseprule` | `\columnbreak` |
+| Markdown (`.md`) | a fenced div `::: {.columns count=3 gap=14 rule}` … `:::` | `\columnbreak` |
+
 ### Header and footer
 
 ▤ **Page setup** also sets the header and footer: each has a left, a centre and a right part.
@@ -639,6 +666,7 @@ accepted.
 | Images | ✅ | ✅ | ✅ (`data:` URI) | ✅ (`assets/images/`) |
 | Quotes, code blocks, rules | ✅ | ✅ | ✅ | ✅ |
 | Page breaks | ✅ | ✅ | ✅ (`\newpage`) | ✅ (`\newpage`) |
+| Columns, column breaks | ✅ | ✅ | ✅ (fenced div, `\columnbreak`) | ✅ (fenced div, `\columnbreak`) |
 | Footnotes | ✅ | ✅ | ✅ (`[^1]`) | ✅ (`[^1]`) |
 | Table of contents | ✅ (field) | ✅ | ✅ (`[[_TOC_]]`) | ✅ (`[[_TOC_]]`) |
 | Header and footer | ✅ | ✅ | ✅ (front matter) | ✅ (front matter) |

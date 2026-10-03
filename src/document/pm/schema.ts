@@ -14,6 +14,7 @@ import { tableNodes } from 'prosemirror-tables';
 import { LAYOUT_KEYS, inputText, type Align, type CellOutput, type InputKind, type ParagraphStyle } from '../model';
 import { cssFontFamily, footnoteFromDom, inputOfElement } from '../html';
 import { t } from '../../i18n';
+import { columnsCss } from '../columns';
 
 const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code', 'caption'];
 const ALIGNS: Align[] = ['left', 'center', 'right', 'justify'];
@@ -109,9 +110,34 @@ export const schema = new Schema({
     },
     horizontal_rule: {
       group: 'block',
-      attrs: { page: { default: false } },
-      parseDOM: [{ tag: 'hr', getAttrs: (d: HTMLElement) => ({ page: d.classList.contains('page-break') }) }],
-      toDOM: (n) => (n.attrs.page ? ['hr', { class: 'page-break', 'data-label': t('doc.pageBreak') }] : ['hr']),
+      attrs: { page: { default: false }, column: { default: false } },
+      parseDOM: [{ tag: 'hr', getAttrs: (d: HTMLElement) => ({ page: d.classList.contains('page-break'), column: d.classList.contains('column-break') }) }],
+      toDOM: (n) => (n.attrs.page ? ['hr', { class: 'page-break', 'data-label': t('doc.pageBreak') }] : n.attrs.column ? ['hr', { class: 'column-break', 'data-label': t('doc.columnBreak') }] : ['hr']),
+    },
+    /** DOC-049: blocks set in columns, as in a newspaper. */
+    columns: {
+      group: 'block',
+      content: '(paragraph | table | horizontal_rule | space | toc | include | bibliography)+',
+      defining: true,
+      isolating: true,
+      attrs: { count: { default: 2 }, gap: { default: null }, rule: { default: false } },
+      parseDOM: [
+        {
+          tag: 'div.columns',
+          getAttrs: (d: HTMLElement) => ({ count: Number(d.dataset.count) || 2, gap: d.dataset.gap !== undefined ? Number(d.dataset.gap) : null, rule: d.dataset.rule !== undefined }),
+        },
+      ],
+      toDOM: (n) => [
+        'div',
+        {
+          class: 'columns',
+          'data-count': String(n.attrs.count),
+          ...(n.attrs.gap !== null ? { 'data-gap': String(n.attrs.gap) } : {}),
+          ...(n.attrs.rule ? { 'data-rule': '' } : {}),
+          style: columnsCss(n.attrs.count as number, n.attrs.gap as number | null, !!n.attrs.rule),
+        },
+        0,
+      ],
     },
     toc: {
       group: 'block',

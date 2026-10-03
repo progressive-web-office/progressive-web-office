@@ -8,6 +8,8 @@ import { t } from '../i18n';
 import {
   extensionForType,
   groupBlocks,
+  columnSegments,
+  DEFAULT_COLUMN_GAP,
   isImageRun,
   isCodeCellRun,
   isDiagramRun,
@@ -207,8 +209,24 @@ class OdtWriter {
     return name;
   }
 
-  /** Solutions in sections named Solution1, Solution2… (TEACH-001), which LibreOffice can hide. */
+  /** DOC-049: text in columns in sections with columns, as LibreOffice writes them. */
   private blocks(blocks: Block[]): string {
+    return columnSegments(blocks)
+      .map((set) => {
+        if (!set.columns) return this.solutionBlocks(set.blocks);
+        const { count, gap = DEFAULT_COLUMN_GAP, rule } = set.columns;
+        const style = `Columns${count}_${String(gap).replace('.', '_')}${rule ? '_rule' : ''}`;
+        const sep = rule ? '<style:column-sep style:width="0.5pt" style:color="#000000" style:height="100%" style:vertical-align="top"/>' : '';
+        this.autoStyles.set(style, `<style:style style:name="${style}" style:family="section"><style:section-properties text:dont-balance-text-columns="false"><style:columns fo:column-count="${count}" fo:column-gap="${gap}pt">${sep}</style:columns></style:section-properties></style:style>`);
+        return `<text:section text:style-name="${style}" text:name="Columns${++this.columnsCount}">${this.solutionBlocks(set.blocks)}</text:section>`;
+      })
+      .join('');
+  }
+
+  private columnsCount = 0;
+
+  /** Solutions in sections named Solution1, Solution2… (TEACH-001), which LibreOffice can hide. */
+  private solutionBlocks(blocks: Block[]): string {
     return solutionSegments(blocks)
       .map((s) => {
         if (!s.solution) return this.plainBlocks(s.blocks);
@@ -245,7 +263,11 @@ class OdtWriter {
         const filter = /\.odt$/i.test(group.src) ? ' text:filter-name="writer8"' : '';
         out += `<text:section text:name="Include${n}" text:protected="true"><text:section-source xlink:href="../${esc(encodeURI(group.src))}" xlink:type="simple"${filter}/><text:p text:style-name="Standard">${esc(group.src)}</text:p></text:section>`;
       } else {
-        if (group.page) {
+        if (group.column && !group.page) {
+          // DOC-049: a column break.
+          this.autoStyles.set('ColumnBreak', '<style:style style:name="ColumnBreak" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-after="column"/></style:style>');
+          out += '<text:p text:style-name="ColumnBreak"/>';
+        } else if (group.page) {
           this.autoStyles.set('PageBreak', '<style:style style:name="PageBreak" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:break-after="page"/></style:style>');
           out += '<text:p text:style-name="PageBreak"/>';
         } else {

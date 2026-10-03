@@ -171,3 +171,15 @@ describe('BIB-011 the scientific article template', () => {
     expect(doc.blocks.some((b) => b.type === 'bibliography')).toBe(true);
   });
 });
+
+describe('DOC-049 the newspaper template', () => {
+  it.each(['en', 'fr'] as const)('sets its articles in columns (%s)', async (lang) => {
+    const { columnSegments } = await import('../src/document/model');
+    const d = doc('newspaper', lang);
+    const sets = columnSegments(d.blocks).filter((s) => s.columns).map((s) => s.columns);
+    expect(sets).toEqual([{ count: 3, gap: 14, rule: true }, { count: 2, gap: 18 }]);
+    expect(d.blocks.some((b) => b.type === 'rule' && b.column && b.columns?.count === 3)).toBe(true);
+    expect(runs(d).some((r) => 'field' in r && r.field === 'date')).toBe(true);
+    expect(d.page?.geometry).toMatchObject({ top: 15, left: 15 });
+  });
+});

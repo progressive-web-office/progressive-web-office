@@ -33,6 +33,7 @@ import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
 import { linkRange, removeLink } from './pm/commands';
+import { columnsAt, columnsOf, setColumns } from './pm/columns';
 import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReference, numberEquation, insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
@@ -68,6 +69,9 @@ import { editPageSetup, pageSetupCss, zonePreview } from './page-setup';
 import { DocReview } from './review';
 import { loadReading } from '../review/settings';
 import { REVIEW_KEYWORDS } from '../review/keys';
+
+/** DOC-049: words finding the columns in the command palette. */
+const COLUMNS_KEYWORDS = ['columns', 'colonnes', 'newspaper', 'journal', 'newsletter', 'multicol', 'PAO', 'desktop publishing', '分栏'];
 
 /** Words finding a button in the command palette (UI-018). */
 function withKeywords(b: HTMLButtonElement, keywords: string): HTMLButtonElement {
@@ -528,6 +532,16 @@ export class DocumentEditor implements EditorView {
     }
   }
 
+  /** DOC-049: set the selected blocks (or the columns holding the cursor) in columns. */
+  private async editColumns(): Promise<void> {
+    const at = columnsAt(this.view.state);
+    const { columnsDialog } = await import('./columns-dialog');
+    const layout = await columnsDialog(this.element, at ? columnsOf(at.node) : undefined);
+    if (layout === null) return this.refocus();
+    if (!this.command(setColumns(layout))) (this.ctx.notify ?? window.alert)(t('cols.cannot'));
+    this.refocus();
+  }
+
   /** Header and footer dialog (DOC-024). */
   private async editPageSetup(): Promise<void> {
     const setup = await editPageSetup(this.element, this.doc.page);
@@ -646,10 +660,13 @@ export class DocumentEditor implements EditorView {
 
   private headings(levels: number): { level: number; text: string; pos: number }[] {
     const out: { level: number; text: string; pos: number }[] = [];
-    this.view?.state.doc.forEach((node, pos) => {
+    this.view?.state.doc.descendants((node, pos) => {
+      // DOC-049: headings in columns too.
+      if (node.type === schema.nodes.columns) return true;
       const m = node.type === schema.nodes.paragraph ? /^h(\d)$/.exec(node.attrs.style as string) : null;
       const text = node.textContent.replace(/\s+/g, ' ').trim();
       if (m && Number(m[1]) <= levels && text) out.push({ level: Number(m[1]), text, pos });
+      return false;
     });
     return out;
   }
@@ -1038,6 +1055,10 @@ export class DocumentEditor implements EditorView {
         ...FIELD_KINDS.map((kind): MenuAction => ({ label: t(`field.${kind}`), icon: FIELD_ICONS[kind], run: () => this.insertField(kind) })),
         ...this.inputEntries(),
         ...this.spaceEntries(),
+        // DOC-049: columns, changed again from the context menu.
+        { title: t('cols.title') },
+        { label: t(columnsAt(state) ? 'cols.change' : 'cols.button'), icon: '▥', run: () => void this.editColumns() },
+        ...(columnsAt(state) ? [{ label: t('doc.columnBreak'), icon: '⫼', shortcut: 'Ctrl+Shift+Enter', run: cmd(insertRule(false, true)) }, { label: t('cols.remove'), icon: '▭', run: cmd(setColumns(undefined)) }] : []),
       );
       if (!empty) entries.push('separator', { label: t('fmt.clear'), icon: '⌫', run: cmd(clearFormatting) });
     }
@@ -1837,7 +1858,11 @@ export class DocumentEditor implements EditorView {
         ].filter((_c, i) => [addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, mergeCells, splitCell, toggleHeaderRow, deleteTable][i]!(state))
       : [];
     const menu = { label: t('ctx.menu'), category: t('ctx.edit'), where, run: () => this.showContextMenuAtCursor() };
-    return [toggle, ...modes, ...this.review.commands(), ...fields, ...formInputs, ...springs, ...table, menu];
+    const columns = [
+      { label: t(columnsAt(state) ? 'cols.change' : 'cols.button'), category: t('cols.title'), where, keywords: COLUMNS_KEYWORDS, run: () => void this.editColumns() },
+      { label: t('doc.columnBreak'), category: t('cols.title'), where, keys: ['Ctrl+Shift+Enter'], run: () => this.command(insertRule(false, true)) },
+    ];
+    return [toggle, ...modes, ...this.review.commands(), ...fields, ...formInputs, ...springs, ...table, ...columns, menu];
   }
 
   /** FOLDER-023: the colours of the tags changed. */
@@ -2277,6 +2302,8 @@ export class DocumentEditor implements EditorView {
         act(t('toc.button'), '§', () => this.command(insertToc), t('toc.insertTitle')),
         act(t('doc.insertRule'), '―', () => this.command(insertRule())),
         act(t('doc.pageBreak'), '⤓', () => this.command(insertRule(true)), `${t('doc.pageBreak')} (Ctrl+Enter)`),
+        act(t('cols.button'), '▥', () => void this.editColumns(), t('cols.buttonTitle')),
+        act(t('doc.columnBreak'), '⫼', () => this.command(insertRule(false, true)), `${t('doc.columnBreak')} (Ctrl+Shift+Enter)`),
         act(t('snippet.title'), '✂', () => void this.openSnippets(), t('snippet.menu')),
       ]),
       h('span', { class: 'sep' }),
