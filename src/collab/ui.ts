@@ -34,7 +34,7 @@ export interface CollabHost {
   confirm(title: string, message: string, ok: string): Promise<boolean>;
 }
 
-interface Transport {
+export interface Transport {
   room: CollabRoom;
   selfId: string;
   leave(): void;
@@ -428,3 +428,6 @@ export class Collaboration {
     this.bar.remove();
   }
 }
+
+/** DEVSYNC-002: a room of one's own devices, found and encrypted like a collaboration. */
+export const connectRoom = (room: string, secret: string): Promise<Transport> => connect({ kind: 'document', room, secret });

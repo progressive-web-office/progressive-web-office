@@ -187,11 +187,12 @@ group is not a commitment.
 
 ### Devices and safety of the documents
 
-- Synchronisation between one's own devices, peer to peer and end-to-end
+- ✅ Synchronisation between one's own devices, peer to peer and end-to-end
   encrypted (paired devices, revocable): the documents of the browser found
   on every device — with clear warnings: synchronisation is not a backup, a
-  document deleted on one device is deleted on all (a trash kept for a
-  while, versions kept)
+  document deleted on one device is deleted on all (a trash kept 30 days)
+  (DEVSYNC-001..005); next: revoking one device only, the trash in the
+  window, recent files and templates synchronised too
 - ✅ Real backups, distinct from synchronisation: dated, encrypted archives of
   all the documents kept in the browser, to a folder or a WebDAV / Nextcloud
   account, with reminders, kept for days and weeks, restored file by file or

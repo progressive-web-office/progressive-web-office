@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Syncing my devices** (DEVSYNC-001..DEVSYNC-005): the documents kept in
+  the browser copied between one's own devices, peer to peer and end-to-end
+  encrypted, paired with a secret code or a QR code; warnings first
+  (synchronisation is not a backup, a deletion reaches every device, not for
+  collaboration); conflicts kept twice, deletions and replaced versions to a
+  trash kept 30 days; synchronising on demand or by itself; a new code
+  revokes the other devices.
 - **Backups** of what the browser keeps (BACKUP-001..BACKUP-005): its
   storage's files, recent files, drafts, templates and versions, in dated
   archives encrypted with a password (AES-GCM, PBKDF2), downloaded or written

@@ -1001,6 +1001,7 @@ export class App {
     void this.offerDraft(recent);
     void this.offerLastFolder(recent);
     void this.offerBackup(recent);
+    void this.resumeDeviceSync();
     this.renderHeader();
     this.renderStatus();
   }
@@ -1040,6 +1041,26 @@ export class App {
     await backupDialog(this.root);
     this.renderHeader();
     this.root.querySelector('.backup-banner')?.remove();
+  }
+
+  // --- one's own devices (DEVSYNC-001..DEVSYNC-005) -----------------------------------
+
+  private async openDeviceSync(): Promise<void> {
+    const { syncDialog } = await import('../devsync/ui');
+    await syncDialog(this.root, { openBackup: () => void this.openBackup() });
+  }
+
+  private deviceSyncResumed = false;
+
+  /** Synchronising by itself: join the paired devices when the application opens. */
+  private async resumeDeviceSync(): Promise<void> {
+    if (this.deviceSyncResumed) return;
+    this.deviceSyncResumed = true;
+    const { loadSyncState } = await import('../devsync/state');
+    const state = loadSyncState();
+    if (!state.pairing || !state.auto || !state.understood) return;
+    const { startSync } = await import('../devsync/live');
+    await startSync().catch(() => undefined);
   }
 
   private backupReminded = false;
@@ -1162,6 +1183,10 @@ export class App {
     }
     if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) shareTools.push(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
     shareTools.push(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
+    // DEVSYNC-001: one's own devices, peer to peer.
+    const devices = button(t('devsync.button'), () => void this.openDeviceSync(), { text: '🔁', className: 'icon', title: t('devsync.buttonTitle') });
+    devices.dataset.keywords = 'sync synchronise devices appareils synchroniser téléphone phone laptop 同步 设备';
+    shareTools.push(devices);
     actions.append(toolGroup(t('group.share'), '📤', shareTools));
     // BACKUP-004: the last backup, always in sight.
     actions.append(this.backupButton());

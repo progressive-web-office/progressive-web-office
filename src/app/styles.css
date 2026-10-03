@@ -1419,10 +1419,19 @@ body.distraction-free .ai-panel { display: none !important; }
 
 /* BACKUP-004: the last backup in the header; marked when one is due. */
 .backup-button { white-space: nowrap; }
-.backup-button.due { border-color: #c77700; color: #8a4f00; background: #fff4e0; }
+.backup-button.due { border-color: #c77700; background: color-mix(in srgb, #c77700 15%, transparent); }
 .backup-dialog { max-width: 36rem; }
 .backup-dialog .backup-last { font-weight: 600; }
 .backup-dialog .backup-last.due { color: #8a4f00; }
 .backup-dialog .backup-files { max-height: 14rem; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin: 6px 0; }
 .backup-dialog .backup-password { margin-left: 1.5rem; }
 .backup-dialog .dialog-actions.start { justify-content: flex-start; }
+
+/* DEVSYNC: one's own devices. */
+.devsync-dialog { max-width: 38rem; }
+.devsync-warnings { border-left: 4px solid #c77700; background: color-mix(in srgb, #c77700 10%, transparent); padding: 6px 12px; margin: 8px 0; }
+.devsync-warnings ul { margin: 4px 0; padding-left: 1.2rem; }
+.devsync-understood { display: block; margin: 8px 0; font-weight: 600; }
+.devsync-peers { list-style: none; padding: 0; margin: 4px 0; }
+.devsync-code { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.devsync-code-text { word-break: break-all; font-size: 0.8rem; max-width: 18rem; }
