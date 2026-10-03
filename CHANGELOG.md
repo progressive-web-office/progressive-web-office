@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The start screen offers the last five folders opened, not only the last
+  one (FOLDER-015); the explorer collapses all its folders and shows the
+  open document on request (FOLDER-016).
+
 - File explorer: context menu (right click, Menu key, Shift+F10) with every
   action on the selection (FOLDER-013); copy, cut and paste with Ctrl+C/X/V
   and duplicate (FOLDER-012); download a file, or folders and several

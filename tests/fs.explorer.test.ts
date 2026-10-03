@@ -193,3 +193,20 @@ describe('FOLDER-014 file explorer: downloads', () => {
     expect(got).toEqual([['dir', 'a.md']]);
   });
 });
+
+describe('FOLDER-016 file explorer: collapse all, show the open document', () => {
+  it('closes every folder, and opens those leading to the open document', async () => {
+    const { x, row } = await explorer({ 'a/b/c.md': '', 'd/e.md': '' });
+    row('a').click();
+    await settle();
+    row('d').click();
+    await settle();
+    expect(x.element.querySelectorAll('[aria-expanded=true]')).toHaveLength(2);
+    await x.collapseAll();
+    expect(x.element.querySelectorAll('[aria-expanded=true]')).toHaveLength(0);
+    x.setCurrent('a/b/c.md');
+    await x.revealCurrent();
+    expect(row('a/b/c.md').getAttribute('aria-current')).toBe('page');
+    expect(document.activeElement).toBe(row('a/b/c.md'));
+  });
+});

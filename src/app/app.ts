@@ -1371,27 +1371,36 @@ export class App {
     this.renderHeader();
   }
 
-  /** On the start screen: reopen the folder opened last (permission is asked again). */
+  /** On the start screen: reopen one of the folders opened last (permission is asked again) (FOLDER-001, FOLDER-015). */
   private async offerLastFolder(recent: HTMLElement): Promise<void> {
-    const { lastFolder } = await import('../storage/recent');
-    const handle = await lastFolder();
-    if (!handle || this.current || !recent.isConnected) return;
-    const reopen = button(t('folder.reopen', { name: handle.name }), () => {
-      void (async () => {
-        const { DirectoryHandleProvider } = await import('../fs');
-        const folder = new DirectoryHandleProvider(handle);
-        if (await folder.permitted(true)) await this.setFolder(folder);
-        else this.showError(t('folder.denied', { name: handle.name }));
-      })();
-    }, { className: 'card folder', icon: '📁' });
-    // FOLDER-001: the offer can be removed; the folder itself is not touched.
-    const row = h('div', { class: 'start-actions folder-reopen' }, reopen);
-    row.append(
-      button(t('folder.forget', { name: handle.name }), () => {
-        void import('../storage/recent').then(({ forgetFolder }) => forgetFolder()).then(() => row.remove());
-      }, { text: '✕', className: 'icon folder-forget', title: t('folder.forgetTitle') }),
-    );
-    recent.before(row);
+    const { recentFolders } = await import('../storage/recent');
+    const folders = await recentFolders();
+    if (!folders.length || this.current || !recent.isConnected) return;
+    const list = h('div', { class: 'start-actions folder-reopen', role: 'list', 'aria-label': t('folder.recentFolders') });
+    for (const f of folders) {
+      const reopen = button(t('folder.reopen', { name: f.name }), () => {
+        void (async () => {
+          const { DirectoryHandleProvider } = await import('../fs');
+          const folder = new DirectoryHandleProvider(f.handle);
+          if (await folder.permitted(true)) await this.setFolder(folder);
+          else this.showError(t('folder.denied', { name: f.name }));
+        })();
+      }, { className: 'card folder', icon: '📁' });
+      // The offer can be removed; the folder itself is not touched.
+      const item = h('div', { class: 'folder-reopen-item', role: 'listitem' }, reopen);
+      item.append(
+        button(t('folder.forget', { name: f.name }), () => {
+          void import('../storage/recent')
+            .then(({ forgetFolder }) => forgetFolder(f.id))
+            .then(() => {
+              item.remove();
+              if (!list.childElementCount) list.remove();
+            });
+        }, { text: '✕', className: 'icon folder-forget', title: t('folder.forgetTitle') }),
+      );
+      list.append(item);
+    }
+    recent.before(list);
   }
 
   /** Open a document of the folder; `query` shows its first match. */

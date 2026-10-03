@@ -869,8 +869,9 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .folder-file:hover { background: var(--sel); }
 .folder-file[aria-current='page'] { background: var(--sel); font-weight: 600; }
 .folder-snippet { margin: 0 0 4px 8px; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
-.folder-reopen { margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; }
-.folder-reopen .card { flex: 0 1 22rem; }
+.folder-reopen { margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.folder-reopen-item { display: flex; align-items: flex-start; gap: 4px; flex: 0 1 24rem; }
+.folder-reopen .card { flex: 1 1 auto; min-width: 0; }
 .folder-reopen .folder-forget { flex: none; width: 2.25rem; height: 2.25rem; padding: 0; }
 .card.folder { border-left-color: var(--doc); }
 @media (max-width: 700px) {

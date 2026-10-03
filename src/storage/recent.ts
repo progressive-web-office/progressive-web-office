@@ -132,27 +132,62 @@ export async function clearDraft(): Promise<void> {
   await request((await store('drafts', 'readwrite')).delete('current'));
 }
 
-/** Remember the folder opened last, to offer it again (FOLDER-001). */
+/** Folders offered again on the start screen (FOLDER-015). */
+export const MAX_FOLDERS = 5;
+
+export interface RecentFolder {
+  id: string;
+  name: string;
+  handle: FileSystemDirectoryHandle;
+  openedAt: number;
+}
+
+async function sameFolder(a: FileSystemDirectoryHandle, b: FileSystemDirectoryHandle): Promise<boolean> {
+  try {
+    if (typeof a.isSameEntry === 'function') return await a.isSameEntry(b);
+  } catch {
+    /* compared by name below */
+  }
+  return a.name === b.name;
+}
+
+/** The folders opened last, most recent first (FOLDER-001, FOLDER-015). */
+export async function recentFolders(): Promise<RecentFolder[]> {
+  try {
+    const all = (await request((await store('folders', 'readonly')).getAll())) as Partial<RecentFolder>[];
+    return all
+      .filter((f): f is RecentFolder => !!f.handle && typeof f.id === 'string')
+      .map((f) => ({ ...f, name: f.name ?? f.handle.name, openedAt: f.openedAt ?? 0 }))
+      .sort((a, b) => b.openedAt - a.openedAt);
+  } catch {
+    return [];
+  }
+}
+
+/** Remember a folder just opened, to offer it again; the oldest ones are forgotten. */
 export async function rememberFolder(handle: FileSystemDirectoryHandle): Promise<void> {
   try {
-    await request((await store('folders', 'readwrite')).put({ id: 'last', name: handle.name, handle }));
+    const known = await recentFolders();
+    let same: RecentFolder | undefined;
+    for (const f of known) if (await sameFolder(f.handle, handle)) same = f;
+    const id = same?.id ?? `folder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const os = await store('folders', 'readwrite');
+    await request(os.put({ id, name: handle.name, handle, openedAt: Date.now() }));
+    const others = known.filter((f) => f.id !== id);
+    for (const old of others.slice(MAX_FOLDERS - 1)) await request((await store('folders', 'readwrite')).delete(old.id));
   } catch {
     /* no storage: nothing to offer next time */
   }
 }
 
 export async function lastFolder(): Promise<FileSystemDirectoryHandle | undefined> {
-  try {
-    const rec = (await request((await store('folders', 'readonly')).get('last'))) as { handle?: FileSystemDirectoryHandle } | undefined;
-    return rec?.handle;
-  } catch {
-    return undefined;
-  }
+  return (await recentFolders())[0]?.handle;
 }
 
-export async function forgetFolder(): Promise<void> {
+/** Forget a folder of the list (the folder itself is not touched). */
+export async function forgetFolder(id: string): Promise<void> {
   try {
-    await request((await store('folders', 'readwrite')).delete('last'));
+    await request((await store('folders', 'readwrite')).delete(id));
   } catch {
     /* nothing stored */
   }

@@ -26,6 +26,8 @@ The panel's toolbar manages the folder:
 | ✎ | rename the selected file or folder (<kbd>F2</kbd>) |
 | 🗑 | delete the selected files and folders, after confirmation (<kbd>Del</kbd>) |
 | ↻ | reload the folder |
+| ⊟ | collapse all the folders |
+| ◎ | show the open document in the tree |
 | *Sort by* | order by name, date (newest first), size (largest first) or type; folders stay first, and the choice is remembered |
 
 Each file shows its size and the date it was last changed (the full date in
@@ -79,8 +81,9 @@ goes to its parent), <kbd>Enter</kbd> opens a document,
   (`[chapter 1](chapters/one.md)`, a relative link in a Word or OpenDocument
   file) opens that document with <kbd>Ctrl</kbd>+click
   (<kbd>⌘</kbd>+click on macOS). Links to web pages open in a new tab.
-- The folder is remembered: the start screen offers to reopen it (the
-  browser asks again for permission). The ✕ next to the offer forgets it.
+- The folders are remembered: the start screen offers to reopen the last
+  five folders of the device (the browser asks again for permission). The ✕
+  next to one forgets it; the folder itself is not touched.
 
 Chromium-based browsers (Chrome, Edge, Opera…) read and write the folder in
 place. Other browsers open it **read-only**: documents can be read and

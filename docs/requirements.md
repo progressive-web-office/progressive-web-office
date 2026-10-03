@@ -85,6 +85,8 @@ spreadsheets (Excel `.xlsx`, OpenDocument `.ods`, `.csv`), presentations
 | FOLDER-012 | S | 0.1.0 | The file explorer shall copy, cut and paste files and folders (Ctrl+C, Ctrl+X, Ctrl+V and its menu), within the open folder, giving a free name to those whose name is taken, and duplicate them next to themselves. |
 | FOLDER-013 | S | 0.1.0 | The file explorer shall offer the actions on the selected entries, or on the folder for empty space, in a context menu opened by a right click, the Menu key or Shift+F10, usable with the keyboard (arrows, Escape). |
 | FOLDER-014 | S | 0.1.0 | The file explorer shall download the selected file as it is, and folders or several entries as a ZIP archive, and copy their paths. |
+| FOLDER-015 | S | 0.1.0 | The start screen shall offer to reopen the last five folders of the device opened, most recent first, each of which can be forgotten without touching the folder. |
+| FOLDER-016 | S | 0.1.0 | The file explorer shall collapse all its folders, and open the folders leading to the open document to show it, on request. |
 | FOLDER-005 | S | 0.1.0 | When the open folder holds linked Markdown notes, the system shall read and keep the notes' YAML front matter, follow `[[note]]`, `[[note#heading]]` and `[[note|alias]]` links (by name, nearest first, then by alias), offer to create a missing note, show picture embeds `![[image.png]]` from the folder, list the backlinks of the open note, and update links when a note is renamed. |
 | FOLDER-003 | S | 0.1.0 | When the user Ctrl+clicks a link to a file of the open folder in a text document, the system shall open that document; links to web pages shall open in a new tab. |
 

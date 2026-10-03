@@ -95,6 +95,8 @@ export class FolderPanel {
         download: t('folder.download'),
         copyPath: t('folder.copyPath'),
         menu: t('folder.menu'),
+        collapseAll: t('folder.collapseAll'),
+        showCurrent: t('folder.showCurrent'),
         error: (message) => t('folder.error', { message }),
       },
       // Every file is listed: documents, text and source files, pictures, archives; others can be downloaded (FILE-021).

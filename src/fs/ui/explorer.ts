@@ -38,6 +38,8 @@ export interface ExplorerStrings {
   download: string;
   copyPath: string;
   menu: string;
+  collapseAll: string;
+  showCurrent: string;
   error: (message: string) => string;
 }
 
@@ -70,6 +72,8 @@ const DEFAULT_STRINGS: ExplorerStrings = {
   download: 'Download',
   copyPath: 'Copy the path',
   menu: 'Actions',
+  collapseAll: 'Collapse all folders',
+  showCurrent: 'Show the open document',
   error: (m) => m,
 };
 
@@ -220,6 +224,8 @@ export class Explorer {
           ]
         : [el('span', { className: 'fs-readonly', textContent: this.strings.readOnly })]),
       tool(this.strings.refresh, '↻', () => void this.refresh()),
+      tool(this.strings.collapseAll, '⊟', () => void this.collapseAll()),
+      tool(this.strings.showCurrent, '◎', () => void this.revealCurrent()),
       sort,
       this.picker,
     );
@@ -283,6 +289,22 @@ export class Explorer {
       else b.removeAttribute('aria-current');
     }
     this.paint();
+  }
+
+  /** Close every folder (FOLDER-016). */
+  async collapseAll(): Promise<void> {
+    this.expanded.clear();
+    this.expanded.add('');
+    await this.refresh();
+  }
+
+  /** Open the folders leading to the open document and bring it into view (FOLDER-016). */
+  async revealCurrent(): Promise<void> {
+    if (!this.current) return;
+    await this.reveal(this.current);
+    const row = this.row(this.current);
+    row?.scrollIntoView?.({ block: 'nearest' });
+    row?.focus();
   }
 
   /** Open the folders leading to `path`. */
