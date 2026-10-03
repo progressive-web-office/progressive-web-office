@@ -34,7 +34,10 @@ itself for the supported file types, so you can open a file with
 The start screen offers:
 
 - **New document**, **New spreadsheet**, **New presentation**
-- **Open file…** — or drop a file anywhere in the window
+- **Open file…** — or drop a file anywhere in the window. Drop **several
+  files** (PDF, Word, OpenDocument…) or **a whole folder** at once and they
+  open in the [folder panel](./folders.md), the first document shown: no need
+  to zip them first.
 - the list of **recent files** (stored only in your browser)
 
 ## Languages

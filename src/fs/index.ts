@@ -5,4 +5,5 @@ export * from './walk';
 export { MemoryProvider } from './providers/memory';
 export { DirectoryHandleProvider, canPickDirectory, pickDirectory, privateStorage } from './providers/handle';
 export { FileListProvider, pickFileList } from './providers/files';
+export { captureDrop, droppedFolder, isFolderDrop, type CapturedDrop } from './drop';
 export { Explorer, formatSize, sortEntries, type SortKey, type ExplorerOptions, type ExplorerStrings, type ExplorerChange, type NewFileKind } from './ui/explorer';

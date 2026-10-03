@@ -17,6 +17,7 @@ import { isTemplate, isTemplateBase, TEMPLATE_FORMATS, templateExtension, templa
 import { defaultFormat, FORMAT_FAMILIES, loadFormatFamily, saveFormatFamily, type FormatFamily } from '../core/format-preference';
 import { pickFile, readFileBytes, replaceExtension, saveFile } from '../storage/file-io';
 import { toolGroup } from './tool-groups';
+import { captureDrop, droppedFolder, isFolderDrop } from '../fs/drop';
 import { renamedKeepingExtension, splitExtension } from '../core/filename';
 import type { AssistantPanel } from '../ai/panel';
 import type { GitAccount } from '../git/accounts';
@@ -1950,6 +1951,22 @@ export class App {
     }
   }
 
+  /** FILE-027: dropped files or a dropped folder in the folder panel; the first document opens. */
+  private async openDroppedFolder(drop: import('../fs/drop').CapturedDrop): Promise<void> {
+    const folder = await this.withBusy(() => droppedFolder(drop, (n) => t('drop.several', { n }))).catch((err: Error) => {
+      this.showError(t('folder.error', { message: err.message }));
+      return null;
+    });
+    if (!folder || !(await this.setFolder(folder))) return;
+    const { listFiles } = await import('../fs');
+    const { OPENABLE } = await import('../folder/panel');
+    // In the order of the drop, top-level files first.
+    const order = (drop.entries.some(Boolean) ? drop.entries.map((e) => e?.name ?? '') : drop.files.map((f) => f.name));
+    const rank = (p: string): number => (order.includes(p) ? order.indexOf(p) : order.length + p.split('/').length);
+    const first = (await listFiles(folder)).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)).find((p) => OPENABLE.test(p));
+    if (first && !this.current) await this.openFromFolder(first);
+  }
+
   private installDropZone(): void {
     this.root.addEventListener('dragover', (e) => {
       if (e.dataTransfer?.types.includes('Files')) {
@@ -1962,12 +1979,15 @@ export class App {
     });
     this.root.addEventListener('drop', (e) => {
       this.root.classList.remove('dragging');
-      const file = e.dataTransfer?.files[0];
       // Files dropped on the folder explorer are imported there (FOLDER-010).
-      if (file && !e.defaultPrevented) {
-        e.preventDefault();
-        void this.openFile(file);
-      }
+      if (!e.dataTransfer || e.defaultPrevented) return;
+      // FILE-027: several files or a folder open as a folder; what a drop carries is only reachable now.
+      const drop = captureDrop(e.dataTransfer);
+      const file = drop.files[0];
+      if (!file) return;
+      e.preventDefault();
+      if (isFolderDrop(drop)) void this.openDroppedFolder(drop);
+      else void this.openFile(file);
     });
     window.addEventListener('keydown', (e) => {
       if (!(e.ctrlKey || e.metaKey)) return;

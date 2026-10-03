@@ -9,7 +9,18 @@ export class FileListProvider implements StorageProvider {
   private readonly files = new Map<string, File>();
   private readonly dirs = new Set<string>(['']);
 
-  constructor(files: Iterable<File>) {
+  /** Files by path (dropped files and folders, FILE-027), under the name `label`. */
+  static fromPaths(label: string, files: Iterable<[string, File]>, id = `drop:${label}`): FileListProvider {
+    const p = new FileListProvider([], label, id);
+    for (const [path, f] of files) {
+      const n = normalize(path);
+      p.files.set(n, f);
+      for (let d = dirname(n); d; d = dirname(d)) p.dirs.add(d);
+    }
+    return p;
+  }
+
+  constructor(files: Iterable<File>, label?: string, id?: string) {
     let top = '';
     for (const f of files) {
       const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
@@ -19,8 +30,8 @@ export class FileListProvider implements StorageProvider {
       this.files.set(path, f);
       for (let d = dirname(path); d; d = dirname(d)) this.dirs.add(d);
     }
-    this.label = top || 'folder';
-    this.id = `files:${this.label}`;
+    this.label = label ?? (top || 'folder');
+    this.id = id ?? `files:${this.label}`;
   }
 
   async list(path: string): Promise<Entry[]> {

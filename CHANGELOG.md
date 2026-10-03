@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Dropping several files or a folder (FILE-027) opens them together in the
+  folder panel (a dropped folder is writable where the browser allows it),
+  the first document shown; before, only the first file opened.
+
 - Snippets (DOC-037): `;;name` or *Text › Snippets…* inserts Markdown with
   fields (date, time, title, clipboard) and places to type visited with Tab;
   built-in, personal and folder (`Snippets/`) snippets.

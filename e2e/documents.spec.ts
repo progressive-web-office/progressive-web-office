@@ -154,3 +154,22 @@ test('opens the examples with plots: a lab report with Python figures and a work
   await expect(page.locator('td[data-r="0"][data-c="5"]')).toHaveText('46.8');
   expect(errors).toEqual([]);
 });
+
+test('opens several dropped files at once in the folder panel (FILE-027)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(['# Notes\n\nFirst note.\n'], 'notes.md', { type: 'text/markdown' }));
+    dt.items.add(new File(['a,b\n1,2\n'], 'data.csv', { type: 'text/csv' }));
+    dt.items.add(new File(['# Plan\n'], 'plan.md', { type: 'text/markdown' }));
+    document.querySelector('.app')!.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+  });
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await expect(panel.getByRole('heading', { name: '📁 Dropped files (3)' })).toBeVisible();
+  for (const name of ['notes.md', 'data.csv', 'plan.md']) await expect(panel.getByRole('button', { name, exact: true })).toBeVisible();
+  // The first document is open; the others are a click away.
+  await expect(page.locator('.doc-page h1')).toHaveText('Notes');
+  await panel.getByRole('button', { name: 'data.csv', exact: true }).click();
+  await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveText('2');
+  expect(errors).toEqual([]);
+});

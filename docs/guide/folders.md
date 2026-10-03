@@ -2,6 +2,12 @@
 
 ## Working on a folder
 
+**Open a folder** (start screen) asks where the documents are. You can also
+**drop a folder**, or several files, anywhere in the window: a dropped
+folder opens as itself — and can be written where the browser allows it
+(Chrome, Edge), read-only elsewhere — and several files open together as a
+read-only folder, *Dropped files (n)*; the first document is shown.
+
 **Open a folder** (start screen) asks where the documents are:
 
 - **a folder of this device**;
