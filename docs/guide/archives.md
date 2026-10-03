@@ -58,6 +58,17 @@ keeping their byte order mark and their line ends (LF or CRLF).
 
 Printing a source file prints its text with line numbers and colours.
 
+### Running Python, JavaScript and TypeScript files
+
+A `.py`, `.js`, `.mjs` or `.ts` file shows **▶ Run** in its toolbar
+(<kbd>Ctrl</kbd>+<kbd>Enter</kbd>): the file — or only the selected lines —
+runs in the same isolated sandbox as the [code cells](./code.md) of
+documents, without network access. What it prints, its error and its
+matplotlib figures appear below the code; **■** stops a program that runs too
+long. Python is downloaded on the first run and works offline afterwards;
+TypeScript runs as JavaScript, its types removed. Successive runs share their
+variables, like the cells of a notebook.
+
 ### Review comments
 
 **💬 Comment the line** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>M</kbd>) asks

@@ -69,7 +69,8 @@ export type TsRequest =
   | { type: 'details'; file: string; text: string; pos: number; name: string; source?: string }
   | { type: 'diagnostics'; file: string; text: string }
   | { type: 'hover'; file: string; text: string; pos: number }
-  | { type: 'analyze'; text: string };
+  | { type: 'analyze'; text: string }
+  | { type: 'transpile'; text: string };
 
 /** Names a binding pattern declares (`const { a, b: [c] } = …`). */
 function bound(name: ts.BindingName, out: Set<string>): void {
@@ -114,6 +115,8 @@ function analyze(text: string): { defs: string[]; refs: string[] } {
 
 function answer(req: TsRequest): unknown {
   if (req.type === 'analyze') return analyze(req.text);
+  // CODE-017: TypeScript to JavaScript, types removed, to run in the sandbox.
+  if (req.type === 'transpile') return ts.transpileModule(req.text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
   update(req.file, req.text);
   switch (req.type) {
     case 'complete': {

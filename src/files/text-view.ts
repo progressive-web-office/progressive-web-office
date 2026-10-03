@@ -120,6 +120,7 @@ export class TextView implements PwoView {
     private readonly fileName: string,
   ) {
     this.decoded = decodeText(bytes);
+    this.lang = /\.pyw?$/i.test(fileName) ? 'python' : /\.(m?js|m?ts)$/i.test(fileName) ? 'javascript' : undefined;
     const entry = languageOf(fileName);
     const info = h('span', { class: 'code-info' }, [entry?.name ?? t('textfile.plain'), this.decoded.encoding === 'utf-8' ? 'UTF-8' : 'Windows-1252', this.decoded.crlf ? 'CRLF' : 'LF'].join(' · '));
     const wrap = h('input', { type: 'checkbox' });
@@ -135,10 +136,19 @@ export class TextView implements PwoView {
         h('label', { class: 'code-wrap' }, wrap, ` ${t('textfile.wrap')}`),
         button(t('textfile.goToLine'), () => gotoLine(this.view), { text: '↧', className: 'icon' }),
         button(t('textfile.review'), () => this.addReview(), { text: '💬', className: 'icon', title: `${t('textfile.review')} (Ctrl+Alt+M)` }),
+        // CODE-017: a Python or JavaScript file runs in the sandbox of the code cells.
+        ...(this.lang
+          ? [
+              button(t('textfile.run'), () => void this.run(), { text: `▶ ${t('textfile.run')}`, className: 'primary code-run', title: t('textfile.runTitle') }),
+              (this.stopButton = button(t('code.stop'), () => this.stop(), { text: '■', className: 'icon', title: t('code.stop') })),
+            ]
+          : []),
       ),
       h('p', { id: 'code-hint', class: 'sr-only' }, t('textfile.hint')),
       h('div', { class: 'code-main' }, host, this.reviews),
+      this.output,
     );
+    if (this.stopButton) this.stopButton.disabled = true;
     const extensions: Extension[] = [
       lineNumbers(),
       highlightActiveLineGutter(),
@@ -151,7 +161,7 @@ export class TextView implements PwoView {
       highlightSelectionMatches(),
       search({ top: true }),
       syntaxHighlighting(highlighter),
-      keymap.of([{ key: 'Mod-Alt-m', run: () => (this.addReview(), true) }, ...defaultKeymap, ...historyKeymap, ...searchKeymap, ...foldKeymap, indentWithTab]),
+      keymap.of([{ key: 'Mod-Alt-m', run: () => (this.addReview(), true) }, { key: 'Mod-Enter', run: () => (this.lang ? (void this.run(), true) : false) }, ...defaultKeymap, ...historyKeymap, ...searchKeymap, ...foldKeymap, indentWithTab]),
       reviewLines,
       theme,
       this.language.of([]),
@@ -182,6 +192,57 @@ export class TextView implements PwoView {
         }
       })
       .catch(() => undefined);
+  }
+
+  /** CODE-017: the language the file runs in, if any. */
+  private readonly lang: 'python' | 'javascript' | undefined;
+  private runner: import('../code/runner').CodeRunner | undefined;
+  private stopButton: HTMLButtonElement | undefined;
+  private readonly output = h('section', { class: 'code-file-output', 'aria-label': t('textfile.output'), 'aria-live': 'polite', hidden: true });
+  private images: string[] = [];
+
+  /** Run the selection, or the whole file, and show what it prints, its error and its figures. */
+  private async run(): Promise<void> {
+    if (!this.lang) return;
+    const { state } = this.view;
+    const sel = state.selection.main;
+    let code = sel.empty ? state.doc.toString() : state.sliceDoc(sel.from, sel.to);
+    // TypeScript runs as JavaScript, its types removed.
+    if (/\.m?ts$/i.test(this.fileName)) {
+      const js = await (await import('../code/ts-language')).transpileScript(code);
+      if (js === null) return this.showOutput([h('pre', { class: 'code-file-text error' }, t('textfile.noCompiler'))]);
+      code = js;
+    }
+    const { CodeRunner } = await import('../code/runner');
+    if (!this.runner) {
+      this.runner = new CodeRunner(this.element);
+      this.runner.confirmDownload = async (origin) => (await import('../code/ui')).confirmDownload(this.element, origin);
+    }
+    const status = h('p', { class: 'code-file-status' }, t('code.running'));
+    this.showOutput([h('h2', {}, sel.empty ? t('textfile.outputOf', { name: this.fileName }) : t('textfile.outputOfSelection')), status]);
+    if (this.stopButton) this.stopButton.disabled = false;
+    const result = await this.runner.run(this.lang, code, (s) => {
+      status.textContent = s === 'loading-python' ? t('code.loadingPython') : s === 'running' ? t('code.running') : `${t('code.packages')} ${s.slice('packages:'.length)}`;
+    });
+    if (this.stopButton) this.stopButton.disabled = true;
+    for (const url of this.images) URL.revokeObjectURL(url);
+    this.images = result.images.map((png) => URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' })));
+    status.remove();
+    this.output.append(
+      ...(result.text ? [h('pre', { class: result.error ? 'code-file-text error' : 'code-file-text' }, result.text)] : []),
+      ...this.images.map((src, i) => h('img', { src, alt: t('textfile.figure', { n: i + 1 }) })),
+      ...(!result.text && !this.images.length ? [h('p', { class: 'hint' }, t('textfile.noOutput'))] : []),
+    );
+  }
+
+  private showOutput(children: HTMLElement[]): void {
+    this.output.hidden = false;
+    this.output.replaceChildren(button(t('common.close'), () => (this.output.hidden = true), { text: '✕', className: 'icon code-file-close' }), ...children);
+  }
+
+  private stop(): void {
+    this.runner?.stop(t('code.stopped'));
+    if (this.stopButton) this.stopButton.disabled = true;
   }
 
   save(): Uint8Array {
@@ -282,6 +343,8 @@ export class TextView implements PwoView {
   }
 
   destroy(): void {
+    this.runner?.destroy();
+    for (const url of this.images) URL.revokeObjectURL(url);
     clearTimeout(this.reviewTimer);
     this.view.destroy();
   }

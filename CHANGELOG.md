@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Running source files (CODE-017): a `.py`, `.js` or `.ts` file opened in the
+  code viewer runs (whole or selection) in the code-cell sandbox, with its
+  output, errors and figures below the code.
+
 - Dropping several files or a folder (FILE-027) opens them together in the
   folder panel (a dropped folder is writable where the browser allows it),
   the first document shown; before, only the first file opened.
