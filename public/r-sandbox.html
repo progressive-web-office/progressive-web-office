@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- Generated from src/code/r-frame-html.ts: do not edit. -->
+<html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Dx2RylrPT17HeMSA1QnSWkoBdhqqoyKE4QwpTmMYwl4=' https://webr.r-wasm.org blob: 'unsafe-eval' 'wasm-unsafe-eval'; worker-src blob: https://webr.r-wasm.org; connect-src https://webr.r-wasm.org https://repo.r-wasm.org blob: data:; img-src blob: data:; style-src 'unsafe-inline'"></head><body><script type="module">
+let webR;
+const toPng = async (bitmap) => {
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, bitmap.width, bitmap.height);
+  ctx.drawImage(bitmap, 0, 0);
+  return (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer();
+};
+addEventListener('message', async (event) => {
+  if (event.source !== parent) return;
+  const m = event.data;
+  if (!m || m.type !== 'run') return;
+  const post = (data, transfer) => parent.postMessage({ id: m.id, ...data }, '*', transfer || []);
+  try {
+    if (!webR) {
+      post({ type: 'status', status: 'loading' });
+      // webR compares its URL with the page's origin, which is "null" in a sandbox: a valid stand-in is given.
+      const source = (await (await fetch('https://webr.r-wasm.org/v0.6.0/webr.mjs')).text()).replace(/new URL\((\w+),location\.origin\)/g, 'new URL($1,"https://sandbox.invalid")');
+      const mod = await import(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })));
+      const r = new mod.WebR({ baseUrl: 'https://webr.r-wasm.org/v0.6.0/', repoUrl: 'https://repo.r-wasm.org/bin/emscripten/contrib/', channelType: mod.ChannelType.PostMessage, interactive: false });
+      await r.init();
+      webR = r;
+    }
+    post({ type: 'status', status: 'running' });
+    const shelter = await new webR.Shelter();
+    try {
+      const cap = await shelter.captureR(m.code, { withAutoprint: true, captureStreams: true, captureConditions: false, captureGraphics: { width: 576, height: 384 } });
+      const text = cap.output.filter((o) => o.type === 'stdout' || o.type === 'stderr').map((o) => o.data + '\n').join('');
+      const images = [];
+      for (const bitmap of cap.images || []) images.push(await toPng(bitmap));
+      post({ type: 'result', text, images }, images);
+    } finally {
+      shelter.purge();
+    }
+  } catch (err) {
+    post({ type: 'result', text: (err && err.message ? err.message : String(err)) + '\n', error: true, images: [] });
+  }
+});
+parent.postMessage({ type: 'ready' }, '*');
+</script></body></html>

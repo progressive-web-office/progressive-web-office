@@ -293,6 +293,7 @@ SHA-256 before use.
 | Lua 5.4 | `.lua`, ```` ```lua {run} ```` cells | wasmoon | about 0.5 MB |
 | SQL (SQLite) | `.sql`, ```` ```sql {run} ```` cells | sql.js | about 0.7 MB |
 | C, C++ | `.c`, `.cpp`, ```` ```cpp {run} ```` cells | Clang/LLD (YoWASP) | about 105 MB |
+| R | `.R`, ```` ```r {run} ```` cells | webR, from `webr.r-wasm.org` | about 40 MB |
 
 A `.lua` or `.sql` file opened in the code viewer shows **▶ Run**; in a
 document, cells of these languages run like the others, in document order
@@ -305,6 +306,15 @@ appears below, compiler errors and warnings first. Programs read no input and
 no files; C++ is built without exceptions (`-fno-exceptions`), as the C++
 library for WebAssembly has none. Whether code is C++ is told by what it uses
 (`#include <iostream>`, `std::`, classes…).
+
+R runs with webR in a sandbox of its own, which downloads its files itself:
+it may reach only `webr.r-wasm.org` and the R package repository
+`repo.r-wasm.org`, nothing else, and has no access to the application's
+data. What R prints appears below the code, and **plots** as pictures.
+R packages built for webR install with `webr::install("dplyr")`. Unlike the
+other runtimes, webR is not kept by the application for offline use: the
+browser's cache usually keeps it, but the first run of a session may need the
+network.
 
 ## marimo notebooks
 

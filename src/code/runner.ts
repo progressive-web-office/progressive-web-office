@@ -61,6 +61,8 @@ export class CodeRunner {
   confirmDownload?: (origin: string) => Promise<boolean>;
 
   run(lang: CodeLang, code: string, onStatus?: (status: RunStatus) => void): Promise<RunResult> {
+    // CODE-018: R runs in a sandbox of its own, which downloads webR itself once the user agreed.
+    if (lang === 'r') return this.runR(code, onStatus);
     return this.start().then(
       () =>
         new Promise<RunResult>((resolve) => {
@@ -112,6 +114,19 @@ export class CodeRunner {
     if (this.frame && names.length) this.post({ type: 'forget', lang, names });
   }
 
+  private r: import('./r-runtime').RRuntime | undefined;
+
+  private async runR(code: string, onStatus?: (status: RunStatus) => void): Promise<RunResult> {
+    const { WEBR_ORIGIN } = await import('./r-frame-html');
+    if (!this.allowed.has(WEBR_ORIGIN)) {
+      if (!(await this.confirmDownload?.(WEBR_ORIGIN))) return { text: `Download from ${WEBR_ORIGIN} refused\n`, error: true, images: [] };
+      this.allowed.add(WEBR_ORIGIN);
+    }
+    const { RRuntime } = await import('./r-runtime');
+    this.r ??= new RRuntime(this.host);
+    return this.r.run(code, onStatus);
+  }
+
   /** Whether the sandbox runs (and holds the names of earlier runs). */
   get started(): boolean {
     return !!this.ready;
@@ -119,6 +134,7 @@ export class CodeRunner {
 
   /** Stop whatever is running: the sandbox is destroyed and restarted on the next run. */
   stop(reason = 'Stopped.'): void {
+    this.r?.stop(reason);
     this.frame?.remove();
     this.frame = undefined;
     this.ready = undefined;
@@ -134,6 +150,7 @@ export class CodeRunner {
 
   destroy(): void {
     this.stop();
+    this.r?.destroy();
   }
 
   get running(): boolean {

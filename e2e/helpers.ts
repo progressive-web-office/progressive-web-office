@@ -85,3 +85,19 @@ export async function useRuntimePackages(page: Page): Promise<boolean> {
   });
   return true;
 }
+
+/** CODE-018: serve webR from the unpacked npm package (`RUNTIME_PACKAGES/webr-<version>/package/dist`). */
+export async function useWebR(page: Page): Promise<boolean> {
+  const local = process.env.RUNTIME_PACKAGES;
+  if (!local) return !!process.env.CI;
+  const { readFileSync, existsSync } = await import('node:fs');
+  await page.context().route('https://webr.r-wasm.org/**', (route) => {
+    const m = /^\/v([^/]+)\/(.+)$/.exec(new URL(route.request().url()).pathname);
+    // The CDN's webr.mjs is the browser build, webr.js in the npm package.
+    const file = m && `${local}/webr-${m[1]}/package/dist/${m[2] === 'webr.mjs' ? 'webr.js' : m[2]}`;
+    if (!file || !existsSync(file)) return route.fulfill({ status: 404, body: '' });
+    const type = file.endsWith('.mjs') || file.endsWith('.js') ? 'text/javascript' : file.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream';
+    return route.fulfill({ body: readFileSync(file), headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': type } });
+  });
+  return true;
+}

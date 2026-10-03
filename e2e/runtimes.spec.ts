@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile, useRuntimePackages } from './helpers';
+import { openApp, openFile, useRuntimePackages, useWebR } from './helpers';
 
 // CODE-018: Lua and SQL files run with a runtime downloaded from its CDN after the user agreed.
 test('runs Lua and SQL files with runtimes downloaded when first needed (CODE-018)', async ({ page }) => {
@@ -39,5 +39,19 @@ test('compiles and runs C and C++ files with Clang downloaded when first needed 
   await page.getByRole('button', { name: 'Run', exact: true }).click();
   // Compiler errors are shown.
   await expect(page.getByRole('region', { name: 'Output' }).locator('.code-file-text.error')).toContainText("use of undeclared identifier 'missing'", { timeout: 120_000 });
+  expect(errors).toEqual([]);
+});
+
+test('runs R files with webR, in a sandbox of its own, plots included (CODE-018)', async ({ page }) => {
+  test.setTimeout(300_000);
+  test.skip(!(await useWebR(page)), 'needs RUNTIME_PACKAGES or network access to webr.r-wasm.org');
+  const errors = await openApp(page);
+  await openFile(page, 'stats.R', 'x <- c(2, 4, 4, 4, 5, 5, 7, 9)\ncat("mean:", mean(x), "\\n")\nsd(x)\nplot(x)\n', 'text/plain');
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await page.getByRole('dialog').filter({ hasText: 'webr.r-wasm.org' }).getByRole('button', { name: 'Allow' }).click();
+  const output = page.getByRole('region', { name: 'Output' });
+  await expect(output).toContainText('mean: 5', { timeout: 240_000 });
+  await expect(output).toContainText('[1] 2.13809');
+  await expect(output.locator('img')).toHaveCount(1);
   expect(errors).toEqual([]);
 });
