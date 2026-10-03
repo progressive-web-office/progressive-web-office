@@ -1,4 +1,5 @@
 /** LaTeX export (TEX-001, TEX-002): a compilable `article`. */
+import { geometryOptions } from './geometry';
 import { inputLatex } from './inputs';
 import { fillText, spaceText } from './springs';
 import {
@@ -138,6 +139,8 @@ class LatexWriter {
       '  \\usepackage{fontspec}',
       ...(cjk ? ['  \\usepackage{xeCJK} % Chinese/Japanese/Korean text: compile with XeLaTeX'] : []),
       '\\fi',
+      // DOC-046: the paper and its margins.
+      ...(this.doc.page?.geometry ? [`\\usepackage[${geometryOptions(this.doc.page.geometry)}]{geometry}`] : []),
       '\\usepackage{amsmath,amssymb}',
       '\\usepackage{graphicx}',
       '\\usepackage[normalem]{ulem}',

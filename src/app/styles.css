@@ -237,8 +237,12 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 }
 @media print { .doc-side { display: none; } .doc-page .comment-anchor { background: none; border: 0; } }
 .doc-page {
-  max-width: 816px; min-height: 1056px; margin: 0 auto;
-  padding: 72px 80px; background: #fff; color: #1c2430;
+  /* DOC-046: the paper of the document, its margins, a boundary at the end of each page's text. */
+  box-sizing: border-box; width: var(--page-w, 816px); max-width: 100%; min-height: var(--page-h, 1056px); margin: 0 auto;
+  padding: var(--page-pad, 72px 80px); background-color: #fff; color: #1c2430;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--text-h, 960px) - 1px), var(--page-line, rgba(110, 125, 145, 0.55)) calc(var(--text-h, 960px) - 1px), var(--page-line, rgba(110, 125, 145, 0.55)) var(--text-h, 960px));
+  background-position: 0 var(--page-top, 72px); background-repeat: repeat-y; background-size: 100% var(--text-h, 960px);
+  position: relative;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.08);
   white-space: pre-wrap; overflow-wrap: break-word;
   font-family: Calibri, Carlito, 'Segoe UI', system-ui, sans-serif; font-size: 11pt; line-height: 1.45;
@@ -279,11 +283,12 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 .doc-page hr { border: 0; border-top: 1px solid #8a94a3; margin: 12pt 0; }
 @media (max-width: 700px) {
   .doc-scroll { padding: 0; }
-  .doc-page { padding: 24px 16px; min-height: 100%; box-shadow: none; }
+  /* A phone shows the text, not the paper. */
+  .doc-page { width: auto; padding: 24px 16px; min-height: 100%; box-shadow: none; background-image: none; }
 }
 @media print {
   .doc-scroll { padding: 0; }
-  .doc-page { box-shadow: none; padding: 0; max-width: none; min-height: 0; }
+  .doc-page { box-shadow: none; padding: 0; width: auto; max-width: none; min-height: 0; background-image: none; }
 }
 
 /* Spreadsheet */
@@ -840,6 +845,9 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .doc-furniture:hover, .doc-furniture:focus-visible { background: #f6f8fb; color: #1c2430; }
 .doc-furniture .center { text-align: center; }
 .doc-furniture .right { text-align: right; }
+.page-geometry { border: 1px solid var(--border); border-radius: 6px; margin: 0 0 10px; padding: 8px; display: grid; gap: 6px; }
+.page-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.page-num { width: 5.5em; }
 .hf-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; border: 1px solid var(--border); border-radius: 6px; margin: 0 0 10px; padding: 8px; }
 .hf-row input { min-height: 30px; min-width: 0; }
 .hf-fields { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

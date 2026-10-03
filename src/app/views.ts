@@ -30,6 +30,8 @@ export interface EditorView {
   printContent?(settings: PrintSettings): HTMLElement | Promise<HTMLElement>;
   /** Page orientation that suits the content, used by default when printing (PRES-013). */
   printOrientation?(): 'portrait' | 'landscape';
+  /** DOC-046: the paper and margins of a text document, in millimetres. */
+  printPage?(): { width: number; height: number; top: number; right: number; bottom: number; left: number };
   /** Extra "Save as" entries writing copies (PDF-010). */
   saveVariants?(): SaveVariant[];
   /** Real-time collaboration on this document (COLLAB-002). */

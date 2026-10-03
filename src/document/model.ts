@@ -441,7 +441,43 @@ export interface PageZones {
 export const PAGE_NUMBER_FORMATS = ['decimal', 'lower-roman', 'upper-roman', 'lower-alpha', 'upper-alpha'] as const;
 export type PageNumberFormat = (typeof PAGE_NUMBER_FORMATS)[number];
 
+/**
+ * DOC-046: the paper of the document and its margins, in millimetres
+ * (width and height as the page is turned).
+ */
+export interface PageGeometry {
+  width: number;
+  height: number;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** Usual papers, portrait, in millimetres. */
+export const PAPERS: Record<string, [number, number]> = { A4: [210, 297], Letter: [215.9, 279.4], A5: [148, 210], A3: [297, 420], Legal: [215.9, 355.6] };
+
+/** The page of a document without one: A4 (Letter in North America), 2 cm margins. */
+export function defaultGeometry(lang = typeof navigator !== 'undefined' ? navigator.language : 'en'): PageGeometry {
+  const [width, height] = /^en-(US|CA)$|^es-(MX|US)$/.test(lang) ? PAPERS.Letter! : PAPERS.A4!;
+  return { width, height, top: 20, right: 20, bottom: 20, left: 20 };
+}
+
+/** The name of a paper size ("A4", "Letter"), whichever way it is turned; undefined for another size. */
+export function paperName(g: Pick<PageGeometry, 'width' | 'height'>): string | undefined {
+  const [a, b] = [Math.min(g.width, g.height), Math.max(g.width, g.height)];
+  return Object.entries(PAPERS).find(([, [w, h]]) => Math.abs(w - a) < 1 && Math.abs(h - b) < 1)?.[0];
+}
+
+export const isLandscape = (g: Pick<PageGeometry, 'width' | 'height'>): boolean => g.width > g.height;
+
+/** The height of the text of a page (between the top and bottom margins), in millimetres. */
+export const textHeight = (g: PageGeometry): number => g.height - g.top - g.bottom;
+export const textWidth = (g: PageGeometry): number => g.width - g.left - g.right;
+
 export interface PageSetup {
+  /** DOC-046: paper and margins; the default page when absent. */
+  geometry?: PageGeometry;
   header?: PageZones;
   footer?: PageZones;
   /** Page number style (DOC-029); decimal when absent. */
@@ -482,6 +518,8 @@ export function zoneParts(text: string): (string | { field: PageField })[] {
 }
 
 /** Drop empty zones and empty header/footer; undefined when nothing is left. */
+const r2 = (n: number): number => Math.round(n * 100) / 100;
+
 export function cleanPageSetup(page: PageSetup | undefined): PageSetup | undefined {
   const zones = (z: PageZones | undefined): PageZones | undefined => {
     if (!z) return undefined;
@@ -491,11 +529,18 @@ export function cleanPageSetup(page: PageSetup | undefined): PageSetup | undefin
   };
   const header = zones(page?.header);
   const footer = zones(page?.footer);
-  if (!header && !footer) return undefined;
+  // DOC-046: a sensible page (at least 5 cm of paper, margins leaving 2 cm of text).
+  const g = page?.geometry;
+  const geometry =
+    g && [g.width, g.height, g.top, g.right, g.bottom, g.left].every((n) => Number.isFinite(n) && n >= 0) && g.width >= 50 && g.height >= 50 && textWidth(g) >= 20 && textHeight(g) >= 20
+      ? { width: r2(g.width), height: r2(g.height), top: r2(g.top), right: r2(g.right), bottom: r2(g.bottom), left: r2(g.left) }
+      : undefined;
+  if (!header && !footer && !geometry) return undefined;
   // DOC-029: numbering settings only matter with a header or footer; defaults are left out.
   const format = page?.numberFormat && page.numberFormat !== 'decimal' && (PAGE_NUMBER_FORMATS as readonly string[]).includes(page.numberFormat) ? page.numberFormat : undefined;
   const start = page?.startAt !== undefined && Number.isInteger(page.startAt) && page.startAt !== 1 && page.startAt >= 0 ? page.startAt : undefined;
   return {
+    ...(geometry ? { geometry } : {}),
     ...(header ? { header } : {}),
     ...(footer ? { footer } : {}),
     ...(format ? { numberFormat: format } : {}),

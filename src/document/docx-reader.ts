@@ -79,6 +79,15 @@ class DocxReader {
     if (format) setup.numberFormat = format;
     const start = numbering ? Number(attr(numbering, 'start')) : NaN;
     if (Number.isInteger(start)) setup.startAt = start;
+    // DOC-046: the paper and its margins (twentieths of a point).
+    const size = children(sect, 'pgSz')[0];
+    const margins = children(sect, 'pgMar')[0];
+    const mm = (el: Element | undefined, name: string): number | undefined => {
+      const v = el ? Number(attr(el, name)) : NaN;
+      return Number.isFinite(v) ? Math.round((v / 20 / 72) * 25.4 * 10) / 10 : undefined;
+    };
+    const [width, height] = [mm(size, 'w'), mm(size, 'h')];
+    if (width && height) setup.geometry = { width, height, top: mm(margins, 'top') ?? 25.4, right: mm(margins, 'right') ?? 25.4, bottom: mm(margins, 'bottom') ?? 25.4, left: mm(margins, 'left') ?? 25.4 };
     const titlePg = children(sect, 'titlePg')[0];
     if (titlePg && !/^(0|false|off)$/.test(attr(titlePg, 'val') ?? '')) setup.hideOnFirstPage = true;
     return cleanPageSetup(setup);

@@ -10,6 +10,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The page of a document (DOC-046): paper, orientation and margins, set in
+  **Page setup** (formerly *Header and footer*) and kept in ODT, DOCX, LaTeX
+  (`geometry`) and Markdown (`papersize`, `geometry`). The page on screen is
+  the page on paper — its width, its margins, a line where each page's text
+  ends — so that a vertical spring visibly reaches the foot of the page and a
+  page break starts the next one; printing uses the document's paper.
 - Springs and spaces open a dialog by a double click: a spring's **share of
   the free space in percent** (worked out as a weight from the other springs
   of its page or line), a space's height in cm, mm, pt or **% of the page

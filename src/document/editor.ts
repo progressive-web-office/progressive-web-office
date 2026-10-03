@@ -27,7 +27,7 @@ import { bytesToBase64, writeMarkdown } from './markdown-writer';
 import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
 import { writeLatex } from './latex-writer';
 import { readLatex } from './latex-reader';
-import { addResource, allParagraphs, isFillRun, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
+import { addResource, allParagraphs, defaultGeometry, isFillRun, isLandscape, paperName, textHeight, textWidth, type PageGeometry, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
@@ -38,7 +38,7 @@ import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
 import { layoutSprings, measureSprings, springsPlugin } from './pm/springs';
 import { parseFill, parseSpaceLine } from './springs';
-import { contentHeightPx, contentWidthPx, loadPrintSettings } from '../print/settings';
+import { mmToPx } from '../print/settings';
 import { cellStateKey, cellStatePlugin, markCells, stalePositions } from './pm/cell-state';
 import type { CellDeps, CellError } from '../code/reactive';
 import { loadReactivity } from '../code/settings';
@@ -260,6 +260,7 @@ export class DocumentEditor implements EditorView {
       });
     }
     this.renderFurniture();
+    this.applyGeometry();
     this.view = new PmView(
       { mount: this.page },
       {
@@ -477,9 +478,10 @@ export class DocumentEditor implements EditorView {
   private async editPageSetup(): Promise<void> {
     const setup = await editPageSetup(this.element, this.doc.page);
     if (!setup) return;
-    if (setup.header || setup.footer) this.doc.page = setup;
+    if (Object.keys(setup).length) this.doc.page = setup;
     else delete this.doc.page;
     this.renderFurniture();
+    this.applyGeometry();
     this.changed();
   }
 
@@ -1903,6 +1905,28 @@ export class DocumentEditor implements EditorView {
 
   // --- springs (DOC-042) ------------------------------------------------------
 
+  /** DOC-046: the paper and margins of the document (the default page when it has none). */
+  private geometry(): PageGeometry {
+    return this.doc.page?.geometry ?? defaultGeometry();
+  }
+
+  printPage(): PageGeometry {
+    return this.geometry();
+  }
+
+  /** The page on screen as on paper: its width, margins, and a boundary at the end of each page's text. */
+  private applyGeometry(): void {
+    const g = this.geometry();
+    const style = this.page.style;
+    style.setProperty('--page-w', `${mmToPx(g.width)}px`);
+    style.setProperty('--page-h', `${mmToPx(g.height)}px`);
+    style.setProperty('--page-pad', [g.top, g.right, g.bottom, g.left].map((m) => `${mmToPx(m)}px`).join(' '));
+    style.setProperty('--page-top', `${mmToPx(g.top)}px`);
+    style.setProperty('--text-h', `${mmToPx(textHeight(g))}px`);
+    this.page.dataset.paper = `${paperName(g) ?? `${g.width} × ${g.height} mm`}${isLandscape(g) ? ' ↔' : ''}`;
+    this.springsSoon();
+  }
+
   private springsFrame = 0;
   private readonly onResize = (): void => this.springsSoon();
 
@@ -1911,19 +1935,19 @@ export class DocumentEditor implements EditorView {
     if (this.springsFrame || typeof requestAnimationFrame !== 'function') return;
     this.springsFrame = requestAnimationFrame(() => {
       this.springsFrame = 0;
-      if (this.view && !this.view.isDestroyed) layoutSprings(this.view, contentHeightPx(loadPrintSettings()));
+      if (this.view && !this.view.isDestroyed) layoutSprings(this.view, mmToPx(textHeight(this.geometry())));
     });
   }
 
   /** Before printing: the springs of the printed page, as wide as it is. */
   private readonly beforePrint = (): void => {
-    const settings = loadPrintSettings();
+    const g = this.geometry();
     const style = this.page.style;
     const saved = [style.width, style.maxWidth, style.padding];
-    style.width = `${contentWidthPx(settings)}px`;
+    style.width = `${mmToPx(textWidth(g))}px`;
     style.maxWidth = 'none';
     style.padding = '0';
-    layoutSprings(this.view, contentHeightPx(settings));
+    layoutSprings(this.view, mmToPx(textHeight(g)));
     style.width = saved[0]!;
     style.maxWidth = saved[1]!;
     style.padding = saved[2]!;

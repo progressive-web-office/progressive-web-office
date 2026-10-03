@@ -1,4 +1,5 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { geometryOptions } from './geometry';
 import { inputMarkdown } from './inputs';
 import { fillText, spaceText } from './springs';
 import { CALLOUT, isRelativeImage } from './markdown-reader';
@@ -429,6 +430,14 @@ function markdownFrontMatter(doc: RichDocument): string {
   const furniture = (['header', 'footer'] as const).flatMap((kind) =>
     (['left', 'center', 'right'] as const).flatMap((k) => (page?.[kind]?.[k] ? [`${kind}-${k}: ${JSON.stringify(page[kind]![k])}`] : [])),
   );
+  // DOC-046: the paper and margins, as Pandoc reads them.
+  const g = page?.geometry;
+  if (g) {
+    const opts = geometryOptions(g).split(',');
+    const paper = /^(\w+)paper$/.exec(opts[0]!)?.[1];
+    if (paper) furniture.push(`papersize: ${paper}`);
+    furniture.push(`geometry: "${(paper ? opts.slice(1) : opts).join(',')}"`);
+  }
   // DOC-029: page numbering, when it differs from the defaults.
   if (page?.numberFormat) furniture.push(`page-numbering: ${page.numberFormat}`);
   if (page?.startAt !== undefined) furniture.push(`page-start: ${page.startAt}`);

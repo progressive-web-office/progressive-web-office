@@ -3,15 +3,17 @@ import { openApp, openFile } from './helpers';
 
 test('print preview for a document with page settings (PRINT-001..003)', async ({ page }) => {
   const errors = await openApp(page);
-  await openFile(page, 'report.md', '# Report\n\nSome text with $x^2$.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n');
+  // DOC-046: the document's own paper, landscape.
+  await openFile(page, 'report.md', '---\npapersize: a4\ngeometry: "landscape,top=15mm,right=20mm,bottom=15mm,left=20mm"\n---\n\n# Report\n\nSome text with $x^2$.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n');
   await page.getByRole('button', { name: 'Print', exact: true }).click();
   const dialog = page.locator('.print-dialog');
   await expect(dialog).toBeVisible();
   const frame = page.frameLocator('.print-frame');
   await expect(frame.locator('h1')).toHaveText('Report');
   await expect(frame.locator('table')).toHaveCount(1);
-  await dialog.locator('select[name="orientation"]').selectOption('landscape');
-  await expect.poll(() => frame.locator('style.page-style').evaluate((e) => e.textContent)).toMatch(/297mm 210mm|279.4mm 215.9mm/);
+  await expect(dialog).toContainText('Paper of the document: 297 × 210 mm');
+  await expect(dialog.locator('select[name="orientation"]')).toHaveCount(0);
+  await expect.poll(() => frame.locator('style.page-style').evaluate((e) => e.textContent)).toContain('size: 297mm 210mm; margin: 15mm 20mm 15mm 20mm;');
   // Stub the real print dialog and check it is invoked on the preview frame.
   await page.evaluate(() => {
     const f = document.querySelector<HTMLIFrameElement>('.print-frame')!;

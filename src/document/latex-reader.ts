@@ -2,6 +2,8 @@
  * LaTeX import (TEX-003, TEX-004): the common subset of `article` documents.
  * Unsupported constructs are kept as visible source text.
  */
+import { parseGeometryOptions } from './geometry';
+import { defaultGeometry } from './model';
 import { spaceOf, stretchOf } from './springs';
 import { parseBibtex, type BibEntry } from './bibliography';
 import { addResource, type PageNumberFormat, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
@@ -954,6 +956,11 @@ export function readLatex(source: string, opts: LatexReadOptions = {}): RichDocu
     if (start) doc.page.startAt = Number(start);
     if (/\\thispagestyle\{empty\}/.test(body.slice(0, 400))) doc.page.hideOnFirstPage = true;
   }
+  // DOC-046: \usepackage[a4paper,margin=2cm]{geometry} and \geometry{…}.
+  const preamble = begin >= 0 ? src.slice(0, begin) : '';
+  const geometry = [...preamble.matchAll(/\\usepackage\[([^\]]*)\]\{geometry\}|\\geometry\{([^}]*)\}/g)].map((m) => m[1] ?? m[2] ?? '');
+  const paper = /\\documentclass\[([^\]]*)\]/.exec(preamble)?.[1]?.split(',').map((s) => s.trim()).filter((o) => /^(a3|a4|a5|letter|legal)paper$|^landscape$/.test(o)) ?? [];
+  if (geometry.length || paper.length) (doc.page ??= {}).geometry = parseGeometryOptions([...paper, ...geometry].join(','), { ...defaultGeometry(), top: 25, right: 25, bottom: 25, left: 25 });
   const page = cleanPageSetup(doc.page);
   if (page) doc.page = page;
   else delete doc.page;

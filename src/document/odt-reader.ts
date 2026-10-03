@@ -60,6 +60,16 @@ function readFurniture(xml: Document, content?: Document): PageSetup | undefined
   const numFormat = layout ? attr(descendants(layout, 'page-layout-properties')[0] ?? layout, 'num-format') : undefined;
   const format = (Object.entries(ODF_NUMBER_FORMAT) as [PageNumberFormat, string][]).find(([, v]) => v === numFormat)?.[0];
   if (format) setup.numberFormat = format;
+  // DOC-046: the paper and its margins.
+  const props = layout ? descendants(layout, 'page-layout-properties')[0] : undefined;
+  if (props) {
+    const mm = (name: string): number | undefined => {
+      const pt = lengthPt(attr(props, name) ?? '');
+      return pt === undefined ? undefined : Math.round(((pt * 25.4) / 72) * 10) / 10;
+    };
+    const [width, height] = [mm('page-width'), mm('page-height')];
+    if (width && height) setup.geometry = { width, height, top: mm('margin-top') ?? 20, right: mm('margin-right') ?? 20, bottom: mm('margin-bottom') ?? 20, left: mm('margin-left') ?? 20 };
+  }
   const field = descendants(master, 'page-number')[0];
   const adjust = field ? Number(attr(field, 'page-adjust')) : NaN;
   if (Number.isInteger(adjust)) setup.startAt = adjust + 1;

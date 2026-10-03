@@ -12,7 +12,7 @@ test('a vertical spring fills the page, a horizontal one the line, and they are 
   // The page is full: from the first line to the last, the height of the printed page's text.
   // The printed page's text: A4 or Letter (by the browser's language), 15 mm margins.
   const letter = await page.evaluate(() => /^en-(US|CA)$|^es-(MX|US)$/.test(navigator.language));
-  const pageHeight = (((letter ? 279.4 : 297) - 30) * 96) / 25.4;
+  const pageHeight = (((letter ? 279.4 : 297) - 40) * 96) / 25.4; // the default page: 2 cm margins (DOC-046)
   await expect.poll(async () => (await spring.boundingBox())!.height).toBeGreaterThan(500);
   const first = (await editor.locator('p').first().boundingBox())!;
   const last = (await editor.locator('p').last().boundingBox())!;
@@ -80,7 +80,7 @@ test('gives a spring its share of the free space in percent, and a space a share
   await dialog.getByLabel('Height', { exact: true }).fill('25');
   await dialog.getByRole('button', { name: 'OK' }).click();
   const letter = await page.evaluate(() => /^en-(US|CA)$|^es-(MX|US)$/.test(navigator.language));
-  const pageHeight = (((letter ? 279.4 : 297) - 30) * 96) / 25.4;
+  const pageHeight = (((letter ? 279.4 : 297) - 40) * 96) / 25.4; // the default page: 2 cm margins (DOC-046)
   const fixed = page.locator('.doc-page .space:not(.spring)');
   await expect.poll(async () => Math.abs((await fixed.boundingBox())!.height - pageHeight / 4)).toBeLessThan(3);
   const md = (await saveAs(page, 'Markdown (.md)')).data.toString();

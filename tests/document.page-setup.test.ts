@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readDocument, writeDocument } from '../src/document/io';
-import { emptyDocument, paragraph, zoneParts, type RichDocument } from '../src/document/model';
+import { emptyDocument, paragraph, zoneParts, type PageSetup, type RichDocument } from '../src/document/model';
 import { readZip, readZipText } from '../src/core/zip';
 import { pageSetupCss, zonePreview } from '../src/document/page-setup';
 import { formatPageNumber } from '../src/document/model';
@@ -12,6 +12,13 @@ const doc = (): RichDocument => ({
   page: { header: { left: '{title}', right: 'BUT GEII' }, footer: { center: 'Page {page} / {pages}', right: '{date}' } },
 });
 
+/** The page setup but its paper (DOC-046: every Word and OpenDocument file has one). */
+const withoutPaper = (page: PageSetup | undefined): PageSetup | undefined => {
+  if (!page) return page;
+  const { geometry: _paper, ...rest } = page;
+  return rest;
+};
+
 describe('DOC-024 headers and footers', () => {
   it('splits zones into text and fields', () => {
     expect(zoneParts('Page {page} / {pages}')).toEqual(['Page ', { field: 'page' }, ' / ', { field: 'pages' }]);
@@ -20,7 +27,7 @@ describe('DOC-024 headers and footers', () => {
 
   it.each(['docx', 'odt', 'tex', 'md'] as const)('round-trip through %s', async (format) => {
     const back = await readDocument(format, writeDocument(doc(), format));
-    expect(back.page).toEqual(doc().page);
+    expect(withoutPaper(back.page)).toEqual(doc().page);
     expect(back.blocks).toEqual([paragraph('Body')]);
   });
 
@@ -40,7 +47,8 @@ describe('DOC-024 headers and footers', () => {
     const plain = { ...emptyDocument(), blocks: [paragraph('x')] };
     const zip = readZip(writeDocument(plain, 'docx'));
     expect(Object.keys(zip).some((p) => p.includes('header'))).toBe(false);
-    expect((await readDocument('docx', writeDocument(plain, 'docx'))).page).toBeUndefined();
+    // Only the paper is read back (DOC-046).
+    expect(withoutPaper((await readDocument('docx', writeDocument(plain, 'docx'))).page)).toEqual({});
   });
 });
 
@@ -53,7 +61,7 @@ describe('DOC-029 page numbering styles', () => {
 
   it.each(['docx', 'odt', 'tex', 'md'] as const)('round-trip through %s', async (format) => {
     const back = await readDocument(format, writeDocument(numbered(), format));
-    expect(back.page).toEqual(numbered().page);
+    expect(withoutPaper(back.page)).toEqual(numbered().page);
     expect(back.blocks).toEqual(numbered().blocks);
   });
 

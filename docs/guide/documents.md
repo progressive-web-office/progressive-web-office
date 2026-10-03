@@ -75,7 +75,7 @@ menu, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes it.
 | Cross-reference | ↪ | |
 | Citation / bibliography | ❝ 📚 | |
 | Table of contents | § | |
-| Header and footer | ▤ | |
+| Page setup: paper, margins, header and footer | ▤ | |
 | Equation | ∑ (see [Equations](./equations.md)) | <kbd>Ctrl</kbd>+<kbd>M</kbd> |
 | Diagram | ⧉ (see [Diagrams](./diagrams.md)) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> |
 | Code cell | { } (see [Code cells](./code.md)) | |
@@ -230,9 +230,32 @@ header). Markdown tables cannot merge cells: a merged cell keeps its text in
 its first position and the others are left empty; their first row is always
 the header.
 
+### Paper and margins
+
+The page on screen is the page on paper: **▤ Page setup** sets the **paper**
+(A4, Letter, A5, A3, Legal or any size), its **orientation** and the four
+**margins** (in cm). The page is drawn with that width and those margins, and
+a line marks the end of each page's text, where the printer will turn the
+page — a vertical spring stretches exactly down to it, and a page break
+sends what follows to the top of the next page.
+
+The paper belongs to the document: it is kept in OpenDocument and Word files
+(their page layout), in LaTeX (`\usepackage[a4paper,margin=2cm]{geometry}`)
+and in Markdown, as Pandoc writes it:
+
+```yaml
+---
+papersize: a4
+geometry: "landscape,top=15mm,right=20mm,bottom=15mm,left=20mm"
+---
+```
+
+Printing uses it. A document without one gets A4 (Letter in North America)
+with 2 cm margins. On a phone, the text takes the width of the screen.
+
 ### Header and footer
 
-▤ opens the header and footer: each has a left, a centre and a right part.
+▤ **Page setup** also sets the header and footer: each has a left, a centre and a right part.
 *Insert* adds a field where the cursor is: **page number**, **page count**,
 **title** (from the document properties ⓘ) or **date**. *Page number in
 the footer* fills the footer's centre with a ready-made number: `1`,

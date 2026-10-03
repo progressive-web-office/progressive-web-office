@@ -53,13 +53,23 @@ function extent(el: HTMLElement): { top: number; bottom: number } {
 }
 
 /**
- * Give each vertical spring its share of the free height of its page
- * (`pageHeight`, in CSS pixels). Returns whether something changed.
+ * Lay the page out as it will be printed (DOC-042, DOC-046): the text flows
+ * from the top of the text area, a printed page holding `pageHeight` CSS
+ * pixels of it. Spaces of a share of the page get their height; on each page
+ * (what lies between page breaks) the vertical springs share the free height
+ * up to the end of the page, and a page break without springs before it
+ * takes that height itself, so that what follows starts at the top of the
+ * next page — where the page boundaries are drawn. Returns whether something
+ * changed.
  */
 export function layoutSprings(view: EditorView, pageHeight: number): boolean {
   const nodes = topLevel(view);
-  // Spaces of a share of the page height: their height first, the springs share what is left.
+  if (!nodes.length || !(pageHeight > 0)) return false;
+  const springs = nodes.filter((n) => n.node.type.name === 'space' && n.node.attrs.stretch);
+  const breaks = nodes.filter((n) => n.node.type.name === 'horizontal_rule' && n.node.attrs.page);
+  const before = [...springs.map((s) => s.dom.style.height), ...breaks.map((b) => b.dom.style.marginBottom)];
   let changed = false;
+  // Spaces of a share of the page height.
   for (const n of nodes) {
     const fraction = n.node.type.name === 'space' && !n.node.attrs.stretch ? (n.node.attrs.fraction as number | null) : null;
     if (!fraction) continue;
@@ -69,26 +79,38 @@ export function layoutSprings(view: EditorView, pageHeight: number): boolean {
       changed = true;
     }
   }
-  const springs = nodes.filter((n) => n.node.type.name === 'space' && n.node.attrs.stretch);
-  if (!springs.length) return changed;
-  const before = springs.map((s) => s.dom.style.height);
   for (const s of springs) s.dom.style.height = '0px';
-  // Pages: between page breaks.
+  for (const b of breaks) b.dom.style.marginBottom = '';
+  // The top of the text area: where the first page's text starts.
+  const root = view.dom as HTMLElement;
+  let pageStart = root.getBoundingClientRect().top + (parseFloat(getComputedStyle(root).paddingTop) || 0);
   let start = 0;
   for (let i = 0; i <= nodes.length; i++) {
-    const end = i === nodes.length || (nodes[i]!.node.type.name === 'horizontal_rule' && nodes[i]!.node.attrs.page);
-    if (!end) continue;
+    const isBreak = i < nodes.length && nodes[i]!.node.type.name === 'horizontal_rule' && nodes[i]!.node.attrs.page;
+    if (i < nodes.length && !isBreak) continue;
     const page = nodes.slice(start, i);
+    const brk = isBreak ? nodes[i]! : undefined;
     start = i + 1;
     const mine = page.filter((n) => n.node.type.name === 'space' && n.node.attrs.stretch);
-    if (!mine.length || !page.length) continue;
-    const height = extent(page[page.length - 1]!.dom).bottom - extent(page[0]!.dom).top;
-    const used = height % pageHeight;
-    const free = used > 0 ? pageHeight - used : 0;
-    const total = mine.reduce((n, s) => n + (s.node.attrs.stretch as number), 0);
-    for (const s of mine) s.dom.style.height = `${Math.floor((free * (s.node.attrs.stretch as number)) / total)}px`;
+    if (!mine.length && !brk) continue;
+    const last = brk ?? page[page.length - 1];
+    if (!last) continue;
+    const bottom = extent(last.dom).bottom;
+    const used = bottom - pageStart;
+    const pages = Math.max(1, Math.ceil((used - 0.5) / pageHeight));
+    const end = pageStart + pages * pageHeight;
+    const free = Math.max(0, end - bottom);
+    if (mine.length) {
+      const total = mine.reduce((n, s) => n + (s.node.attrs.stretch as number), 0);
+      for (const s of mine) s.dom.style.height = `${Math.floor((free * (s.node.attrs.stretch as number)) / total)}px`;
+    } else if (brk) {
+      const own = parseFloat(getComputedStyle(brk.dom).marginBottom) || 0;
+      brk.dom.style.marginBottom = `${Math.floor(own + free)}px`;
+    }
+    pageStart = end;
   }
-  return changed || springs.some((s, i) => s.dom.style.height !== before[i]);
+  const after = [...springs.map((s) => s.dom.style.height), ...breaks.map((b) => b.dom.style.marginBottom)];
+  return changed || after.some((v, i) => v !== before[i]);
 }
 
 /**

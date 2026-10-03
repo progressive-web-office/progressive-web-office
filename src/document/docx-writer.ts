@@ -158,8 +158,7 @@ class DocxWriter {
     const documentXml =
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<w:document xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}" xmlns:w14="${W14}">` +
-      `<w:body>${body}<w:sectPr>${refs}<w:pgSz w:w="11906" w:h="16838"/>` +
-      '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>' +
+      `<w:body>${body}<w:sectPr>${refs}${pageGeometryXml(page?.geometry)}` +
       `${numbering}${page?.hideOnFirstPage ? '<w:titlePg/>' : ''}</w:sectPr></w:body></w:document>`;
 
     const entries: ZipEntryInput[] = [
@@ -662,6 +661,13 @@ const heading = (n: number, size: number): string =>
   `<w:rPr><w:b/><w:bCs/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:style>`;
 
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
+
+/** DOC-046: the paper and its margins; A4 with 2.54 cm margins by default. */
+export function pageGeometryXml(g: import('./model').PageGeometry | undefined): string {
+  if (!g) return '<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>';
+  const tw = (mm: number): number => Math.round((mm / 25.4) * 1440);
+  return `<w:pgSz w:w="${tw(g.width)}" w:h="${tw(g.height)}"${g.width > g.height ? ' w:orient="landscape"' : ''}/><w:pgMar w:top="${tw(g.top)}" w:right="${tw(g.right)}" w:bottom="${tw(g.bottom)}" w:left="${tw(g.left)}" w:header="708" w:footer="708" w:gutter="0"/>`;
+}
 
 /**
  * FORM-003: a form field as a Word content control — plain text, check box

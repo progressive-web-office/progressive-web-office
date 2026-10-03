@@ -1,7 +1,7 @@
 /** Header and footer: dialog, on-screen preview and print CSS (DOC-024). */
 import { button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
-import { cleanPageSetup, formatPageNumber, PAGE_FIELDS, PAGE_NUMBER_FORMATS, zoneParts, type PageField, type PageNumberFormat, type PageSetup, type PageZones } from './model';
+import { cleanPageSetup, defaultGeometry, formatPageNumber, PAGE_FIELDS, PAGE_NUMBER_FORMATS, PAPERS, paperName, zoneParts, type PageField, type PageGeometry, type PageNumberFormat, type PageSetup, type PageZones } from './model';
 
 const ZONES = ['left', 'center', 'right'] as const;
 const FIELD_LABEL: Record<PageField, MessageKey> = { page: 'hf.page', pages: 'hf.pages', title: 'hf.title', date: 'hf.date' };
@@ -102,6 +102,44 @@ export function editPageSetup(host: HTMLElement, initial: PageSetup | undefined)
       h('label', { class: 'field' }, `${t('hf.startAt')} `, start),
       h('label', { class: 'check' }, hideFirst, ` ${t('hf.hideOnFirstPage')}`),
     );
+    // DOC-046: the paper, its orientation and the margins.
+    const g0: PageGeometry = initial?.geometry ?? defaultGeometry();
+    const cm = (mm: number): string => String(Math.round(mm) / 10);
+    const num = (label: string, mm: number): HTMLInputElement => h('input', { type: 'number', min: '0', step: '0.05', value: cm(mm), 'aria-label': label, class: 'page-num' });
+    const named = paperName(g0);
+    const paper = h('select', { 'aria-label': t('page.paper') }, ...Object.keys(PAPERS).map((p) => h('option', { value: p, selected: p === named }, p)), h('option', { value: '', selected: !named }, t('page.custom')));
+    const orientation = h('select', { 'aria-label': t('page.orientation') }, h('option', { value: 'portrait', selected: g0.width <= g0.height }, t('print.portrait')), h('option', { value: 'landscape', selected: g0.width > g0.height }, t('print.landscape')));
+    const width = num(t('page.width'), g0.width);
+    const height = num(t('page.height'), g0.height);
+    const margins = { top: num(t('page.top'), g0.top), right: num(t('page.right'), g0.right), bottom: num(t('page.bottom'), g0.bottom), left: num(t('page.left'), g0.left) };
+    const turn = (): void => {
+      const [a, b] = [Number(width.value), Number(height.value)].sort((x, y) => x - y) as [number, number];
+      [width.value, height.value] = orientation.value === 'landscape' ? [String(b), String(a)] : [String(a), String(b)];
+    };
+    paper.addEventListener('change', () => {
+      const size = PAPERS[paper.value];
+      if (size) [width.value, height.value] = [cm(size[0]), cm(size[1])];
+      turn();
+    });
+    orientation.addEventListener('change', turn);
+    const sizeChanged = (): void => {
+      const name = paperName({ width: Number(width.value) * 10, height: Number(height.value) * 10 });
+      paper.value = name ?? '';
+      orientation.value = Number(width.value) > Number(height.value) ? 'landscape' : 'portrait';
+    };
+    width.addEventListener('input', sizeChanged);
+    height.addEventListener('input', sizeChanged);
+    const geometryBox = h(
+      'fieldset',
+      { class: 'page-geometry' },
+      h('legend', {}, t('page.paperAndMargins')),
+      h('div', { class: 'page-row' }, h('label', {}, `${t('page.paper')} `, paper), h('label', {}, `${t('page.orientation')} `, orientation), h('label', {}, `${t('page.width')} `, width, ' cm'), h('label', {}, `${t('page.height')} `, height, ' cm')),
+      h('div', { class: 'page-row' }, ...(['top', 'right', 'bottom', 'left'] as const).map((k) => h('label', {}, `${t(`page.${k}`)} `, margins[k], ' cm'))),
+    );
+    const readGeometry = (): PageGeometry => {
+      const v = (el: HTMLInputElement): number => Math.round(Number(el.value) * 100) / 10;
+      return { width: v(width), height: v(height), top: v(margins.top), right: v(margins.right), bottom: v(margins.bottom), left: v(margins.left) };
+    };
     const dialog = h('dialog', { class: 'dialog hf-dialog', 'aria-labelledby': 'hf-title' });
     const finish = (ok: boolean): void => {
       dialog.close();
@@ -111,6 +149,7 @@ export function editPageSetup(host: HTMLElement, initial: PageSetup | undefined)
       const first = Math.round(Number(start.value));
       resolve(
         cleanPageSetup({
+          geometry: readGeometry(),
           header: zones('header'),
           footer: zones('footer'),
           numberFormat: format.value as PageNumberFormat,
@@ -121,6 +160,7 @@ export function editPageSetup(host: HTMLElement, initial: PageSetup | undefined)
     };
     dialog.append(
       h('h2', { id: 'hf-title' }, t('hf.title_')),
+      geometryBox,
       row('header'),
       row('footer'),
       fields,

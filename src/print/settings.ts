@@ -20,6 +20,8 @@ export interface PrintSettings {
   allSheets: boolean;
   slidesPerPage: 1 | 2 | 4 | 6;
   notes: boolean;
+  /** DOC-046: the page of a text document (millimetres), which wins over paper, orientation and margin. */
+  page?: { width: number; height: number; top: number; right: number; bottom: number; left: number };
 }
 
 const KEY = 'pwo.print';
@@ -49,6 +51,7 @@ export function savePrintSettings(s: PrintSettings): void {
 
 /** Page size in millimetres, taking the orientation into account. */
 export function pageSize(s: PrintSettings): [number, number] {
+  if (s.page) return [s.page.width, s.page.height];
   const [w, h] = PAPER_SIZES[s.paper];
   return s.orientation === 'landscape' ? [h, w] : [w, h];
 }
@@ -57,14 +60,19 @@ export const mmToPx = (mm: number): number => (mm * 96) / 25.4;
 
 /** Printable width in CSS pixels. */
 export function contentWidthPx(s: PrintSettings): number {
-  return mmToPx(pageSize(s)[0] - 2 * s.margin);
+  return mmToPx(s.page ? s.page.width - s.page.left - s.page.right : pageSize(s)[0] - 2 * s.margin);
+}
+
+/** Margins in millimetres: top, right, bottom, left. */
+export function pageMargins(s: PrintSettings): [number, number, number, number] {
+  return s.page ? [s.page.top, s.page.right, s.page.bottom, s.page.left] : [s.margin, s.margin, s.margin, s.margin];
 }
 
 export function contentHeightPx(s: PrintSettings): number {
-  return mmToPx(pageSize(s)[1] - 2 * s.margin);
+  return mmToPx(s.page ? s.page.height - s.page.top - s.page.bottom : pageSize(s)[1] - 2 * s.margin);
 }
 
 export function pageCss(s: PrintSettings): string {
   const [w, h] = pageSize(s);
-  return `@page { size: ${w}mm ${h}mm; margin: ${s.margin}mm; }`;
+  return `@page { size: ${w}mm ${h}mm; margin: ${s.page ? pageMargins(s).map((m) => `${m}mm`).join(' ') : `${s.margin}mm`}; }`;
 }

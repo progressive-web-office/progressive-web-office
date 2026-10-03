@@ -3,6 +3,7 @@
  * markdown-it. Raw HTML is kept as literal text (MD-003), except `<u>` and
  * `<br>` which map to underline and line breaks.
  */
+import { parseGeometryOptions } from './geometry';
 import { parseInputMarkdown } from './inputs';
 import { parseFill, parseSpaceLine } from './springs';
 import { FENCE_CLOSE, SOLUTION_OPEN } from './solutions';
@@ -327,6 +328,17 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
     const start = /^page-start:\s*(\d+)\s*$/.exec(line)?.[1];
     if (start) {
       page.startAt = Number(start);
+      continue;
+    }
+    // DOC-046: the paper and margins, as Pandoc writes them (`papersize: a4`, `geometry: margin=2cm`).
+    const paperSize = /^papersize:\s*["']?(\w+)["']?\s*$/.exec(line)?.[1];
+    if (paperSize && /^(a3|a4|a5|letter|legal)(paper)?$/i.test(paperSize)) {
+      page.geometry = parseGeometryOptions(paperSize, page.geometry);
+      continue;
+    }
+    const geometry = /^geometry:\s*["']?([^"']*)["']?\s*$/.exec(line)?.[1];
+    if (geometry) {
+      page.geometry = parseGeometryOptions(geometry, page.geometry);
       continue;
     }
     if (/^first-page-hidden:\s*true\s*$/.test(line)) {

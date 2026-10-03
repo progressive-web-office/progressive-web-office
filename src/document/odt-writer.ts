@@ -632,7 +632,13 @@ function stylesXml(doc: RichDocument): string {
     `<style:master-page style:name="Standard" style:page-layout-name="pm1">${part('header')}${part('footer')}</style:master-page>` +
     // A title page without header and footer, used by the first paragraph (see firstPageStyle).
     (page?.hideOnFirstPage ? '<style:master-page style:name="First_20_Page" style:display-name="First Page" style:page-layout-name="pm1" style:next-style-name="Standard"/>' : '');
+  // DOC-046: the paper and its margins.
+  const g = page?.geometry;
+  const layout = g
+    ? `fo:page-width="${g.width}mm" fo:page-height="${g.height}mm"${g.width > g.height ? ' style:print-orientation="landscape"' : ''} fo:margin-top="${g.top}mm" fo:margin-bottom="${g.bottom}mm" fo:margin-left="${g.left}mm" fo:margin-right="${g.right}mm"`
+    : undefined;
   return STYLES_XML.replace('@MASTER@', master)
+    .replace(/fo:page-width="[^"]*" fo:page-height="[^"]*" fo:margin-top="[^"]*" fo:margin-bottom="[^"]*" fo:margin-left="[^"]*" fo:margin-right="[^"]*"/, (m) => layout ?? m)
     .replace('<style:page-layout-properties ', `<style:page-layout-properties${numFormat} `)
     .replace('</office:styles>', `${springStyles(doc)}</office:styles>`);
 }

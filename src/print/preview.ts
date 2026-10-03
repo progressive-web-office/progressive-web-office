@@ -2,7 +2,7 @@
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import { listCss } from '../document/pm/list-css';
-import { contentWidthPx, loadPrintSettings, mmToPx, pageCss, pageSize, PAPER_SIZES, savePrintSettings, type PrintSettings } from './settings';
+import { contentHeightPx, contentWidthPx, loadPrintSettings, mmToPx, pageCss, pageMargins, pageSize, PAPER_SIZES, savePrintSettings, type PrintSettings } from './settings';
 
 export type PrintKind = 'document' | 'spreadsheet' | 'presentation';
 
@@ -75,11 +75,14 @@ export async function openPrintPreview(
   };
   const check = (name: string, label: string, value: boolean): HTMLLabelElement => h('label', { class: 'check' }, h('input', { type: 'checkbox', name, checked: value }), ` ${label}`);
 
-  form.append(
-    select('paper', t('print.paper'), Object.keys(PAPER_SIZES).map((p) => [p, p]), settings.paper),
-    select('orientation', t('print.orientation'), [['portrait', t('print.portrait')], ['landscape', t('print.landscape')]], settings.orientation),
-    h('label', {}, t('print.margins'), h('input', { type: 'number', name: 'margin', min: '0', max: '50', step: '1', value: String(settings.margin) })),
-  );
+  // DOC-046: a document has its own paper, set in its page setup.
+  if (settings.page) form.append(h('p', { class: 'hint' }, t('print.documentPage', { w: settings.page.width, h: settings.page.height })));
+  else
+    form.append(
+      select('paper', t('print.paper'), Object.keys(PAPER_SIZES).map((p) => [p, p]), settings.paper),
+      select('orientation', t('print.orientation'), [['portrait', t('print.portrait')], ['landscape', t('print.landscape')]], settings.orientation),
+      h('label', {}, t('print.margins'), h('input', { type: 'number', name: 'margin', min: '0', max: '50', step: '1', value: String(settings.margin) })),
+    );
   if (kind === 'spreadsheet') form.append(check('gridlines', t('print.gridlines'), settings.gridlines), check('headings', t('print.headings'), settings.headings), check('allSheets', t('print.allSheets'), settings.allSheets));
   if (kind === 'presentation') form.append(select('slidesPerPage', t('print.slidesPerPage'), ['1', '2', '4', '6'].map((n) => [n, n]), String(settings.slidesPerPage)), check('notes', t('print.notes'), settings.notes));
   form.append(h('p', { class: 'hint' }, t('print.pdfHint')));
@@ -106,8 +109,8 @@ export async function openPrintPreview(
     const paper = doc.createElement('div');
     paper.className = 'paper';
     paper.style.width = `${contentWidthPx(settings)}px`;
-    paper.style.padding = `${mmToPx(settings.margin)}px`;
-    paper.style.minHeight = `${mmToPx(pageSize(settings)[1] - 2 * settings.margin)}px`;
+    paper.style.padding = pageMargins(settings).map((m) => `${mmToPx(m)}px`).join(' ');
+    paper.style.minHeight = `${contentHeightPx(settings)}px`;
     paper.append(doc.importNode(content, true));
     doc.body.replaceChildren(paper);
     const [w] = pageSize(settings);

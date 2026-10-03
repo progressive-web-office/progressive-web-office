@@ -214,8 +214,8 @@ test('table of contents follows the headings (DOC-023)', async ({ page }) => {
 
 test('header and footer with page numbers (DOC-024)', async ({ page }) => {
   await newDocument(page);
-  await page.getByRole('button', { name: 'Header and footer' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Header and footer' });
+  await page.getByRole('button', { name: 'Page setup' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Page setup' });
   await dialog.getByLabel('Header — Left').fill('TP 3');
   await dialog.getByRole('button', { name: 'Page 1 of 10', exact: true }).click();
   await expect(dialog.getByLabel('Footer — Centre')).toHaveValue('Page {page} of {pages}');
@@ -233,8 +233,8 @@ test('header and footer with page numbers (DOC-024)', async ({ page }) => {
 
 test('page numbering styles: roman numerals from iii, no number on the title page (DOC-029)', async ({ page }) => {
   await newDocument(page);
-  await page.getByRole('button', { name: 'Header and footer' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Header and footer' });
+  await page.getByRole('button', { name: 'Page setup' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Page setup' });
   await dialog.getByRole('button', { name: '- 1 -', exact: true }).click();
   await expect(dialog.getByLabel('Footer — Centre')).toHaveValue('- {page} -');
   await dialog.getByLabel('Style').selectOption({ label: 'i, ii, iii' });
