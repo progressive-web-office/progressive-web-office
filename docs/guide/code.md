@@ -305,8 +305,9 @@ their state: Lua globals, and the tables of the SQL database (in memory,
 for the session). A SQL query shows its rows as a table.
 
 C and C++ code is compiled by Clang to WebAssembly, then run: what it prints
-appears below, compiler errors and warnings first. Programs read no input and
-no files; C++ is built without exceptions (`-fno-exceptions`), as the C++
+appears below, compiler errors and warnings first. A program on its own reads
+no input and no files; one of a [project](#projects-several-files) reads the
+files of its folder and may have an input. C++ is built without exceptions (`-fno-exceptions`), as the C++
 library for WebAssembly has none. Whether code is C++ is told by what it uses
 (`#include <iostream>`, `std::`, classes…).
 
@@ -318,6 +319,54 @@ R packages built for webR install with `webr::install("dplyr")`. Unlike the
 other runtimes, webR is not kept by the application for offline use: the
 browser's cache usually keeps it, but the first run of a session may need the
 network.
+
+## Projects: several files
+
+A code file opened **from an open folder** runs with the other files of its
+**project**, so it can import its own modules and read its data:
+
+- the project is the **folder of the file** — or, when a folder above it holds
+  a project file (`pwo.toml`, `pyproject.toml`, `setup.py`, `package.json`,
+  `tsconfig.json`, `CMakeLists.txt`, `Makefile`, `DESCRIPTION`), that folder;
+- its files are copied into the sandbox, under `/project`, which is the
+  **working folder**: paths are relative to the project's folder. Hidden
+  folders, `node_modules`, `__pycache__`, virtual environments, `build` and
+  `target` are left out, and so are files over 10 MB (the run says how many);
+- the **entry point** is the file you run — with the text as it is in the
+  editor, saved or not — unless `pwo.toml` names another one;
+- the sandbox still has no network and no access to your other files; what a
+  program writes stays in the sandbox for that run, the folder is not changed.
+
+The output is titled *Output of main.py (project stats)*.
+
+| Language | What a project offers |
+| --- | --- |
+| Python | `import` of the modules and packages of the file's folder and of the project; `open()` of its files; `sys.argv`, standard input (`input()`). Packages imported by the modules are installed as for the file. Modules are imported afresh at each run. |
+| JavaScript, TypeScript | `import` of relative modules (`./lib/util.js`, `./util` or `./util.ts`, `./data.json`, `./lib` for `lib/index.js`); TypeScript modules lose their types. `readText(path)` and `readBytes(path)` read a file of the project. |
+| Lua | `require "module"` finds the `.lua` files of the file's folder and of the project (afresh at each run); `io.open` reads their files; `arg` holds the arguments. |
+| SQL | `.read schema.sql` runs a file of the project; `.open data.db` opens a copy of a SQLite database of the project. |
+| C, C++ | the `.c`/`.cpp` files of the entry point's folder (or those of `sources`) are compiled together; `#include "util.h"` finds the headers of that folder and of the project; `fopen` reads the files (and writes in memory, for the run); `argv`, `stdin`. |
+| R | `source("helpers.R")`, `read.csv("data/values.csv")`…; `commandArgs(trailingOnly = TRUE)` gives the arguments. |
+
+### pwo.toml
+
+An optional `pwo.toml` at the root of the project says how to run it. Every
+key is optional; paths are relative to the project:
+
+```toml
+# The file run, whatever file is open (by default, the open one).
+main = "src/main.c"
+# Arguments: sys.argv[1:], argv, arg, commandArgs(TRUE).
+args = ["data/values.txt", "--verbose"]
+# C/C++: compiler options (default: -O2) and the files compiled together.
+cflags = ["-O2", "-std=c17", "-DDEBUG"]
+sources = ["src/*.c", "lib/**/*.c"]
+# Standard input of the program (C/C++, Python).
+stdin = "data/input.txt"
+```
+
+It is a subset of TOML: keys with a string or a list of strings; comments
+after `#`. A mistake is shown with its line number.
 
 ## marimo notebooks
 

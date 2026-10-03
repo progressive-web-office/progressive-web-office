@@ -50,6 +50,11 @@ group is not a commitment.
   a `wheel.txt` list or the package index; examples with the anywidget
   instruments; next: the other ipywidgets controls, widgets alive again in
   a reopened document after a run
+- ✅ Code files run in the code viewer (CODE-017); Lua, SQL, C/C++ and R
+  with runtimes downloaded after asking (CODE-018); a folder is a project:
+  modules, headers and data files of the folder, entry point and options in
+  `pwo.toml` (CODE-019); next: cells of a document importing the files of
+  its folder
 - Computer algebra in cells (Giac compiled to WebAssembly)
 
 ### Word processor

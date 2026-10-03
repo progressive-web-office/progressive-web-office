@@ -44,6 +44,18 @@ addEventListener('message', async (event) => {
       webR = r;
     }
     post({ type: 'status', status: 'running' });
+    if (m.project) {
+      // CODE-019: the project in /project, the working folder, its arguments.
+      await webR.evalRVoid('unlink("/project", recursive = TRUE)');
+      await webR.FS.mkdir('/project');
+      const dirs = new Set();
+      for (const p of Object.keys(m.project.files)) p.split('/').slice(0, -1).forEach((_, i, parts) => dirs.add(parts.slice(0, i + 1).join('/')));
+      for (const d of [...dirs].sort()) await webR.FS.mkdir('/project/' + d);
+      for (const [p, b] of Object.entries(m.project.files)) await webR.FS.writeFile('/project/' + p, b);
+      const dir = '/project';
+      const args = m.project.config.args || [];
+      await webR.evalRVoid('setwd(dir); args <- as.character(unlist(args)); assign("commandArgs", function(trailingOnly = FALSE) if (trailingOnly) args else c("R", "--args", args), envir = globalenv())', { env: { dir, args } });
+    }
     const shelter = await new webR.Shelter();
     try {
       const cap = await shelter.captureR(m.code, { withAutoprint: true, captureStreams: true, captureConditions: false, captureGraphics: { width: 576, height: 384 } });

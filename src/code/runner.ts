@@ -60,15 +60,15 @@ export class CodeRunner {
   /** Ask the user before downloading code (packages, widget modules) from `origin`. */
   confirmDownload?: (origin: string) => Promise<boolean>;
 
-  run(lang: CodeLang, code: string, onStatus?: (status: RunStatus) => void): Promise<RunResult> {
+  run(lang: CodeLang, code: string, onStatus?: (status: RunStatus) => void, project?: import('./project').RunProject): Promise<RunResult> {
     // CODE-018: R runs in a sandbox of its own, which downloads webR itself once the user agreed.
-    if (lang === 'r') return this.runR(code, onStatus);
+    if (lang === 'r') return this.runR(code, onStatus, project);
     return this.start().then(
       () =>
         new Promise<RunResult>((resolve) => {
           const id = ++this.nextId;
           this.pending.set(id, { resolve, onStatus });
-          this.post({ type: 'run', id, lang, code });
+          this.post({ type: 'run', id, lang, code, ...(project ? { project } : {}) });
         }),
     );
   }
@@ -116,7 +116,7 @@ export class CodeRunner {
 
   private r: import('./r-runtime').RRuntime | undefined;
 
-  private async runR(code: string, onStatus?: (status: RunStatus) => void): Promise<RunResult> {
+  private async runR(code: string, onStatus?: (status: RunStatus) => void, project?: import('./project').RunProject): Promise<RunResult> {
     const { WEBR_ORIGIN } = await import('./r-frame-html');
     if (!this.allowed.has(WEBR_ORIGIN)) {
       if (!(await this.confirmDownload?.(WEBR_ORIGIN))) return { text: `Download from ${WEBR_ORIGIN} refused\n`, error: true, images: [] };
@@ -124,7 +124,7 @@ export class CodeRunner {
     }
     const { RRuntime } = await import('./r-runtime');
     this.r ??= new RRuntime(this.host);
-    return this.r.run(code, onStatus);
+    return this.r.run(code, onStatus, project);
   }
 
   /** Whether the sandbox runs (and holds the names of earlier runs). */

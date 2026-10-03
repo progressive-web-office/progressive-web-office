@@ -10,6 +10,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Projects (CODE-019): a code file opened from a folder runs with the other
+  files of its project (its folder, or the folder above holding `pwo.toml`,
+  `pyproject.toml`, `package.json`…): Python and Lua modules, JavaScript and
+  TypeScript imports, C/C++ sources and headers compiled together, R
+  `source()`, SQL `.read`/`.open`, and the data files, read from the working
+  folder. `pwo.toml` may name the entry point, its arguments, the compiler
+  options and sources, and a standard input. C/C++ programs now read files.
+
 - A *Languages* example (FILE-018): a small program in Python, JavaScript,
   Lua, SQL, C, C++ and R, ready to run.
 

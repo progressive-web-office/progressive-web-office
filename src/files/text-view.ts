@@ -102,6 +102,11 @@ const theme = EditorView.theme({
   '.cm-searchMatch': { outline: '1px solid var(--focus)' },
 });
 
+/** CODE-017, CODE-018: the language a file runs in, if any. */
+function fileLang(fileName: string): 'python' | 'javascript' | 'lua' | 'sql' | 'cpp' | 'r' | undefined {
+  return /\.pyw?$/i.test(fileName) ? 'python' : /\.(m?js|m?ts)$/i.test(fileName) ? 'javascript' : (runtimeOf(fileName) ?? undefined);
+}
+
 export class TextView implements PwoView {
   readonly element: HTMLElement;
   private readonly view: EditorView;
@@ -122,8 +127,7 @@ export class TextView implements PwoView {
   ) {
     this.decoded = decodeText(bytes);
     // CODE-017, CODE-018: Python and JavaScript in the sandbox; Lua and SQL with a runtime downloaded when first needed.
-    const runtime = runtimeOf(fileName);
-    this.lang = /\.pyw?$/i.test(fileName) ? 'python' : /\.(m?js|m?ts)$/i.test(fileName) ? 'javascript' : runtime ?? undefined;
+    this.lang = fileLang(fileName);
     const entry = languageOf(fileName);
     const info = h('span', { class: 'code-info' }, [entry?.name ?? t('textfile.plain'), this.decoded.encoding === 'utf-8' ? 'UTF-8' : 'Windows-1252', this.decoded.crlf ? 'CRLF' : 'LF'].join(' · '));
     const wrap = h('input', { type: 'checkbox' });
@@ -210,11 +214,50 @@ export class TextView implements PwoView {
     const { state } = this.view;
     const sel = state.selection.main;
     let code = sel.empty ? state.doc.toString() : state.sliceDoc(sel.from, sel.to);
-    // TypeScript runs as JavaScript, its types removed.
-    if (/\.m?ts$/i.test(this.fileName)) {
-      const js = await (await import('../code/ts-language')).transpileScript(code);
-      if (js === null) return this.showOutput([h('pre', { class: 'code-file-text error' }, t('textfile.noCompiler'))]);
-      code = js;
+    let lang: NonNullable<typeof this.lang> = this.lang;
+    let entryName = this.fileName;
+    // CODE-019: a file of an open folder runs with the other files of its project.
+    let project: import('../code/project').Project | undefined;
+    const source = this.ctx.folderProject?.();
+    if (source) {
+      try {
+        const { findProjectRoot, loadProject } = await import('../code/project');
+        const root = await findProjectRoot(source.path, source.children);
+        const listed = await source.walk(root);
+        const sizes = new Map(listed.map((f) => [f.path, f.size]));
+        project = await loadProject(listed.map((f) => f.path), source.path, state.doc.toString(), source.read, {}, (p) => sizes.get(root ? `${root}/${p}` : p));
+      } catch (err) {
+        return this.showOutput([h('pre', { class: 'code-file-text error' }, `${(err as Error).message}\n`)]);
+      }
+      const self = source.path.slice(project.root ? project.root.length + 1 : 0);
+      if (project.entry !== self) {
+        // pwo.toml names another entry point: it runs, whatever the selection.
+        const other = fileLang(project.entry);
+        if (!other) return this.showOutput([h('pre', { class: 'code-file-text error' }, `pwo.toml: ${project.entry} cannot be run\n`)]);
+        lang = other;
+        entryName = project.entry;
+        code = new TextDecoder().decode(project.files[project.entry]);
+      }
+    }
+    // TypeScript runs as JavaScript, its types removed (the modules of the project too).
+    if (lang === 'javascript' && (/\.m?ts$/i.test(entryName) || (project && Object.keys(project.files).some((p) => /\.m?ts$/i.test(p))))) {
+      const { transpileScript } = await import('../code/ts-language');
+      const fail = (): void => this.showOutput([h('pre', { class: 'code-file-text error' }, t('textfile.noCompiler'))]);
+      if (/\.m?ts$/i.test(entryName)) {
+        const js = await transpileScript(code);
+        if (js === null) return fail();
+        code = js;
+      }
+      if (project) {
+        const files = { ...project.files };
+        for (const [p, bytes] of Object.entries(files)) {
+          if (!/\.m?ts$/i.test(p) || /\.d\.ts$/i.test(p)) continue;
+          const js = await transpileScript(new TextDecoder().decode(bytes));
+          if (js === null) return fail();
+          files[p] = new TextEncoder().encode(js);
+        }
+        project = { ...project, files };
+      }
     }
     const { CodeRunner } = await import('../code/runner');
     if (!this.runner) {
@@ -222,11 +265,25 @@ export class TextView implements PwoView {
       this.runner.confirmDownload = async (origin) => (await import('../code/ui')).confirmDownload(this.element, origin);
     }
     const status = h('p', { class: 'code-file-status' }, t('code.running'));
-    this.showOutput([h('h2', {}, sel.empty ? t('textfile.outputOf', { name: this.fileName }) : t('textfile.outputOfSelection')), status]);
+    const title = project
+      ? t('textfile.outputOfProject', { name: entryName.replace(/^.*\//, ''), project: project.root || '/' })
+      : sel.empty || entryName !== this.fileName
+        ? t('textfile.outputOf', { name: entryName })
+        : t('textfile.outputOfSelection');
+    this.showOutput([
+      h('h2', {}, title),
+      ...(project?.skipped.length ? [h('p', { class: 'hint' }, t('textfile.projectSkipped', { n: project.skipped.length }))] : []),
+      status,
+    ]);
     if (this.stopButton) this.stopButton.disabled = false;
-    const result = await this.runner.run(this.lang, code, (s) => {
-      status.textContent = s === 'loading-python' ? t('code.loadingPython') : s === 'running' ? t('code.running') : `${t('code.packages')} ${s.slice('packages:'.length)}`;
-    });
+    const result = await this.runner.run(
+      lang,
+      code,
+      (s) => {
+        status.textContent = s === 'loading-python' ? t('code.loadingPython') : s === 'running' ? t('code.running') : `${t('code.packages')} ${s.slice('packages:'.length)}`;
+      },
+      project && { files: project.files, entry: project.entry, config: project.config },
+    );
     if (this.stopButton) this.stopButton.disabled = true;
     for (const url of this.images) URL.revokeObjectURL(url);
     this.images = result.images.map((png) => URL.createObjectURL(new Blob([png as BlobPart], { type: 'image/png' })));
@@ -237,7 +294,7 @@ export class TextView implements PwoView {
       ...(!result.text && !this.images.length ? [h('p', { class: 'hint' }, t('textfile.noOutput'))] : []),
     );
     // A package missing from the offline Python: offered from the package index (pure-Python packages).
-    const missing = this.lang === 'python' && result.error ? /ModuleNotFoundError: No module named '([\w.]+)'/.exec(result.text)?.[1]?.split('.')[0] : undefined;
+    const missing = lang === 'python' && result.error ? /ModuleNotFoundError: No module named '([\w.]+)'/.exec(result.text)?.[1]?.split('.')[0] : undefined;
     if (missing) {
       this.output.append(
         h(

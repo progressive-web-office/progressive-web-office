@@ -1014,6 +1014,8 @@ export const en = {
   'textfile.output': 'Output',
   'textfile.outputOf': 'Output of {name}',
   'textfile.outputOfSelection': 'Output of the selection',
+  'textfile.outputOfProject': 'Output of {name} (project {project})',
+  'textfile.projectSkipped': '{n} large files were left out of the project.',
   'textfile.noOutput': 'Done, nothing printed.',
   'textfile.figure': 'Figure {n}',
   'code.stopped': 'Stopped.',

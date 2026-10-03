@@ -800,6 +800,23 @@ export class App {
       },
       tagColour: (tag) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.tagColour(tag) : null),
       completions: (kind) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.completions(kind, this.current?.folderPath) : undefined),
+      folderProject: () => {
+        const folder = this.folder;
+        const path = this.current?.folderPath;
+        if (!folder || !path) return undefined;
+        const provider = folder.provider;
+        return {
+          path,
+          children: async (dir) => (await provider.list(dir)).map((e) => e.name),
+          walk: async (dir) => {
+            const { walk } = await import('../fs');
+            const out: { path: string; size?: number }[] = [];
+            for await (const e of walk(provider, dir, { maxEntries: 5000 })) out.push({ path: e.path, ...(e.size !== undefined ? { size: e.size } : {}) });
+            return out;
+          },
+          read: async (p) => (await import('../fs')).readBytes(provider, p),
+        };
+      },
       headerChanged: () => this.renderHeader(),
       notify: (message) => this.showNotice(message),
     };

@@ -41,12 +41,12 @@ export class RRuntime {
     return this.ready;
   }
 
-  async run(code: string, onStatus?: (s: RunStatus) => void): Promise<RunResult> {
+  async run(code: string, onStatus?: (s: RunStatus) => void, project?: import('./project').RunProject): Promise<RunResult> {
     await this.start();
     return new Promise((resolve) => {
       const id = ++this.nextId;
       this.pending.set(id, { resolve, ...(onStatus ? { onStatus } : {}) });
-      this.frame!.contentWindow!.postMessage({ type: 'run', id, code }, '*');
+      this.frame!.contentWindow!.postMessage({ type: 'run', id, code, ...(project ? { project } : {}) }, '*');
     });
   }
 

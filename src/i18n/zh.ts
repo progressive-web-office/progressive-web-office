@@ -1016,6 +1016,8 @@ export const zh: Record<MessageKey, string> = {
   'textfile.output': '输出',
   'textfile.outputOf': '{name} 的输出',
   'textfile.outputOfSelection': '所选内容的输出',
+  'textfile.outputOfProject': '{name} 的输出（项目 {project}）',
+  'textfile.projectSkipped': '{n} 个大文件未包含在项目中。',
   'textfile.noOutput': '完成，没有输出。',
   'textfile.figure': '图 {n}',
   'code.stopped': '已停止。',

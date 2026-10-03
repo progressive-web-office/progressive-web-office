@@ -58,6 +58,17 @@ export interface SyncableDocument {
   write(doc: import('../document/model').RichDocument): void;
 }
 
+/** CODE-019: the open folder, seen from a file run with its project. */
+export interface ProjectSource {
+  /** The file's path in the folder. */
+  path: string;
+  /** Names of the entries of a folder. */
+  children(dir: string): Promise<string[]>;
+  /** Files under a folder, with their sizes when known. */
+  walk(dir: string): Promise<{ path: string; size?: number }[]>;
+  read(path: string): Promise<Uint8Array>;
+}
+
 export interface ViewContext {
   /** Notify the shell that content changed (sets the modified flag). */
   changed(): void;
@@ -83,6 +94,8 @@ export interface ViewContext {
   folderSnippets?(): Promise<import('../document/snippets').Snippet[]>;
   /** DOC-036: a folder is open and can be written. */
   folderWritable?(): boolean;
+  /** CODE-019: the files of the open folder and the path of this file in it, to run it with its project. */
+  folderProject?(): ProjectSource | undefined;
   /** What the view offers in the header changed (e.g. its save variants). */
   headerChanged?(): void;
   /** Show a short message to the user. */

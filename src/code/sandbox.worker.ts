@@ -8,12 +8,15 @@
  */
 import { CLANG_BASE, isCpp, RUNTIMES, textTable, umdModule, type Runtime } from './runtimes';
 import { runWasi } from './wasi';
+import { cSources, normalise, PROJECT_DIR, resolveModule, rewriteImports, type RunProject } from './project';
 
 interface RunRequest {
   type: 'run';
   id: number;
   lang: 'python' | 'javascript' | 'lua' | 'sql' | 'r' | 'cpp';
   code: string;
+  /** CODE-019: the files of the project the code belongs to. */
+  project?: RunProject;
 }
 interface CompleteRequest {
   type: 'complete';
@@ -90,6 +93,62 @@ const blobModule = (bytes: ArrayBuffer | string): string => URL.createObjectURL(
 
 const report = (id: number, text: string): void => scope.postMessage({ type: 'status', id, text });
 
+// --- projects (CODE-019) -------------------------------------------------------
+
+/** The part of Emscripten's file system the runtimes share. */
+interface EmFS {
+  mkdir(path: string): void;
+  writeFile(path: string, data: Uint8Array): void;
+  readdir(path: string): string[];
+  unlink(path: string): void;
+  rmdir(path: string): void;
+  stat(path: string): { mode: number };
+  isDir(mode: number): boolean;
+  chdir(path: string): void;
+}
+
+const dirOf = (p: string): string => p.slice(0, Math.max(0, p.lastIndexOf('/')));
+/** The folder of the entry point in the sandbox. */
+const entryDir = (project: RunProject): string => [PROJECT_DIR, dirOf(project.entry)].filter(Boolean).join('/');
+
+function removeTree(fs: EmFS, path: string): void {
+  let mode: number;
+  try {
+    mode = fs.stat(path).mode;
+  } catch {
+    return;
+  }
+  if (!fs.isDir(mode)) return fs.unlink(path);
+  for (const name of fs.readdir(path)) if (name !== '.' && name !== '..') removeTree(fs, `${path}/${name}`);
+  fs.rmdir(path);
+}
+
+/** Copy the project to /project (replacing the one of an earlier run), the working folder. */
+function mountProject(fs: EmFS, project: RunProject): void {
+  fs.chdir('/');
+  removeTree(fs, PROJECT_DIR);
+  fs.mkdir(PROJECT_DIR);
+  const made = new Set<string>();
+  for (const [path, bytes] of Object.entries(project.files)) {
+    const parts = path.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      const dir = parts.slice(0, i).join('/');
+      if (!made.has(dir)) fs.mkdir(`${PROJECT_DIR}/${dir}`);
+      made.add(dir);
+    }
+    fs.writeFile(`${PROJECT_DIR}/${path}`, bytes);
+  }
+  fs.chdir(PROJECT_DIR);
+}
+
+/** A file of the project, named relative to it (the working folder). */
+function projectFile(project: RunProject, path: string): Uint8Array {
+  const p = normalise(path.startsWith(`${PROJECT_DIR}/`) ? path.slice(PROJECT_DIR.length + 1) : path);
+  const bytes = p === undefined ? undefined : project.files[p];
+  if (!bytes) throw new Error(`${path}: no such file in the project`);
+  return bytes;
+}
+
 // --- Python -------------------------------------------------------------------
 
 interface PyProxyLike {
@@ -102,7 +161,8 @@ interface Pyodide {
   registerJsModule(name: string, module: object): void;
   pyimport(name: string): unknown;
   loadPackage(names: string[], options?: { messageCallback?(m: string): void; errorCallback?(m: string): void }): Promise<unknown>;
-  globals: { get(name: string): unknown };
+  globals: { get(name: string): unknown; set(name: string, value: unknown): void };
+  FS: EmFS;
   loadPackagesFromImports(code: string, options?: { messageCallback?(m: string): void; errorCallback?(m: string): void }): Promise<unknown>;
   setStdout(options: { batched(text: string): void }): void;
   setStderr(options: { batched(text: string): void }): void;
@@ -149,9 +209,34 @@ def _pwo_figures():
 _pwo_figures()
 `;
 
-async function runPython(id: number, code: string): Promise<Output> {
+/** CODE-019: the project's folders on the module path, its modules imported afresh, its arguments and input. */
+const PROJECT_SETUP = `
+def _pwo_project(entry, argv, stdin):
+    import importlib, io, os, sys
+    for name, module in list(sys.modules.items()):
+        if str(getattr(module, "__file__", None) or "").startswith("${PROJECT_DIR}/"):
+            del sys.modules[name]
+    here = os.path.dirname(entry)
+    sys.path[:] = [here, "${PROJECT_DIR}"] + [p for p in sys.path if p and not p.startswith("${PROJECT_DIR}")]
+    sys.argv = [entry, *argv]
+    sys.stdin = io.StringIO(stdin) if stdin is not None else sys.__stdin__
+    importlib.invalidate_caches()
+    return entry
+`;
+
+async function runPython(id: number, code: string, project?: RunProject): Promise<Output> {
   python ??= loadPython(id);
   const py = await python;
+  if (project) {
+    mountProject(py.FS, project);
+    await py.runPythonAsync(PROJECT_SETUP);
+    const setup = py.globals.get('_pwo_project') as (entry: string, argv: string[], stdin: string | null) => string;
+    const stdin = project.config.stdin ? new TextDecoder().decode(projectFile(project, project.config.stdin)) : null;
+    py.globals.set('__file__', setup(`${PROJECT_DIR}/${project.entry}`, project.config.args ?? [], stdin));
+    // The packages the project's modules import are installed too.
+    const imports = Object.entries(project.files).filter(([p]) => p.endsWith('.py')).map(([, b]) => new TextDecoder().decode(b)).join('\n');
+    await py.loadPackagesFromImports(imports, { messageCallback: (m) => report(id, `packages:${m}`), errorCallback: () => undefined });
+  }
   const out: string[] = [];
   py.setStdout({ batched: (t) => out.push(`${t}\n`) });
   py.setStderr({ batched: (t) => out.push(`${t}\n`) });
@@ -343,8 +428,38 @@ function pythonError(err: unknown): string {
 
 // --- JavaScript ---------------------------------------------------------------
 
-async function runJavaScript(id: number, code: string): Promise<Output> {
+/** CODE-019: the project of the JavaScript being run, for `readText` and `readBytes`. */
+let jsProject: RunProject | undefined;
+
+/** The modules of a project as blob: URLs, their relative imports rewritten; the URL of the entry point. */
+function projectModules(project: RunProject, code: string): string {
+  const files = new Set(Object.keys(project.files));
+  const urls = new Map<string, string>();
+  const visiting = new Set<string>();
+  const build = (path: string, source?: string): string => {
+    const known = urls.get(path);
+    if (known) return known;
+    if (visiting.has(path)) throw new Error(`${path}: circular imports are not supported here`);
+    visiting.add(path);
+    let text = source ?? new TextDecoder().decode(project.files[path]);
+    if (path.endsWith('.json')) text = `export default ${text};`;
+    else
+      text = rewriteImports(text, (spec) => {
+        const target = resolveModule(files, path, spec);
+        if (!target) throw new Error(`${path}: cannot find module "${spec}"`);
+        return build(target);
+      });
+    const url = blobModule(text);
+    urls.set(path, url);
+    visiting.delete(path);
+    return url;
+  };
+  return build(project.entry, code);
+}
+
+async function runJavaScript(id: number, code: string, project?: RunProject): Promise<Output> {
   report(id, 'running');
+  jsProject = project;
   // CODE-014: the names shared by the JavaScript cells of the document.
   (globalThis as unknown as { __pwoScope?: object }).__pwoScope ??= {};
   const out: string[] = [];
@@ -362,7 +477,7 @@ async function runJavaScript(id: number, code: string): Promise<Output> {
   const original = { log: console.log, info: console.info, warn: console.warn, error: console.error };
   for (const k of Object.keys(original) as (keyof typeof original)[]) console[k] = (...args: unknown[]) => void out.push(`${format(args)}\n`);
   try {
-    await import(/* @vite-ignore */ blobModule(code));
+    await import(/* @vite-ignore */ project ? projectModules(project, code) : blobModule(code));
     return { text: out.join(''), images: [], widgets: jsDisplayed.splice(0) };
   } catch (err) {
     const e = err as Error;
@@ -609,6 +724,15 @@ Object.assign(globalThis, {
     return w;
   },
   /** The text of a widget module (or any text file) from a URL, after the user agreed. */
+  /** CODE-019: a file of the project, relative to it. */
+  readText: (path: string): string => {
+    if (!jsProject) throw new Error('readText: the file is not part of an open folder');
+    return new TextDecoder().decode(projectFile(jsProject, path));
+  },
+  readBytes: (path: string): Uint8Array => {
+    if (!jsProject) throw new Error('readBytes: the file is not part of an open folder');
+    return projectFile(jsProject, path).slice();
+  },
   importWidget: async (url: string): Promise<string> => new TextDecoder().decode((await fetchFiles(url, 'module'))[0]),
 });
 
@@ -634,13 +758,16 @@ interface LuaEngine {
   doString(code: string): Promise<unknown>;
 }
 let lua: Promise<LuaEngine> | undefined;
+let luaFs: EmFS | undefined;
 let luaOut: ((s: string) => void) | undefined;
 
-async function runLua(id: number, code: string): Promise<Output> {
+async function runLua(id: number, code: string, project?: RunProject): Promise<Output> {
   lua ??= (async () => {
     const files = await runtimeFiles(id, RUNTIMES.lua);
-    const { LuaFactory } = await umdImport<{ LuaFactory: new (wasm: string) => { createEngine(): Promise<LuaEngine> } }>(files.js!);
-    const engine = await new LuaFactory(URL.createObjectURL(new Blob([files.wasm!], { type: 'application/wasm' }))).createEngine();
+    const { LuaFactory } = await umdImport<{ LuaFactory: new (wasm: string) => { createEngine(): Promise<LuaEngine>; getLuaModule(): Promise<{ module: { FS: EmFS } }> } }>(files.js!);
+    const factory = new LuaFactory(URL.createObjectURL(new Blob([files.wasm!], { type: 'application/wasm' })));
+    const engine = await factory.createEngine();
+    luaFs = (await factory.getLuaModule()).module.FS;
     engine.global.set('__pwo_out', (s: string) => luaOut?.(s));
     // print and io.write go to the output, values shown as Lua's tostring does.
     await engine.doString(
@@ -655,6 +782,18 @@ async function runLua(id: number, code: string): Promise<Output> {
   const out: string[] = [];
   luaOut = (s) => out.push(s);
   try {
+    if (project && luaFs) {
+      // CODE-019: require finds the project's modules (loaded afresh), io.open its files; arg holds the arguments.
+      mountProject(luaFs, project);
+      const here = entryDir(project);
+      engine.global.set('__pwo_args', [`${PROJECT_DIR}/${project.entry}`, ...(project.config.args ?? [])]);
+      await engine.doString(
+        `__pwo_default_path = __pwo_default_path or package.path\nlocal path = "${here}/?.lua;${here}/?/init.lua;${PROJECT_DIR}/?.lua;${PROJECT_DIR}/?/init.lua"\n` +
+          'for name in pairs(package.loaded) do if package.searchpath(name, path) then package.loaded[name] = nil end end\n' +
+          'package.path = path .. ";" .. __pwo_default_path\n' +
+          'arg = {} for i, v in ipairs(__pwo_args) do arg[i - 1] = v end',
+      );
+    }
     const value = await engine.doString(code);
     if (value !== undefined && value !== null) out.push(`${describe(value)}\n`);
     return { text: out.join(''), images: [] };
@@ -670,18 +809,30 @@ interface SqlDatabase {
   getRowsModified(): number;
 }
 let sqlDb: Promise<SqlDatabase> | undefined;
+let SqlDatabaseClass: (new (data?: Uint8Array) => SqlDatabase) | undefined;
 
-async function runSql(id: number, code: string): Promise<Output> {
+async function runSql(id: number, code: string, project?: RunProject): Promise<Output> {
   sqlDb ??= (async () => {
     const files = await runtimeFiles(id, RUNTIMES.sql);
-    const init = await umdImport<(config: object) => Promise<{ Database: new () => SqlDatabase }>>(files.js!);
+    const init = await umdImport<(config: object) => Promise<{ Database: new (data?: Uint8Array) => SqlDatabase }>>(files.js!);
     const SQL = await init({ wasmBinary: files.wasm });
+    SqlDatabaseClass = SQL.Database;
     return new SQL.Database();
   })();
   sqlDb.catch(() => (sqlDb = undefined));
-  const db = await sqlDb;
+  let db = await sqlDb;
   report(id, 'running');
   try {
+    // CODE-019: `.read file.sql` runs a file of the project, `.open file.db` opens a database of it (a copy).
+    if (project) {
+      code = code.replace(/^[ \t]*\.read[ \t]+(\S+)[ \t]*$/gm, (_all, path: string) => new TextDecoder().decode(projectFile(project, path)));
+      const open = /^[ \t]*\.open[ \t]+(\S+)[ \t]*$/m.exec(code);
+      if (open) {
+        db = new SqlDatabaseClass!(projectFile(project, open[1]!));
+        sqlDb = Promise.resolve(db);
+        code = code.replace(open[0], '');
+      }
+    } else if (/^[ \t]*\.(read|open)\b/m.test(code)) throw new Error('.read and .open need the file to be part of an open folder');
     const results = db.exec(code);
     const text = results.length ? results.map((r) => textTable(r.columns, r.values)).join('\n\n') : `OK, ${db.getRowsModified()} row(s) changed`;
     return { text: `${text}\n`, images: [] };
@@ -695,7 +846,19 @@ type RunClang = (args: string[], files: Tree, options: { stdout(b: Uint8Array | 
 let clang: Promise<RunClang> | undefined;
 
 /** C/C++: compiled by Clang to WebAssembly, then run with a small WASI (output only). */
-async function runCpp(id: number, code: string): Promise<Output> {
+/** CODE-019: files of the project as the nested folders the compiler takes. */
+function tree(files: Record<string, Uint8Array>): Tree {
+  const root: Tree = {};
+  for (const [path, bytes] of Object.entries(files)) {
+    const parts = path.split('/');
+    let dir = root;
+    for (const part of parts.slice(0, -1)) dir = (dir[part] ??= {}) as Tree;
+    dir[parts[parts.length - 1]!] = bytes;
+  }
+  return root;
+}
+
+async function runCpp(id: number, code: string, project?: RunProject): Promise<Output> {
   clang ??= (async () => {
     report(id, `packages:${RUNTIMES.cpp.name} (${RUNTIMES.cpp.size})`);
     // The toolchain's own downloads go through the application too (asked, checked, kept offline).
@@ -715,15 +878,19 @@ async function runCpp(id: number, code: string): Promise<Output> {
   clang.catch(() => (clang = undefined));
   const runClang = await clang;
   report(id, 'running');
-  const cpp = isCpp(code);
-  const source = cpp ? 'main.cpp' : 'main.c';
+  const sources = project ? cSources(project) : [];
+  const cpp = project ? sources.some((s) => !/\.c$/i.test(s)) : isCpp(code);
+  const source = project ? project.entry : cpp ? 'main.cpp' : 'main.c';
+  const flags = project?.config.cflags ?? ['-O2'];
+  const includes = project ? [`-I${dirOf(project.entry) || '.'}`, '-I.'] : [];
+  const inputs: Tree = project ? tree({ ...project.files, [project.entry]: new TextEncoder().encode(code) }) : { [source]: code };
   const log: string[] = [];
   const dec = new TextDecoder();
   const collect = (b: Uint8Array | null): void => void (b && log.push(dec.decode(b, { stream: true })));
   let program: Uint8Array;
   try {
     // The C++ library of WASI has no exceptions.
-    const files = await runClang([...(cpp ? ['clang++', '-fno-exceptions'] : ['clang']), '-O2', source, '-o', 'main.wasm'], { [source]: code }, { stdout: collect, stderr: collect, decodeASCII: false });
+    const files = await runClang([...(cpp ? ['clang++', '-fno-exceptions'] : ['clang']), ...flags, ...includes, ...(project ? sources : [source]), '-o', 'main.wasm'], inputs, { stdout: collect, stderr: collect, decodeASCII: false });
     program = files['main.wasm'] as Uint8Array;
   } catch (err) {
     return { text: `${log.join('') || (err as Error)?.message || String(err)}\n`, error: true, images: [] };
@@ -731,7 +898,9 @@ async function runCpp(id: number, code: string): Promise<Output> {
   // Warnings of the compiler come first.
   const out: string[] = log.length ? [log.join('')] : [];
   try {
-    const status = runWasi(await WebAssembly.compile(program as BufferSource), [source.replace(/\..*/, '')], (_fd, text) => out.push(text));
+    const name = source.replace(/^.*\//, '').replace(/\..*/, '');
+    const fs = project && { files: project.files, cwd: '', stdin: project.config.stdin ? projectFile(project, project.config.stdin) : undefined };
+    const status = runWasi(await WebAssembly.compile(program as BufferSource), [name, ...(project?.config.args ?? [])], (_fd, text) => out.push(text), fs || undefined);
     if (status !== 0) out.push(`\n(exit status ${status})\n`);
     return { text: out.join(''), images: [], ...(status !== 0 ? { error: true } : {}) };
   } catch (err) {
@@ -796,14 +965,14 @@ scope.addEventListener('message', (event: MessageEvent) => {
       try {
         output =
           message.lang === 'python'
-            ? await runPython(message.id, message.code)
+            ? await runPython(message.id, message.code, message.project)
             : message.lang === 'lua'
-              ? await runLua(message.id, message.code)
+              ? await runLua(message.id, message.code, message.project)
               : message.lang === 'sql'
-                ? await runSql(message.id, message.code)
+                ? await runSql(message.id, message.code, message.project)
                 : message.lang === 'cpp'
-                  ? await runCpp(message.id, message.code)
-                  : await runJavaScript(message.id, message.code);
+                  ? await runCpp(message.id, message.code, message.project)
+                  : await runJavaScript(message.id, message.code, message.project);
       } catch (err) {
         output = { text: `${(err as Error)?.message ?? String(err)}\n`, error: true, images: [] };
       }

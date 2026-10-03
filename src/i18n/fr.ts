@@ -1016,6 +1016,8 @@ export const fr: Record<MessageKey, string> = {
   'textfile.output': 'Sortie',
   'textfile.outputOf': 'Sortie de {name}',
   'textfile.outputOfSelection': 'Sortie de la sélection',
+  'textfile.outputOfProject': 'Sortie de {name} (projet {project})',
+  'textfile.projectSkipped': '{n} fichiers volumineux ont été laissés hors du projet.',
   'textfile.noOutput': 'Terminé, rien n’a été affiché.',
   'textfile.figure': 'Figure {n}',
   'code.stopped': 'Arrêté.',
