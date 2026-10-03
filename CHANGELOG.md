@@ -10,6 +10,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Git: open or save by pasting a repository address (`https://github.com/owner/name`,
+  links to a branch, folder or file, GitLab groups, self-hosted sites, SSH
+  clone addresses); the service, repository, branch and path are deduced and
+  the matching account used, or the add-account form opened pre-filled (GIT-008).
+- Git: step-by-step help to create a personal access token with the least
+  rights, linking to the token page of the site (GIT-009).
+- Git: saving to a repository proposes a text format Git can compare
+  (`.md`, `.tex`, `.csv`) before binary ones, with a Format list and an
+  explanation; binary formats stay available (GIT-010).
 - Forms (FORM-001, FORM-002): **design a PDF form** by drawing its fields on
   the pages — text, paragraph, check box, drop-down list, option buttons —
   named, required or not, renamed or removed; saved as real AcroForm fields.

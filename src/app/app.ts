@@ -369,9 +369,9 @@ export class App {
     if (doc.source) {
       ({ version, ...location } = doc.source);
     } else {
-      const chosen = await browseRepository(this.root, 'save', doc.name);
-      if (!chosen) return;
       const formats = saveFormatsFor(doc.kind, loadFormatFamily());
+      const chosen = await browseRepository(this.root, 'save', doc.name, formats.map(fileExtension));
+      if (!chosen) return;
       const ext = chosen.path.slice(chosen.path.lastIndexOf('.') + 1).toLowerCase();
       const match = formats.find((f) => fileExtension(f) === ext);
       if (!match) {

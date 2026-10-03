@@ -4,6 +4,8 @@ import { ACCEPTED_EXTENSIONS } from '../core/format';
 import { t } from '../i18n';
 import { addAccount, clientFor, commitMessage, defaultApiUrl, forgetAccount, loadAccounts, type GitAccount } from './accounts';
 import type { GitClient, GitEntry, GitProvider, GitRepo } from './types';
+import { apiUrlFor, hostOfApi, parseRepoAddress, tokenPage, type RepoAddress } from './url';
+import { isDiffable, orderForGit, preferDiffable, withExtension } from './diffable';
 
 export interface RepoLocation {
   account: GitAccount;
@@ -41,8 +43,8 @@ function modal(host: HTMLElement, className: string, title: string): { dialog: H
  * "save" mode with the chosen location (folder + file name).
  */
 export function browseRepository(host: HTMLElement, mode: 'open', suggestedName?: string): Promise<RepoFile | null>;
-export function browseRepository(host: HTMLElement, mode: 'save', suggestedName?: string): Promise<RepoLocation | null>;
-export function browseRepository(host: HTMLElement, mode: 'open' | 'save', suggestedName = ''): Promise<RepoFile | RepoLocation | null> {
+export function browseRepository(host: HTMLElement, mode: 'save', suggestedName?: string, extensions?: string[]): Promise<RepoLocation | null>;
+export function browseRepository(host: HTMLElement, mode: 'open' | 'save', suggestedName = '', extensions: string[] = []): Promise<RepoFile | RepoLocation | null> {
   return new Promise((resolve) => {
     const { dialog, body, close } = modal(host, 'git-dialog', mode === 'open' ? t('git.dialogOpen') : t('git.dialogSave'));
     let account: GitAccount | undefined;
@@ -59,7 +61,11 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
     const branchSelect = h('select', { 'aria-label': t('git.branch') });
     const crumbs = h('div', { class: 'git-crumbs', 'aria-label': t('git.folder') });
     const list = h('ul', { class: 'git-list', 'aria-label': t('git.folder') });
-    const fileName = h('input', { type: 'text', value: suggestedName, 'aria-label': t('git.fileName'), spellcheck: 'false' });
+    // GIT-010: a text format, which Git can compare, is proposed first.
+    const fileName = h('input', { type: 'text', value: preferDiffable(suggestedName, extensions), 'aria-label': t('git.fileName'), spellcheck: 'false' });
+    const address = h('input', { type: 'url', placeholder: 'https://github.com/owner/repository', 'aria-label': t('git.address'), spellcheck: 'false', autocomplete: 'url' });
+    /** An address waiting for its account to be added. */
+    let pending: RepoAddress | undefined;
 
     const finish = (value: RepoFile | RepoLocation | null): void => {
       generation++;
@@ -105,7 +111,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
       }
     };
 
-    const selectRepo = async (r: GitRepo): Promise<void> => {
+    const selectRepo = async (r: GitRepo, at?: RepoAddress): Promise<void> => {
       if (!client) return;
       repo = r;
       const gen = ++generation;
@@ -113,9 +119,18 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
       try {
         const branches = await client.listBranches(r.id);
         if (gen !== generation) return;
-        branch = branches.includes(r.defaultBranch) ? r.defaultBranch : (branches[0] ?? r.defaultBranch);
+        const wanted = at?.branch && branches.includes(at.branch) ? at.branch : r.defaultBranch;
+        branch = branches.includes(wanted) ? wanted : (branches[0] ?? wanted);
         branchSelect.replaceChildren(...branches.map((b) => h('option', { value: b, selected: b === branch }, b)));
-        await openFolder('');
+        const inside = at?.inside ?? '';
+        if (at?.isFile) {
+          const slash = inside.lastIndexOf('/');
+          const name = inside.slice(slash + 1);
+          if (mode === 'open') {
+            if (supported(name)) return void (await openEntry({ name, path: inside, type: 'file' }));
+          } else fileName.value = name;
+          await openFolder(slash < 0 ? '' : inside.slice(0, slash));
+        } else await openFolder(inside);
       } catch (err) {
         fail(err);
       }
@@ -176,23 +191,45 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
 
     // --- add account form ---------------------------------------------------------
     const addForm = h('form', { class: 'git-add', hidden: true });
+    const provider = h('select', { 'aria-label': t('git.provider') }, h('option', { value: 'github' }, 'GitHub'), h('option', { value: 'gitlab' }, 'GitLab'));
+    const apiUrl = h('input', { type: 'url', value: defaultApiUrl('github'), 'aria-label': t('git.apiUrl'), spellcheck: 'false' });
+    const howTo = h('details', { class: 'git-token-help' });
+    // GIT-009: how to make a token, for the service and the site chosen.
+    const renderHowTo = (): void => {
+      const kind = provider.value as GitProvider;
+      let site = 'github.com';
+      try {
+        site = hostOfApi(apiUrl.value.trim());
+      } catch {
+        site = kind === 'github' ? 'github.com' : 'gitlab.com';
+      }
+      const page = tokenPage(kind, site);
+      const steps = kind === 'github' ? (['git.howGithub1', 'git.howGithub2', 'git.howGithub3', 'git.howGithub4', 'git.howGithub5'] as const) : (['git.howGitlab1', 'git.howGitlab2', 'git.howGitlab3', 'git.howGitlab4'] as const);
+      howTo.replaceChildren(
+        h('summary', {}, t('git.howTitle')),
+        h('ol', {}, ...steps.map((k, i) => h('li', {}, ...(i === 0 ? [t(k), ' ', h('a', { href: page, target: '_blank', rel: 'noopener noreferrer' }, page)] : [t(k)])))),
+        h('p', { class: 'hint' }, t('git.howSafety')),
+      );
+    };
     const showAddForm = (): void => {
       addForm.hidden = false;
+      renderHowTo();
       addForm.querySelector<HTMLInputElement>('input[type="password"]')?.focus();
     };
     {
-      const provider = h('select', { 'aria-label': t('git.provider') }, h('option', { value: 'github' }, 'GitHub'), h('option', { value: 'gitlab' }, 'GitLab'));
-      const apiUrl = h('input', { type: 'url', value: defaultApiUrl('github'), 'aria-label': t('git.apiUrl'), spellcheck: 'false' });
       const token = h('input', { type: 'password', 'aria-label': t('git.token'), autocomplete: 'off', spellcheck: 'false' });
       provider.addEventListener('change', () => {
         apiUrl.value = defaultApiUrl(provider.value as GitProvider);
+        renderHowTo();
       });
+      apiUrl.addEventListener('change', renderHowTo);
       const connect = h('button', { type: 'submit', class: 'primary' }, t('git.connect'));
       addForm.append(
         h('label', {}, t('git.provider'), ' ', provider),
         h('label', {}, t('git.apiUrl'), ' ', apiUrl),
         h('label', {}, t('git.token'), ' ', token),
         h('p', { class: 'hint' }, t('git.tokenHelp')),
+        howTo,
         h('div', { class: 'dialog-actions' }, connect),
       );
       addForm.addEventListener('submit', (ev) => {
@@ -212,7 +249,9 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
             account = created;
             renderAccounts();
             accountSelect.value = created.id;
-            void selectAccount(created.id);
+            const at = pending;
+            pending = undefined;
+            void (at ? openAddress(at) : selectAccount(created.id));
           })
           .catch(fail);
       });
@@ -233,6 +272,50 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
         .then((r) => selectRepo(r))
         .catch(fail);
     };
+
+    /** GIT-008: open the repository of an address with the account of its site, or ask for one. */
+    const openAddress = async (at: RepoAddress): Promise<void> => {
+      const same = (a: GitAccount): boolean => a.provider === at.provider && (a.apiUrl.replace(/\/+$/, '') === at.apiUrl || hostOfApi(a.apiUrl) === at.host);
+      const found = loadAccounts().find(same);
+      if (!found) {
+        pending = at;
+        provider.value = at.provider;
+        apiUrl.value = apiUrlFor(at.provider, at.host);
+        setStatus(t('git.needAccount', { site: at.host }));
+        showAddForm();
+        return;
+      }
+      if (found.id !== account?.id) {
+        account = found;
+        accountSelect.value = found.id;
+        void selectAccount(found.id);
+      }
+      client = clientFor(found);
+      setStatus(t('git.loading'));
+      try {
+        await selectRepo(await client.getRepo(at.path), at);
+      } catch (err) {
+        fail(err);
+      }
+    };
+    const goAddress = (): void => {
+      const text = address.value.trim();
+      if (!text) return;
+      const at = parseRepoAddress(text);
+      if (at) return void openAddress(at);
+      // `owner/name` alone: a repository of the account chosen.
+      if (/^[^\s/]+(\/[^\s/]+)+$/.test(text) && client) {
+        otherRepo.value = text;
+        return goOther();
+      }
+      setStatus(t('git.badAddress'), true);
+    };
+    address.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        goAddress();
+      }
+    });
     otherRepo.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -272,6 +355,8 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
     }
 
     body.append(
+      h('div', { class: 'git-row git-address' }, h('label', {}, t('git.address'), ' ', address), button(t('git.go'), goAddress, { className: 'primary' })),
+      h('p', { class: 'hint' }, t('git.addressHint')),
       h('div', { class: 'git-row' }, h('label', {}, t('git.account'), ' ', accountSelect), forget, button(t('git.addAccount'), showAddForm)),
       addForm,
       h('div', { class: 'git-row' }, h('label', {}, t('git.repository'), ' ', repoSelect), otherRepo, button(t('git.go'), goOther)),
@@ -279,7 +364,32 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
       crumbs,
       list,
     );
-    if (mode === 'save') body.append(h('label', { class: 'git-row' }, t('git.fileName'), ' ', fileName));
+    if (mode === 'save') {
+      body.append(h('label', { class: 'git-row' }, t('git.fileName'), ' ', fileName));
+      const { text, binary } = orderForGit(extensions);
+      if (text.length || binary.length) {
+        // GIT-010: the format, text ones first; a binary one stays possible.
+        const format = h(
+          'select',
+          { 'aria-label': t('git.format') },
+          ...(text.length ? [h('optgroup', { label: t('git.formatText') }, ...text.map((e) => h('option', { value: e }, `.${e}`)))] : []),
+          ...(binary.length ? [h('optgroup', { label: t('git.formatBinary') }, ...binary.map((e) => h('option', { value: e }, `.${e}`)))] : []),
+        );
+        const warn = h('p', { class: 'hint git-binary-hint' });
+        const sync = (): void => {
+          const ext = fileName.value.includes('.') ? fileName.value.slice(fileName.value.lastIndexOf('.') + 1).toLowerCase() : '';
+          if ([...text, ...binary].includes(ext)) format.value = ext;
+          warn.textContent = isDiffable(ext) ? t('git.formatTextHint') : text.length ? t('git.formatBinaryHint', { ext: `.${text.find((e) => e !== 'jl' && e !== 'py') ?? text[0]}` }) : t('git.formatNoText');
+        };
+        format.addEventListener('change', () => {
+          fileName.value = withExtension(fileName.value.trim() || 'document', format.value);
+          sync();
+        });
+        fileName.addEventListener('input', sync);
+        sync();
+        body.append(h('label', { class: 'git-row' }, t('git.format'), ' ', format), warn);
+      }
+    }
     body.append(status, actions);
     dialog.addEventListener('cancel', (e) => {
       e.preventDefault();
@@ -293,6 +403,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
       accountSelect.value = first.id;
       void selectAccount(first.id);
     }
+    address.focus();
   });
 }
 

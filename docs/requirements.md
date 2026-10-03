@@ -376,6 +376,9 @@ Should to **Must**).
 | GIT-005 | S | 0.0.11 | The system shall let the user save a new document to a chosen repository path, optionally on a new branch. |
 | GIT-006 | S | 0.0.11 | The token shall never be written to documents, logs or exported files, and the user shall be able to forget it. |
 | GIT-007 | C | — | Pull/merge request creation from the editor. |
+| GIT-008 | S | — | When the user pastes the address of a repository (web address of the repository, a branch, a folder or a file, or an SSH clone address), the system shall deduce the service (GitHub or GitLab, public or self-hosted), the repository, the branch and the path, use the matching account or propose to add one pre-filled, and open that place. |
+| GIT-009 | S | — | Where an account is added, the system shall explain step by step how to create a personal access token with the least rights, linking to the token page of the chosen site. |
+| GIT-010 | S | — | When a document is saved to a repository, the system shall propose a text format Git can compare (Markdown, LaTeX, CSV) before binary formats (DOCX, ODT, XLSX…), explaining why, without forbidding the others. |
 
 ## 9e. Device-to-device exchange with QRShare (SHARE)
 

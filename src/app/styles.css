@@ -495,6 +495,13 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .git-add[hidden] { display: none; }
 .git-add label { display: grid; gap: 2px; }
 .git-add .hint, .git-status { font-size: 0.85rem; color: var(--muted); margin: 0; }
+.git-address label { flex: 1; display: flex; gap: 6px; align-items: center; min-width: 0; }
+.git-address input { flex: 1; min-width: 0; }
+.git-body > .hint { font-size: 0.85rem; color: var(--muted); margin: 0; }
+.git-token-help { font-size: 0.9rem; }
+.git-token-help summary { cursor: pointer; color: var(--accent, inherit); }
+.git-token-help ol { margin: 4px 0; padding-left: 1.4rem; display: grid; gap: 2px; }
+.git-token-help a { overflow-wrap: anywhere; }
 .git-status.error { color: var(--danger); }
 .git-crumbs { font-size: 0.9rem; }
 .git-crumbs button.link { background: none; border: none; color: var(--accent); padding: 0 2px; cursor: pointer; }

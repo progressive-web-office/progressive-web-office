@@ -229,3 +229,49 @@ test('starts a branch of a repository opened as a folder and proposes its change
   await expect(panel.getByRole('heading', { name: '📁 me/notes (main)' })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('opens a file from its address, adding the account of its site (GIT-008, GIT-009)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.route(`${API}/**`, async (route: Route) => {
+    const p = new URL(route.request().url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (p === '/user/repos') return json([]);
+    if (p === '/repos/s-celles/test-pwo') return json({ full_name: 's-celles/test-pwo', default_branch: 'main', private: false });
+    if (p === '/repos/s-celles/test-pwo/branches') return json([{ name: 'main' }, { name: 'dev' }]);
+    if (p === '/repos/s-celles/test-pwo/contents/docs') return json([{ name: 'plan.md', path: 'docs/plan.md', type: 'file', size: 7 }]);
+    if (p === '/repos/s-celles/test-pwo/contents/docs/plan.md') return json({ type: 'file', sha: 's1', content: b64('# Plan\n'), encoding: 'base64' });
+    return json({ message: 'Not Found' }, 404);
+  });
+  await page.getByRole('button', { name: 'Open from repository…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Open from repository' });
+  const address = dialog.getByLabel('Repository address');
+  await expect(address).toBeFocused();
+  await address.fill('https://github.com/s-celles/test-pwo/blob/dev/docs/plan.md');
+  await address.press('Enter');
+  await expect(dialog.getByText('Add an account for github.com')).toBeVisible();
+  await expect(dialog.getByLabel('Provider')).toHaveValue('github');
+  // GIT-009: how to make the token, with the page to make it.
+  await dialog.getByText('How to create a token?').click();
+  await expect(dialog.getByRole('link', { name: 'https://github.com/settings/personal-access-tokens/new' })).toBeVisible();
+  await dialog.getByLabel('Personal access token').fill('ghp_test');
+  await dialog.getByRole('button', { name: 'Connect' }).click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Plan');
+  await expect(page.locator('.doc-source')).toHaveText('s-celles/test-pwo · dev');
+  expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
+});
+
+test('proposes a text format when saving to a repository (GIT-010)', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh1', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_x', label: 'me' }]));
+  });
+  await openApp(page);
+  await page.route(`${API}/**`, (route: Route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+  await page.getByRole('button', { name: 'New document' }).first().click();
+  await page.getByRole('button', { name: 'Commit…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Save to repository' });
+  await expect(dialog.getByLabel('File name')).toHaveValue(/\.md$/);
+  await expect(dialog.getByText('A text format: Git shows what changed')).toBeVisible();
+  await dialog.getByLabel('Format').selectOption('docx');
+  await expect(dialog.getByLabel('File name')).toHaveValue(/\.docx$/);
+  await expect(dialog.getByText(/binary file.*prefer \.md/)).toBeVisible();
+});

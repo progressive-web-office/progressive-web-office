@@ -1,0 +1,90 @@
+/**
+ * GIT-008: a repository given by its address, as copied from the browser or
+ * a clone button — `https://github.com/owner/name`, a link to a branch, a
+ * folder or a file, `git@host:owner/name.git` — tells the service (GitHub or
+ * GitLab, on their sites or self-hosted), its API, the repository and maybe
+ * the branch and the path.
+ */
+import type { GitProvider } from './types';
+
+export interface RepoAddress {
+  provider: GitProvider;
+  /** The site, e.g. `github.com` or `gitlab.example.org`. */
+  host: string;
+  apiUrl: string;
+  /** `owner/name` (GitLab: `group/subgroup/name`). */
+  path: string;
+  branch?: string;
+  /** A folder or a file of the repository. */
+  inside?: string;
+  /** Whether `inside` is a file (a `blob` link). */
+  isFile?: boolean;
+}
+
+export function apiUrlFor(provider: GitProvider, host: string): string {
+  if (provider === 'github') return host === 'github.com' ? 'https://api.github.com' : `https://${host}/api/v3`;
+  return `https://${host}/api/v4`;
+}
+
+/** The provider of a site: GitHub for github.com and GitHub Enterprise sites named so, GitLab otherwise. */
+function providerOf(host: string, path: string): GitProvider {
+  if (host === 'github.com' || /(^|\.)github\./.test(host)) return 'github';
+  if (host === 'gitlab.com' || /(^|\.)gitlab\./.test(host) || path.includes('/-/')) return 'gitlab';
+  return 'gitlab';
+}
+
+/** The repository of an address; undefined when it is not one (`owner/name` alone has no site). */
+export function parseRepoAddress(text: string): RepoAddress | undefined {
+  const raw = text.trim();
+  let host: string;
+  let rest: string;
+  const ssh = /^(?:ssh:\/\/)?git@([^:/]+)[:/](.+)$/.exec(raw);
+  if (ssh) {
+    host = ssh[1]!;
+    rest = ssh[2]!;
+  } else {
+    let url: URL;
+    try {
+      url = new URL(/^[a-z][\w+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`);
+    } catch {
+      return undefined;
+    }
+    if (!/^https?:$/.test(url.protocol) || !url.hostname.includes('.')) return undefined;
+    host = url.host;
+    rest = decodeURIComponent(url.pathname);
+  }
+  rest = rest.replace(/^\/+|\/+$/g, '').replace(/\.git$/, '');
+  const provider = providerOf(host, `/${rest}`);
+  let path = rest;
+  let branch: string | undefined;
+  let inside: string | undefined;
+  let isFile = false;
+  if (provider === 'github') {
+    const m = /^([^/]+\/[^/]+)(?:\/(tree|blob)\/([^/]+)(?:\/(.+))?)?/.exec(rest);
+    if (!m) return undefined;
+    path = m[1]!;
+    if (m[3]) branch = m[3];
+    if (m[4]) inside = m[4];
+    isFile = m[2] === 'blob';
+  } else {
+    const m = /^(.+?)(?:\/-\/(tree|blob)\/([^/]+)(?:\/(.+))?)?$/.exec(rest);
+    if (!m) return undefined;
+    path = m[1]!;
+    if (m[3]) branch = m[3];
+    if (m[4]) inside = m[4];
+    isFile = m[2] === 'blob';
+  }
+  if (path.split('/').filter(Boolean).length < 2) return undefined;
+  return { provider, host, apiUrl: apiUrlFor(provider, host), path, ...(branch ? { branch } : {}), ...(inside ? { inside } : {}), ...(isFile ? { isFile } : {}) };
+}
+
+/** Where a personal access token is created on a site. */
+export function tokenPage(provider: GitProvider, host: string): string {
+  return provider === 'github' ? `https://${host}/settings/personal-access-tokens/new` : `https://${host}/-/user_settings/personal_access_tokens`;
+}
+
+/** The site of an account's API (`api.github.com` → `github.com`). */
+export function hostOfApi(apiUrl: string): string {
+  const host = new URL(apiUrl).host;
+  return host === 'api.github.com' ? 'github.com' : host;
+}

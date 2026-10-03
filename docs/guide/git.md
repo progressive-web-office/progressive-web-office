@@ -9,10 +9,30 @@ GitHub Enterprise) and **GitLab** (gitlab.com or self-hosted) repositories,
 and commit your changes back — directly from the browser, without a server
 of our own.
 
+## Open a repository by its address
+
+The quickest way: paste the **address of the repository** — the one shown
+in your browser — in the first field of **Open from repository…** or
+**Commit…**, then press <kbd>Enter</kbd>:
+
+- `https://github.com/s-celles/test-pwo` — GitHub, owner `s-celles`,
+  repository `test-pwo`;
+- `https://gitlab.com/group/subgroup/project` — GitLab, with its groups;
+- a link to a branch, a folder or a file
+  (`…/tree/dev/docs`, `…/blob/main/report.md`, GitLab `…/-/tree/main/docs`)
+  opens that branch and that folder, or the file itself;
+- a clone address (`git@github.com:owner/name.git`) or a self-hosted site
+  (`https://gitlab.example.org/team/project`, GitHub Enterprise) works too.
+
+The service, the owner, the repository, the branch and the path are deduced
+from the address. If you already have an account for that site it is used;
+otherwise the form to add one opens, filled in: only the token is left to
+paste.
+
 ## Connect an account
 
 1. Click **Open from repository…** on the start screen (or **⎇** in the
-   toolbar), then **Add account**.
+   toolbar), then **Add account** (or paste a repository address, see above).
 2. Choose the provider. The API URL is filled in for the public services;
    change it for your own instance:
    - GitHub Enterprise: `https://github.example.com/api/v3`
@@ -24,6 +44,34 @@ of our own.
      (Settings → Developer settings → Personal access tokens).
    - GitLab: a token with the **api** scope (Preferences → Access tokens).
 4. Click **Connect**.
+
+### How to create a token
+
+**How to create a token?** under the token field gives these steps, with a
+link to the token page of the site chosen.
+
+**GitHub** (fine-grained token):
+
+1. Open [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+   (on GitHub Enterprise: `https://<your site>/settings/personal-access-tokens/new`).
+2. Give it a name (`PWO`) and an expiration date.
+3. **Repository access**: *Only select repositories*, then pick the
+   repositories you want to edit.
+4. **Permissions → Repository permissions**: *Contents: Read and write*
+   (and *Pull requests: Read and write* to propose changes).
+5. **Generate token**, copy it — it is shown only once — and paste it.
+
+**GitLab**:
+
+1. Open [gitlab.com/-/user_settings/personal_access_tokens](https://gitlab.com/-/user_settings/personal_access_tokens)
+   (self-hosted: `https://<your site>/-/user_settings/personal_access_tokens`).
+2. **Add new token**, give it a name and an expiration date.
+3. Select the scope **api**.
+4. **Create personal access token**, copy it — shown only once — and paste it.
+
+A token works as a password for these repositories: give it only the
+repositories and rights you need and a near expiration date, and revoke it
+on the same page if it leaks.
 
 ::: warning Token storage
 The token is stored **only in this browser** (local storage) and is sent
@@ -50,9 +98,21 @@ commits it to the same path and branch. The commit dialog proposes a
 another branch — tick **Create this branch** to create it from the current
 one.
 
-Any other document can be saved to a repository with **Commit…**: choose the
-account, repository, branch and folder, then the file name. The extension
-selects the format (for example `.md`, `.docx`, `.tex`).
+Any other document can be saved to a repository with **Commit…**: paste
+the repository address (or choose the account, repository, branch and
+folder), then the file name. The extension selects the format (for example
+`.md`, `.docx`, `.tex`).
+
+::: tip Prefer text formats in a repository
+Git shows what changed between two versions line by line — but only for
+text files. A `.docx`, `.odt` or `.xlsx` is a zip archive: each commit stores
+a new opaque file, and changes can be neither reviewed nor merged. So when
+saving to a repository, the **Format** list puts the text formats first
+(Markdown `.md`, LaTeX `.tex`, CSV `.csv`) and proposes one by default —
+`report.docx` becomes `report.md`, `marks.xlsx` becomes `marks.csv`. The
+binary formats stay available: choose one when you need its exact layout
+(a CSV keeps one sheet, without formatting).
+:::
 
 **Save as…** still downloads a local copy in any format.
 
