@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Graduated rulers around the page (DOC-047): the horizontal one, in cm
+  (inches in the United States) from the paper's edge, with margins and
+  paragraph indents to drag or move with the arrow keys; the vertical one
+  with the end of each page's text marked. *View › Rulers* hides them.
 - The page of a document (DOC-046): paper, orientation and margins, set in
   **Page setup** (formerly *Header and footer*) and kept in ODT, DOCX, LaTeX
   (`geometry`) and Markdown (`papersize`, `geometry`). The page on screen is

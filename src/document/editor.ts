@@ -25,9 +25,10 @@ import { writeDocumentAsync, type TextFormat } from './io';
 import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64, writeMarkdown } from './markdown-writer';
 import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
+import { Rulers, type RulerUnit } from './rulers';
 import { writeLatex } from './latex-writer';
 import { readLatex } from './latex-reader';
-import { addResource, allParagraphs, defaultGeometry, isFillRun, isLandscape, paperName, textHeight, textWidth, type PageGeometry, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
+import { addResource, allParagraphs, cleanPageSetup, defaultGeometry, isFillRun, isLandscape, paperName, textHeight, textWidth, type PageGeometry, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
@@ -106,6 +107,25 @@ const REMOTE = 'pwo-remote';
 
 
 /** DOC-041: symbols of the fields in menus. */
+/** DOC-047: rulers shown (by default on a large screen), and their unit. */
+function loadRulers(): boolean {
+  try {
+    const v = localStorage.getItem('pwo.doc.rulers');
+    if (v !== null) return v === '1';
+  } catch {
+    /* storage unavailable */
+  }
+  return typeof matchMedia === 'function' && matchMedia('(min-width: 900px)').matches;
+}
+function saveRulers(on: boolean): void {
+  try {
+    localStorage.setItem('pwo.doc.rulers', on ? '1' : '0');
+  } catch {
+    /* storage unavailable */
+  }
+}
+const loadRulerUnit = (): RulerUnit => (typeof navigator !== 'undefined' && /^en-US$/.test(navigator.language) ? 'in' : 'cm');
+
 /** DOC-044: how a document is edited; the last choice is kept per kind of document. */
 type EditMode = 'visual' | 'source' | 'reading';
 const MODE_KEY = 'pwo.doc.mode';
@@ -183,6 +203,10 @@ export class DocumentEditor implements EditorView {
   private mode: EditMode = 'visual';
   private sourcePane: SourcePane | undefined;
   private readonly modeBar = h('div', { class: 'doc-mode-bar', role: 'status', hidden: true });
+  /** DOC-047: graduated rulers around the page. */
+  private readonly rulers: Rulers;
+  private rulersFrame = 0;
+  private scroller!: HTMLElement;
 
   constructor(
     private readonly doc: RichDocument,
@@ -222,8 +246,20 @@ export class DocumentEditor implements EditorView {
     this.dag = new DagPanel({ view: () => this.dagView(), goTo: (i) => this.goToCell(i) });
     this.trackButton = button(t('track.button'), () => void this.toggleTracking(), { text: '±', title: t('track.title'), className: 'track-btn' });
     this.trackButton.setAttribute('aria-pressed', 'false');
-    const scroller = h('div', { class: 'doc-scroll' }, this.headerStrip, this.page, this.footerStrip, this.notes);
+    this.rulers = new Rulers(
+      {
+        margin: (side, mm) => this.setMargin(side, mm),
+        // The ruler keeps the focus (arrow keys move the handle further).
+        indent: (kind, pt) => void this.command(setParagraphAttrs({ [kind]: pt ? pt : null })),
+      },
+      { horizontal: t('ruler.horizontal'), vertical: t('ruler.vertical'), left: t('ruler.leftMargin'), right: t('ruler.rightMargin'), indent: t('para.indent'), firstLine: t('para.firstLine'), page: (n) => t('ruler.page', { n }) },
+      loadRulerUnit(),
+    );
+    const sheet = h('div', { class: 'doc-sheet' }, this.rulers.horizontal, h('div', { class: 'doc-sheet-body' }, this.rulers.vertical, this.page));
+    const scroller = h('div', { class: 'doc-scroll' }, this.headerStrip, sheet, this.footerStrip, this.notes);
+    this.scroller = scroller;
     this.element = h('div', { class: 'doc-editor' });
+    this.element.classList.toggle('show-rulers', loadRulers());
     // REVIEW-001: read and comment page by page.
     this.review = new DocReview(
       {
@@ -625,6 +661,7 @@ export class DocumentEditor implements EditorView {
   }
 
   private dispatch(tr: Transaction): void {
+    this.rulersSoon();
     // REV-005: while tracking, edits are recorded as insertions and deletions.
     if (this.tracking && tr.docChanged && !tr.getMeta(REMOTE) && !tr.getMeta(UNTRACKED) && !isHistoryTransaction(tr)) {
       tr = trackTransaction(this.view.state, tr, { ...this.tracking, date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
@@ -1481,6 +1518,7 @@ export class DocumentEditor implements EditorView {
         h('option', { value: 'mode-visual' }, `${mark(this.mode === 'visual')}${t('mode.visual')}`),
         ...(this.sourceLang() ? [h('option', { value: 'mode-source' }, `${mark(this.mode === 'source')}${t('mode.source')}`)] : []),
         h('option', { value: 'mode-reading' }, `${mark(this.mode === 'reading')}${t('mode.reading')}`),
+        h('option', { value: 'rulers' }, `${mark(this.element.classList.contains('show-rulers'))}${t('ruler.menu')}`),
         h('option', { value: 'readability' }, `${mark(this.writing.readability)}${t('wview.readability')}`),
         h('option', { value: 'focus' }, `${mark(this.writing.focus)}${t('wview.focus')}`),
         h('option', { value: 'typewriter' }, `${mark(this.writing.typewriter)}${t('wview.typewriter')}`),
@@ -1503,6 +1541,7 @@ export class DocumentEditor implements EditorView {
         fill();
         return;
       }
+      if (value === 'rulers') this.setRulers(!this.element.classList.contains('show-rulers'));
       if (value === 'goal') void this.editGoal();
       else if (value === 'hide-code' || value === 'show-code') this.setAllCodeHidden(value === 'hide-code');
       else if (value === 'dag') {
@@ -1917,7 +1956,7 @@ export class DocumentEditor implements EditorView {
   /** The page on screen as on paper: its width, margins, and a boundary at the end of each page's text. */
   private applyGeometry(): void {
     const g = this.geometry();
-    const style = this.page.style;
+    const style = this.scroller.style;
     style.setProperty('--page-w', `${mmToPx(g.width)}px`);
     style.setProperty('--page-h', `${mmToPx(g.height)}px`);
     style.setProperty('--page-pad', [g.top, g.right, g.bottom, g.left].map((m) => `${mmToPx(m)}px`).join(' '));
@@ -1925,10 +1964,51 @@ export class DocumentEditor implements EditorView {
     style.setProperty('--text-h', `${mmToPx(textHeight(g))}px`);
     this.page.dataset.paper = `${paperName(g) ?? `${g.width} × ${g.height} mm`}${isLandscape(g) ? ' ↔' : ''}`;
     this.springsSoon();
+    this.rulersSoon();
+  }
+
+  /** DOC-047: a margin dragged on the ruler. */
+  private setMargin(side: 'left' | 'right', mm: number): void {
+    const g = { ...this.geometry() };
+    const other = side === 'left' ? g.right : g.left;
+    g[side] = Math.max(0, Math.min(mm, g.width - other - 20));
+    this.doc.page = cleanPageSetup({ ...this.doc.page, geometry: g }) ?? { geometry: g };
+    this.applyGeometry();
+    this.changed();
+  }
+
+  private rulersSoon(): void {
+    if (this.rulersFrame || typeof requestAnimationFrame !== 'function') return;
+    this.rulersFrame = requestAnimationFrame(() => {
+      this.rulersFrame = 0;
+      this.updateRulers();
+    });
+  }
+
+  /** The rulers follow the page and the paragraph of the cursor. */
+  private updateRulers(): void {
+    if (!this.element.classList.contains('show-rulers') || !this.view || this.view.isDestroyed) return;
+    const g = this.geometry();
+    const rect = this.page.getBoundingClientRect();
+    if (!rect.width) return;
+    const pxPerMm = rect.width / g.width;
+    const para = this.view.state.selection.$from.parent.attrs as { indent?: number | null; firstLine?: number | null };
+    const ends: number[] = [];
+    for (let k = 1; (g.top + k * textHeight(g)) * pxPerMm < rect.height - 1; k++) ends.push((g.top + k * textHeight(g)) * pxPerMm);
+    this.rulers.render({ geometry: g, pxPerMm, indent: para.indent ?? 0, firstLine: para.firstLine ?? 0, height: rect.height, pageEnds: ends });
+  }
+
+  private setRulers(on: boolean): void {
+    this.element.classList.toggle('show-rulers', on);
+    saveRulers(on);
+    if (on) this.rulersSoon();
   }
 
   private springsFrame = 0;
-  private readonly onResize = (): void => this.springsSoon();
+  private readonly onResize = (): void => {
+    this.springsSoon();
+    this.rulersSoon();
+  };
 
   /** Lay the springs out again, once the page is drawn. */
   private springsSoon(): void {

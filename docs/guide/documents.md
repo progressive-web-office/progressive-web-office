@@ -253,6 +253,17 @@ geometry: "landscape,top=15mm,right=20mm,bottom=15mm,left=20mm"
 Printing uses it. A document without one gets A4 (Letter in North America)
 with 2 cm margins. On a phone, the text takes the width of the screen.
 
+**Rulers** (*View › Rulers*, shown on large screens) frame the page, in
+centimetres (inches in the United States) from the edge of the paper:
+
+- the horizontal ruler stays at the top while scrolling; the margins are
+  greyed, and the **left and right margins** can be dragged (by millimetres);
+- its triangles are the **indents** of the paragraph of the cursor: the lower
+  one the left indent, the upper one the first line — drag them, or focus
+  them and use the arrow keys (1 mm per press);
+- the vertical ruler runs along the page, the top margin greyed, a red line
+  where each page's text ends.
+
 ### Header and footer
 
 ▤ **Page setup** also sets the header and footer: each has a left, a centre and a right part.

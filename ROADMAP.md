@@ -153,8 +153,9 @@ group is not a commitment.
 
 - ✅ The page of the document: paper, orientation, margins, kept in every
   format, the page on screen as on paper (DOC-046)
-- Graduated rulers, horizontal and vertical, in cm or inches: margins and
-  indents shown and dragged, page boundaries
+- ✅ Graduated rulers, horizontal and vertical, in cm or inches: margins and
+  indents shown and dragged, page boundaries (DOC-047); next: tab stops on
+  the ruler
 - Typographic quality as in TeX: hyphenation by language, line breaking over
   the whole paragraph (optimal fit), widows and orphans, ligatures, kerning,
   small capitals, non-breaking spaces of the language
