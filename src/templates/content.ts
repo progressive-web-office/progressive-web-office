@@ -52,7 +52,7 @@ Enclosures: CV, transcripts
 
   report: `---
 title: Project report
-author: Your name
+author: SURNAME First name
 date: {date}
 header-left: "{title}"
 footer-center: "Page {page} of {pages}"
@@ -61,7 +61,13 @@ first-page-hidden: true
 
 # Project report
 
-**Team:** names · **Supervisor:** name · **Date:** {date}
+**Team:**
+
+- SURNAME1 First name1
+- SURNAME2 First name2
+- SURNAME3 First name3
+
+**Supervisor:** SURNAME First name · **Date:** {date}
 
 [TOC]
 
@@ -103,10 +109,10 @@ footer-center: "{page}/{pages}"
 
 # Meeting minutes
 
-**Date:** {date} · **Place:** room / online · **Chair:** name · **Minutes:** name
+**Date:** {date} · **Place:** room / online · **Chair:** First name SURNAME · **Minutes:** First name SURNAME
 
-**Present:** names
-**Apologies:** names
+**Present:** First name SURNAME, First name SURNAME
+**Apologies:** First name SURNAME
 
 ## Agenda
 
@@ -133,8 +139,8 @@ Decisions taken.
 
 | Action | Who | By |
 |---|---|---|
-| Send the updated plan | name | date |
-| Book the room | name | date |
+| Send the updated plan | First name SURNAME | date |
+| Book the room | First name SURNAME | date |
 
 **Next meeting:** date and place.
 `,
@@ -142,7 +148,7 @@ Decisions taken.
   exercises: `---
 title: Exercise sheet
 header-left: "Mathematics"
-header-right: "Name: ………………"
+header-right: "SURNAME First name: ………………"
 footer-center: "{page}"
 ---
 
@@ -254,13 +260,13 @@ const FR: DocumentTexts = {
 title: Lettre
 ---
 
-Jeanne Martin\\
+Jeanne MARTIN\\
 12 rue des Jardins\\
 75011 Paris\\
 06 12 34 56 78\\
 jeanne.martin@example.org
 
-Monsieur Jean Dupont\\
+Monsieur Jean DUPONT\\
 Responsable des admissions\\
 Université de Lyon\\
 1 avenue de l’Université\\
@@ -281,12 +287,12 @@ Je vous remercie de l’attention portée à ma demande et me tiens à votre dis
 
 Je vous prie d’agréer, Monsieur, l’expression de mes salutations distinguées.
 
-Jeanne Martin
+Jeanne MARTIN
 `,
 
   report: `---
 title: Rapport de projet
-author: Votre nom
+author: NOM Prénom
 date: {date}
 header-left: "{title}"
 footer-center: "Page {page} sur {pages}"
@@ -295,7 +301,13 @@ first-page-hidden: true
 
 # Rapport de projet
 
-**Équipe :** noms · **Encadrant :** nom · **Date :** {date}
+**Équipe :**
+
+- NOM1 Prénom1
+- NOM2 Prénom2
+- NOM3 Prénom3
+
+**Encadrant :** NOM Prénom · **Date :** {date}
 
 [TOC]
 
@@ -337,10 +349,10 @@ footer-center: "{page}/{pages}"
 
 # Compte rendu de réunion
 
-**Date :** {date} · **Lieu :** salle / en ligne · **Animation :** nom · **Secrétaire :** nom
+**Date :** {date} · **Lieu :** salle / en ligne · **Animation :** Prénom NOM · **Secrétaire :** Prénom NOM
 
-**Présents :** noms
-**Excusés :** noms
+**Présents :** Prénom NOM, Prénom NOM
+**Excusés :** Prénom NOM
 
 ## Ordre du jour
 
@@ -367,8 +379,8 @@ Décisions prises.
 
 | Action | Qui | Échéance |
 |---|---|---|
-| Envoyer le planning mis à jour | nom | date |
-| Réserver la salle | nom | date |
+| Envoyer le planning mis à jour | Prénom NOM | date |
+| Réserver la salle | Prénom NOM | date |
 
 **Prochaine réunion :** date et lieu.
 `,
@@ -376,7 +388,7 @@ Décisions prises.
   exercises: `---
 title: Fiche d’exercices
 header-left: "Mathématiques"
-header-right: "Nom : ………………"
+header-right: "NOM Prénom : ………………"
 footer-center: "{page}"
 ---
 
@@ -489,7 +501,7 @@ export const DOCUMENT_TEXTS: Record<TemplateLang, DocumentTexts> = { en: EN, fr:
 export const LABELS = {
   en: {
     budget: { sheet: 'Budget', item: 'Item', months: ['January', 'February', 'March'], total: 'Total', income: 'Income', salary: 'Salary', other: 'Other income', expenses: 'Expenses', rent: 'Rent', food: 'Food', transport: 'Transport', leisure: 'Leisure', balance: 'Balance', chart: 'Expenses by month' },
-    grades: { sheet: 'Grades', student: 'Student', tests: ['Test 1', 'Test 2', 'Test 3'], average: 'Average', mention: 'Result', mentions: ['Excellent', 'Very good', 'Good', 'Pass', 'Below'], classAverage: 'Class average', passed: 'Passed', students: ['Alice', 'Bilal', 'Chloé', 'David', 'Emma', 'Farid'] },
+    grades: { sheet: 'Grades', student: 'Student', tests: ['Test 1', 'Test 2', 'Test 3'], average: 'Average', mention: 'Result', mentions: ['Excellent', 'Very good', 'Good', 'Pass', 'Below'], classAverage: 'Class average', passed: 'Passed', students: ['BROWN Alice', 'KHAN Bilal', 'MARTIN Chloé', 'NGUYEN David', 'SMITH Emma', 'TAHIRI Farid'] },
     invoice: { sheet: 'Invoice', title: 'INVOICE', number: 'No.', date: 'Date', client: 'Client', description: 'Description', qty: 'Qty', price: 'Unit price', amount: 'Amount', items: ['Design work (hours)', 'Printing', 'Delivery'], subtotal: 'Subtotal', tax: 'VAT', total: 'Total' },
     signs: {
       title: 'Race signs',
@@ -513,7 +525,7 @@ export const LABELS = {
   },
   fr: {
     budget: { sheet: 'Budget', item: 'Poste', months: ['Janvier', 'Février', 'Mars'], total: 'Total', income: 'Revenus', salary: 'Salaire', other: 'Autres revenus', expenses: 'Dépenses', rent: 'Loyer', food: 'Alimentation', transport: 'Transport', leisure: 'Loisirs', balance: 'Solde', chart: 'Dépenses par mois' },
-    grades: { sheet: 'Notes', student: 'Élève', tests: ['Devoir 1', 'Devoir 2', 'Devoir 3'], average: 'Moyenne', mention: 'Mention', mentions: ['Très bien', 'Bien', 'Assez bien', 'Passable', 'Insuffisant'], classAverage: 'Moyenne de la classe', passed: 'Moyenne ≥ 10', students: ['Alice', 'Bilal', 'Chloé', 'David', 'Emma', 'Farid'] },
+    grades: { sheet: 'Notes', student: 'Élève', tests: ['Devoir 1', 'Devoir 2', 'Devoir 3'], average: 'Moyenne', mention: 'Mention', mentions: ['Très bien', 'Bien', 'Assez bien', 'Passable', 'Insuffisant'], classAverage: 'Moyenne de la classe', passed: 'Moyenne ≥ 10', students: ['BERNARD Alice', 'BENALI Bilal', 'DUBOIS Chloé', 'LEROY David', 'MOREAU Emma', 'TAHIRI Farid'] },
     invoice: { sheet: 'Facture', title: 'FACTURE', number: 'N°', date: 'Date', client: 'Client', description: 'Désignation', qty: 'Qté', price: 'Prix unitaire', amount: 'Montant', items: ['Conception (heures)', 'Impression', 'Livraison'], subtotal: 'Total HT', tax: 'TVA', total: 'Total TTC' },
     signs: {
       title: 'Panneaux de course',

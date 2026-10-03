@@ -297,6 +297,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Names in the templates follow the usage: SURNAME First name in school and
+  university documents (a team listed one member per line), First name
+  SURNAME elsewhere (minutes, French letters).
+
 - Completing a Python cell with the interpreter's names could show nothing
   the first time: loading jedi took longer than a keystroke waits. It is
   loaded as soon as the editor of a cell opens.

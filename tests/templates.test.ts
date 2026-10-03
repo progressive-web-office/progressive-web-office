@@ -83,8 +83,8 @@ describe('FILE-018 examples with plots', () => {
   it('letter: addresses on separate lines, laid out as usual in French (FILE-018)', () => {
     const paras = doc('letter', 'fr').blocks.filter((b) => b.type === 'paragraph') as Paragraph[];
     const text = (p: Paragraph) => p.runs.map((r) => ('text' in r ? r.text : '')).join('');
-    expect(text(paras[0]!).split('\n')).toEqual(['Jeanne Martin', '12 rue des Jardins', '75011 Paris', '06 12 34 56 78', 'jeanne.martin@example.org']);
-    expect(text(paras[1]!).split('\n')[0]).toBe('Monsieur Jean Dupont');
+    expect(text(paras[0]!).split('\n')).toEqual(['Jeanne MARTIN', '12 rue des Jardins', '75011 Paris', '06 12 34 56 78', 'jeanne.martin@example.org']);
+    expect(text(paras[1]!).split('\n')[0]).toBe('Monsieur Jean DUPONT');
     expect(text(paras[1]!).split('\n').at(-1)).toBe('69000 Lyon');
     // Recipient, place and date, and signature from 9 cm; spaces between the blocks.
     for (const i of [1, 2, paras.length - 1]) expect(paras[i]!.indent).toBe(255);
@@ -93,7 +93,16 @@ describe('FILE-018 examples with plots', () => {
     expect(paras[2]!.runs.at(-1)).toEqual({ field: 'date' });
     expect(text(paras[3]!)).toContain('Objet :');
     expect(paras[3]!.spaceBefore).toBeGreaterThan(0);
-    expect(text(paras.at(-1)!)).toBe('Jeanne Martin');
+    expect(text(paras.at(-1)!)).toBe('Jeanne MARTIN');
+  });
+
+  it.each(['en', 'fr'] as const)('names (%s): SURNAME First name at school, one line per member of a team; First name SURNAME elsewhere', (lang) => {
+    const md = (id: string) => JSON.stringify(doc(id, lang).blocks);
+    const school = lang === 'fr' ? ['NOM1 Prénom1', 'NOM2 Prénom2', 'NOM3 Prénom3'] : ['SURNAME1 First name1', 'SURNAME2 First name2', 'SURNAME3 First name3'];
+    const team = allParagraphs(doc('report', lang).blocks).filter((p) => p.list).map((p) => p.runs.map((r) => ('text' in r ? r.text : '')).join(''));
+    expect(team.slice(0, 3)).toEqual(school);
+    expect(md('minutes')).toContain(lang === 'fr' ? 'Prénom NOM' : 'First name SURNAME');
+    expect(JSON.stringify(doc('exercises', lang).page)).toContain(lang === 'fr' ? 'NOM Prénom' : 'SURNAME First name');
   });
 
   it('letter: block style in English', () => {
