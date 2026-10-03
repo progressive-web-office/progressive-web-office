@@ -282,6 +282,9 @@ Packages with compiled code are only those of Pyodide.
 
 ## Other languages: Lua, SQL, C/C++, R
 
+The example *Languages* (Templates and examples) has a ready-to-run cell in
+each of them.
+
 Python and JavaScript are part of the application. Other languages run with a
 **runtime downloaded the first time it is needed**, from the npm CDN
 (`cdn.jsdelivr.net`), after you agree for that site; it is then kept in the

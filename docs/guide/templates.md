@@ -64,6 +64,13 @@ first, then they are kept for offline use); two knobs and a switch, made
 reactive with `pwo.ui`, drive a tank, a gauge, a thermometer, a LED and a
 seven-segment display, as in their marimo gallery.
 
+**Languages** holds one small program in each language the cells run:
+statistics in Python, Fibonacci numbers in JavaScript, a word count in Lua,
+a table created then queried in SQL, a sieve of Eratosthenes in C, a sorted
+ranking in C++, and a linear fit with its plot in R. Press **⏩**: each
+runtime is downloaded the first time, after you agree (see
+[Other languages](./code.md#other-languages-lua-sql-c-c-r)).
+
 **Measurements and charts** is a workbook: a damped signal computed by
 formulas (`EXP`, `SIN`) from two parameters you can change, with its line
 chart, and a linear fit of measurements (`SLOPE`, `INTERCEPT`, `RSQ`,

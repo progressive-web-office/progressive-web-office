@@ -12,6 +12,7 @@ import { DOCUMENT_TEXTS, LABELS, type DocumentTexts, type TemplateLang } from '.
 import { labMarkdown } from './lab';
 import { widgetsMarkdown } from './widgets';
 import { instrumentsMarkdown } from './instruments';
+import { languagesMarkdown } from './languages';
 
 export type Built = { kind: 'document'; doc: RichDocument } | { kind: 'spreadsheet'; wb: Workbook } | { kind: 'presentation'; pres: Presentation };
 
@@ -58,6 +59,13 @@ function widgets(lang: TemplateLang): Built {
 /** The instrument panel example (CODE-016): the anywidget instruments, reactive controls and indicators. */
 function instruments(lang: TemplateLang): Built {
   const doc = readMarkdown(instrumentsMarkdown(lang));
+  if (doc.extras) delete doc.extras.frontMatter;
+  return { kind: 'document', doc };
+}
+
+/** The languages example (CODE-017, CODE-018): a small program in each language the cells run. */
+function languages(lang: TemplateLang): Built {
+  const doc = readMarkdown(languagesMarkdown(lang));
   if (doc.extras) delete doc.extras.frontMatter;
   return { kind: 'document', doc };
 }
@@ -329,5 +337,6 @@ export const TEMPLATES: Template[] = [
   { id: 'lab', kind: 'document', example: true, icon: '🧪', name: 'tpl.lab', description: 'tpl.labDesc', build: lab },
   { id: 'widgets', kind: 'document', example: true, icon: '🎛️', name: 'tpl.widgets', description: 'tpl.widgetsDesc', build: widgets },
   { id: 'instruments', kind: 'document', example: true, icon: '🏭', name: 'tpl.instruments', description: 'tpl.instrumentsDesc', build: instruments },
+  { id: 'languages', kind: 'document', example: true, icon: '🔤', name: 'tpl.languages', description: 'tpl.languagesDesc', build: languages },
   { id: 'measurements', kind: 'spreadsheet', example: true, icon: '📈', name: 'tpl.measurements', description: 'tpl.measurementsDesc', build: (lang) => ({ kind: 'spreadsheet', wb: measurements(lang) }) },
 ];

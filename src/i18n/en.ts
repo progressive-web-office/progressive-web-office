@@ -910,6 +910,8 @@ export const en = {
   'tpl.widgetsDesc': 'A slider in Python driving a plot and a button in JavaScript, built on anywidget; how to use the anywidget instruments.',
   'tpl.instruments': 'Instrument panel',
   'tpl.instrumentsDesc': 'Knobs, switch, tank, gauge, thermometer and LED from the anywidget instruments, driven from Python (downloads the instruments).',
+  'tpl.languages': 'Languages',
+  'tpl.languagesDesc': 'A small program in Python, JavaScript, Lua, SQL, C, C++ and R, ready to run (downloads each runtime on first use, after asking).',
   'tpl.measurements': 'Measurements and charts',
   'tpl.measurementsDesc': 'A signal computed by formulas and a linear fit (SLOPE, RSQ), with line and scatter charts.',
   'tpl.saveAs': 'Save as template…',

@@ -912,6 +912,8 @@ export const fr: Record<MessageKey, string> = {
   'tpl.widgetsDesc': 'Un curseur en Python qui pilote un tracé et un bouton en JavaScript, avec anywidget ; comment utiliser les anywidget instruments.',
   'tpl.instruments': 'Tableau de bord d’instruments',
   'tpl.instrumentsDesc': 'Boutons rotatifs, interrupteur, cuve, jauge, thermomètre et voyant des anywidget instruments, pilotés en Python (télécharge les instruments).',
+  'tpl.languages': 'Langages',
+  'tpl.languagesDesc': 'Un petit programme en Python, JavaScript, Lua, SQL, C, C++ et R, prêt à exécuter (télécharge chaque environnement au premier usage, après accord).',
   'tpl.measurements': 'Mesures et graphiques',
   'tpl.measurementsDesc': 'Un signal calculé par formules et un ajustement linéaire (PENTE, COEFFICIENT.DETERMINATION), avec courbes et nuage de points.',
   'tpl.saveAs': 'Enregistrer comme modèle…',

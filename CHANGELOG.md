@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- A *Languages* example (FILE-018): a small program in Python, JavaScript,
+  Lua, SQL, C, C++ and R, ready to run.
+
 - Lua, SQL, C, C++ and R (CODE-018): `.lua`, `.sql`, `.c`, `.cpp` and `.R`
   files and cells run with a runtime downloaded the first time, after the
   user agreed: wasmoon, sql.js and Clang/LLD (YoWASP) from the npm CDN,

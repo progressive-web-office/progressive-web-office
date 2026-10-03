@@ -104,6 +104,16 @@ describe('FILE-018 examples with plots', () => {
     expect(cells[2]!.cell).toContain('ai.Tank(level');
   });
 
+  it.each(['en', 'fr'] as const)('languages (%s): one runnable cell per supported language (CODE-017, CODE-018)', (lang) => {
+    const cells = runs(doc('languages', lang)).filter(isCodeCellRun);
+    expect(cells.map((c) => c.lang)).toEqual(['python', 'javascript', 'lua', 'sql', 'sql', 'cpp', 'cpp', 'r', 'r']);
+    expect(cells[3]!.cell).toContain('CREATE TABLE');
+    expect(cells[4]!.cell).toContain('GROUP BY');
+    expect(cells[5]!.cell).toContain('#include <stdio.h>');
+    expect(cells[6]!.cell).toContain('#include <vector>');
+    expect(cells[8]!.cell).toContain('plot(');
+  });
+
   it('measurements: scientific functions and charts drawn from the data', () => {
     const built = byId('measurements').build('fr') as Extract<Built, { kind: 'spreadsheet' }>;
     const charts = built.wb.sheets.flatMap((s) => s.charts ?? []);

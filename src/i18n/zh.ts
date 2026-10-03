@@ -912,6 +912,8 @@ export const zh: Record<MessageKey, string> = {
   'tpl.widgetsDesc': '用 Python 滑块驱动图形、用 JavaScript 按钮，基于 anywidget；如何使用 anywidget instruments。',
   'tpl.instruments': '仪表盘',
   'tpl.instrumentsDesc': '来自 anywidget instruments 的旋钮、开关、储罐、仪表、温度计和指示灯，由 Python 驱动（会下载这些仪表）。',
+  'tpl.languages': '编程语言',
+  'tpl.languagesDesc': 'Python、JavaScript、Lua、SQL、C、C++ 和 R 的小程序，可直接运行（首次使用时经同意后下载各运行环境）。',
   'tpl.measurements': '测量与图表',
   'tpl.measurementsDesc': '由公式计算的信号和线性拟合（SLOPE、RSQ），附折线图和散点图。',
   'tpl.saveAs': '另存为模板…',

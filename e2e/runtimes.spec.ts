@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile, useRuntimePackages, useWebR } from './helpers';
+import { openApp, openFile, usePyodidePackages, useRuntimePackages, useWebR } from './helpers';
 
 // CODE-018: Lua and SQL files run with a runtime downloaded from its CDN after the user agreed.
 test('runs Lua and SQL files with runtimes downloaded when first needed (CODE-018)', async ({ page }) => {
@@ -53,5 +53,33 @@ test('runs R files with webR, in a sandbox of its own, plots included (CODE-018)
   await expect(output).toContainText('mean: 5', { timeout: 240_000 });
   await expect(output).toContainText('[1] 2.13809');
   await expect(output.locator('img')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test('runs every cell of the languages example (FILE-018, CODE-017, CODE-018)', async ({ page }) => {
+  test.setTimeout(600_000);
+  const ready = (await usePyodidePackages(page)) && (await useRuntimePackages(page)) && (await useWebR(page));
+  test.skip(!ready, 'needs PYODIDE_PACKAGES and RUNTIME_PACKAGES, or the network');
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Languages' }).click();
+  const cells = page.locator('.doc-page .code-cell');
+  await expect(cells).toHaveCount(9);
+  // Each download is asked once per site; the trust question comes first.
+  await page.addLocatorHandler(page.getByRole('dialog', { name: 'Run the code of this document?' }), async (d) => d.getByRole('button', { name: 'Run' }).click());
+  await page.addLocatorHandler(page.getByRole('dialog').filter({ hasText: /cdn\.jsdelivr\.net|webr\.r-wasm\.org/ }), async (d) => d.getByRole('button', { name: 'Allow' }).click());
+  await cells.first().getByRole('button', { name: 'Run all cells' }).click();
+  const out = (i: number) => cells.nth(i).locator('.code-cell-output');
+  // The languages run side by side: wait for each output.
+  const long = { timeout: 540_000 };
+  await expect(out(0)).toContainText('mean = 13.60', long);
+  await expect(out(1)).toContainText('0, 1, 1, 2, 3, 5, 8, 13', long);
+  await expect(out(2)).toContainText('the\t3', long);
+  await expect(out(4)).toContainText('maths | 5 | 13.6 | 17', long);
+  await expect(out(5)).toContainText('2 3 5 7 11 13', long);
+  await expect(out(6)).toContainText('Chloé\t17', long);
+  await expect(out(7)).toContainText('wt', long);
+  await expect(cells.nth(8).locator('.code-cell-figures img')).toHaveCount(1, long);
+  await expect(cells.locator('.code-cell-output.error')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
