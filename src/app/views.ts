@@ -79,6 +79,8 @@ export interface ViewContext {
   readFolderFile?(path: string): Promise<Uint8Array>;
   /** DOC-036: write a file into the open folder, relative to this document; undefined when it cannot be written. */
   writeFolderFile?(path: string, bytes: Uint8Array): Promise<void>;
+  /** DOC-037: the snippets of the open folder (its `Snippets` folder). */
+  folderSnippets?(): Promise<import('../document/snippets').Snippet[]>;
   /** DOC-036: a folder is open and can be written. */
   folderWritable?(): boolean;
   /** What the view offers in the header changed (e.g. its save variants). */

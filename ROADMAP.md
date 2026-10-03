@@ -89,8 +89,8 @@ group is not a commitment.
   (DOC-034), focus and typewriter modes (DOC-035)
 - ✅ Completion of links (`[[`) and tags (`#`) in the notes of a folder
   (FOLDER-021)
-- Snippets with fields (`${1:title}`, date, clipboard) inserted from a list,
-  and autocompletion of citations (`@`) and emoji
+- ✅ Snippets with fields (`${1:title}`, date, clipboard) inserted from a list
+  or with `;;` (DOC-037); next: autocompletion of citations (`@`) and emoji
 - Citation styles from CSL files (APA, Chicago, ISO 690…) and a reference
   library kept in sync with Zotero (Better BibTeX export)
 

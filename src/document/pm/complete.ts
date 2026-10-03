@@ -8,7 +8,7 @@ import type { EditorView } from 'prosemirror-view';
 import { WIKI } from '../wiki-links';
 import { schema } from './schema';
 
-export type CompletionKind = 'link' | 'tag';
+export type CompletionKind = 'link' | 'tag' | 'snippet';
 
 export interface CompletionQuery {
   kind: CompletionKind;
@@ -19,6 +19,9 @@ export interface CompletionQuery {
 
 /** What the text before the cursor asks to complete, if anything. */
 export function completionQuery(before: string): CompletionQuery | null {
+  // DOC-037: `;;` and a snippet's name.
+  const snippet = /(?:^|\s);;([\p{L}\p{N}_-]{0,40})$/u.exec(before);
+  if (snippet) return { kind: 'snippet', query: snippet[1]!, length: snippet[1]!.length + 2 };
   const link = /\[\[([^[\]|#\n]{0,60})$/.exec(before);
   if (link) return { kind: 'link', query: link[1]!, length: link[0].length };
   const tag = /(?:^|[\s(])#([\p{L}\p{N}_/-]{1,40})$/u.exec(before);
@@ -27,13 +30,13 @@ export function completionQuery(before: string): CompletionQuery | null {
 }
 
 /** The items matching `query`: those starting with it first, then those containing it; at most `max`. */
-export function rankCompletions(items: string[], query: string, max = 8): string[] {
+export function rankCompletions(items: string[], query: string, max = 8, keepExact = false): string[] {
   const q = query.toLowerCase();
   const starts: string[] = [];
   const contains: string[] = [];
   for (const item of new Set(items)) {
     const i = item.toLowerCase();
-    if (i === q) continue;
+    if (i === q && !keepExact) continue;
     if (i.startsWith(q) || i.split(/[/\s_-]/).some((w) => w.startsWith(q))) starts.push(item);
     else if (i.includes(q)) contains.push(item);
   }
@@ -61,11 +64,17 @@ function queryAt(state: EditorState): CompletionQuery | null {
 }
 
 /** Replace the typed trigger and query with the chosen item. */
-export function acceptCompletion(view: EditorView, q: CompletionQuery, item: string): void {
+export function acceptCompletion(view: EditorView, q: CompletionQuery, item: string, onSnippet?: (name: string) => void): void {
   const { state } = view;
   const to = state.selection.from;
   const from = to - q.length;
   const tr = state.tr;
+  if (q.kind === 'snippet') {
+    // The typed `;;name` goes; the snippet takes its place.
+    view.dispatch(tr.delete(from, to));
+    onSnippet?.(item);
+    return;
+  }
   if (q.kind === 'link') {
     // A wiki link, as `[[item]]` in the note once saved.
     tr.replaceWith(from, to, schema.text(item, [schema.marks.link!.create({ href: WIKI + item })]));
@@ -77,7 +86,7 @@ export function acceptCompletion(view: EditorView, q: CompletionQuery, item: str
   view.focus();
 }
 
-export function completionPlugin(source: CompletionSource, label: (kind: CompletionKind) => string): Plugin<State> {
+export function completionPlugin(source: CompletionSource, label: (kind: CompletionKind) => string, onSnippet?: (name: string) => void): Plugin<State> {
   let list: HTMLUListElement | null = null;
   let items: string[] = [];
   let active = 0;
@@ -99,12 +108,12 @@ export function completionPlugin(source: CompletionSource, label: (kind: Complet
         li.setAttribute('role', 'option');
         li.id = `pwo-completion-${i}`;
         li.setAttribute('aria-selected', String(i === active));
-        li.textContent = current!.kind === 'tag' ? `#${item}` : item;
+        li.textContent = current!.kind === 'tag' ? `#${item}` : current!.kind === 'snippet' ? `;;${item}` : item;
         li.addEventListener('mousedown', (e) => {
           e.preventDefault();
           const q = current!;
           close();
-          acceptCompletion(view, q, item);
+          acceptCompletion(view, q, item, onSnippet);
         });
         return li;
       }),
@@ -116,7 +125,7 @@ export function completionPlugin(source: CompletionSource, label: (kind: Complet
     const mine = ++request;
     const all = (await source(q.kind)) ?? [];
     if (mine !== request) return;
-    const found = rankCompletions(all, q.query);
+    const found = rankCompletions(all, q.query, q.kind === 'snippet' ? 12 : 8, q.kind === 'snippet');
     if (!found.length) return close();
     current = q;
     items = found;
@@ -159,7 +168,7 @@ export function completionPlugin(source: CompletionSource, label: (kind: Complet
           const q = current;
           const item = items[active]!;
           close();
-          acceptCompletion(view, q, item);
+          acceptCompletion(view, q, item, onSnippet);
           return true;
         }
         if (event.key === 'Escape') {

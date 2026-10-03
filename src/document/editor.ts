@@ -21,7 +21,7 @@ import { sizeInput, type SizeInput } from '../app/size-input';
 import type { EditorView, SaveVariant, SyncableDocument, ViewContext } from '../app/views';
 import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
-import { decodeDataUri } from './markdown-reader';
+import { decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
 import { addResource, newAnchor, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
@@ -47,6 +47,8 @@ import { writingKey, writingPlugin } from './pm/writing-plugin';
 import { completionPlugin } from './pm/complete';
 import { noteTagsPlugin, refreshNoteTags } from './pm/note-tags';
 import { calloutPlugin } from './pm/callouts';
+import { insertSnippet, snippetStopsPlugin } from './pm/snippet-stops';
+import { builtinSnippets, expandSnippet, loadSnippets, mergeSnippets, type Snippet } from './snippets';
 import { readability } from './readability';
 import { addWritten, loadGoal, saveGoal } from './writing-stats';
 import { CommentPanel } from './comment-panel';
@@ -229,7 +231,13 @@ export class DocumentEditor implements EditorView {
             writingPlugin((score, level, wps) => t('read.label', { score, level: t(`read.${level}` as MessageKey), wps })),
             cellStatePlugin(() => t('code.stale')),
             // FOLDER-021: `[[` and `#` complete with the notes and tags of the folder (before Enter's keymap).
-            completionPlugin((kind) => this.ctx.completions?.(kind), (kind) => t(kind === 'link' ? 'complete.notes' : 'complete.tags')),
+            // DOC-037: `;;` and a name inserts a snippet.
+            completionPlugin(
+              (kind) => (kind === 'snippet' ? this.snippets().then((list) => list.map((x) => x.name)) : this.ctx.completions?.(kind)),
+              (kind) => t(kind === 'link' ? 'complete.notes' : kind === 'tag' ? 'complete.tags' : 'snippet.title'),
+              (name) => this.insertSnippetNamed(name),
+            ),
+            snippetStopsPlugin(),
             // FOLDER-023: #tags of a note shown as tags, in their colour.
             noteTagsPlugin((tag) => (this.ctx.tagColour ? this.ctx.tagColour(tag) : null)),
             // MD-019: callouts (`> [!NOTE]`) as coloured boxes.
@@ -900,12 +908,45 @@ export class DocumentEditor implements EditorView {
     return this.doc.meta.language || getLocale();
   }
 
+  /** DOC-037: the snippets: the open folder's, the user's, then the built-in ones (the last list kept to insert at once). */
+  private snippetList: Snippet[] = [];
+  private async snippets(): Promise<Snippet[]> {
+    const folder = (await this.ctx.folderSnippets?.().catch(() => [])) ?? [];
+    this.snippetList = mergeSnippets(folder, loadSnippets(), builtinSnippets((key) => t(key as MessageKey)));
+    return this.snippetList;
+  }
+
+  private insertSnippetNamed(name: string): void {
+    const snippet = this.snippetList.find((x) => x.name === name);
+    if (snippet) void this.insertSnippetBody(snippet.body);
+  }
+
+  /** Fill the fields of a snippet and insert it at the cursor (at once, unless the clipboard is needed). */
+  private async insertSnippetBody(body: string): Promise<void> {
+    if (this.readOnly) return;
+    let clipboard: string | undefined;
+    if (body.includes('${clipboard}')) clipboard = await navigator.clipboard?.readText().catch(() => undefined);
+    const text = expandSnippet(body, { now: new Date(), lang: this.lang(), title: this.doc.meta.title ?? '', ...(clipboard !== undefined ? { clipboard } : {}) });
+    insertSnippet(this.view, blocksToPm(readMarkdown(text).blocks));
+  }
+
+  /** DOC-037: choose a snippet to insert, or manage the user's snippets. */
+  private async openSnippets(): Promise<void> {
+    const { chooseSnippet } = await import('./snippets-dialog');
+    const { from, to } = this.view.state.selection;
+    const selected = this.view.state.doc.textBetween(from, to, '\n\n');
+    const chosen = await chooseSnippet(this.element, await this.snippets(), selected);
+    if (chosen) await this.insertSnippetBody(chosen.body);
+    else this.refocus();
+  }
+
   /** "Text" menu: typography as you type, and transforms of the selection or the document (DOC-031, DOC-032). */
   private textToolsMenu(): HTMLSelectElement {
     const select = this.textTools;
     const fill = (): void => {
       select.replaceChildren(
         h('option', { value: '' }, t('text.tools')),
+        h('option', { value: 'snippets' }, t('snippet.menu')),
         h('option', { value: 'typography' }, `${this.typography ? '✓ ' : ''}${t('text.typography')}`),
         ...TRANSFORMS.map((id) => h('option', { value: id }, t(`text.${id}` as MessageKey))),
       );
@@ -914,6 +955,7 @@ export class DocumentEditor implements EditorView {
     select.addEventListener('change', () => {
       const value = select.value;
       select.value = '';
+      if (value === 'snippets') return void this.openSnippets();
       if (value === 'typography') {
         this.typography = !this.typography;
         saveTypography(this.typography);

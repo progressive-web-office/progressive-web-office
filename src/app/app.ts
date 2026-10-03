@@ -774,6 +774,12 @@ export class App {
         const { readBytes, resolve } = await import('../fs');
         return readBytes(this.folder!.provider, resolve(this.current?.folderPath ?? '', path));
       },
+      folderSnippets: async () => {
+        const provider = this.folder?.provider;
+        if (!provider) return [];
+        const { folderSnippets } = await import('../folder/templates');
+        return folderSnippets(provider);
+      },
       folderWritable: () => !!this.folder?.provider.capabilities.write,
       writeFolderFile: async (path, bytes) => {
         const folder = this.folder;

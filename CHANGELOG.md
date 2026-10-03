@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Snippets (DOC-037): `;;name` or *Text › Snippets…* inserts Markdown with
+  fields (date, time, title, clipboard) and places to type visited with Tab;
+  built-in, personal and folder (`Snippets/`) snippets.
+
 - Mail merge (DOC-036): `{{Field}}` placeholders filled from the rows of a
   CSV, TSV or workbook, giving one file per row (ZIP or the open folder) or
   one document with a page per row.

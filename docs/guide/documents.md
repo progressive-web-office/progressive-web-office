@@ -246,6 +246,27 @@ The **View** menu of the toolbar offers:
   of the last 14 days, and a focus timer (25 minutes of work, 5 of break).
   Goals and statistics stay in this browser.
 
+### Snippets
+
+**Snippets** are pieces of text ready to insert: type `;;` and the beginning
+of a name (`;;sig`, `;;meeting`…), choose with the arrows and press
+<kbd>Enter</kbd>; or choose **Text › Snippets…**. A snippet is Markdown with
+fields:
+
+| Field | Becomes |
+| --- | --- |
+| `${date}`, `${time}`, `${datetime}`, `${weekday}`, `${isodate}` | now, in the document's language |
+| `${title}` | the title of the document |
+| `${clipboard}` | the text copied |
+| `${1:default}`, `${2}`… | places to type, visited in order with <kbd>Tab</kbd> (<kbd>Shift</kbd>+<kbd>Tab</kbd> back, <kbd>Esc</kbd> leaves them) |
+| `${0}` | where the cursor ends |
+
+Built-in snippets: date, today, meeting notes, note and warning callouts,
+table, signature. **New snippet** in the dialog keeps your own in this
+browser (the selected text starts it); ✎ edits and ✕ deletes them. In an
+open [folder](./folders.md), the text and Markdown files of its `Snippets`
+folder are snippets too, named after the files and shared with the folder.
+
 ### Typing shortcuts
 
 At the start of a line, type:

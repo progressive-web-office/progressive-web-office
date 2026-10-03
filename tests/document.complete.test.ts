@@ -11,6 +11,10 @@ describe('FOLDER-021 completion of links and tags', () => {
     expect(completionQuery('issue#12')).toBeNull();
     expect(completionQuery('done #')).toBeNull();
     expect(completionQuery('plain text')).toBeNull();
+    // DOC-037: snippets.
+    expect(completionQuery('Hello ;;da')).toEqual({ kind: 'snippet', query: 'da', length: 4 });
+    expect(completionQuery(';;')).toEqual({ kind: 'snippet', query: '', length: 2 });
+    expect(completionQuery('a;;b')).toBeNull();
   });
 
   it('ranks the matches: starting with the query, then containing it', () => {

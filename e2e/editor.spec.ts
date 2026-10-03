@@ -516,3 +516,40 @@ test('shows readability, focus mode and a writing goal (DOC-033..DOC-035)', asyn
   await editor.press('Escape');
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
 });
+
+test('inserts snippets with ;; and their fields, and keeps the user snippets (DOC-037)', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'New document' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await editor.click();
+  // The built-in signature: its name is the place to type.
+  await page.keyboard.type('Thanks. ;;sig');
+  await expect(page.getByRole('listbox', { name: 'Snippets' }).getByRole('option')).toHaveText([';;signature']);
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Ada Lovelace');
+  await expect(editor).toContainText('Best regards,');
+  await expect(editor).toContainText('Ada Lovelace');
+  // A table: Tab visits the cells to fill.
+  await page.keyboard.press('Enter');
+  await page.keyboard.type(';;table');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Name');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('Mark');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('Ada');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('20');
+  await expect(editor.locator('table th, table td')).toHaveText(['Name', 'Mark', 'Ada', '20']);
+  // A snippet of the user, written in the dialog, then inserted from the list.
+  await page.getByLabel('Text', { exact: true }).selectOption({ label: 'Snippets… (;;)' });
+  const dialog = page.getByRole('dialog', { name: 'Snippets' });
+  await dialog.getByText('New snippet').click();
+  await dialog.getByLabel('Name', { exact: true }).fill('lab');
+  await dialog.getByLabel('Text', { exact: true }).fill('Lab of ${1:room} — ${title}');
+  await dialog.getByRole('button', { name: 'Save the snippet' }).click();
+  await dialog.getByRole('region', { name: 'My snippets' }).getByRole('button', { name: 'lab', exact: true }).click();
+  await page.keyboard.type('B12');
+  await expect(editor).toContainText('Lab of B12');
+  expect(await page.evaluate(() => localStorage.getItem('pwo.snippets'))).toContain('"name":"lab"');
+});
