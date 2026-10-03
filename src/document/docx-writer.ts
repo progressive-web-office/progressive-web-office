@@ -1,4 +1,5 @@
 /** DOCX writer producing a minimal, standards-conformant package (DOC-006). */
+import { FILL_STYLE, fillTabs, SPACE_STYLE, springStyleName } from './springs';
 import { escapeXml as esc, escapeXmlAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
@@ -13,6 +14,8 @@ import {
   isFootnoteRun,
   isSeqRun,
   isFieldRun,
+  isFillRun,
+  allParagraphs,
   fieldValue,
   type FieldKind,
   isRefRun,
@@ -162,7 +165,7 @@ class DocxWriter {
       { path: 'docProps/core.xml', data: coreXml(this.doc.meta, esc) },
       { path: 'docProps/app.xml', data: APP_XML },
       { path: 'word/document.xml', data: documentXml },
-      { path: 'word/styles.xml', data: STYLES_XML },
+      { path: 'word/styles.xml', data: STYLES_XML.replace('</w:styles>', `${springStyles(this.doc)}</w:styles>`) },
       { path: 'word/numbering.xml', data: this.numberingXml() },
       { path: 'word/_rels/document.xml.rels', data: this.relsXml() },
     ];
@@ -274,6 +277,10 @@ class DocxWriter {
         out += this.toc(group.levels ?? 3);
       } else if (group.type === 'bibliography') {
         out += this.bibliography();
+      } else if (group.type === 'space') {
+        // DOC-042: a spring keeps the height it was last shown with; its style marks it.
+        const style = group.stretch ? springStyleId(group.stretch) : 'PWOSpace';
+        out += `<w:p><w:pPr><w:pStyle w:val="${style}"/><w:spacing w:before="${twips(group.size ?? 0)}" w:after="0" w:line="20" w:lineRule="exact"/></w:pPr></w:p>`;
       } else if (group.type === 'include') {
         // DOC-028: a sub-document of a master document, linked by path.
         const rid = this.nextRid();
@@ -334,6 +341,8 @@ class DocxWriter {
     if (styleId) pPr += `<w:pStyle w:val="${styleId}"/>`;
     else if (numId) pPr += '<w:pStyle w:val="ListParagraph"/>';
     if (numId) pPr += `<w:numPr><w:ilvl w:val="${Math.min(8, p.list?.level ?? 0)}"/><w:numId w:val="${numId}"/></w:numPr>`;
+    // DOC-042: tab stops standing for the horizontal springs (Word measures them from the margin).
+    if (p.runs.some(isFillRun)) pPr += `<w:tabs>${fillTabs(p.runs, TEXT_WIDTH - (p.indent ?? 0)).map((t) => `<w:tab w:val="${t.type}" w:pos="${twips(t.pos + (p.indent ?? 0))}"/>`).join('')}</w:tabs>`;
     pPr += layoutPPr(p);
     if (p.align && p.align !== 'left') pPr += `<w:jc w:val="${p.align === 'justify' ? 'both' : p.align}"/>`;
     // REV-002: comment ranges open and close around the runs, across paragraphs.
@@ -465,6 +474,7 @@ class DocxWriter {
       const field = `<w:fldSimple w:instr=" SEQ ${SEQ_NAMES[run.seq]} \\* ARABIC "><w:r><w:t>${n}</w:t></w:r></w:fldSimple>`;
       return run.seq === 'equation' ? `<w:r><w:t>(</w:t></w:r>${field}<w:r><w:t>)</w:t></w:r>` : field;
     }
+    if (isFillRun(run)) return `<w:r><w:rPr><w:rStyle w:val="${fillStyleId(run.hfill)}"/></w:rPr><w:tab/></w:r>`;
     if (isFieldRun(run)) {
       // DOC-041: a field Word computes again (the date when the document is opened or printed).
       return `<w:fldSimple w:instr="${esc(DOCX_FIELDS[run.field])}"><w:r><w:t xml:space="preserve">${esc(fieldValue(run.field, { meta: this.doc.meta }))}</w:t></w:r></w:fldSimple>`;
@@ -604,6 +614,26 @@ const twips = (pt: number): number => Math.round(pt * 20);
 
 
 /** Direct paragraph spacing (DOC-020): w:spacing then w:ind, as the schema orders them. */
+/** Width of the text of a page (A4, 1 inch margins), in points. */
+const TEXT_WIDTH = (11906 - 2 * 1440) / 20;
+
+const springStyleId = (w: number): string => `PWOSpring${w === 1 ? '' : String(w).replace('.', '_')}`;
+const fillStyleId = (w: number): string => `PWOFill${w === 1 ? '' : String(w).replace('.', '_')}`;
+
+/** DOC-042: the styles marking springs and spaces, one per weight. */
+function springStyles(doc: RichDocument): string {
+  const springs = new Set<number>([1]);
+  const fills = new Set<number>([1]);
+  for (const b of doc.blocks) if (b.type === 'space' && b.stretch) springs.add(b.stretch);
+  for (const p of allParagraphs(doc.blocks)) for (const r of p.runs) if (isFillRun(r)) fills.add(r.hfill);
+  const para = (id: string, name: string): string => `<w:style w:type="paragraph" w:customStyle="1" w:styleId="${id}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/></w:pPr><w:rPr><w:sz w:val="2"/></w:rPr></w:style>`;
+  return (
+    para('PWOSpace', SPACE_STYLE) +
+    [...springs].map((w) => para(springStyleId(w), springStyleName(w))).join('') +
+    [...fills].map((w) => `<w:style w:type="character" w:customStyle="1" w:styleId="${fillStyleId(w)}"><w:name w:val="${w === 1 ? FILL_STYLE : `${FILL_STYLE} ${w}`}"/></w:style>`).join('')
+  );
+}
+
 export function layoutPPr(p: ParagraphLayout): string {
   let out = '';
   const spacing: string[] = [];

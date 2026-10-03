@@ -406,6 +406,54 @@ class CodeCellView extends AtomView {
   }
 }
 
+/**
+ * DOC-042: a vertical space. A fixed one has its size; a spring's height is
+ * set by the editor's layout (the free height of its page, shared).
+ */
+class SpaceView implements NodeView {
+  dom: HTMLElement;
+  constructor(private node: PmNode) {
+    this.dom = document.createElement('div');
+    this.render();
+  }
+
+  private render(): void {
+    const { stretch, size } = this.node.attrs as { stretch: number | null; size: number | null };
+    this.dom.className = stretch ? 'space spring' : 'space';
+    this.dom.contentEditable = 'false';
+    if (stretch) {
+      this.dom.dataset.stretch = String(stretch);
+      this.dom.dataset.label = stretch === 1 ? t('space.spring') : `${t('space.spring')} ×${stretch}`;
+      this.dom.style.height ||= '0px';
+    } else {
+      delete this.dom.dataset.stretch;
+      this.dom.dataset.label = t('space.fixed', { size: `${Math.round(((size ?? 0) / 72) * 2.54 * 100) / 100} cm` });
+      this.dom.style.height = `${size ?? 0}pt`;
+    }
+    this.dom.title = this.dom.dataset.label;
+  }
+
+  update(node: PmNode): boolean {
+    if (node.type !== this.node.type) return false;
+    const changed = !node.sameMarkup(this.node);
+    this.node = node;
+    if (changed) this.render();
+    return true;
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+
+  selectNode(): void {
+    this.dom.classList.add('ProseMirror-selectednode');
+  }
+
+  deselectNode(): void {
+    this.dom.classList.remove('ProseMirror-selectednode');
+  }
+}
+
 class ImageView implements NodeView {
   dom: HTMLImageElement;
   constructor(
@@ -452,6 +500,7 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     toc: (node) => new TocView(node, hooks),
     seq: (node, view, getPos) => new SeqView(node, view, getPos, hooks),
     field: (node, view, getPos) => new FieldView(node, view, getPos, hooks),
+    space: (node) => new SpaceView(node),
     xref: (node, view, getPos) => new XrefView(node, view, getPos, hooks),
     cite: (node, view, getPos) => new CiteView(node, view, getPos, hooks),
     bibliography: () => new BibliographyView(hooks),

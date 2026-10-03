@@ -33,6 +33,9 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  isFillRun,
+  type FillRun,
+  type Space,
   isFieldKind,
   fieldValue,
   type FieldContext,
@@ -155,6 +158,8 @@ function blocksToDomInner(
       frag.append(tableToDom(group, doc, resolveImage));
     } else if (group.type === 'toc') {
       frag.append(tocElement(blocks, group.levels ?? 3, doc));
+    } else if (group.type === 'space') {
+      frag.append(spaceElement(group, doc));
     } else if (group.type === 'include') {
       frag.append(includeElement(group.src, doc));
     } else if (group.type === 'bibliography') {
@@ -283,6 +288,11 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
     }
     if (isFieldRun(run)) {
       el.append(fieldElement(run.field, fieldValue(run.field, fieldCtx), doc));
+      continue;
+    }
+    if (isFillRun(run)) {
+      el.append(fillElement(run, doc));
+      el.classList.add('has-hfill');
       continue;
     }
     if (isCiteRun(run)) {
@@ -599,6 +609,17 @@ export function domToBlocks(
       if (note) open(ctx).runs.push({ footnote: note });
       return;
     }
+    if (el.dataset?.hfill !== undefined && el.classList.contains('hfill')) {
+      open(ctx).runs.push({ hfill: Number(el.dataset.hfill) || 1 });
+      return;
+    }
+    if (el.classList?.contains('space') && el.tagName === 'DIV') {
+      flush();
+      const stretch = Number(el.dataset.stretch) || undefined;
+      const size = el.dataset.size !== undefined ? Number(el.dataset.size) : undefined;
+      blocks.push({ type: 'space', ...(stretch ? { stretch } : {}), ...(size !== undefined ? { size } : {}) });
+      return;
+    }
     if (el.dataset?.field !== undefined && el.classList.contains('field') && isFieldKind(el.dataset.field)) {
       open(ctx).runs.push({ field: el.dataset.field });
       return;
@@ -839,6 +860,24 @@ export function refElement(id: string, label: string, doc: Document = document):
 }
 
 /** A sub-document of a master document, by its path (DOC-028). */
+/** A spring or a space (DOC-042): its height as last shown, or its size. */
+export function spaceElement(space: Space, doc: Document = document): HTMLElement {
+  const div = doc.createElement('div');
+  div.className = space.stretch ? 'space spring' : 'space';
+  if (space.stretch) div.dataset.stretch = String(space.stretch);
+  if (space.size !== undefined) div.dataset.size = String(space.size);
+  div.style.height = `${space.size ?? 0}pt`;
+  return div;
+}
+
+/** A horizontal spring (DOC-042). */
+export function fillElement(run: FillRun, doc: Document = document): HTMLElement {
+  const span = doc.createElement('span');
+  span.className = 'hfill';
+  span.dataset.hfill = String(run.hfill);
+  return span;
+}
+
 export function includeElement(src: string, doc: Document = document): HTMLElement {
   const div = doc.createElement('div');
   div.className = 'include';

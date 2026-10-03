@@ -1,0 +1,106 @@
+/**
+ * Springs in the editor (DOC-042). A paragraph holding horizontal springs is
+ * laid out as a flexible line, its springs growing in proportion to their
+ * weight. Vertical springs share the free height of their page: the editor
+ * shows the document as one long page, so a page is what lies between page
+ * breaks, and the free height that of its last page.
+ */
+import { Plugin } from 'prosemirror-state';
+import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view';
+import type { Node as PmNode } from 'prosemirror-model';
+
+/** Paragraphs holding a horizontal spring get the class `has-hfill`. */
+export function springsPlugin(): Plugin {
+  const decorate = (doc: PmNode): DecorationSet => {
+    const decos: Decoration[] = [];
+    doc.descendants((node, pos) => {
+      if (!node.isTextblock) return true;
+      let found = false;
+      node.forEach((c) => void (found ||= c.type.name === 'hfill'));
+      if (found) decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'has-hfill' }));
+      return false;
+    });
+    return DecorationSet.create(doc, decos);
+  };
+  return new Plugin({
+    state: {
+      init: (_, state) => decorate(state.doc),
+      apply: (tr, old) => (tr.docChanged ? decorate(tr.doc) : old),
+    },
+    props: {
+      decorations(state) {
+        return this.getState(state);
+      },
+    },
+  });
+}
+
+/** The top-level nodes of the document with their elements. */
+function topLevel(view: EditorView): { node: PmNode; dom: HTMLElement }[] {
+  const out: { node: PmNode; dom: HTMLElement }[] = [];
+  view.state.doc.forEach((node, offset) => {
+    const dom = view.nodeDOM(offset);
+    if (dom instanceof HTMLElement) out.push({ node, dom });
+  });
+  return out;
+}
+
+/** Vertical extent of an element, margins included. */
+function extent(el: HTMLElement): { top: number; bottom: number } {
+  const r = el.getBoundingClientRect();
+  const s = getComputedStyle(el);
+  return { top: r.top - (parseFloat(s.marginTop) || 0), bottom: r.bottom + (parseFloat(s.marginBottom) || 0) };
+}
+
+/**
+ * Give each vertical spring its share of the free height of its page
+ * (`pageHeight`, in CSS pixels). Returns whether something changed.
+ */
+export function layoutSprings(view: EditorView, pageHeight: number): boolean {
+  const nodes = topLevel(view);
+  const springs = nodes.filter((n) => n.node.type.name === 'space' && n.node.attrs.stretch);
+  if (!springs.length) return false;
+  const before = springs.map((s) => s.dom.style.height);
+  for (const s of springs) s.dom.style.height = '0px';
+  // Pages: between page breaks.
+  let start = 0;
+  for (let i = 0; i <= nodes.length; i++) {
+    const end = i === nodes.length || (nodes[i]!.node.type.name === 'horizontal_rule' && nodes[i]!.node.attrs.page);
+    if (!end) continue;
+    const page = nodes.slice(start, i);
+    start = i + 1;
+    const mine = page.filter((n) => n.node.type.name === 'space' && n.node.attrs.stretch);
+    if (!mine.length || !page.length) continue;
+    const height = extent(page[page.length - 1]!.dom).bottom - extent(page[0]!.dom).top;
+    const used = height % pageHeight;
+    const free = used > 0 ? pageHeight - used : 0;
+    const total = mine.reduce((n, s) => n + (s.node.attrs.stretch as number), 0);
+    for (const s of mine) s.dom.style.height = `${Math.floor((free * (s.node.attrs.stretch as number)) / total)}px`;
+  }
+  return springs.some((s, i) => s.dom.style.height !== before[i]);
+}
+
+/**
+ * The heights of the vertical springs and the positions of the horizontal
+ * ones as shown, in points, in the order of the document: kept in files
+ * without springs.
+ */
+export function measureSprings(view: EditorView): { spaces: number[]; fills: number[] } {
+  const spaces: number[] = [];
+  const fills: number[] = [];
+  const pt = (px: number): number => Math.round(px * 0.75 * 10) / 10;
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'space') {
+      const dom = view.nodeDOM(pos);
+      spaces.push(node.attrs.stretch && dom instanceof HTMLElement ? pt(dom.getBoundingClientRect().height) : (node.attrs.size as number) ?? 0);
+      return false;
+    }
+    if (node.type.name === 'hfill') {
+      const dom = view.nodeDOM(pos);
+      const para = dom instanceof HTMLElement ? dom.closest('p, h1, h2, h3, h4, h5, h6, pre') : null;
+      fills.push(dom instanceof HTMLElement && para ? pt(dom.getBoundingClientRect().right - para.getBoundingClientRect().left - (parseFloat(getComputedStyle(para).paddingLeft) || 0)) : -1);
+    }
+    return true;
+  });
+  return { spaces, fills };
+}

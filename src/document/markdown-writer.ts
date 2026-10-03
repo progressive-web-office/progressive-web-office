@@ -1,4 +1,5 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { fillText, spaceText } from './springs';
 import { CALLOUT, isRelativeImage } from './markdown-reader';
 
 const safeDecode = (s: string): string => {
@@ -39,6 +40,7 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  isFillRun,
   FIELD_SYNTAX,
   isRefRun,
   isCiteRun,
@@ -156,6 +158,9 @@ class MarkdownWriter {
         }
       } else if (group.type === 'table') {
         parts.push(this.table(group));
+      } else if (group.type === 'space') {
+        // DOC-042: written as in LaTeX (pandoc keeps it in LaTeX and PDF output).
+        parts.push(spaceText(group));
       } else if (group.type === 'include') {
         // DOC-028: mdBook's include syntax.
         parts.push(`{{#include ${group.src}}}`);
@@ -316,6 +321,10 @@ class MarkdownWriter {
       }
       if (isFieldRun(run)) {
         out += `{${run.field}}`;
+        continue;
+      }
+      if (isFillRun(run)) {
+        out += fillText(run);
         continue;
       }
       if (isCiteRun(run)) {

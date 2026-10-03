@@ -1,4 +1,5 @@
 /** OpenDocument Text (.odt) reader (DOC-002). */
+import { fillOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
 import type { BibEntry } from './bibliography';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText, type ZipEntries } from '../core/zip';
@@ -357,6 +358,11 @@ class OdtReader {
       kind = `h${Math.min(6, level)}` as ParagraphStyle;
     }
     const chain = this.chain('paragraph', styleName);
+    // DOC-042: a spring or a space, kept as the space it was last shown with.
+    const size = chain.find((s) => s.layout?.spaceBefore !== undefined)?.layout?.spaceBefore;
+    const stretch = chain.map((s) => stretchOfStyle(s.name)).find((w) => w !== undefined);
+    if (stretch !== undefined) return { type: 'space', stretch, ...(size ? { size } : {}) };
+    if (chain.some((s) => isSpaceStyle(s.name))) return { type: 'space', size: size ?? 0 };
     const para: Paragraph = { type: 'paragraph', style: kind === 'rule' ? 'normal' : kind, runs: [] };
     const align = chain.find((s) => s.align)?.align;
     if (align && align !== 'left') para.align = align;
@@ -479,9 +485,15 @@ class OdtReader {
           case 'line-break':
             out.push({ text: '\n', ...this.runFormat(fmt) });
             break;
-          case 'span':
-            this.readInline(c, this.textFormat(attr(c, 'style-name'), fmt), out, pre);
+          case 'span': {
+            // DOC-042: a tab in a "PWO Fill" span is a horizontal spring.
+            const fill = this.chain('text', attr(c, 'style-name'))
+              .map((s) => fillOfStyle(s.name))
+              .find((w) => w !== undefined);
+            if (fill !== undefined && children(c).some((t) => t.localName === 'tab')) out.push({ hfill: fill });
+            else this.readInline(c, this.textFormat(attr(c, 'style-name'), fmt), out, pre);
             break;
+          }
           case 'a': {
             const href = c.getAttributeNS(ODF_NS.xlink, 'href') ?? attr(c, 'href');
             const f = { ...fmt };

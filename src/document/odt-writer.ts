@@ -1,4 +1,5 @@
 /** OpenDocument Text (.odt) writer (DOC-007). */
+import { FILL_STYLE, fillTabs, odfName, SPACE_STYLE, springStyleName } from './springs';
 import { escapeXml as esc, escapeXmlAttr as escAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
@@ -14,6 +15,8 @@ import {
   isFootnoteRun,
   isSeqRun,
   isFieldRun,
+  isFillRun,
+  allParagraphs,
   fieldValue,
   isRefRun,
   isCiteRun,
@@ -160,21 +163,24 @@ class OdtWriter {
   }
 
   /** Automatic paragraph style for alignment and spacing on top of a common style (DOC-020). */
-  private paraStyle(common: string, p: ParagraphLayout & Pick<Paragraph, 'align'>): string {
+  private paraStyle(common: string, p: ParagraphLayout & Partial<Pick<Paragraph, 'align' | 'runs'>>): string {
     const props: string[] = [];
+    // DOC-042: tab stops standing for the horizontal springs (relative to the indent, as LibreOffice does).
+    const tabs = p.runs?.some(isFillRun) ? fillTabs(p.runs, TEXT_WIDTH - (p.indent ?? 0)) : [];
+    const tabXml = tabs.length ? `<style:tab-stops>${tabs.map((t) => `<style:tab-stop style:position="${t.pos}pt"${t.type === 'left' ? '' : ` style:type="${t.type}"`}/>`).join('')}</style:tab-stops>` : '';
     if (p.align && p.align !== 'left') props.push(`fo:text-align="${p.align === 'right' ? 'end' : p.align}"`);
     if (p.indent) props.push(`fo:margin-left="${p.indent}pt"`);
     if (p.firstLine) props.push(`fo:text-indent="${p.firstLine}pt"`);
     if (p.spaceBefore !== undefined) props.push(`fo:margin-top="${p.spaceBefore}pt"`);
     if (p.spaceAfter !== undefined) props.push(`fo:margin-bottom="${p.spaceAfter}pt"`);
     if (p.lineHeight) props.push(`fo:line-height="${Math.round(p.lineHeight * 100)}%"`);
-    if (!props.length) return common;
-    const key = `${common}|${props.join(' ')}`;
+    if (!props.length && !tabXml) return common;
+    const key = `${common}|${props.join(' ')}|${tabXml}`;
     let name = this.paraNames.get(key);
     if (!name) {
       name = `P${this.paraNames.size + 1}_${common}`;
       this.paraNames.set(key, name);
-      this.autoStyles.set(name, `<style:style style:name="${name}" style:family="paragraph" style:parent-style-name="${common}"><style:paragraph-properties ${props.join(' ')}/></style:style>`);
+      this.autoStyles.set(name, `<style:style style:name="${name}" style:family="paragraph" style:parent-style-name="${common}"><style:paragraph-properties ${props.join(' ')}>${tabXml}</style:paragraph-properties></style:style>`);
     }
     return name;
   }
@@ -227,6 +233,10 @@ class OdtWriter {
         out += this.toc(group.levels ?? 3);
       } else if (group.type === 'bibliography') {
         out += this.bibliography();
+      } else if (group.type === 'space') {
+        // DOC-042: a spring keeps the height it was last shown with; its style marks it.
+        const named = odfName(group.stretch ? springStyleName(group.stretch) : SPACE_STYLE);
+        out += `<text:p text:style-name="${this.paraStyle(named, { spaceBefore: group.size ?? 0 })}"/>`;
       } else if (group.type === 'include') {
         // DOC-028: a linked section, as in LibreOffice master documents (paths are relative to the package).
         const n = ++this.includeCount;
@@ -412,6 +422,12 @@ class OdtWriter {
         atStart = false;
         continue;
       }
+      if (isFillRun(run)) {
+        // DOC-042: a tab to the next tab stop of the paragraph, marked as a spring.
+        out += `<text:span text:style-name="${odfName(run.hfill === 1 ? FILL_STYLE : `${FILL_STYLE} ${run.hfill}`)}"><text:tab/></text:span>`;
+        atStart = false;
+        continue;
+      }
       if (isFieldRun(run)) {
         // DOC-041: a field LibreOffice computes again; its value as it is now in between.
         const value = esc(fieldValue(run.field, { meta: this.doc.meta }));
@@ -555,6 +571,28 @@ const heading = (n: number, size: string): string =>
   `<style:text-properties fo:font-size="${size}" fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/></style:style>`;
 
 /** styles.xml, with the header and footer on the master page (DOC-024). */
+/** Width of the text of a page (A4, 2 cm margins), in points. */
+const TEXT_WIDTH = (8.2681 - 2 * 0.7874) * 72;
+
+/**
+ * DOC-042: the named styles marking springs and spaces: a paragraph as small
+ * as can be (its space is set on its automatic style), and a text style for
+ * the tabs standing for horizontal springs, one per weight.
+ */
+function springStyles(doc: RichDocument): string {
+  const springs = new Set<number>([1]);
+  const fills = new Set<number>([1]);
+  for (const b of doc.blocks) if (b.type === 'space' && b.stretch) springs.add(b.stretch);
+  for (const p of allParagraphs(doc.blocks)) for (const r of p.runs) if (isFillRun(r)) fills.add(r.hfill);
+  const para = (name: string): string =>
+    `<style:style style:name="${odfName(name)}" style:display-name="${name}" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:margin-top="0pt" fo:margin-bottom="0pt" fo:line-height="1pt"/><style:text-properties fo:font-size="1pt"/></style:style>`;
+  return (
+    para(SPACE_STYLE) +
+    [...springs].map((w) => para(springStyleName(w))).join('') +
+    [...fills].map((w) => { const name = w === 1 ? FILL_STYLE : `${FILL_STYLE} ${w}`; return `<style:style style:name="${odfName(name)}" style:display-name="${name}" style:family="text"/>`; }).join('')
+  );
+}
+
 function stylesXml(doc: RichDocument): string {
   const page = cleanPageSetup(doc.page);
   // DOC-029: number format on the fields and the page layout, first number as an offset.
@@ -585,7 +623,9 @@ function stylesXml(doc: RichDocument): string {
     `<style:master-page style:name="Standard" style:page-layout-name="pm1">${part('header')}${part('footer')}</style:master-page>` +
     // A title page without header and footer, used by the first paragraph (see firstPageStyle).
     (page?.hideOnFirstPage ? '<style:master-page style:name="First_20_Page" style:display-name="First Page" style:page-layout-name="pm1" style:next-style-name="Standard"/>' : '');
-  return STYLES_XML.replace('@MASTER@', master).replace('<style:page-layout-properties ', `<style:page-layout-properties${numFormat} `);
+  return STYLES_XML.replace('@MASTER@', master)
+    .replace('<style:page-layout-properties ', `<style:page-layout-properties${numFormat} `)
+    .replace('</office:styles>', `${springStyles(doc)}</office:styles>`);
 }
 
 

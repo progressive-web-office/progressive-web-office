@@ -1270,3 +1270,15 @@ body.distraction-free .ai-panel { display: none !important; }
 .context-menu.sheet .table-picker-cell { width: 30px; height: 30px; }
 .table-picker-cell.on { background: var(--accent); border-color: var(--accent); }
 .table-picker-caption { color: var(--muted); font-size: 0.8125rem; padding-top: 4px; }
+
+/* DOC-042: springs. A line with horizontal springs is a flexible line; vertical springs and spaces are blocks of their height. */
+.doc-page .has-hfill { display: flex; flex-wrap: wrap; align-items: baseline; }
+.doc-page .hfill { flex: 1 1 0; min-width: 0.5em; align-self: center; height: 0.7em; background: repeating-linear-gradient(90deg, transparent 0 4px, #9aa5b5 4px 6px) center / 100% 1px no-repeat; }
+.doc-page .space { position: relative; margin: 0; background: repeating-linear-gradient(0deg, transparent 0 6px, rgba(31, 95, 191, 0.06) 6px 12px); box-shadow: inset 2px 0 0 #9aa5b5; }
+.doc-page .space::after { content: attr(data-label); position: absolute; right: 0; top: 0; transform: translateY(-50%); padding: 0 6px; background: #fff; color: #6b7686; font-size: 8pt; line-height: 1.4; border: 1px dashed #9aa5b5; border-radius: 3px; white-space: nowrap; pointer-events: none; }
+.doc-page .space.ProseMirror-selectednode { box-shadow: inset 3px 0 0 var(--accent); }
+@media print {
+  .doc-page .hfill { background: none; }
+  .doc-page .space { background: none; box-shadow: none; }
+  .doc-page .space::after { display: none; }
+}

@@ -3,6 +3,7 @@
  * markdown-it. Raw HTML is kept as literal text (MD-003), except `<u>` and
  * `<br>` which map to underline and line breaks.
  */
+import { parseFill, parseSpaceLine } from './springs';
 import { FENCE_CLOSE, SOLUTION_OPEN } from './solutions';
 import { readCriticComments } from './critic';
 import { parseFrontMatter } from './frontmatter';
@@ -160,6 +161,16 @@ function fieldInline(state: StateInline, silent: boolean): boolean {
   return true;
 }
 
+/** DOC-042: `\\hfill` or `\\hspace{\\stretch{2}}`, a horizontal spring. */
+function fillInline(state: StateInline, silent: boolean): boolean {
+  if (state.src[state.pos] !== '\\') return false;
+  const fill = parseFill(state.src.slice(state.pos, state.posMax));
+  if (!fill) return false;
+  if (!silent) state.push('pwo_hfill', '', 0).meta = { hfill: fill.hfill };
+  state.pos += fill.length;
+  return true;
+}
+
 /** MD-019: a callout's first line, `[!NOTE] Title` (Obsidian, GitHub alerts). */
 export const CALLOUT = /^\[!([A-Za-z][\w-]*)\]([+-]?)/;
 
@@ -170,6 +181,7 @@ function getParser(): MarkdownIt {
     parser.inline.ruler.after('escape', 'math_inline', mathInline);
     parser.inline.ruler.after('emphasis', 'mark', highlightInline);
     parser.inline.ruler.after('escape', 'pwo_field', fieldInline);
+    parser.inline.ruler.before('escape', 'pwo_hfill', fillInline);
     parser.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   }
   return parser;
@@ -358,8 +370,10 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
   let heading: ParagraphStyle | null = null;
 
   const push = (p: Paragraph): void => {
-    if (row) row.push({ blocks: [p] });
-    else blocks.push(p);
+    if (row) return void row.push({ blocks: [p] });
+    // DOC-042: a paragraph that is only `\vfill`, `\vspace{2cm}`… is a space.
+    const space = p.style === 'normal' && !p.list && p.runs.every((r) => 'text' in r && Object.keys(r).length === 1) ? parseSpaceLine(p.runs.map((r) => ('text' in r ? r.text : '')).join('')) : undefined;
+    blocks.push(space ?? p);
   };
 
   const newParagraph = (style: ParagraphStyle = 'normal'): Paragraph => {
@@ -602,6 +616,9 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         break;
       case 'code_inline':
         text(tok.content, { code: true });
+        break;
+      case 'pwo_hfill':
+        runs.push({ hfill: (tok.meta as { hfill: number }).hfill });
         break;
       case 'pwo_field':
         runs.push({ field: (tok.meta as { field: FieldKind }).field });

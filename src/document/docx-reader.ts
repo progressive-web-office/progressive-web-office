@@ -1,4 +1,5 @@
 /** DOCX (Office Open XML word-processing) reader (DOC-001). */
+import { fillOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText, type ZipEntries } from '../core/zip';
 import {
@@ -337,6 +338,13 @@ class DocxReader {
   private readParagraph(p: Element): Block {
     const pPr = child(p, 'pPr');
     const styleId = pPr && child(pPr, 'pStyle') ? attr(child(pPr, 'pStyle')!, 'val') : null;
+    // DOC-042: a spring or a space, kept as the space it was last shown with.
+    const styleNames = this.styleChain(styleId).map((s) => s.name);
+    const stretch = styleNames.map(stretchOfStyle).find((w) => w !== undefined);
+    if (stretch !== undefined || styleNames.some(isSpaceStyle)) {
+      const before = Number(attr(child(pPr!, 'spacing') ?? pPr!, 'before') ?? 0) / 20;
+      return stretch !== undefined ? { type: 'space', stretch, ...(before ? { size: before } : {}) } : { type: 'space', size: before };
+    }
     const para: Paragraph = { type: 'paragraph', style: this.paragraphStyle(styleId), runs: [] };
     if (pPr) {
       const jc = attr(child(pPr, 'jc') ?? pPr, 'val');
@@ -509,9 +517,15 @@ class DocxReader {
         case 'delText':
           out.push({ text: el.textContent ?? '', ...fmt });
           break;
-        case 'tab':
-          out.push({ text: '\t', ...fmt });
+        case 'tab': {
+          // DOC-042: a tab in a "PWO Fill" run is a horizontal spring.
+          const rStyle = child(child(r, 'rPr') ?? r, 'rStyle');
+          const fill = this.styleChain(rStyle ? attr(rStyle, 'val') : null)
+            .map((s) => fillOfStyle(s.name))
+            .find((w) => w !== undefined);
+          out.push(fill !== undefined ? { hfill: fill } : { text: '\t', ...fmt });
           break;
+        }
         case 'br':
         case 'cr':
           // A page break is marked with a form feed; the paragraph is split there.

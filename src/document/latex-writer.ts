@@ -1,4 +1,5 @@
 /** LaTeX export (TEX-001, TEX-002): a compilable `article`. */
+import { fillText, spaceText } from './springs';
 import {
   cleanMeta,
   extensionForType,
@@ -27,6 +28,7 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  isFillRun,
   fieldValue,
   isRefRun,
   isCiteRun,
@@ -177,6 +179,9 @@ class LatexWriter {
       } else if (group.type === 'bibliography') {
         // DOC-027: BibTeX builds the list from references.bib.
         if (this.doc.references?.entries.length) out.push(`\\bibliographystyle{${this.authorYear ? 'plainnat' : 'plain'}}\n\\bibliography{references}`);
+      } else if (group.type === 'space') {
+        // DOC-042: LaTeX's own springs and spaces.
+        out.push(spaceText(group));
       } else if (group.type === 'include') {
         // DOC-028: a .tex chapter is included; other sub-documents are assembled on export.
         const name = group.src.replace(/\.tex$/i, '');
@@ -291,6 +296,10 @@ class LatexWriter {
       if (isDiagramRun(run) || isCodeCellRun(run)) continue; // replaced by diagramsAsPictures / cellsAsBlocks
       if (isSeqRun(run)) {
         out += seqText(run.seq, this.xref.numbers.get(run) ?? 1);
+        continue;
+      }
+      if (isFillRun(run)) {
+        out += `${fillText(run)}{}`;
         continue;
       }
       if (isFieldRun(run)) {

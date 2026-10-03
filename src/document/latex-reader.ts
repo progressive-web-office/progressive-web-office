@@ -2,6 +2,7 @@
  * LaTeX import (TEX-003, TEX-004): the common subset of `article` documents.
  * Unsupported constructs are kept as visible source text.
  */
+import { spaceOf, stretchOf } from './springs';
 import { parseBibtex, type BibEntry } from './bibliography';
 import { addResource, type PageNumberFormat, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
 
@@ -48,8 +49,8 @@ const SYMBOLS: Record<string, string> = {
 
 /** Commands ignored on import (layout only). */
 const IGNORED = new Set([
-  'maketitle', 'noindent', 'indent', 'centering', 'raggedright', 'raggedleft', 'hfill', 'vfill', 'smallskip', 'medskip',
-  'bigskip', 'newpage', 'clearpage', 'pagebreak', 'nopagebreak', 'vspace', 'hspace', 'protect', 'relax', 'small', 'large', 'Large',
+  'maketitle', 'noindent', 'indent', 'centering', 'raggedright', 'raggedleft',
+  'newpage', 'clearpage', 'pagebreak', 'nopagebreak', 'protect', 'relax', 'small', 'large', 'Large',
   'LARGE', 'huge', 'Huge', 'normalsize', 'footnotesize', 'scriptsize', 'tiny', 'selectfont', 'color', 'hline', 'toprule', 'midrule',
   'bottomrule', 'phantom', 'nonumber', 'notag', 'documentclass', 'usepackage', 'thispagestyle', 'pagestyle',
   'pagenumbering', 'setcounter',
@@ -489,6 +490,19 @@ class Builder {
       // DOC-021: page breaks between paragraphs.
       this.flush();
       if (this.blocks.length) this.blocks.push({ type: 'rule', page: true });
+      return;
+    }
+    // DOC-042: springs and spaces.
+    const space = spaceOf(name, args[0]);
+    if (space) {
+      this.flush();
+      this.blocks.push(space);
+      return;
+    }
+    if (name === 'hfill' || name === 'hspace') {
+      const hfill = name === 'hfill' ? 1 : stretchOf(args[0] ?? '');
+      if (hfill) this.open(ctx).runs.push({ hfill });
+      else this.text(' ', fmt, ctx);
       return;
     }
     if (FANCY.has(name)) {

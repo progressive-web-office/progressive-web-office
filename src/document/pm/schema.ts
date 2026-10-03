@@ -132,6 +132,21 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'div.include[data-include]', getAttrs: (d: HTMLElement) => ({ src: d.dataset.include }) }],
       toDOM: (n) => ['div', { class: 'include', 'data-include': n.attrs.src as string }, `📄 ${n.attrs.src as string}`],
     },
+    /** DOC-042: a vertical spring (`stretch`) or a fixed space (`size`, points). */
+    space: {
+      group: 'block',
+      atom: true,
+      selectable: true,
+      draggable: true,
+      attrs: { stretch: { default: null }, size: { default: null } },
+      parseDOM: [
+        {
+          tag: 'div.space',
+          getAttrs: (d: HTMLElement) => ({ stretch: Number(d.dataset.stretch) || null, size: d.dataset.size !== undefined ? Number(d.dataset.size) : null }),
+        },
+      ],
+      toDOM: (n) => ['div', { class: n.attrs.stretch ? 'space spring' : 'space', ...(n.attrs.stretch ? { 'data-stretch': String(n.attrs.stretch) } : {}), ...(n.attrs.size !== null ? { 'data-size': String(n.attrs.size) } : {}) }],
+    },
     /** The list of cited references (DOC-027). */
     bibliography: {
       group: 'block',
@@ -184,6 +199,15 @@ export const schema = new Schema({
       attrs: { kind: { default: 'figure' } },
       parseDOM: [{ tag: 'span.seq[data-seq]', priority: 60, getAttrs: (d: HTMLElement) => ({ kind: d.dataset.seq }) }],
       toDOM: (n) => ['span', { class: 'seq', 'data-seq': n.attrs.kind }, '#'],
+    },
+    /** DOC-042: a horizontal spring, sharing the free width of its line. */
+    hfill: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { weight: { default: 1 } },
+      parseDOM: [{ tag: 'span.hfill', priority: 60, getAttrs: (d: HTMLElement) => ({ weight: Number(d.dataset.hfill) || 1 }) }],
+      toDOM: (n) => ['span', { class: 'hfill', 'data-hfill': String(n.attrs.weight), style: `flex-grow: ${n.attrs.weight as number}` }],
     },
     /** A field, showing its current value (DOC-041). */
     field: {

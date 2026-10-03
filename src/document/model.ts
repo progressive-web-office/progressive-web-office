@@ -199,7 +199,17 @@ export const isFieldKind = (s: string): s is FieldKind => (FIELD_KINDS as readon
 /** `{date}`… in Markdown text, but not inside the `{{name}}` of a mail merge. */
 export const FIELD_SYNTAX = new RegExp(`(?<!\\{)\\{(?:${FIELD_KINDS.join('|')})\\}(?!\\})`, 'g');
 
-export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun | CiteRun | FieldRun;
+/**
+ * DOC-042: a horizontal spring (LaTeX's `\hfill`): the free width of its line
+ * is shared by the springs of the line, in proportion to their `hfill`.
+ */
+export interface FillRun {
+  hfill: number;
+  /** Where the text after it starts, in points from the start of the line, as last shown (for formats without springs). */
+  at?: number;
+}
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun | CiteRun | FieldRun | FillRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -311,7 +321,19 @@ export interface Include {
   src: string;
 }
 
-export type Block = Paragraph | Table | Rule | Toc | Bibliography | Include;
+/**
+ * DOC-042: vertical space: fixed (`size`, in points), or a spring (LaTeX's
+ * `\vfill`) sharing the free height of its page with the other springs of
+ * the page, in proportion to their `stretch`; its `size` is then its height
+ * as last shown (for formats without springs).
+ */
+export interface Space {
+  type: 'space';
+  stretch?: number;
+  size?: number;
+}
+
+export type Block = Paragraph | Table | Rule | Toc | Bibliography | Include | Space;
 
 /** The bibliography of a document (DOC-027). */
 export interface References {
@@ -477,6 +499,7 @@ export const isSeqRun = (run: Run): run is SeqRun => 'seq' in run;
 export const isRefRun = (run: Run): run is RefRun => 'ref' in run;
 export const isCiteRun = (run: Run): run is CiteRun => 'cite' in run;
 export const isFieldRun = (run: Run): run is FieldRun => 'field' in run;
+export const isFillRun = (run: Run): run is FillRun => 'hfill' in run;
 
 /** What a cross-reference can point to (DOC-026). */
 export interface CrossTarget {

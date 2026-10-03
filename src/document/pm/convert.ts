@@ -75,6 +75,8 @@ function runsToInline(runs: Run[]): PmNode[] {
       out.push(schema.nodes.seq!.create({ kind: run.seq }));
     } else if ('field' in run) {
       out.push(schema.nodes.field!.create({ kind: run.field }));
+    } else if ('hfill' in run) {
+      out.push(schema.nodes.hfill!.create({ weight: run.hfill }));
     } else if ('ref' in run) {
       out.push(schema.nodes.xref!.create({ ref: run.ref }));
     } else if ('cite' in run) {
@@ -115,6 +117,7 @@ export function blockToPm(b: Block): PmNode {
   if (b.type === 'toc') return schema.nodes.toc!.create({ levels: b.levels ?? 3 });
   if (b.type === 'bibliography') return schema.nodes.bibliography!.create();
   if (b.type === 'include') return schema.nodes.include!.create({ src: b.src });
+  if (b.type === 'space') return schema.nodes.space!.create({ stretch: b.stretch ?? null, size: b.size ?? null });
   return schema.nodes.horizontal_rule!.create({ page: !!b.page });
 }
 
@@ -159,6 +162,9 @@ function inlineToRuns(node: PmNode): Run[] {
         break;
       case 'field':
         runs.push({ field: a.kind as FieldKind });
+        break;
+      case 'hfill':
+        runs.push({ hfill: a.weight as number });
         break;
       case 'xref':
         runs.push({ ref: a.ref as string });
@@ -212,6 +218,10 @@ function pmToBlock(node: PmNode): Block {
   }
   if (node.type.name === 'bibliography') return { type: 'bibliography' };
   if (node.type.name === 'include') return { type: 'include', src: node.attrs.src as string };
+  if (node.type.name === 'space') {
+    const { stretch, size } = node.attrs as { stretch: number | null; size: number | null };
+    return { type: 'space', ...(stretch ? { stretch } : {}), ...(size !== null ? { size } : {}) };
+  }
   if (node.type.name === 'toc') return node.attrs.levels === 3 ? { type: 'toc' } : { type: 'toc', levels: node.attrs.levels as number };
   if (node.type.name === 'horizontal_rule') return node.attrs.page ? { type: 'rule', page: true } : { type: 'rule' };
   return pmToParagraph(node);

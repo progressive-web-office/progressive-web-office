@@ -10,6 +10,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Springs and spaces (DOC-042), as in LaTeX: vertical springs (`\vfill`)
+  share the free height of the page, horizontal springs (`\hfill`) the free
+  width of a line, in proportion to their weight; fixed vertical spaces
+  (`\vspace{2cm}`). Inserted from the Insert menu or the context menu, or
+  typed as in LaTeX; worked out again before printing; kept in Markdown and
+  LaTeX as such, in OpenDocument and Word as the space last shown (marked by
+  their styles, so that they come back as springs).
+
 - Fields (DOC-041): date of the day, time, page number, number of pages,
   title, author and file name, computed when the document is shown, printed
   or opened; written as real fields in OpenDocument and Word, as `{date}`…

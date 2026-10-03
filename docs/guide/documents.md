@@ -260,6 +260,38 @@ In Markdown, write `\{date}` for the text "{date}"; the `{{name}}` of a
 [mail merge](#mail-merge) is not a field. The *Letter* template dates the
 letter with a field.
 
+### Springs and spaces
+
+As in LaTeX, a **spring** takes the free space: **⇕ Springs and spaces** in
+the Insert menu (or the [context menu](#the-context-menu)) inserts
+
+- a **vertical spring** (`\vfill`): the free height of the page is shared by
+  its vertical springs — to push a signature or enclosures to the foot of a
+  letter, centre a title page vertically…;
+- a **vertical space** of a given height (`\vspace{2cm}`);
+- a **horizontal spring** (`\hfill`) in a line: the free width of the line is
+  shared by its springs — `Jeanne Martin \hfill Paris` puts *Paris* at the
+  end of the line, `Left \hfill Centre \hfill Right` spreads three parts.
+
+They can be typed as in LaTeX: `\hfill` then a space; `\vfill`,
+`\vspace{2cm}`, `\bigskip`… alone on a line, then <kbd>Enter</kbd>. A spring
+has a **weight**: one of weight 2 (`\vspace{\stretch{2}}`,
+`\hspace{\stretch{2}}`) takes twice the space of one of weight 1. Right-click
+a spring to change its weight, or a space its height.
+
+The editor shows the document as one long page: a "page" is what lies between
+page breaks, its free height that of the printed page (paper and margins of
+the print settings), worked out again before printing.
+
+| | Markdown, LaTeX | OpenDocument, Word |
+|---|---|---|
+| Vertical spring | `\vfill`, `\vspace{\stretch{2}}` | the space it was last shown with, in a paragraph of style *PWO Spring* |
+| Vertical space | `\vspace{2cm}` | the same space, style *PWO Space* |
+| Horizontal spring | `\hfill`, `\hspace{\stretch{2}}` | a tab (style *PWO Fill*) to a tab stop: the last spring of a line at its end (right tab), the others where the text after them was shown |
+
+LibreOffice and Word have no springs: there, the document looks as it did
+when saved, and the springs come back when it is opened here again.
+
 ### Find and replace
 
 🔍 or <kbd>Ctrl</kbd>+<kbd>F</kbd> opens the find bar; <kbd>Ctrl</kbd>+<kbd>H</kbd>

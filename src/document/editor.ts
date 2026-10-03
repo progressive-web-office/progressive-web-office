@@ -24,7 +24,7 @@ import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } 
 import { writeDocumentAsync, type TextFormat } from './io';
 import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, FIELD_KINDS, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
+import { addResource, allParagraphs, isFillRun, FIELD_KINDS, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
@@ -33,6 +33,9 @@ import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReferenc
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
+import { layoutSprings, measureSprings, springsPlugin } from './pm/springs';
+import { parseFill, parseSpaceLine } from './springs';
+import { contentHeightPx, contentWidthPx, loadPrintSettings } from '../print/settings';
 import { cellStateKey, cellStatePlugin, markCells, stalePositions } from './pm/cell-state';
 import type { CellDeps, CellError } from '../code/reactive';
 import { loadReactivity } from '../code/settings';
@@ -248,6 +251,8 @@ export class DocumentEditor implements EditorView {
             noteTagsPlugin((tag) => (this.ctx.tagColour ? this.ctx.tagColour(tag) : null)),
             // MD-019: callouts (`> [!NOTE]`) as coloured boxes.
             calloutPlugin(),
+            // DOC-042: lines with horizontal springs.
+            springsPlugin(),
             ...basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
           ],
         }),
@@ -288,7 +293,9 @@ export class DocumentEditor implements EditorView {
         handleDrop: (_view, event) => this.onDrop(event as DragEvent),
         handleKeyDown: (_view, event) => {
           // CODE-001: ``` and a language, then Enter, starts a code cell.
-          if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) return this.fenceToCell();
+          if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) return this.fenceToCell() || this.typedSpace();
+          // DOC-042: `\hfill` and a space is a horizontal spring.
+          if (event.key === ' ' && !event.ctrlKey && !event.metaKey && this.typedFill()) return true;
           // REV-001: Ctrl+Alt+M comments the selection.
           if (!(event.ctrlKey || event.metaKey) || !event.altKey || event.key.toLowerCase() !== 'm') return false;
           this.addComment();
@@ -298,6 +305,12 @@ export class DocumentEditor implements EditorView {
     );
     // UI-021: a menu of what can be done where the pointer is (right click, long press).
     onContextMenu(this.view.dom, (x, y, target) => this.showContextMenu(x, y, target));
+    // DOC-042: springs follow the text, the window and the printed page.
+    addEventListener('resize', this.onResize);
+    addEventListener('beforeprint', this.beforePrint);
+    addEventListener('afterprint', this.onResize);
+    void document.fonts?.ready.then(() => this.springsSoon());
+    this.springsSoon();
     this.updateToolbar();
     this.renderNotes();
     this.comments.refresh();
@@ -487,6 +500,7 @@ export class DocumentEditor implements EditorView {
     this.view.updateState(state);
     if (tr.docChanged && !tr.getMeta(REMOTE)) this.changed();
     else if (tr.selectionSet) this.statusSoon();
+    if (tr.docChanged) this.springsSoon();
     this.updateToolbar();
     if (tr.docChanged && this.findBar?.isOpen) this.findBar.refresh();
     if (this.writing.typewriter && (tr.docChanged || tr.selectionSet)) this.centerCursor();
@@ -566,6 +580,21 @@ export class DocumentEditor implements EditorView {
     openContextMenu(r.left, r.bottom, [{ title: t('field.menu') }, ...FIELD_KINDS.map((kind): MenuAction => ({ label: t(`field.${kind}`), icon: FIELD_ICONS[kind], run: () => this.insertField(kind) }))], { label: t('field.menu'), returnFocus: this.view.dom });
   }
 
+  /** DOC-042: springs and spaces to insert. */
+  private spaceEntries(): MenuEntry[] {
+    return [
+      { title: t('space.menu') },
+      { label: t('space.insertSpring'), icon: '⇕', run: () => this.insertSpace('spring') },
+      { label: t('space.insertFixed'), icon: '↕', run: () => this.insertSpace('fixed') },
+      { label: t('space.insertHfill'), icon: '⇔', run: () => this.insertSpace('hfill') },
+    ];
+  }
+
+  private spaceMenu(): void {
+    const r = this.view.coordsAtPos(this.view.state.selection.head);
+    openContextMenu(r.left, r.bottom, this.spaceEntries(), { label: t('space.menu'), returnFocus: this.view.dom });
+  }
+
   /** Replace a field with the text it shows now: a letter keeps the date it was sent (DOC-041). */
   private freezeField(pos: number): void {
     const node = this.view.state.doc.nodeAt(pos);
@@ -581,6 +610,32 @@ export class DocumentEditor implements EditorView {
   private insertField(kind: FieldKind): void {
     this.command(insertInline(schema.nodes.field!.create({ kind })));
     this.refocus();
+  }
+
+  /** `\vfill`, `\vspace{2cm}`, `\bigskip`… alone in a paragraph, then Enter: a spring or a space (DOC-042). */
+  private typedSpace(): boolean {
+    const { $from, empty } = this.view.state.selection;
+    const para = $from.parent;
+    if (!empty || this.readOnly || para.type !== schema.nodes.paragraph || $from.depth !== 1) return false;
+    const space = parseSpaceLine(para.textContent);
+    if (!space) return false;
+    const pos = $from.before();
+    const node = schema.nodes.space!.create({ stretch: space.stretch ?? null, size: space.size ?? null });
+    const tr = this.view.state.tr.replaceWith(pos, pos + para.nodeSize, [node, schema.nodes.paragraph!.create()]);
+    this.view.dispatch(tr.setSelection(TextSelection.near(tr.doc.resolve(pos + node.nodeSize + 1))).scrollIntoView());
+    return true;
+  }
+
+  /** `\hfill` typed before the cursor, then a space: a horizontal spring (DOC-042). */
+  private typedFill(): boolean {
+    const { $from, empty } = this.view.state.selection;
+    if (!empty || this.readOnly || !$from.parent.isTextblock || $from.parent.attrs.style === 'code') return false;
+    const before = $from.parent.textBetween(Math.max(0, $from.parentOffset - 40), $from.parentOffset, undefined, '\ufffc');
+    const m = /\\(?:hfill|hspace\*?\{(?:\\fill|\\stretch\{\d*\.?\d+\})\})$/.exec(before);
+    const fill = m && parseFill(m[0]);
+    if (!fill) return false;
+    this.view.dispatch(this.view.state.tr.replaceWith($from.pos - m[0].length, $from.pos, schema.nodes.hfill!.create({ weight: fill.hfill })).insertText(' '));
+    return true;
   }
 
   /** The menu at the cursor (the ⋮ button, the keyboard). */
@@ -626,6 +681,18 @@ export class DocumentEditor implements EditorView {
               { label: t('ctx.deleteCell'), icon: '🗑', run: () => view.dispatch(view.state.tr.delete(cellPos, cellPos + cell.nodeSize)) },
             ]
           : []),
+        'separator',
+      );
+    }
+    // A spring or a space under the pointer (DOC-042).
+    const springEl = target?.closest<HTMLElement>('.space, .hfill');
+    const springPos = springEl ? view.posAtDOM(springEl, 0) : undefined;
+    const springNode = springPos !== undefined ? view.state.doc.nodeAt(springPos) : null;
+    if (springNode && springPos !== undefined && (springNode.type === schema.nodes.space || springNode.type === schema.nodes.hfill) && editable) {
+      entries.push(
+        { title: t('space.menu') },
+        { label: t('space.change'), icon: '⇕', run: () => this.changeSpace(springPos) },
+        { label: t('ctx.delete'), icon: '🗑', run: () => view.dispatch(view.state.tr.delete(springPos, springPos + springNode.nodeSize)) },
         'separator',
       );
     }
@@ -676,6 +743,7 @@ export class DocumentEditor implements EditorView {
         { label: t('comment.add'), icon: '💬', shortcut: 'Ctrl+Alt+M', run: () => this.addComment() },
         { title: t('field.menu') },
         ...FIELD_KINDS.map((kind): MenuAction => ({ label: t(`field.${kind}`), icon: FIELD_ICONS[kind], run: () => this.insertField(kind) })),
+        ...this.spaceEntries(),
       );
       if (!empty) entries.push('separator', { label: t('fmt.clear'), icon: '⌫', run: cmd(clearFormatting) });
     }
@@ -1551,6 +1619,10 @@ export class DocumentEditor implements EditorView {
   }
 
   destroy(): void {
+    removeEventListener('resize', this.onResize);
+    removeEventListener('beforeprint', this.beforePrint);
+    removeEventListener('afterprint', this.onResize);
+    if (this.springsFrame) cancelAnimationFrame(this.springsFrame);
     if (this.review.active) this.review.toggle(false, false);
     this.runner?.destroy();
     this.view.destroy();
@@ -1560,8 +1632,75 @@ export class DocumentEditor implements EditorView {
 
   // ---------------------------------------------------------------------------
 
+  // --- springs (DOC-042) ------------------------------------------------------
+
+  private springsFrame = 0;
+  private readonly onResize = (): void => this.springsSoon();
+
+  /** Lay the springs out again, once the page is drawn. */
+  private springsSoon(): void {
+    if (this.springsFrame || typeof requestAnimationFrame !== 'function') return;
+    this.springsFrame = requestAnimationFrame(() => {
+      this.springsFrame = 0;
+      if (this.view && !this.view.isDestroyed) layoutSprings(this.view, contentHeightPx(loadPrintSettings()));
+    });
+  }
+
+  /** Before printing: the springs of the printed page, as wide as it is. */
+  private readonly beforePrint = (): void => {
+    const settings = loadPrintSettings();
+    const style = this.page.style;
+    const saved = [style.width, style.maxWidth, style.padding];
+    style.width = `${contentWidthPx(settings)}px`;
+    style.maxWidth = 'none';
+    style.padding = '0';
+    layoutSprings(this.view, contentHeightPx(settings));
+    style.width = saved[0]!;
+    style.maxWidth = saved[1]!;
+    style.padding = saved[2]!;
+  };
+
+  /** A vertical spring, a fixed space or a horizontal spring at the cursor. */
+  private insertSpace(kind: 'spring' | 'fixed' | 'hfill'): void {
+    if (kind === 'hfill') {
+      this.command(insertInline(schema.nodes.hfill!.create({ weight: 1 })));
+    } else if (kind === 'spring') {
+      this.command(insertOnOwnLine(schema.nodes.space!.create({ stretch: 1 })));
+    } else {
+      const cm = Number((window.prompt(t('space.sizePrompt'), '1') ?? '').replace(',', '.'));
+      if (!(cm > 0)) return;
+      this.command(insertOnOwnLine(schema.nodes.space!.create({ size: Math.round((cm / 2.54) * 72 * 100) / 100 })));
+    }
+    this.refocus();
+  }
+
+  /** Change a spring's weight, or a space's height. */
+  private changeSpace(pos: number): void {
+    const node = this.view.state.doc.nodeAt(pos);
+    if (!node) return;
+    const stretch = (node.attrs.stretch ?? node.attrs.weight) as number | null;
+    if (stretch) {
+      const w = Number((window.prompt(t('space.weightPrompt'), String(stretch)) ?? '').replace(',', '.'));
+      if (w > 0) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, node.type === schema.nodes.hfill ? { weight: w } : { stretch: w, size: null }));
+    } else {
+      const cm = Number((window.prompt(t('space.sizePrompt'), String(Math.round((((node.attrs.size as number) ?? 0) / 72) * 2.54 * 100) / 100)) ?? '').replace(',', '.'));
+      if (cm > 0) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { stretch: null, size: Math.round((cm / 2.54) * 72 * 100) / 100 }));
+    }
+    this.refocus();
+  }
+
   private currentBlocks(): Block[] {
     const blocks = pmToBlocks(this.view.state.doc);
+    // DOC-042: springs as shown, for the formats without springs.
+    const { spaces, fills } = measureSprings(this.view);
+    for (const b of blocks) if (b.type === 'space') b.size = spaces.shift() ?? b.size;
+    for (const p of allParagraphs(blocks)) {
+      for (const r of p.runs) {
+        if (!isFillRun(r)) continue;
+        const at = fills.shift();
+        if (at !== undefined && at >= 0) r.at = at;
+      }
+    }
     return blocks.length ? blocks : [{ type: 'paragraph', style: 'normal', runs: [] }];
   }
 
@@ -1682,6 +1821,7 @@ export class DocumentEditor implements EditorView {
         act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
         act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
         act(t('field.insert'), '⌗', () => this.fieldMenu(), t('field.insertTitle')),
+        act(t('space.menu'), '⇕', () => this.spaceMenu(), t('space.menu')),
         act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
         act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),
         act(t('bib.cite'), '❝', () => void this.editCitation(), t('bib.citeTitle')),
