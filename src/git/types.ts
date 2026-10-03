@@ -24,6 +24,22 @@ export interface GitFile {
   version: string;
 }
 
+/** An entry of the whole tree of a branch (FOLDER-007). */
+export interface GitTreeEntry {
+  path: string;
+  type: 'file' | 'dir';
+  size?: number;
+  /** Blob (or tree) id: tells whether a file changed. */
+  sha: string;
+}
+
+/** A change of a commit made of several (FOLDER-007). */
+export type GitChange =
+  | { action: 'create' | 'update'; path: string; bytes: Uint8Array }
+  | { action: 'delete'; path: string }
+  /** `sha`: the blob moved, when known (GitHub reuses it instead of sending the file again). */
+  | { action: 'move'; from: string; path: string; sha?: string };
+
 export interface GitClient {
   readonly provider: GitProvider;
   listRepos(): Promise<GitRepo[]>;
@@ -34,6 +50,10 @@ export interface GitClient {
   /** Create or update a file in one commit; `version` must match the current one when updating. */
   writeFile(repo: string, branch: string, path: string, bytes: Uint8Array, message: string, version?: string): Promise<{ version: string }>;
   createBranch(repo: string, from: string, name: string): Promise<void>;
+  /** Every file and folder of a branch, in as few requests as possible. */
+  listTree(repo: string, ref: string): Promise<GitTreeEntry[]>;
+  /** Several changes as one commit on `branch`; a branch that moved meanwhile is a conflict. */
+  commit(repo: string, branch: string, message: string, changes: GitChange[]): Promise<void>;
 }
 
 export interface ClientConfig {

@@ -1,5 +1,5 @@
 /** GitLab REST API v4 client (gitlab.com or self-hosted). */
-import { fromBase64, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitClient, type GitEntry, type GitFile, type GitRepo } from './types';
+import { fromBase64, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitRepo, type GitTreeEntry } from './types';
 
 interface ProjectJson {
   id: number;
@@ -63,6 +63,28 @@ export class GitLabClient implements GitClient {
     // The commit API does not return the new last_commit_id: read it back.
     const head = await this.req<{ last_commit_id: string }>(`/projects/${q(repo)}/repository/files/${q(path)}?ref=${q(branch)}`);
     return { version: head.last_commit_id };
+  }
+
+  async listTree(repo: string, ref: string): Promise<GitTreeEntry[]> {
+    const out: GitTreeEntry[] = [];
+    for (let page = 1; page < 1000; page++) {
+      const items = await this.req<{ id: string; path: string; type: string }[]>(`/projects/${q(repo)}/repository/tree?ref=${q(ref)}&recursive=true&per_page=100&page=${page}`);
+      for (const i of items) if (i.type === 'blob' || i.type === 'tree') out.push({ path: i.path, type: i.type === 'tree' ? 'dir' : 'file', sha: i.id });
+      if (items.length < 100) break;
+    }
+    return out;
+  }
+
+  /** The commits API: every action in one commit. */
+  async commit(repo: string, branch: string, message: string, changes: GitChange[]): Promise<void> {
+    const actions = changes.map((c) =>
+      c.action === 'delete'
+        ? { action: 'delete', file_path: c.path }
+        : c.action === 'move'
+          ? { action: 'move', file_path: c.path, previous_path: c.from }
+          : { action: c.action, file_path: c.path, content: toBase64(c.bytes), encoding: 'base64' },
+    );
+    await this.req(`/projects/${q(repo)}/repository/commits`, { method: 'POST', body: JSON.stringify({ branch, commit_message: message, actions }) });
   }
 
   async createBranch(repo: string, from: string, name: string): Promise<void> {

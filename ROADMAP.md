@@ -159,12 +159,14 @@ group is not a commitment.
 - ✅ File explorer: a storage-independent module (`src/fs/`, a
   `StorageProvider` interface: list, read, write, mkdir, move, remove) with
   providers for local folders (File System Access API), the browser's
-  private storage (OPFS) and WebDAV / Nextcloud; create, rename, move and
-  delete files and folders; sizes, dates and sorting, keyboard navigation,
-  importing files of the device, multiple selection and undoing a deletion;
+  private storage (OPFS), WebDAV / Nextcloud and Git repositories; create,
+  rename, move and delete files and folders; sizes, dates and sorting,
+  keyboard navigation, importing files of the device, multiple selection and
+  undoing a deletion; a context menu, copy / cut / paste, duplicate,
+  downloads (folders as ZIP), several recent folders;
   designed to be extracted as a library shared with QRShare
-- Git repositories (GitHub, GitLab) as a provider of the file explorer, each
-  change being a commit (FOLDER-007; they are browsed separately for now)
+- ✅ Git repositories (GitHub, GitLab) as folders of the file explorer, each
+  change being a commit (FOLDER-007); next: pull requests from a branch
 - ✅ Read-only opening: open any document read-only (viewing without
   accidental edits, files from a read-only folder or link), with a visible
   banner and "Edit a copy"

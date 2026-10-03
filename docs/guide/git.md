@@ -55,6 +55,24 @@ selects the format (for example `.md`, `.docx`, `.tex`).
 
 **Save as…** still downloads a local copy in any format.
 
+## A repository as a folder
+
+**Open a folder** also lists your Git accounts (⎇): choose one, then a
+repository and a branch, and the repository opens in the folder panel like
+a folder of the device — tree, search, links between notes, master
+documents. Every change is a **commit** on that branch:
+
+- saving a document of the repository (`docs: update report.md`);
+- creating a document or a folder (a new folder holds an empty `.gitkeep`,
+  since Git keeps no empty folders);
+- renaming, moving (a folder with everything in it, in one commit) and
+  deleting files and folders in the explorer.
+
+The whole tree is read in one request, so large repositories open quickly.
+If a file changed in the repository since you opened it, saving it is
+refused instead of overwriting the other change: reload the folder (↻) and
+open it again.
+
 ## Conflicts
 
 If the file changed in the repository since you opened it (someone else

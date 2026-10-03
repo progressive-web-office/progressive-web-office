@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Git repositories as folders (FOLDER-007): *Open a folder* lists the GitHub
+  and GitLab accounts; a branch of a repository opens in the explorer, each
+  change (saving, creating, renaming, moving, deleting) being one commit; the
+  tree is read in one request; a file changed meanwhile is not overwritten.
+
 - The start screen offers the last five folders opened, not only the last
   one (FOLDER-015); the explorer collapses all its folders and shows the
   open document on request (FOLDER-016).

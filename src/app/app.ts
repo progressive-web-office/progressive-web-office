@@ -1154,11 +1154,16 @@ export class App {
     const browser = t('folder.browserStorage');
     const accounts = loadDavAccounts();
     const cloud = accounts.map((a) => `☁ ${davLabel(a)}`);
-    const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud], local);
+    // FOLDER-007: a branch of a GitHub or GitLab repository, each change a commit.
+    const { loadAccounts } = await import('../git/accounts');
+    const gitAccounts = loadAccounts();
+    const git = gitAccounts.map((a) => `⎇ ${a.label} (${a.provider === 'github' ? 'GitHub' : 'GitLab'})`);
+    const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud, ...git], local);
     if (!choice) return;
     let folder;
     try {
-      if (choice === browser) folder = await privateStorage('Documents', browser);
+      if (git.includes(choice)) folder = await this.pickRepositoryFolder(gitAccounts[git.indexOf(choice)]!);
+      else if (choice === browser) folder = await privateStorage('Documents', browser);
       else if (cloud.includes(choice)) {
         const account = accounts[cloud.indexOf(choice)]!;
         const { WebDavProvider } = await import('../webdav/provider');
@@ -1171,6 +1176,25 @@ export class App {
       return;
     }
     if (folder) await this.setFolder(folder);
+  }
+
+  /** A repository and a branch of a Git account, as a folder (FOLDER-007). */
+  private async pickRepositoryFolder(account: import('../git/accounts').GitAccount): Promise<import('../fs').StorageProvider | undefined> {
+    const [{ clientFor }, { GitRepoProvider }] = await Promise.all([import('../git/accounts'), import('../git/provider')]);
+    const client = clientFor(account);
+    const repos = await this.withBusy(() => client.listRepos());
+    if (!repos.length) {
+      this.showError(t('folder.noRepositories'));
+      return undefined;
+    }
+    const names = repos.map((r) => r.name);
+    const name = await this.choose(t('folder.repository'), t('folder.pickRepository'), names, names[0]!);
+    const repo = repos.find((r) => r.name === name);
+    if (!repo) return undefined;
+    const branches = await this.withBusy(() => client.listBranches(repo.id));
+    const branch = branches.length > 1 ? await this.choose(t('folder.repository'), t('folder.pickBranch', { repo: repo.name }), branches, branches.includes(repo.defaultBranch) ? repo.defaultBranch : branches[0]!) : (branches[0] ?? repo.defaultBranch);
+    if (!branch) return undefined;
+    return new GitRepoProvider(client, repo, branch);
   }
 
   private async setFolder(folder: import('../fs').StorageProvider): Promise<boolean> {
@@ -1789,10 +1813,10 @@ export class App {
   /** Tasks running: nested ones share the indicator, hidden when the last one ends. */
   private busyCount = 0;
 
-  private async withBusy(task: () => Promise<void>): Promise<void> {
+  private async withBusy<T>(task: () => Promise<T>): Promise<T> {
     if (this.busyCount++ === 0) this.busyTimer = setTimeout(() => (this.busy.hidden = false), 300);
     try {
-      await task();
+      return await task();
     } finally {
       if (--this.busyCount === 0) {
         clearTimeout(this.busyTimer);

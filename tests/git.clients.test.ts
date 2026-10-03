@@ -167,3 +167,80 @@ describe('GIT-001..004 GitLab client', () => {
     expect(calls[0]!.url).toBe(`${API}/projects/7/repository/branches?branch=pwo%2Fedit&ref=master`);
   });
 });
+
+describe('FOLDER-007 whole trees and commits of several changes', () => {
+  it('GitHub: lists the tree in one request and commits through the Git data API', async () => {
+    const API = 'https://api.github.com';
+    const m = mockFetch({
+      [`GET ${API}/repos/me/notes/git/trees/main`]: () => ({ json: { tree: [{ path: 'docs', type: 'tree', sha: 't1' }, { path: 'docs/a.md', type: 'blob', sha: 'b1', size: 1 }], truncated: false } }),
+      [`GET ${API}/repos/me/notes/git/ref/heads/main`]: () => ({ json: { object: { sha: 'head' } } }),
+      [`GET ${API}/repos/me/notes/git/commits/head`]: () => ({ json: { tree: { sha: 'base' } } }),
+      [`POST ${API}/repos/me/notes/git/blobs`]: () => ({ json: { sha: 'newblob' } }),
+      [`POST ${API}/repos/me/notes/git/trees`]: () => ({ json: { sha: 'newtree' } }),
+      [`POST ${API}/repos/me/notes/git/commits`]: () => ({ json: { sha: 'newcommit' } }),
+      [`PATCH ${API}/repos/me/notes/git/refs/heads/main`]: () => ({ json: {} }),
+    });
+    const client = new GitHubClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.listTree('me/notes', 'main')).toEqual([
+      { path: 'docs', type: 'dir', sha: 't1' },
+      { path: 'docs/a.md', type: 'file', sha: 'b1', size: 1 },
+    ]);
+    expect(m.calls[0]!.url).toContain('recursive=1');
+    await client.commit('me/notes', 'main', 'docs: work', [
+      { action: 'update', path: 'docs/a.md', bytes: new TextEncoder().encode('A2') },
+      { action: 'move', from: 'docs/b.md', path: 'docs/c.md', sha: 'b2' },
+      { action: 'delete', path: 'old.md' },
+    ]);
+    const tree = m.calls.find((c) => c.method === 'POST' && c.url.endsWith('/git/trees'))!.body as { base_tree: string; tree: unknown[] };
+    expect(tree.base_tree).toBe('base');
+    expect(tree.tree).toEqual([
+      { path: 'docs/a.md', mode: '100644', type: 'blob', sha: 'newblob' },
+      { path: 'docs/c.md', mode: '100644', type: 'blob', sha: 'b2' },
+      { path: 'docs/b.md', mode: '100644', type: 'blob', sha: null },
+      { path: 'old.md', mode: '100644', type: 'blob', sha: null },
+    ]);
+    expect(m.calls.find((c) => c.method === 'POST' && c.url.endsWith('/git/commits'))!.body).toEqual({ message: 'docs: work', tree: 'newtree', parents: ['head'] });
+    expect(m.calls.at(-1)!.body).toEqual({ sha: 'newcommit', force: false });
+  });
+
+  it('GitHub: a branch that moved meanwhile is a conflict', async () => {
+    const API = 'https://api.github.com';
+    const m = mockFetch({
+      [`GET ${API}/repos/me/notes/git/ref/heads/main`]: () => ({ json: { object: { sha: 'head' } } }),
+      [`GET ${API}/repos/me/notes/git/commits/head`]: () => ({ json: { tree: { sha: 'base' } } }),
+      [`POST ${API}/repos/me/notes/git/trees`]: () => ({ json: { sha: 'newtree' } }),
+      [`POST ${API}/repos/me/notes/git/commits`]: () => ({ json: { sha: 'newcommit' } }),
+      [`PATCH ${API}/repos/me/notes/git/refs/heads/main`]: () => ({ status: 422, json: { message: 'Update is not a fast forward' } }),
+    });
+    const client = new GitHubClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    await expect(client.commit('me/notes', 'main', 'm', [{ action: 'delete', path: 'a.md' }])).rejects.toBeInstanceOf(GitConflictError);
+  });
+
+  it('GitLab: lists the tree page by page and commits all the actions at once', async () => {
+    const API = 'https://gitlab.com/api/v4';
+    const page1 = Array.from({ length: 100 }, (_, i) => ({ id: `s${i}`, path: `f${i}.md`, type: 'blob' }));
+    const m = mockFetch({
+      [`GET ${API}/projects/42/repository/tree`]: (call) => ({ json: call.url.includes('page=2') ? [{ id: 'd', path: 'docs', type: 'tree' }] : page1 }),
+      [`POST ${API}/projects/42/repository/commits`]: () => ({ json: { id: 'c' } }),
+    });
+    const client = new GitLabClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    const tree = await client.listTree('42', 'main');
+    expect(tree).toHaveLength(101);
+    expect(tree.at(-1)).toEqual({ path: 'docs', type: 'dir', sha: 'd' });
+    expect(m.calls[0]!.url).toContain('recursive=true');
+    await client.commit('42', 'main', 'docs: work', [
+      { action: 'create', path: 'n.md', bytes: new TextEncoder().encode('N') },
+      { action: 'move', from: 'a.md', path: 'b.md' },
+      { action: 'delete', path: 'c.md' },
+    ]);
+    expect(m.calls.at(-1)!.body).toEqual({
+      branch: 'main',
+      commit_message: 'docs: work',
+      actions: [
+        { action: 'create', file_path: 'n.md', content: b64('N'), encoding: 'base64' },
+        { action: 'move', file_path: 'b.md', previous_path: 'a.md' },
+        { action: 'delete', file_path: 'c.md' },
+      ],
+    });
+  });
+});

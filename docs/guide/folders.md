@@ -9,7 +9,10 @@
   nothing to choose or allow, available offline and to the other apps of the
   same site (QRShare); clearing the site's data erases it;
 - a **Nextcloud / WebDAV** account added with ☁ (see
-  [Nextcloud / WebDAV](./cloud.md)).
+  [Nextcloud / WebDAV](./cloud.md));
+- a **Git repository** (GitHub, GitLab) of an account added with
+  **Open from repository…** (see [Git repositories](./git.md)): choose the
+  repository and the branch.
 
 It then opens it as a project: its
 documents are listed in a panel on the left, by sub-folder (a sub-folder

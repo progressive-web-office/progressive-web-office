@@ -74,3 +74,86 @@ test('opens a file from GitHub, commits it and handles a conflict (GIT-001..GIT-
   // The browser logs the (expected) 409 response itself.
   expect(errors.filter((e) => !e.includes('409'))).toEqual([]);
 });
+
+test('opens a repository as a folder, each change being a commit (FOLDER-007)', async ({ page }) => {
+  // A repository in memory behind the GitHub API: files by path, commits applied to them.
+  const files = new Map<string, string>([['README.md', '# Notes\n'], ['docs/plan.md', '# Plan\n']]);
+  const blobs = new Map<string, string>();
+  const sha = (text: string) => `b${Buffer.from(text).toString('hex').slice(0, 12)}${text.length}`;
+  const commits: string[] = [];
+  let head = 'c0';
+  await page.addInitScript(() => {
+    localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh1', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_x', label: 'me' }]));
+  });
+  await page.route(`${API}/**`, async (route: Route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    const body = () => JSON.parse(req.postData() ?? '{}') as Record<string, unknown>;
+    if (p === '/user/repos') return json([{ full_name: 'me/notes', default_branch: 'main' }]);
+    if (p === '/repos/me/notes/branches') return json([{ name: 'main' }]);
+    if (p === '/repos/me/notes/git/trees/main') {
+      const dirs = new Set<string>();
+      for (const f of files.keys()) f.split('/').slice(0, -1).forEach((_, i, a) => dirs.add(a.slice(0, i + 1).join('/')));
+      return json({ tree: [...[...dirs].map((d) => ({ path: d, type: 'tree', sha: `t-${d}` })), ...[...files].map(([path, text]) => ({ path, type: 'blob', sha: sha(text), size: text.length }))], truncated: false });
+    }
+    if (p.startsWith('/repos/me/notes/contents/')) {
+      const path = decodeURIComponent(p.slice('/repos/me/notes/contents/'.length));
+      const text = files.get(path);
+      return text === undefined ? json({ message: 'Not Found' }, 404) : json({ type: 'file', sha: sha(text), content: b64(text), encoding: 'base64' });
+    }
+    if (p === '/repos/me/notes/git/ref/heads/main') return json({ object: { sha: head } });
+    if (p.startsWith('/repos/me/notes/git/commits/') && req.method() === 'GET') return json({ tree: { sha: `tree-${head}` } });
+    if (p === '/repos/me/notes/git/blobs') {
+      const text = Buffer.from(String(body().content), 'base64').toString();
+      blobs.set(sha(text), text);
+      return json({ sha: sha(text) }, 201);
+    }
+    if (p === '/repos/me/notes/git/trees' && req.method() === 'POST') {
+      for (const e of body().tree as { path: string; sha: string | null }[]) {
+        if (e.sha === null) files.delete(e.path);
+        else files.set(e.path, blobs.get(e.sha) ?? [...files.values()].find((t) => sha(t) === e.sha) ?? '');
+      }
+      return json({ sha: 'newtree' }, 201);
+    }
+    if (p === '/repos/me/notes/git/commits') {
+      commits.push(String(body().message));
+      return json({ sha: `c${commits.length}` }, 201);
+    }
+    if (p === '/repos/me/notes/git/refs/heads/main') {
+      head = String(body().sha);
+      return json({});
+    }
+    return json({ message: 'Not Found' }, 404);
+  });
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  const where = page.getByRole('dialog', { name: 'Open a folder' });
+  await where.getByLabel('⎇ me (GitHub)').check();
+  await where.getByRole('button', { name: 'Open' }).click();
+  const pick = page.getByRole('dialog', { name: 'Open a repository' });
+  await pick.getByLabel('me/notes').check();
+  await pick.getByRole('button', { name: 'Open' }).click();
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await expect(panel.getByRole('heading', { name: '📁 me/notes (main)' })).toBeVisible();
+  await expect(panel.locator('.fs-tree > .fs-list > li > .fs-entry')).toHaveText(['docs', 'README.md']);
+
+  // Saving a document of the repository is a commit.
+  await panel.getByRole('button', { name: 'README.md' }).click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Notes');
+  await page.locator('.doc-page h1').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' and plans');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(() => files.get('README.md')).toContain('# Notes and plans\n');
+  expect(commits).toEqual(['docs: update README.md']);
+
+  // Renaming in the explorer is a commit too.
+  await panel.getByRole('button', { name: 'docs' }).click();
+  await panel.getByRole('button', { name: 'plan.md' }).click({ button: 'right' });
+  page.once('dialog', (d) => void d.accept('roadmap.md'));
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Rename (F2)' }).click();
+  await expect.poll(() => [...files.keys()].sort()).toEqual(['README.md', 'docs/roadmap.md']);
+  expect(commits.at(-1)).toBe('docs: rename docs/plan.md to docs/roadmap.md');
+  expect(errors).toEqual([]);
+});

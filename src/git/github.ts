@@ -1,5 +1,5 @@
 /** GitHub REST API client (github.com or Enterprise `/api/v3`). */
-import { encodePath, fromBase64, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitClient, type GitEntry, type GitFile, type GitRepo } from './types';
+import { encodePath, fromBase64, GitError, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitRepo, type GitTreeEntry } from './types';
 
 interface RepoJson {
   full_name: string;
@@ -70,6 +70,37 @@ export class GitHubClient implements GitClient {
       (status) => status === 409 || (status === 422 && !version),
     );
     return { version: res.content.sha };
+  }
+
+  async listTree(repo: string, ref: string): Promise<GitTreeEntry[]> {
+    const res = await this.req<{ tree: { path: string; type: string; sha: string; size?: number }[]; truncated?: boolean }>(`/repos/${encodePath(repo)}/git/trees/${encodePath(ref)}?recursive=1`);
+    if (res.truncated) throw new GitError('The repository is too large to be listed at once.', 0);
+    return res.tree
+      .filter((e) => e.type === 'blob' || e.type === 'tree')
+      .map((e) => (e.type === 'tree' ? { path: e.path, type: 'dir', sha: e.sha } : { path: e.path, type: 'file', sha: e.sha, ...(e.size !== undefined ? { size: e.size } : {}) }));
+  }
+
+  /** Git data API: blobs, a tree on the branch's, a commit, then the branch moved to it (fast-forward only). */
+  async commit(repo: string, branch: string, message: string, changes: GitChange[]): Promise<void> {
+    const r = `/repos/${encodePath(repo)}`;
+    const head = (await this.req<{ object: { sha: string } }>(`${r}/git/ref/heads/${encodePath(branch)}`)).object.sha;
+    const base = (await this.req<{ tree: { sha: string } }>(`${r}/git/commits/${head}`)).tree.sha;
+    const tree: { path: string; mode: string; type: 'blob'; sha: string | null }[] = [];
+    for (const c of changes) {
+      if ('bytes' in c) {
+        const blob = await this.req<{ sha: string }>(`${r}/git/blobs`, { method: 'POST', body: JSON.stringify({ content: toBase64(c.bytes), encoding: 'base64' }) });
+        tree.push({ path: c.path, mode: '100644', type: 'blob', sha: blob.sha });
+      } else if (c.action === 'delete') tree.push({ path: c.path, mode: '100644', type: 'blob', sha: null });
+      else {
+        const sha = c.sha ?? (await this.listTree(repo, head)).find((e) => e.path === c.from)?.sha;
+        if (!sha) throw new GitError(`${c.from} is not in the repository.`, 404);
+        tree.push({ path: c.path, mode: '100644', type: 'blob', sha }, { path: c.from, mode: '100644', type: 'blob', sha: null });
+      }
+    }
+    const newTree = await this.req<{ sha: string }>(`${r}/git/trees`, { method: 'POST', body: JSON.stringify({ base_tree: base, tree }) });
+    const commit = await this.req<{ sha: string }>(`${r}/git/commits`, { method: 'POST', body: JSON.stringify({ message, tree: newTree.sha, parents: [head] }) });
+    // 422: not a fast-forward, the branch moved since.
+    await this.req(`${r}/git/refs/heads/${encodePath(branch)}`, { method: 'PATCH', body: JSON.stringify({ sha: commit.sha, force: false }) }, (status) => status === 422);
   }
 
   async createBranch(repo: string, from: string, name: string): Promise<void> {
