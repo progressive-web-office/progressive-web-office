@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Fields (DOC-041): date of the day, time, page number, number of pages,
+  title, author and file name, computed when the document is shown, printed
+  or opened; written as real fields in OpenDocument and Word, as `{date}`…
+  in Markdown and `\today`, `\thepage`… in LaTeX, and read back from all of
+  them. Inserted from the Insert menu or the context menu; a field can be
+  replaced by its value. The letter template is dated by a field.
+
 - Context menu in documents (UI-021): a right click, a long press on a touch
   screen or the ⋮ Actions button shows what can be done there: cut, copy,
   paste; open, edit or remove a link; rows and columns of a table; run, edit,

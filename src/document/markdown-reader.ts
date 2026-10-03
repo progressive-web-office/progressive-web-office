@@ -21,6 +21,8 @@ import {
   allParagraphs,
   anchorKind,
   seqKindOf,
+  isFieldKind,
+  type FieldKind,
   isFootnoteRun,
   isRefRun,
   resolveAnchors,
@@ -146,6 +148,18 @@ function highlightInline(state: StateInline, silent: boolean): boolean {
   return true;
 }
 
+/** DOC-041: a field, `{date}`, `{page}`… (not the `{{name}}` of a mail merge; `\\{date}` is text). */
+function fieldInline(state: StateInline, silent: boolean): boolean {
+  const start = state.pos;
+  const src = state.src;
+  if (src[start] !== '{' || src[start - 1] === '{') return false;
+  const m = /^\{([a-z]+)\}/.exec(src.slice(start, state.posMax));
+  if (!m || !isFieldKind(m[1]!) || src[start + m[0].length] === '}') return false;
+  if (!silent) state.push('pwo_field', '', 0).meta = { field: m[1] };
+  state.pos = start + m[0].length;
+  return true;
+}
+
 /** MD-019: a callout's first line, `[!NOTE] Title` (Obsidian, GitHub alerts). */
 export const CALLOUT = /^\[!([A-Za-z][\w-]*)\]([+-]?)/;
 
@@ -155,6 +169,7 @@ function getParser(): MarkdownIt {
     parser = new MarkdownItCallable('commonmark', { html: true }).enable(['table', 'strikethrough']).use(footnotePlugin);
     parser.inline.ruler.after('escape', 'math_inline', mathInline);
     parser.inline.ruler.after('emphasis', 'mark', highlightInline);
+    parser.inline.ruler.after('escape', 'pwo_field', fieldInline);
     parser.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   }
   return parser;
@@ -587,6 +602,9 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         break;
       case 'code_inline':
         text(tok.content, { code: true });
+        break;
+      case 'pwo_field':
+        runs.push({ field: (tok.meta as { field: FieldKind }).field });
         break;
       case 'math_inline':
         runs.push(tok.markup === '$$' ? { math: tok.content.trim(), display: true } : { math: tok.content });

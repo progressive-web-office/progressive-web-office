@@ -7,7 +7,7 @@ import type { Node as PmNode } from 'prosemirror-model';
 import type { EditorView, NodeView, NodeViewConstructor } from 'prosemirror-view';
 import { bibliographyElement, codeCellElement, diagramElement, mathElement, type ImageInfo } from '../html';
 import type { Citations } from '../bibliography';
-import { seqText, type CodeCellRun, type Run, type SeqKind } from '../model';
+import { fieldValue, seqText, type CodeCellRun, type FieldContext, type FieldKind, type Run, type SeqKind } from '../model';
 import type { PmCrossRefs } from './convert';
 import { t } from '../../i18n';
 
@@ -36,6 +36,8 @@ export interface ViewHooks {
   openInclude(src: string): boolean;
   /** Edit a picture's alternative text (IMG-003). */
   editImage(pos: number, node: PmNode): void;
+  /** What a field at this position shows (DOC-041). */
+  fieldContext(pos: number | undefined): FieldContext;
 }
 
 /** The code cell element of a node view, with its position (for running cells in order). */
@@ -201,6 +203,30 @@ class SeqView extends AtomView {
     const text = seqText(kind, n);
     if (this.dom.textContent !== text) this.dom.textContent = text;
     this.dom.dataset.seq = kind;
+  }
+
+  destroy(): void {
+    this.hooks.tocViews.delete(this);
+  }
+}
+
+/** A field: its value now, refreshed after every change (DOC-041). */
+class FieldView extends AtomView {
+  constructor(node: PmNode, view: EditorView, getPos: () => number | undefined, hooks: ViewHooks) {
+    super(node, view, getPos, hooks);
+    hooks.tocViews.add(this);
+  }
+
+  protected override render(): void {
+    this.refresh();
+  }
+
+  refresh(): void {
+    const kind = this.node.attrs.kind as FieldKind;
+    const text = fieldValue(kind, this.hooks.fieldContext(this.getPos())) || `{${kind}}`;
+    if (this.dom.textContent !== text) this.dom.textContent = text;
+    this.dom.dataset.field = kind;
+    this.dom.title = t(`field.${kind}`);
   }
 
   destroy(): void {
@@ -425,6 +451,7 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     footnote: (node, view, getPos) => new FootnoteView(node, view, getPos, hooks),
     toc: (node) => new TocView(node, hooks),
     seq: (node, view, getPos) => new SeqView(node, view, getPos, hooks),
+    field: (node, view, getPos) => new FieldView(node, view, getPos, hooks),
     xref: (node, view, getPos) => new XrefView(node, view, getPos, hooks),
     cite: (node, view, getPos) => new CiteView(node, view, getPos, hooks),
     bibliography: () => new BibliographyView(hooks),

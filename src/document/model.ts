@@ -150,7 +150,56 @@ export interface CiteRun {
   locator?: string;
 }
 
-export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun | CiteRun;
+/**
+ * DOC-041: a field, whose value is computed when the document is shown,
+ * printed or opened: the date of the day, the page number, the title…
+ */
+export const FIELD_KINDS = ['date', 'time', 'page', 'pages', 'title', 'author', 'filename'] as const;
+export type FieldKind = (typeof FIELD_KINDS)[number];
+
+export interface FieldRun {
+  field: FieldKind;
+}
+
+/** What a field shows, given the document and where it is. */
+export interface FieldContext {
+  meta?: DocumentMeta;
+  fileName?: string;
+  /** Language of the dates (BCP 47); the document's, else the interface's. */
+  lang?: string;
+  now?: Date;
+  page?: number;
+  pages?: number;
+}
+
+/** The value of a field, as shown. */
+export function fieldValue(kind: FieldKind, ctx: FieldContext = {}): string {
+  const now = ctx.now ?? new Date();
+  const lang = ctx.lang || ctx.meta?.language || undefined;
+  switch (kind) {
+    case 'date':
+      return now.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' });
+    case 'time':
+      return now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
+    case 'page':
+      return String(ctx.page ?? 1);
+    case 'pages':
+      return String(ctx.pages ?? 1);
+    case 'title':
+      return ctx.meta?.title ?? '';
+    case 'author':
+      return ctx.meta?.author ?? '';
+    case 'filename':
+      return ctx.fileName ?? '';
+  }
+}
+
+export const isFieldKind = (s: string): s is FieldKind => (FIELD_KINDS as readonly string[]).includes(s);
+
+/** `{date}`… in Markdown text, but not inside the `{{name}}` of a mail merge. */
+export const FIELD_SYNTAX = new RegExp(`(?<!\\{)\\{(?:${FIELD_KINDS.join('|')})\\}(?!\\})`, 'g');
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun | CiteRun | FieldRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -427,6 +476,7 @@ export const isFootnoteRun = (run: Run): run is FootnoteRun => 'footnote' in run
 export const isSeqRun = (run: Run): run is SeqRun => 'seq' in run;
 export const isRefRun = (run: Run): run is RefRun => 'ref' in run;
 export const isCiteRun = (run: Run): run is CiteRun => 'cite' in run;
+export const isFieldRun = (run: Run): run is FieldRun => 'field' in run;
 
 /** What a cross-reference can point to (DOC-026). */
 export interface CrossTarget {

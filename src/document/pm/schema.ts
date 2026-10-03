@@ -185,6 +185,15 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'span.seq[data-seq]', priority: 60, getAttrs: (d: HTMLElement) => ({ kind: d.dataset.seq }) }],
       toDOM: (n) => ['span', { class: 'seq', 'data-seq': n.attrs.kind }, '#'],
     },
+    /** A field, showing its current value (DOC-041). */
+    field: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { kind: { default: 'date' } },
+      parseDOM: [{ tag: 'span.field[data-field]', priority: 60, getAttrs: (d: HTMLElement) => ({ kind: d.dataset.field }) }],
+      toDOM: (n) => ['span', { class: 'field', 'data-field': n.attrs.kind }, `{${n.attrs.kind as string}}`],
+    },
     /** A cross-reference, showing its target's label (DOC-026). */
     xref: {
       inline: true,

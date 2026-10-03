@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile } from './helpers';
+import { openApp, openFile, saveAs } from './helpers';
 
 // UI-021: what can be done where the pointer is, by a right click, a long press or the ⋮ button.
 
@@ -90,4 +90,31 @@ test.describe('on a phone', () => {
     await page.getByRole('button', { name: 'Actions', exact: true }).click();
     await expect(menu).toBeVisible();
   });
+});
+
+test('inserts fields that show their value, and freezes one into text (DOC-041)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'fields.md', '---\ntitle: My report\n---\n\nTitle: \n');
+  const text = page.locator('.doc-page p').first();
+  await text.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' ');
+  // The ⋮ button: the menu at the cursor.
+  await page.getByRole('button', { name: 'Actions', exact: true }).click();
+  const menu = page.getByRole('menu', { name: 'Document menu' });
+  await menu.getByRole('menuitem', { name: 'Title of the document' }).click();
+  await expect(text.locator('.pm-field')).toHaveText('My report');
+  await page.keyboard.type(', page ');
+  await page.getByRole('button', { name: 'Actions', exact: true }).click();
+  await menu.getByRole('menuitem', { name: 'Page number' }).click();
+  await expect(text.locator('.pm-field').nth(1)).toHaveText('1');
+  // Saved as Markdown, they stay fields.
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString('utf8');
+  expect(md).toContain('Title: {title}, page {page}');
+  // Frozen, the title becomes text.
+  await text.locator('.pm-field').first().click({ button: 'right' });
+  await menu.getByRole('menuitem', { name: 'Replace by its value now' }).click();
+  await expect(text.locator('.pm-field')).toHaveCount(1);
+  await expect(text).toContainText('Title: My report, page 1');
+  expect(errors).toEqual([]);
 });

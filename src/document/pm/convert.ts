@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type Table, type TableCell, type TextFormat } from '../model';
+import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type FieldKind, type Table, type TableCell, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -73,6 +73,8 @@ function runsToInline(runs: Run[]): PmNode[] {
       out.push(schema.nodes.footnote!.create({ runs: run.footnote }));
     } else if ('seq' in run) {
       out.push(schema.nodes.seq!.create({ kind: run.seq }));
+    } else if ('field' in run) {
+      out.push(schema.nodes.field!.create({ kind: run.field }));
     } else if ('ref' in run) {
       out.push(schema.nodes.xref!.create({ ref: run.ref }));
     } else if ('cite' in run) {
@@ -154,6 +156,9 @@ function inlineToRuns(node: PmNode): Run[] {
         break;
       case 'seq':
         runs.push({ seq: a.kind as SeqKind });
+        break;
+      case 'field':
+        runs.push({ field: a.kind as FieldKind });
         break;
       case 'xref':
         runs.push({ ref: a.ref as string });

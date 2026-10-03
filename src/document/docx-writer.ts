@@ -12,6 +12,9 @@ import {
   isImageRun,
   isFootnoteRun,
   isSeqRun,
+  isFieldRun,
+  fieldValue,
+  type FieldKind,
   isRefRun,
   isCiteRun,
   crossTargets,
@@ -43,6 +46,17 @@ import { APP_XML, coreXml, DOCX_NUMBER_FORMAT, EMU_PER_PX, NS, REL } from './oox
 import { citations, formatEntry, type Citations } from './bibliography';
 import { citationInstr, SOURCES_PROPS, sourcesXml } from './word-sources';
 
+
+/** DOC-041: the Word field of each kind. */
+export const DOCX_FIELDS: Record<FieldKind, string> = {
+  date: ' DATE \\@ "d MMMM yyyy" ',
+  time: ' TIME \\@ "HH:mm" ',
+  page: ' PAGE ',
+  pages: ' NUMPAGES ',
+  title: ' TITLE ',
+  author: ' AUTHOR ',
+  filename: ' FILENAME ',
+};
 
 const STYLE_IDS: Record<string, string> = {
   h1: 'Heading1',
@@ -450,6 +464,10 @@ class DocxWriter {
       const n = this.xref.numbers.get(run) ?? 1;
       const field = `<w:fldSimple w:instr=" SEQ ${SEQ_NAMES[run.seq]} \\* ARABIC "><w:r><w:t>${n}</w:t></w:r></w:fldSimple>`;
       return run.seq === 'equation' ? `<w:r><w:t>(</w:t></w:r>${field}<w:r><w:t>)</w:t></w:r>` : field;
+    }
+    if (isFieldRun(run)) {
+      // DOC-041: a field Word computes again (the date when the document is opened or printed).
+      return `<w:fldSimple w:instr="${esc(DOCX_FIELDS[run.field])}"><w:r><w:t xml:space="preserve">${esc(fieldValue(run.field, { meta: this.doc.meta }))}</w:t></w:r></w:fldSimple>`;
     }
     if (isCiteRun(run)) {
       // DOC-027: a CITATION field, in the content control Word gives citations.

@@ -9,6 +9,7 @@ import {
   resolveAnchors,
   unwrapEquationNumbers,
   seqKindOf,
+  type FieldKind,
   PAGE_BREAK,
   cleanPageSetup,
   type PageSetup,
@@ -622,6 +623,9 @@ class DocxReader {
 
 }
 
+/** DOC-041: Word fields read as fields of the body. */
+const DOCX_FIELD_OF: Record<string, FieldKind> = { DATE: 'date', TIME: 'time', PAGE: 'page', NUMPAGES: 'pages', TITLE: 'title', AUTHOR: 'author', FILENAME: 'filename' };
+
 const FIELD_OF: Record<string, string> = { PAGE: '{page}', NUMPAGES: '{pages}', SECTIONPAGES: '{pages}', TITLE: '{title}', DATE: '{date}', CREATEDATE: '{date}', SAVEDATE: '{date}' };
 
 /** Zones of a header/footer part: its first non-empty paragraph, split at tabs (DOC-024). */
@@ -764,5 +768,8 @@ function fieldRuns(instr: string, result: Run[]): Run[] {
   const [name = '', arg = ''] = instr.trim().split(/\s+/);
   if (name.toUpperCase() === 'SEQ' && arg) return [{ seq: seqKindOf(arg) }];
   if (name.toUpperCase() === 'REF' && arg) return [{ ref: anchorFromBookmark(arg) }];
+  // DOC-041: fields computed when shown.
+  const field = DOCX_FIELD_OF[name.toUpperCase()];
+  if (field) return [{ field }];
   return result;
 }

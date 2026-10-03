@@ -32,6 +32,11 @@ import {
   type TextFormat,
   crossTargets,
   isSeqRun,
+  isFieldRun,
+  isFieldKind,
+  fieldValue,
+  type FieldContext,
+  type FieldKind,
   isRefRun,
   refLabel,
   seqKindOf,
@@ -66,20 +71,34 @@ let xref: ReturnType<typeof crossTargets> | undefined;
 /** Citations of the document being rendered (DOC-027). */
 let cites: Citations | undefined;
 
+/** What the fields of the document being rendered show (DOC-041). */
+let fieldCtx: FieldContext | undefined;
+
 export function blocksToDom(
   blocks: Block[],
   doc: Document,
   resolveImage: (key: string) => ImageInfo | undefined,
   references?: References,
+  fields?: FieldContext,
 ): DocumentFragment {
-  const outer = [xref, cites] as const;
+  const outer = [xref, cites, fieldCtx] as const;
   xref = crossTargets(blocks);
   cites = citations(blocks, references);
+  fieldCtx = fields;
   try {
     return blocksToDomInner(blocks, doc, resolveImage);
   } finally {
-    [xref, cites] = outer;
+    [xref, cites, fieldCtx] = outer;
   }
+}
+
+/** A field as shown: its current value (DOC-041). */
+export function fieldElement(kind: FieldKind, value: string, doc: Document = document): HTMLElement {
+  const span = doc.createElement('span');
+  span.className = 'field';
+  span.dataset.field = kind;
+  span.textContent = value;
+  return span;
 }
 
 /** A citation as shown: `[1]` or `(Knuth, 1984)` (DOC-027). */
@@ -260,6 +279,10 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
     }
     if (isSeqRun(run)) {
       el.append(seqElement(run.seq, xref?.numbers.get(run) ?? 1, doc));
+      continue;
+    }
+    if (isFieldRun(run)) {
+      el.append(fieldElement(run.field, fieldValue(run.field, fieldCtx), doc));
       continue;
     }
     if (isCiteRun(run)) {
@@ -574,6 +597,10 @@ export function domToBlocks(
     if (el.dataset?.footnote !== undefined && el.classList.contains('footnote')) {
       const note = footnoteFromDom(el);
       if (note) open(ctx).runs.push({ footnote: note });
+      return;
+    }
+    if (el.dataset?.field !== undefined && el.classList.contains('field') && isFieldKind(el.dataset.field)) {
+      open(ctx).runs.push({ field: el.dataset.field });
       return;
     }
     if (el.dataset?.seq !== undefined && el.classList.contains('seq')) {

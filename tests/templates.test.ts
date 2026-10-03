@@ -88,7 +88,9 @@ describe('FILE-018 examples with plots', () => {
     expect(text(paras[1]!).split('\n').at(-1)).toBe('69000 Lyon');
     // Recipient, place and date, and signature from 9 cm; spaces between the blocks.
     for (const i of [1, 2, paras.length - 1]) expect(paras[i]!.indent).toBe(255);
-    expect(text(paras[2]!)).toMatch(/^Paris, le \d{1,2} \p{L}+ \d{4}$/u);
+    // The date of the day is a field (DOC-041).
+    expect(text(paras[2]!)).toBe('Paris, le ');
+    expect(paras[2]!.runs.at(-1)).toEqual({ field: 'date' });
     expect(text(paras[3]!)).toContain('Objet :');
     expect(paras[3]!.spaceBefore).toBeGreaterThan(0);
     expect(text(paras.at(-1)!)).toBe('Jeanne Martin');
@@ -98,7 +100,7 @@ describe('FILE-018 examples with plots', () => {
     const paras = doc('letter', 'en').blocks.filter((b) => b.type === 'paragraph') as Paragraph[];
     const text = (p: Paragraph) => p.runs.map((r) => ('text' in r ? r.text : '')).join('');
     expect(text(paras[0]!).split('\n')).toHaveLength(4);
-    expect(text(paras[1]!)).toMatch(/^\d{1,2} \w+ \d{4}$/);
+    expect(paras[1]!.runs).toEqual([{ field: 'date' }]);
     expect(text(paras[2]!).split('\n')[0]).toBe('Mr John Doe');
     expect(paras.every((p) => !p.indent)).toBe(true);
     expect(text(paras.at(-2)!)).toBe('Jane Smith');

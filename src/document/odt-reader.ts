@@ -23,6 +23,7 @@ import {
   type Run,
   type TableCell,
   seqKindOf,
+  type FieldKind,
   resolveAnchors,
   unwrapEquationNumbers,
   type TextFormat,
@@ -121,6 +122,19 @@ function lengthPt(value: string | null): number | undefined {
   const factor = { pt: 1, in: 72, cm: 72 / 2.54, mm: 72 / 25.4, px: 0.75, pc: 12 }[m[2] as 'pt'];
   return Math.round(n * factor * 10) / 10;
 }
+
+/** DOC-041: the fields of OpenDocument text read as fields. */
+const ODT_FIELDS: Record<string, FieldKind> = {
+  date: 'date',
+  time: 'time',
+  'page-number': 'page',
+  'page-count': 'pages',
+  title: 'title',
+  'initial-creator': 'author',
+  creator: 'author',
+  'author-name': 'author',
+  'file-name': 'filename',
+};
 
 const odfColor = (v: string | null): string | undefined => (v && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : undefined);
 
@@ -504,6 +518,21 @@ class OdtReader {
             const prev = out[out.length - 1];
             if (prev && 'cite' in prev) prev.cite.push(key);
             else out.push({ cite: [key] });
+            break;
+          }
+          case 'date':
+          case 'time':
+          case 'page-number':
+          case 'page-count':
+          case 'title':
+          case 'initial-creator':
+          case 'creator':
+          case 'author-name':
+          case 'file-name': {
+            // DOC-041: a field computed when shown; a fixed date or time is its text.
+            const field = ODT_FIELDS[c.localName];
+            if (field && attr(c, 'fixed') !== 'true' && (c.localName !== 'page-number' || (attr(c, 'select-page') ?? 'current') === 'current')) out.push({ field });
+            else this.readInline(c, fmt, out, pre);
             break;
           }
           case 'sequence': {

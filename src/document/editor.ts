@@ -24,7 +24,7 @@ import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } 
 import { writeDocumentAsync, type TextFormat } from './io';
 import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, newAnchor, wordCount, type CodeLang, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
+import { addResource, FIELD_KINDS, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
@@ -98,6 +98,9 @@ const STYLES: [ParagraphStyle, MessageKey][] = [
 /** Transactions coming from other participants: not "changes" of this user. */
 const REMOTE = 'pwo-remote';
 
+
+/** DOC-041: symbols of the fields in menus. */
+const FIELD_ICONS: Record<FieldKind, string> = { date: '📅', time: '🕒', page: '#', pages: 'Σ', title: 'T', author: '👤', filename: '📄' };
 
 export class DocumentEditor implements EditorView {
   readonly element: HTMLElement;
@@ -267,6 +270,7 @@ export class DocumentEditor implements EditorView {
           openInclude: (src) => this.ctx.openLink?.(src) ?? false,
           editCitation: (pos, node) => void this.editCitation(pos, node),
           editImage: (pos, node) => void this.describeImage(pos, node),
+          fieldContext: (pos) => this.fieldContext(pos),
         }),
         editable: () => !this.readOnly && !this.reviewing,
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
@@ -540,6 +544,45 @@ export class DocumentEditor implements EditorView {
     return true;
   }
 
+  /**
+   * DOC-041: what a field shows. The editor is one long page: the page of a
+   * field is counted from the page breaks before it.
+   */
+  private fieldContext(pos: number | undefined): FieldContext {
+    let page = this.doc.page?.startAt ?? 1;
+    let pages = 1;
+    const doc = this.view?.state.doc;
+    doc?.descendants((n, at) => {
+      if (n.type !== schema.nodes.horizontal_rule || !n.attrs.page) return;
+      pages++;
+      if (pos !== undefined && at < pos) page++;
+    });
+    return { meta: this.doc.meta, fileName: this.ctx.fileName?.(), lang: this.lang(), page, pages: pages + (this.doc.page?.startAt ?? 1) - 1 };
+  }
+
+  /** The fields to insert, in a menu at the cursor (DOC-041). */
+  private fieldMenu(): void {
+    const r = this.view.coordsAtPos(this.view.state.selection.head);
+    openContextMenu(r.left, r.bottom, [{ title: t('field.menu') }, ...FIELD_KINDS.map((kind): MenuAction => ({ label: t(`field.${kind}`), icon: FIELD_ICONS[kind], run: () => this.insertField(kind) }))], { label: t('field.menu'), returnFocus: this.view.dom });
+  }
+
+  /** Replace a field with the text it shows now: a letter keeps the date it was sent (DOC-041). */
+  private freezeField(pos: number): void {
+    const node = this.view.state.doc.nodeAt(pos);
+    if (node?.type !== schema.nodes.field) return;
+    const text = fieldValue(node.attrs.kind as FieldKind, this.fieldContext(pos));
+    const tr = this.view.state.tr;
+    if (text) tr.replaceWith(pos, pos + node.nodeSize, schema.text(text, this.view.state.doc.resolve(pos).marks()));
+    else tr.delete(pos, pos + node.nodeSize);
+    this.view.dispatch(tr);
+  }
+
+  /** Insert a field at the cursor (DOC-041). */
+  private insertField(kind: FieldKind): void {
+    this.command(insertInline(schema.nodes.field!.create({ kind })));
+    this.refocus();
+  }
+
   /** The menu at the cursor (the ⋮ button, the keyboard). */
   private showContextMenuAtCursor(): void {
     const { head } = this.view.state.selection;
@@ -562,6 +605,10 @@ export class DocumentEditor implements EditorView {
     }
     const state = view.state;
     const empty = state.selection.empty;
+    // A field under the pointer (DOC-041).
+    const fieldEl = target?.closest<HTMLElement>('.pm-field');
+    const fieldPos = fieldEl ? view.posAtDOM(fieldEl, 0) : undefined;
+    const field = fieldPos !== undefined && view.state.doc.nodeAt(fieldPos)?.type === schema.nodes.field ? fieldPos : undefined;
     const cmd = (c: Command) => () => {
       this.command(c);
       this.refocus();
@@ -582,6 +629,7 @@ export class DocumentEditor implements EditorView {
         'separator',
       );
     }
+    if (field !== undefined && editable) entries.push({ title: t('field.menu') }, { label: t('field.freeze'), icon: '📌', run: () => this.freezeField(field) }, 'separator');
     entries.push(
       { title: t('ctx.edit') },
       ...(editable ? [{ label: t('ctx.cut'), icon: '✂', shortcut: 'Ctrl+X', disabled: empty, run: () => this.clipboard('cut') }] : []),
@@ -626,6 +674,8 @@ export class DocumentEditor implements EditorView {
         ...(link ? [] : [{ label: t('doc.insertLink'), icon: '🔗', run: () => this.insertLink() }]),
         { label: t('note.button'), icon: '¹', run: () => void this.editNote() },
         { label: t('comment.add'), icon: '💬', shortcut: 'Ctrl+Alt+M', run: () => this.addComment() },
+        { title: t('field.menu') },
+        ...FIELD_KINDS.map((kind): MenuAction => ({ label: t(`field.${kind}`), icon: FIELD_ICONS[kind], run: () => this.insertField(kind) })),
       );
       if (!empty) entries.push('separator', { label: t('fmt.clear'), icon: '⌫', run: cmd(clearFormatting) });
     }
@@ -1631,6 +1681,7 @@ export class DocumentEditor implements EditorView {
         act(t('doc.insertCode'), '{ }', () => void this.editCell(), t('doc.insertCodeTitle')),
         act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
         act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
+        act(t('field.insert'), '⌗', () => this.fieldMenu(), t('field.insertTitle')),
         act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
         act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),
         act(t('bib.cite'), '❝', () => void this.editCitation(), t('bib.citeTitle')),

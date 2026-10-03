@@ -235,6 +235,31 @@ page style), LaTeX (`\pagenumbering`, `\setcounter{page}`,
 `\thispagestyle{empty}`) and Markdown (`page-numbering`, `page-start`,
 `first-page-hidden`).
 
+### Fields
+
+A **field** shows a value computed when the document is shown, printed or
+opened, rather than text typed once: insert one with **＋ ▾ Insert › ⌗
+Field…**, or from the [context menu](#the-context-menu).
+
+| Field | Shows | OpenDocument | Word | Markdown | LaTeX |
+|---|---|---|---|---|---|
+| Date of the day | 3 October 2026, in the document's language | `text:date` | `DATE` | `{date}` | `\today` |
+| Time | 14:05 | `text:time` | `TIME` | `{time}` | (its value) |
+| Page number | the page it is on | `text:page-number` | `PAGE` | `{page}` | `\thepage` |
+| Number of pages | | `text:page-count` | `NUMPAGES` | `{pages}` | `\pageref*{LastPage}` |
+| Title, author | from the document properties | `text:title`, `text:initial-creator` | `TITLE`, `AUTHOR` | `{title}`, `{author}` | `\thetitle`, `\theauthor` |
+| File name | | `text:file-name` | `FILENAME` | `{filename}` | `\jobname` |
+
+LibreOffice and Word compute them again: a letter opened next week shows
+next week's date. To keep the value it has now — the date a letter was sent
+— right-click the field and choose **Replace by its value now**. In the
+editor, which shows the document as one long page, the page number is
+counted from the page breaks.
+
+In Markdown, write `\{date}` for the text "{date}"; the `{{name}}` of a
+[mail merge](#mail-merge) is not a field. The *Letter* template dates the
+letter with a field.
+
 ### Find and replace
 
 🔍 or <kbd>Ctrl</kbd>+<kbd>F</kbd> opens the find bar; <kbd>Ctrl</kbd>+<kbd>H</kbd>

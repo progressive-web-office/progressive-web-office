@@ -256,6 +256,8 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 .doc-page pre { margin: 0 0 8pt; padding: 2px 8px; white-space: pre-wrap; }
 .doc-page pre:has(+ pre) { margin-bottom: 0; }
 .doc-page .pm-atom.pm-display, .doc-page .pm-atom.pm-diagram, .doc-page .pm-atom.pm-code_cell { display: block; }
+.doc-page .pm-field { background: #e8ecf2; border-radius: 3px; padding: 0 1px; }
+@media print { .doc-page .pm-field { background: none; padding: 0; } }
 .doc-page .pm-atom.ProseMirror-selectednode { outline: 2px solid var(--accent); border-radius: 4px; }
 
 .doc-page code { padding: 0 3px; border-radius: 3px; }

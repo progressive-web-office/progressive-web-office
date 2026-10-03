@@ -100,6 +100,8 @@ export interface ViewContext {
   headerChanged?(): void;
   /** Show a short message to the user. */
   notify?(message: string): void;
+  /** DOC-041: the name of the file, shown by its fields. */
+  fileName?(): string | undefined;
 }
 
 /** Create a view for existing file bytes. */

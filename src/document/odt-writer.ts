@@ -13,6 +13,8 @@ import {
   isMathRun,
   isFootnoteRun,
   isSeqRun,
+  isFieldRun,
+  fieldValue,
   isRefRun,
   isCiteRun,
   crossTargets,
@@ -109,6 +111,9 @@ class OdtWriter {
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       `<office:document-content ${ODF_XMLNS} office:version="1.3">` +
       `<office:automatic-styles>${[...this.autoStyles.values()].join('')}${this.listStyles.join('')}` +
+      // DOC-041: dates of fields, written out in the document's language ("3 October 2026").
+      '<number:date-style style:name="NDate" number:automatic-order="true"><number:day/><number:text> </number:text><number:month number:textual="true" number:style="long"/><number:text> </number:text><number:year number:style="long"/></number:date-style>' +
+      '<number:time-style style:name="NTime"><number:hours number:style="long"/><number:text>:</number:text><number:minutes number:style="long"/></number:time-style>' +
       '<style:style style:name="fr1" style:family="graphic" style:parent-style-name="Graphics"/>' +
       '<style:style style:name="frMath" style:family="graphic"><style:graphic-properties style:vertical-pos="middle" style:vertical-rel="text" draw:ole-draw-aspect="1"/></style:style>' +
       TABLE_STYLES +
@@ -404,6 +409,27 @@ class OdtWriter {
         const name = SEQ_NAMES[run.seq];
         const seq = `<text:sequence${this.anchor ? ` text:ref-name="${esc(this.anchor)}"` : ''} text:name="${name}" text:formula="ooow:${name}+1" style:num-format="1">${n}</text:sequence>`;
         out += run.seq === 'equation' ? `(${seq})` : seq;
+        atStart = false;
+        continue;
+      }
+      if (isFieldRun(run)) {
+        // DOC-041: a field LibreOffice computes again; its value as it is now in between.
+        const value = esc(fieldValue(run.field, { meta: this.doc.meta }));
+        const now = new Date().toISOString().slice(0, 19);
+        out +=
+          run.field === 'date'
+            ? `<text:date style:data-style-name="NDate" text:date-value="${now}">${value}</text:date>`
+            : run.field === 'time'
+              ? `<text:time style:data-style-name="NTime" text:time-value="${now}">${value}</text:time>`
+              : run.field === 'page'
+                ? `<text:page-number text:select-page="current">${value}</text:page-number>`
+                : run.field === 'pages'
+                  ? `<text:page-count>${value}</text:page-count>`
+                  : run.field === 'title'
+                    ? `<text:title>${value}</text:title>`
+                    : run.field === 'author'
+                      ? `<text:initial-creator>${value}</text:initial-creator>`
+                      : `<text:file-name text:display="name-and-extension">${value}</text:file-name>`;
         atStart = false;
         continue;
       }

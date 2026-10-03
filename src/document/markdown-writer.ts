@@ -38,6 +38,8 @@ import {
   tableGrid,
   crossTargets,
   isSeqRun,
+  isFieldRun,
+  FIELD_SYNTAX,
   isRefRun,
   isCiteRun,
   seqText,
@@ -70,7 +72,13 @@ const CLOSE: Record<Exclude<Mark, 'link'>, string> = { highlight: '==', bold: '*
 
 /** Escape characters with Markdown meaning in inline text (`==` too, which highlights). */
 export function escapeInline(text: string): string {
-  return text.replace(/[\\`*_[\]<>~|!$]/g, '\\$&').replace(/=(?==)/g, '\\=');
+  return (
+    text
+      .replace(/[\\`*_[\]<>~|!$]/g, '\\$&')
+      .replace(/=(?==)/g, '\\=')
+      // DOC-041: a literal `{date}` is not a field.
+      .replace(FIELD_SYNTAX, '\\$&')
+  );
 }
 
 /** Escape constructs that are only special at the start of a line. */
@@ -304,6 +312,10 @@ class MarkdownWriter {
       }
       if (isSeqRun(run)) {
         out += seqText(run.seq, this.xref.numbers.get(run) ?? 1);
+        continue;
+      }
+      if (isFieldRun(run)) {
+        out += `{${run.field}}`;
         continue;
       }
       if (isCiteRun(run)) {

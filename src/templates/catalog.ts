@@ -34,7 +34,11 @@ export const contentLang = (locale: string): TemplateLang => (locale.startsWith(
 function documentFrom(text: keyof DocumentTexts, after?: (doc: RichDocument, lang: TemplateLang) => void): Template['build'] {
   return (lang, today = new Date()) => {
     const date = today.toLocaleDateString(lang === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    const doc = readMarkdown(DOCUMENT_TEXTS[lang][text].replace(/\{date\}/g, date));
+    // The date of the front matter is the day's; `{date}` in the text is a field (DOC-041).
+    const source = DOCUMENT_TEXTS[lang][text].replace(/^(---\n[\s\S]*?\n---\n)/, (front) => front.replace(/\{date\}/g, date));
+    const doc = readMarkdown(source);
+    // Its language: dates written as usual in it.
+    doc.meta.language ??= lang;
     // Markdown keeps the extra front matter of a file: a template has none left.
     if (doc.extras) delete doc.extras.frontMatter;
     after?.(doc, lang);

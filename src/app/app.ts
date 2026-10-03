@@ -819,6 +819,7 @@ export class App {
       },
       headerChanged: () => this.renderHeader(),
       notify: (message) => this.showNotice(message),
+      fileName: () => this.current?.name,
     };
   }
 

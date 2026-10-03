@@ -26,6 +26,8 @@ import {
   tableGrid,
   crossTargets,
   isSeqRun,
+  isFieldRun,
+  fieldValue,
   isRefRun,
   isCiteRun,
   seqText,
@@ -77,6 +79,9 @@ class LatexWriter {
   }
 
   /** Header and footer with fancyhdr (DOC-024). */
+  /** Packages the fields of the body need (DOC-041). */
+  private readonly fieldPackages = new Set<string>();
+
   private furniture(): string[] {
     const page = cleanPageSetup(this.doc.page);
     if (!page) return [];
@@ -135,6 +140,7 @@ class LatexWriter {
       '\\usepackage{hyperref}',
       ...(this.multirow ? ['\\usepackage{multirow}'] : []),
       ...(this.captions ? ['\\usepackage{caption}'] : []),
+      ...[...this.fieldPackages].filter((p) => !this.furniture().some((l) => l.includes(`{${p}}`))).map((p) => `\\usepackage{${p}}`),
       ...(this.authorYear && JSON.stringify(this.doc.blocks).includes('"cite"') ? ['\\usepackage{natbib}'] : []),
       ...this.furniture(),
       ...(meta.title ? [`\\title{${escapeLatex(meta.title)}}`] : []),
@@ -285,6 +291,15 @@ class LatexWriter {
       if (isDiagramRun(run) || isCodeCellRun(run)) continue; // replaced by diagramsAsPictures / cellsAsBlocks
       if (isSeqRun(run)) {
         out += seqText(run.seq, this.xref.numbers.get(run) ?? 1);
+        continue;
+      }
+      if (isFieldRun(run)) {
+        // DOC-041: what LaTeX computes itself; `{}` keeps the space after a command word.
+        const field = run.field;
+        if (field === 'pages') this.fieldPackages.add('lastpage');
+        if (field === 'title' || field === 'author') this.fieldPackages.add('titling');
+        out +=
+          field === 'date' ? '\\today{}' : field === 'page' ? '\\thepage{}' : field === 'pages' ? '\\pageref*{LastPage}' : field === 'title' ? '\\thetitle{}' : field === 'author' ? '\\theauthor{}' : field === 'filename' ? '\\jobname{}' : escapeLatex(fieldValue(field, { meta: this.doc.meta }));
         continue;
       }
       if (isCiteRun(run)) {

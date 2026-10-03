@@ -613,8 +613,21 @@ class Builder {
       case 'newline':
       case 'linebreak':
         return void this.text('\n', fmt, ctx);
+      // DOC-041: fields.
       case 'today':
-        return void this.text(new Date().toISOString().slice(0, 10), fmt, ctx);
+        return void this.open(ctx).runs.push({ field: 'date' });
+      case 'thepage':
+        return void this.open(ctx).runs.push({ field: 'page' });
+      case 'thetitle':
+        return void this.open(ctx).runs.push({ field: 'title' });
+      case 'theauthor':
+        return void this.open(ctx).runs.push({ field: 'author' });
+      case 'jobname':
+        return void this.open(ctx).runs.push({ field: 'filename' });
+      case 'pageref':
+        // The number of pages, with the lastpage package.
+        if (args[0]?.trim() === 'LastPage') this.open(ctx).runs.push({ field: 'pages' });
+        return;
       case 'bfseries':
       case 'bf':
         return { fmt: { ...fmt, bold: true } };
