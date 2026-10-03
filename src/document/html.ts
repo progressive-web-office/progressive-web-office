@@ -386,7 +386,7 @@ export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (
   return cell;
 }
 
-const CODE_LANGS: readonly CodeLang[] = ['python', 'javascript', 'julia'];
+const CODE_LANGS: readonly CodeLang[] = ['python', 'javascript', 'julia', 'lua', 'sql', 'r', 'cpp'];
 
 function codeCellFromDom(el: HTMLElement, lookupImage: (img: HTMLImageElement) => string | undefined): CodeCellRun | undefined {
   const lang = CODE_LANGS.find((l) => l === el.dataset.lang);

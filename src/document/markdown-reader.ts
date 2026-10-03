@@ -160,7 +160,7 @@ function getParser(): MarkdownIt {
   return parser;
 }
 
-const CELL_LANGS: Record<string, CodeLang> = { python: 'python', py: 'python', javascript: 'javascript', js: 'javascript' };
+const CELL_LANGS: Record<string, CodeLang> = { python: 'python', py: 'python', javascript: 'javascript', js: 'javascript', julia: 'julia', lua: 'lua', sql: 'sql', r: 'r', c: 'cpp', cpp: 'cpp', 'c++': 'cpp' };
 
 /** `python {run}` -> language and attribute flags. */
 function parseFenceInfo(info: string): { lang: string; flags: string[] } {

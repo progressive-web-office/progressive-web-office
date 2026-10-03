@@ -586,6 +586,8 @@ export class DocumentEditor implements EditorView {
     let found = this.analyses.get(key);
     if (!found) {
       if (lang === 'javascript') found = import('../code/ts-language').then(({ analyzeScript }) => analyzeScript(code)).catch(() => null);
+      // CODE-018: Lua, SQL, R and C/C++ cells share no names with the others: they run in document order.
+      else if (lang !== 'python') return { defs: [], refs: [] };
       else if (this.runner && (start || this.runner.started)) found = this.runner.analyze(code);
       else return undefined;
       this.analyses.set(key, found);

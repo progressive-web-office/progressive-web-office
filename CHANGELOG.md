@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Lua and SQL (CODE-018): `.lua` and `.sql` files and cells run with a runtime
+  (wasmoon, sql.js) downloaded from the npm CDN the first time, after the
+  user agreed, checked against its SHA-256 and kept for offline use.
+
 - marimo notebooks (DOC-039): a marimo `.py` file opens as a document (text
   cells, reactive Python cells), runs here with a small `marimo` stand-in, and
   saves back as marimo reads it. A Python file importing a package missing

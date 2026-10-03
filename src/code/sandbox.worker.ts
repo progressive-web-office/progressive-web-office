@@ -3,13 +3,15 @@
  * import anything: it is loaded from a blob: URL, so it cannot resolve
  * relative chunks. Every file it needs (Python runtime, packages) is asked
  * from the application through `postMessage`; the sandbox policy blocks any
- * other network access.
+ * other network access. (Small modules without imports of their own, like
+ * `runtimes.ts`, are bundled into it.)
  */
+import { RUNTIMES, textTable, umdModule, type Runtime } from './runtimes';
 
 interface RunRequest {
   type: 'run';
   id: number;
-  lang: 'python' | 'javascript';
+  lang: 'python' | 'javascript' | 'lua' | 'sql' | 'r' | 'cpp';
   code: string;
 }
 interface CompleteRequest {
@@ -609,6 +611,84 @@ Object.assign(globalThis, {
   importWidget: async (url: string): Promise<string> => new TextDecoder().decode((await fetchFiles(url, 'module'))[0]),
 });
 
+// --- runtimes downloaded when needed (CODE-018) ---------------------------------
+
+/** The files of a runtime, downloaded (or read from the cache) after the user agreed, and checked. */
+async function runtimeFiles(id: number, rt: Runtime): Promise<Record<string, ArrayBuffer>> {
+  const out: Record<string, ArrayBuffer> = {};
+  for (const [key, file] of Object.entries(rt.files)) {
+    report(id, `packages:${rt.name} (${rt.size})`);
+    // Checked against its SHA-256 by the application.
+    const [bytes] = await fetchFiles(file.url, 'module');
+    if (!bytes) throw new Error(`${file.url}: not available`);
+    out[key] = bytes;
+  }
+  return out;
+}
+
+const umdImport = async <T>(bytes: ArrayBuffer): Promise<T> => ((await import(/* @vite-ignore */ blobModule(umdModule(new TextDecoder().decode(bytes))))) as { default: T }).default;
+
+interface LuaEngine {
+  global: { set(name: string, value: unknown): void };
+  doString(code: string): Promise<unknown>;
+}
+let lua: Promise<LuaEngine> | undefined;
+let luaOut: ((s: string) => void) | undefined;
+
+async function runLua(id: number, code: string): Promise<Output> {
+  lua ??= (async () => {
+    const files = await runtimeFiles(id, RUNTIMES.lua);
+    const { LuaFactory } = await umdImport<{ LuaFactory: new (wasm: string) => { createEngine(): Promise<LuaEngine> } }>(files.js!);
+    const engine = await new LuaFactory(URL.createObjectURL(new Blob([files.wasm!], { type: 'application/wasm' }))).createEngine();
+    engine.global.set('__pwo_out', (s: string) => luaOut?.(s));
+    // print and io.write go to the output, values shown as Lua's tostring does.
+    await engine.doString(
+      "print = function(...) local t = {} for i = 1, select('#', ...) do t[#t + 1] = tostring((select(i, ...))) end __pwo_out(table.concat(t, '\\t') .. '\\n') end\n" +
+        "io.write = function(...) for i = 1, select('#', ...) do __pwo_out(tostring((select(i, ...)))) end end",
+    );
+    return engine;
+  })();
+  lua.catch(() => (lua = undefined));
+  const engine = await lua;
+  report(id, 'running');
+  const out: string[] = [];
+  luaOut = (s) => out.push(s);
+  try {
+    const value = await engine.doString(code);
+    if (value !== undefined && value !== null) out.push(`${describe(value)}\n`);
+    return { text: out.join(''), images: [] };
+  } catch (err) {
+    return { text: `${out.join('')}${(err as Error)?.message ?? String(err)}\n`, error: true, images: [] };
+  } finally {
+    luaOut = undefined;
+  }
+}
+
+interface SqlDatabase {
+  exec(sql: string): { columns: string[]; values: unknown[][] }[];
+  getRowsModified(): number;
+}
+let sqlDb: Promise<SqlDatabase> | undefined;
+
+async function runSql(id: number, code: string): Promise<Output> {
+  sqlDb ??= (async () => {
+    const files = await runtimeFiles(id, RUNTIMES.sql);
+    const init = await umdImport<(config: object) => Promise<{ Database: new () => SqlDatabase }>>(files.js!);
+    const SQL = await init({ wasmBinary: files.wasm });
+    return new SQL.Database();
+  })();
+  sqlDb.catch(() => (sqlDb = undefined));
+  const db = await sqlDb;
+  report(id, 'running');
+  try {
+    const results = db.exec(code);
+    const text = results.length ? results.map((r) => textTable(r.columns, r.values)).join('\n\n') : `OK, ${db.getRowsModified()} row(s) changed`;
+    return { text: `${text}\n`, images: [] };
+  } catch (err) {
+    return { text: `${(err as Error)?.message ?? String(err)}\n`, error: true, images: [] };
+  }
+}
+
 // --- protocol -----------------------------------------------------------------
 
 interface Output {
@@ -664,7 +744,14 @@ scope.addEventListener('message', (event: MessageEvent) => {
     queue = queue.then(async () => {
       let output: Output;
       try {
-        output = message.lang === 'python' ? await runPython(message.id, message.code) : await runJavaScript(message.id, message.code);
+        output =
+          message.lang === 'python'
+            ? await runPython(message.id, message.code)
+            : message.lang === 'lua'
+              ? await runLua(message.id, message.code)
+              : message.lang === 'sql'
+                ? await runSql(message.id, message.code)
+                : await runJavaScript(message.id, message.code);
       } catch (err) {
         output = { text: `${(err as Error)?.message ?? String(err)}\n`, error: true, images: [] };
       }

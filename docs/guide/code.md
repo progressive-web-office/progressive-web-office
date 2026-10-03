@@ -280,6 +280,25 @@ application. Other pure-Python packages can be installed by a cell with
 package index, once you allowed the site (see [widgets](#packages-of-widgets)).
 Packages with compiled code are only those of Pyodide.
 
+## Other languages: Lua, SQL, R, C/C++
+
+Python and JavaScript are part of the application. Other languages run with a
+**runtime downloaded the first time it is needed**, from the npm CDN
+(`cdn.jsdelivr.net`), after you agree for that site; it is then kept in the
+browser and works offline. Each file is a pinned version, checked against its
+SHA-256 before use.
+
+| Language | Files | Runtime | Download |
+| --- | --- | --- | --- |
+| Lua 5.4 | `.lua`, ```` ```lua {run} ```` cells | wasmoon | about 0.5 MB |
+| SQL (SQLite) | `.sql`, ```` ```sql {run} ```` cells | sql.js | about 0.7 MB |
+
+A `.lua` or `.sql` file opened in the code viewer shows **▶ Run**; in a
+document, cells of these languages run like the others, in document order
+(they share no names with Python or JavaScript cells). Successive runs share
+their state: Lua globals, and the tables of the SQL database (in memory,
+for the session). A SQL query shows its rows as a table.
+
 ## marimo notebooks
 
 A [marimo](https://marimo.io) notebook — a `.py` file whose cells are

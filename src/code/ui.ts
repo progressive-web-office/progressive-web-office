@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { button, h } from '../app/dom';
 import type { CodeLang } from '../document/model';
 
-export const LANG_LABEL: Record<CodeLang, string> = { python: 'Python', javascript: 'JavaScript', julia: 'Julia' };
+export const LANG_LABEL: Record<CodeLang, string> = { python: 'Python', javascript: 'JavaScript', julia: 'Julia', lua: 'Lua', sql: 'SQL', r: 'R', cpp: 'C/C++' };
 
 /** Add the Run / Edit bar to every cell under `root` that has none. */
 export function decorateCells(root: HTMLElement): void {
@@ -82,7 +82,7 @@ export async function editCell(host: HTMLElement, initial?: CellValue, complete?
   const { createCellEditor } = await import('./cell-editor');
   return new Promise((resolve) => {
     const m = modal(host, 'code-title');
-    const lang = h('select', { 'aria-label': t('code.language') }, ...((initial?.lang === 'julia' ? ['julia'] : ['python', 'javascript']) as CodeLang[]).map((l) => h('option', { value: l }, LANG_LABEL[l])));
+    const lang = h('select', { 'aria-label': t('code.language') }, ...((initial?.lang === 'julia' ? ['julia'] : ['python', 'javascript', 'sql', 'lua']) as CodeLang[]).map((l) => h('option', { value: l }, LANG_LABEL[l])));
     lang.value = initial?.lang ?? 'python';
     const source = h('div', { class: 'code-source' });
     const editor = createCellEditor(source, { doc: initial?.code ?? '', lang: lang.value as CodeLang, label: t('code.source'), ...(complete ? { complete } : {}) });

@@ -66,3 +66,22 @@ export async function usePyodidePackages(page: Page): Promise<boolean> {
   });
   return true;
 }
+
+/**
+ * CODE-018: serve the runtimes downloaded from the npm CDN from a local folder
+ * of unpacked npm packages (`RUNTIME_PACKAGES`, e.g. wasmoon-1.16.0/package/…),
+ * where the network is unavailable. Without it, the tests need the network (CI).
+ */
+export async function useRuntimePackages(page: Page): Promise<boolean> {
+  const local = process.env.RUNTIME_PACKAGES;
+  if (!local) return !!process.env.CI;
+  const { readFileSync, existsSync } = await import('node:fs');
+  await page.route('https://cdn.jsdelivr.net/npm/**', (route) => {
+    // /npm/<name>@<version>/<path> → <local>/<name>-<version>/package/<path>
+    const m = /^\/npm\/((?:@[^/]+\/)?[^@/]+)@([^/]+)\/(.+)$/.exec(new URL(route.request().url()).pathname);
+    const file = m && `${local}/${m[1]!.replace('/', '-')}-${m[2]}/package/${m[3]}`;
+    if (!file || !existsSync(file)) return route.abort();
+    return route.fulfill({ body: readFileSync(file), headers: { 'Access-Control-Allow-Origin': '*' } });
+  });
+  return true;
+}

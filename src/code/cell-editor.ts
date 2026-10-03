@@ -74,6 +74,16 @@ async function loadLanguage(lang: CodeLang, complete?: SmartComplete): Promise<E
     const [{ StreamLanguage }, { julia }] = await Promise.all([import('@codemirror/language'), import('@codemirror/legacy-modes/mode/julia')]);
     return StreamLanguage.define(julia);
   }
+  if (lang === 'lua') {
+    const [{ StreamLanguage }, { lua }] = await Promise.all([import('@codemirror/language'), import('@codemirror/legacy-modes/mode/lua')]);
+    return StreamLanguage.define(lua);
+  }
+  if (lang === 'r') {
+    const [{ StreamLanguage }, { r }] = await Promise.all([import('@codemirror/language'), import('@codemirror/legacy-modes/mode/r')]);
+    return StreamLanguage.define(r);
+  }
+  if (lang === 'sql') return (await import('@codemirror/lang-sql')).sql();
+  if (lang === 'cpp') return (await import('@codemirror/lang-cpp')).cpp();
   if (lang === 'python') {
     const [{ python }, sources] = await Promise.all([import('@codemirror/lang-python'), pythonSources(complete)]);
     return [python(), completionSupport(sources)];

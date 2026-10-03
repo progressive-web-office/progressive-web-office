@@ -78,7 +78,7 @@ export interface MathRun {
 
 /** Languages of executable code cells (CODE-001). */
 /** `julia`: cells of KaimonSlate notebooks (DOC-038), kept and edited, run by KaimonSlate itself. */
-export type CodeLang = 'python' | 'javascript' | 'julia';
+export type CodeLang = 'python' | 'javascript' | 'julia' | 'lua' | 'sql' | 'r' | 'cpp';
 
 /** Diagram languages understood by the editor (DIAG-001). */
 export type DiagramLang = 'mermaid';

@@ -36,6 +36,9 @@ interface Pending {
 
 const coreUrl = (name: string): string => new URL(`pyodide/${name}`, document.baseURI).href;
 
+/** CODE-016, CODE-018: sites the user agreed to download code from, until the page is closed. */
+const ALLOWED = new Set<string>();
+
 export class CodeRunner {
   private frame: HTMLIFrameElement | undefined;
   private ready: Promise<void> | undefined;
@@ -225,17 +228,25 @@ export class CodeRunner {
 
   /** Download packages or a widget module the code asked for, once the user agreed for that site. */
   private async download(spec: string, kind: 'python' | 'module'): Promise<ArrayBuffer[]> {
-    const { resolveSpec } = await import('./widgets/packages');
-    return resolveSpec(spec, kind, async (url) => {
+    const [{ resolveSpec }, { runtimeHash }] = await Promise.all([import('./widgets/packages'), import('./runtimes')]);
+    const files = await resolveSpec(spec, kind, async (url) => {
       const origin = new URL(url).origin;
       if (!this.allowed.has(origin)) {
         if (!(await this.confirmDownload?.(origin))) throw new Error(`Download from ${origin} refused`);
         this.allowed.add(origin);
       }
     });
+    // CODE-018: a runtime file must be the one expected (the sandbox cannot check it: no crypto there).
+    const expected = runtimeHash(spec);
+    if (expected) {
+      const hex = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', files[0]!)), (b) => b.toString(16).padStart(2, '0')).join('');
+      if (hex !== expected) throw new Error(`${spec}: checksum mismatch, not used`);
+    }
+    return files;
   }
 
-  private readonly allowed = new Set<string>();
+  /** Sites the user agreed to download from, in this session (for every document and file). */
+  private readonly allowed = ALLOWED;
 
   /** Serve the Python runtime from the application, packages from the CDN; nothing else. */
   private async serveFile(id: number, name: string): Promise<void> {
