@@ -12,11 +12,11 @@ export async function readFileBytes(file: Blob): Promise<Uint8Array> {
 }
 
 /** Show the native file picker and resolve with the chosen file (or null). */
-export function pickFile(): Promise<File | null> {
+export function pickFile(accept = ACCEPTED_EXTENSIONS.join(',')): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = ACCEPTED_EXTENSIONS.join(',');
+    input.accept = accept;
     input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
     input.addEventListener('cancel', () => resolve(null), { once: true });
     input.click();

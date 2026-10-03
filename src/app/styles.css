@@ -1416,3 +1416,13 @@ body.distraction-free .ai-panel { display: none !important; }
 .soft-proof .doc-page span[data-color] { color: var(--proof) !important; }
 .soft-proof .doc-page mark[data-highlight] { background-color: var(--proof) !important; }
 .soft-proof .doc-page { box-shadow: 0 0 0 3px #e8d9b5, 0 2px 10px rgba(0, 0, 0, 0.25); }
+
+/* BACKUP-004: the last backup in the header; marked when one is due. */
+.backup-button { white-space: nowrap; }
+.backup-button.due { border-color: #c77700; color: #8a4f00; background: #fff4e0; }
+.backup-dialog { max-width: 36rem; }
+.backup-dialog .backup-last { font-weight: 600; }
+.backup-dialog .backup-last.due { color: #8a4f00; }
+.backup-dialog .backup-files { max-height: 14rem; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin: 6px 0; }
+.backup-dialog .backup-password { margin-left: 1.5rem; }
+.backup-dialog .dialog-actions.start { justify-content: flex-start; }

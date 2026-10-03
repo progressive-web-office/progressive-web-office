@@ -192,11 +192,12 @@ group is not a commitment.
   on every device — with clear warnings: synchronisation is not a backup, a
   document deleted on one device is deleted on all (a trash kept for a
   while, versions kept)
-- Real backups, distinct from synchronisation: dated, encrypted archives of
-  all the documents kept in the browser, to a folder, a WebDAV / Nextcloud
-  account or a Git repository, on a schedule with reminders, kept for days
-  and weeks, restored file by file or all at once; the last backup's date
-  always visible
+- ✅ Real backups, distinct from synchronisation: dated, encrypted archives of
+  all the documents kept in the browser, to a folder or a WebDAV / Nextcloud
+  account, with reminders, kept for days and weeks, restored file by file or
+  all at once; the last backup's date always visible (BACKUP-001..005);
+  next: a Git repository as a destination, automatic backups while the
+  application is open
 
 ### Images and drawing
 

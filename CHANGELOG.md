@@ -10,6 +10,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Backups** of what the browser keeps (BACKUP-001..BACKUP-005): its
+  storage's files, recent files, drafts, templates and versions, in dated
+  archives encrypted with a password (AES-GCM, PBKDF2), downloaded or written
+  to a folder or a Nextcloud / WebDAV account, kept for 7 days then weekly
+  for 8 weeks; reminders every day, week or month; **💾** in the header shows
+  how old the last backup is; restoring all or file by file, next to the
+  existing files unless they are replaced. The difference with
+  synchronisation and the 3-2-1 rule explained.
 - Colours for print (COLOR-001, COLOR-002): a colour dialog (**⋯** next to
   the colours of documents, spreadsheets and presentations) with swatches,
   recent colours and the hexadecimal, RGB and CMYK values; a warning for

@@ -50,6 +50,7 @@ export default defineConfig({
           { text: 'ZIP archives and source files', link: '/guide/archives' },
           { text: 'Git repositories', link: '/guide/git' },
           { text: 'Nextcloud / WebDAV', link: '/guide/cloud' },
+          { text: 'Backups', link: '/guide/backup' },
           { text: 'Grist', link: '/guide/grist' },
           { text: 'Real-time collaboration', link: '/guide/collaboration' },
           { text: 'Synchronising without a network', link: '/guide/offline-sync' },

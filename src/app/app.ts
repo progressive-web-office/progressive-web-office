@@ -1,4 +1,6 @@
 /** Application shell: start screen, header toolbar, file open/save flow. */
+import { backupDue, loadBackupSettings } from '../backup/settings';
+import { backupAge as backupAgeText, lastBackupText as backupLastText } from '../backup/text';
 import { getLocale, LOCALES, setLocale, t, type Locale, type MessageKey } from '../i18n';
 import {
   detectFormat,
@@ -988,6 +990,7 @@ export class App {
           button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
           button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
           button(t('grist.open'), () => void this.openFromGrist(), { className: 'card grist', icon: '🗃️', title: t('grist.openTitle') }),
+          button(t('backup.button'), () => void this.openBackup(), { className: 'card backup', icon: '💾', title: t('backup.title') }),
         ),
         h('p', { class: 'hint' }, t('start.tip')),
         h('div', { class: 'start-prefs' }, this.languagePicker(), this.formatPicker()),
@@ -997,6 +1000,7 @@ export class App {
     this.renderStart?.(recent);
     void this.offerDraft(recent);
     void this.offerLastFolder(recent);
+    void this.offerBackup(recent);
     this.renderHeader();
     this.renderStatus();
   }
@@ -1017,6 +1021,47 @@ export class App {
     } catch {
       /* autosave is best effort */
     }
+  }
+
+  // --- backups (BACKUP-001..BACKUP-005) ----------------------------------------------
+
+  /** The backup button of the header: how old the last backup is, marked when one is due. */
+  private backupButton(): HTMLElement {
+    const settings = loadBackupSettings();
+    const age = backupAgeText(settings);
+    const due = backupDue(settings);
+    const b = button(t('backup.button'), () => void this.openBackup(), { text: `💾 ${age}`, className: `backup-button${due ? ' due' : ''}`, title: t('backup.buttonTitle', { last: backupLastText(settings) }) });
+    b.dataset.keywords = 'backup restore sauvegarde restaurer archive 备份 恢复';
+    return b;
+  }
+
+  private async openBackup(): Promise<void> {
+    const { backupDialog } = await import('../backup/ui');
+    await backupDialog(this.root);
+    this.renderHeader();
+    this.root.querySelector('.backup-banner')?.remove();
+  }
+
+  private backupReminded = false;
+
+  /** A reminder on the start screen when a backup is due and there is something to back up. */
+  private async offerBackup(container: HTMLElement): Promise<void> {
+    const settings = loadBackupSettings();
+    if (this.backupReminded || !backupDue(settings)) return;
+    if (!settings.last) {
+      const { listRecent } = await import('../storage/recent');
+      if (!(await listRecent().catch(() => [])).length) return;
+    }
+    if (!container.isConnected) return;
+    this.backupReminded = true;
+    const banner = h(
+      'div',
+      { class: 'draft-banner backup-banner', role: 'status' },
+      h('span', {}, t('backup.reminder', { last: backupLastText(settings) })),
+      button(t('backup.now'), () => void this.openBackup(), { className: 'primary' }),
+      button(t('backup.remindLater'), () => banner.remove()),
+    );
+    container.prepend(banner);
   }
 
   private discardDraft(): void {
@@ -1118,6 +1163,8 @@ export class App {
     if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) shareTools.push(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
     shareTools.push(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
     actions.append(toolGroup(t('group.share'), '📤', shareTools));
+    // BACKUP-004: the last backup, always in sight.
+    actions.append(this.backupButton());
     // SET-001: the settings window.
     const settings = button(t('settings.open'), () => void this.openSettings(), { title: t('settings.openTitle'), text: '⚙', className: 'icon' });
     settings.dataset.keywords = 'settings preferences options configuration paramètres préférences réglages 设置 选项';

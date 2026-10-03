@@ -156,7 +156,7 @@ export async function recentFolders(): Promise<RecentFolder[]> {
   try {
     const all = (await request((await store('folders', 'readonly')).getAll())) as Partial<RecentFolder>[];
     return all
-      .filter((f): f is RecentFolder => !!f.handle && typeof f.id === 'string')
+      .filter((f): f is RecentFolder => !!f.handle && typeof f.id === 'string' && f.id !== BACKUP_FOLDER)
       .map((f) => ({ ...f, name: f.name ?? f.handle.name, openedAt: f.openedAt ?? 0 }))
       .sort((a, b) => b.openedAt - a.openedAt);
   } catch {
@@ -191,6 +191,50 @@ export async function forgetFolder(id: string): Promise<void> {
   } catch {
     /* nothing stored */
   }
+}
+
+// --- backups (BACKUP-001) ------------------------------------------------------------
+
+/** The folder backups go to, kept apart from the recent folders. */
+const BACKUP_FOLDER = 'backup';
+
+export async function backupFolder(): Promise<FileSystemDirectoryHandle | undefined> {
+  try {
+    const rec = (await request((await store('folders', 'readonly')).get(BACKUP_FOLDER))) as { handle?: FileSystemDirectoryHandle } | undefined;
+    return rec?.handle;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function setBackupFolder(handle: FileSystemDirectoryHandle | undefined): Promise<void> {
+  const os = await store('folders', 'readwrite');
+  if (handle) await request(os.put({ id: BACKUP_FOLDER, name: handle.name, handle, openedAt: 0 }));
+  else await request(os.delete(BACKUP_FOLDER));
+}
+
+export type RecordStore = 'recent' | 'drafts' | 'templates' | 'versions';
+
+/** Every record of a store, its bytes included. */
+export async function exportRecords(name: RecordStore): Promise<Record<string, unknown>[]> {
+  try {
+    return (await request((await store(name, 'readonly')).getAll())) as Record<string, unknown>[];
+  } catch {
+    return [];
+  }
+}
+
+/** Add records to a store, leaving those already there untouched; how many were added. */
+export async function importRecords(name: RecordStore, records: Record<string, unknown>[]): Promise<number> {
+  let added = 0;
+  for (const r of records) {
+    if (typeof r.id !== 'string') continue;
+    const existing = await request((await store(name, 'readonly')).get(r.id));
+    if (existing !== undefined) continue;
+    await request((await store(name, 'readwrite')).put(r));
+    added++;
+  }
+  return added;
 }
 
 /** A template of the user, kept in this browser (FILE-019). */

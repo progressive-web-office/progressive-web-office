@@ -520,6 +520,16 @@ integration is ever needed.
 | COLOR-001 | S | 0.2.0 | The system shall let the user choose a colour (text and highlight of documents, text and fill of spreadsheet cells, fill and background of slides) from swatches, the colours used lately, or its hexadecimal, RGB or CMYK values, each updating the others; colours shall be kept in LaTeX with xcolor, whose `HTML`, `rgb`, `RGB`, `cmyk` and `gray` models and base colours are read. |
 | COLOR-002 | S | 0.2.0 | When a colour is brighter than a coated paper offset press can print (approximately), the system shall warn and show how it would print, offering the printable colour; it shall warn when CMYK values exceed 300 % of ink; and a document shall be viewable with its colours as printed. |
 
+## 9p. Backups (BACKUP)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| BACKUP-001 | S | 0.2.0 | The system shall back up what the browser keeps — the files of its private storage and the recent files, drafts, templates and versions of its database — in one archive with a manifest, encrypted when the user gives a password (AES-GCM, key derived with PBKDF2), the password never kept by the browser. |
+| BACKUP-002 | S | 0.2.0 | The system shall write a backup, named by its date, as a download, to a folder chosen once, or to a WebDAV / Nextcloud account, and keep there the newest backup of each of the last 7 days and of each week for 8 weeks before, always keeping the newest and never touching other files. |
+| BACKUP-003 | S | 0.2.0 | The system shall restore a backup chosen as a file or where backups go, after its password, all of it or the files ticked, a file already present kept and the restored copy written next to it unless the user chooses to replace it; records already present shall be left untouched. |
+| BACKUP-004 | S | 0.2.0 | The header shall always show how old the last backup is, marked when one is due; the user shall choose to be reminded every day, week or month, and the start screen shall remind when a backup is due and there is something to back up. |
+| BACKUP-005 | S | 0.2.0 | The backup window shall explain that synchronisation is not a backup (a deletion reaches every device; a backup keeps the documents as they were) and the 3-2-1 rule. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.
