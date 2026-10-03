@@ -1,6 +1,6 @@
 /**
  * MDZ package reader (MD-004, MD-006, MD-007, MD-009) and plain ZIP of
- * Markdown import (MD-014, MD-016, MD-017).
+ * Markdown import (MD-014, MD-016, MD-017), TextBundle packages (MD-011).
  */
 import { strFromU8 } from 'fflate';
 import { readZip, type ZipEntries } from '../core/zip';
@@ -70,6 +70,17 @@ function preselect(candidates: string[]): string {
   );
 }
 
+/** The text of a TextBundle, `[…/]text.md` (or `.markdown`) beside its `info.json`. */
+export function textBundleEntry(zip: ZipEntries): string | undefined {
+  for (const info of Object.keys(zip).filter((p) => /(^|\/)info\.json$/.test(p) && !JUNK.test(p))) {
+    const dir = dirname(info);
+    if (dir.split('/').length > 2) continue;
+    const text = ['text.md', 'text.markdown'].map((n) => dir + n).find((p) => zip[p]);
+    if (text && isSafeArchivePath(text)) return text;
+  }
+  return undefined;
+}
+
 export async function readMdz(bytes: Uint8Array, opts: MdzReadOptions = {}): Promise<RichDocument> {
   const zip = readZip(bytes);
   return zip['manifest.json'] ? readNative(zip) : readPlain(zip, opts);
@@ -131,7 +142,10 @@ async function readPlain(zip: ZipEntries, opts: MdzReadOptions): Promise<RichDoc
     .sort((a, b) => a.localeCompare(b));
   if (!candidates.length) throw new Error('This ZIP archive does not contain any Markdown (.md) file.');
   let entry = candidates[0]!;
-  if (candidates.length > 1) {
+  // MD-011: a TextBundle (`.textpack`): its text is `text.md` next to `info.json`.
+  const bundled = textBundleEntry(zip);
+  if (bundled) entry = bundled;
+  else if (candidates.length > 1) {
     const pre = preselect(candidates);
     const chosen = opts.chooseEntry ? await opts.chooseEntry(candidates, pre) : pre;
     if (!chosen) throw new MdzCancelled();

@@ -10,6 +10,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- TextBundle packages (`.textpack`) open as text documents: `text.md` with its
+  pictures, the other Markdown files of `assets/` left aside (MD-011).
 - PDF: the signature can be remembered on this device, only when the box is
   ticked, then placed in one click or forgotten (PDF-014).
 - Git: open or save by pasting a repository address (`https://github.com/owner/name`,

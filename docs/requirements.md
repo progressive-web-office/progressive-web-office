@@ -169,7 +169,7 @@ manifest (`schemas/mdz-manifest-1.schema.json`), to be proposed upstream.
 | MD-008 | M | 0.0.2 | When a document with images is saved as MDZ, the system shall store each distinct image once under `assets/images/` (content-addressed file name) and reference it with a `./assets/images/...` relative link. |
 | MD-009 | S | 0.0.2 | When an MDZ package is re-saved, the system shall preserve unknown manifest fields (including `x-*` extensions), `author`, and asset files it does not display (videos, audio, files). |
 | MD-010 | S | 0.0.2 | Where an MDZ manifest uses a newer 1.x version or unknown fields, the system shall open it and ignore the unknown fields. |
-| MD-011 | C | — | Import of TextBundle (`.textpack`) packages. |
+| MD-011 | C | 0.2.0 | Import of TextBundle (`.textpack`) packages. |
 | MD-012 | S | 0.0.2 | The documentation shall describe MDZ support, its compatibility with wflixu/mdz and publish the JSON Schema. |
 | MD-014 | M | 0.0.2 | When a plain ZIP archive containing Markdown file(s) and images but no MDZ manifest is opened, the system shall import it as a document and resolve relative image links inside the archive. |
 | MD-016 | M | 0.0.2 | When such a ZIP contains exactly one Markdown file, the system shall use it as the entry document. |

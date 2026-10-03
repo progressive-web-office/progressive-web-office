@@ -41,7 +41,7 @@ export function formatLabel(format: DocumentFormat): string {
 
 
 /** File extensions accepted by the open dialog. */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.textpack', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
 
 export function formatKind(format: DocumentFormat): DocumentKind {
   switch (format) {
