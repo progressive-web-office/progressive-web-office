@@ -103,6 +103,10 @@ A folder of Markdown notes works as a set of linked notes:
   `[[Note#Heading]]` goes to a heading, `[[Note|shown text]]` shows another
   text. <kbd>Ctrl</kbd>+click follows the link; a link to a note that does
   not exist yet offers to create it.
+- Typing `[[` lists the notes of the folder, those whose name starts with
+  what you type first; typing `#` and a letter lists the tags already used.
+  <kbd>↑</kbd>/<kbd>↓</kbd> choose, <kbd>Enter</kbd> or <kbd>Tab</kbd>
+  insert, <kbd>Esc</kbd> closes the list.
 - `![[picture.png]]` shows a picture of the folder; `![[Note]]` is kept as a
   link to that note.
 - The panel lists the notes **linked from** the open note (backlinks), and

@@ -7,7 +7,7 @@ import { t } from '../i18n';
 import { basename, dirname, Explorer, listFiles, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
-import { isNote, NoteVault } from './vault';
+import { isNote, NoteVault, noteName } from './vault';
 
 /** Files the app opens, by extension. */
 export const OPENABLE = /\.(docx|odt|odm|md|markdown|mdz|tex|xlsx|ods|csv|tsv|pptx|odp|pdf|ott|ots|otp|dotx|xltx|potx)$/i;
@@ -172,6 +172,15 @@ export class FolderPanel {
     }
     const name = entries.length === 1 ? only!.name : this.provider.label;
     save(new Blob([writeZip(files) as BlobPart], { type: 'application/zip' }), `${name}.zip`);
+  }
+
+  /** Names of the notes to link to (but `from`) or tags used in the folder, for completion (FOLDER-021). */
+  async completions(kind: 'link' | 'tag', from?: string): Promise<string[]> {
+    const notes = this.notes();
+    if (kind === 'tag') return [...(await this.vault.tags(notes)).keys()];
+    // A note by its name; by its path without extension when the name is not unique.
+    const names = notes.map((n) => noteName(n));
+    return notes.flatMap((n, i) => (n === from ? [] : [names.indexOf(names[i]!) === names.lastIndexOf(names[i]!) ? names[i]! : n.replace(/\.(md|markdown)$/i, '')]));
   }
 
   private notes(): string[] {

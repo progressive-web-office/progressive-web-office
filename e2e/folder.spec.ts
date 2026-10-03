@@ -295,3 +295,34 @@ test('offers the templates of the folder and keeps new ones there (FOLDER-020)',
   const files = () => page.evaluate(() => Object.fromEntries((window as unknown as { __folder: Map<string, string> }).__folder));
   await expect.poll(async () => (await files())['Templates/Daily.md']).toContain('Date: today');
 });
+
+test('completes links to notes after [[ and tags after # while typing (FOLDER-021)', async ({ page }) => {
+  await fakeFolder(page, {
+    'index.md': '# Index\n\nStart.\n',
+    'notes/Project plan.md': '# Plan\n\n#physics\n',
+    'notes/Meeting.md': '# Meeting\n',
+  });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'index.md' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await editor.getByText('Start.').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' See [[pro');
+  const list = page.getByRole('listbox', { name: 'Notes to link to' });
+  await expect(list.getByRole('option')).toHaveText(['Project plan']);
+  await page.keyboard.press('Enter');
+  await expect(editor.getByRole('link', { name: 'Project plan' })).toBeVisible();
+  await page.keyboard.type('about #ph');
+  await expect(page.getByRole('listbox', { name: 'Tags' }).getByRole('option')).toHaveText(['#physics']);
+  await page.keyboard.press('Tab');
+  // Escape closes the list; typing goes on as usual.
+  await page.keyboard.type('and [[');
+  await expect(list.getByRole('option')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(list).toBeHidden();
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Control+s');
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('index.md'))).toContain('Start. See [[Project plan]] about #physics and');
+});

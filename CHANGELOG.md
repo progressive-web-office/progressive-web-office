@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Completion in the notes of a folder (FOLDER-021): `[[` lists the notes to
+  link to, `#` the tags already used.
+
 - Templates kept in a folder (FOLDER-020): the documents of its `Templates`
   folder are offered first in the template gallery, and *Save as template…*
   can keep a new one there instead of in the browser.

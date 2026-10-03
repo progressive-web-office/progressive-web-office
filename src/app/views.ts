@@ -67,6 +67,8 @@ export interface ViewContext {
   openLink?(href: string): boolean;
   /** Documents of the open folder, relative to this document (DOC-028). */
   folderDocuments?(): Promise<string[]> | undefined;
+  /** Notes to link to or tags of the open folder, for completion in a note (FOLDER-021). */
+  completions?(kind: 'link' | 'tag'): Promise<string[]> | undefined;
   /** What the view offers in the header changed (e.g. its save variants). */
   headerChanged?(): void;
   /** Show a short message to the user. */

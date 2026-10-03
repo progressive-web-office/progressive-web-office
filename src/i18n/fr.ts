@@ -920,6 +920,8 @@ export const fr: Record<MessageKey, string> = {
   'tpl.inBrowser': 'Dans ce navigateur',
   'tpl.inFolder': 'Dans le dossier {path}',
   'tpl.savedInFolder': 'Modèle enregistré sous {path} : retrouvez-le dans Modèles et exemples tant que le dossier est ouvert.',
+  'complete.notes': 'Notes à lier',
+  'complete.tags': 'Tags',
   'tpl.mine': 'Mes modèles',
   'tpl.mineEmpty': 'Aucun pour l’instant : ouvrez un document et choisissez « Enregistrer comme modèle… » dans Enregistrer sous.',
   'tpl.delete': 'Supprimer le modèle {name}',

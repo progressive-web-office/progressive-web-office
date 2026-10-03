@@ -768,6 +768,7 @@ export class App {
       choose: (title, message, options, preselected) => this.choose(title, message, options, preselected),
       openLink: (href) => this.openLink(href),
       folderDocuments: () => this.folderDocuments(),
+      completions: (kind) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.completions(kind, this.current?.folderPath) : undefined),
       headerChanged: () => this.renderHeader(),
       notify: (message) => this.showNotice(message),
     };

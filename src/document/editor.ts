@@ -44,6 +44,7 @@ import { withoutSolutions } from './solutions';
 import { TRANSFORMS, transformText, typographyRules, type TransformId } from './text-tools';
 import { loadTypography, saveTypography } from './typography';
 import { writingKey, writingPlugin } from './pm/writing-plugin';
+import { completionPlugin } from './pm/complete';
 import { readability } from './readability';
 import { addWritten, loadGoal, saveGoal } from './writing-stats';
 import { CommentPanel } from './comment-panel';
@@ -225,6 +226,8 @@ export class DocumentEditor implements EditorView {
             // DOC-033, DOC-035: readability and focus decorations.
             writingPlugin((score, level, wps) => t('read.label', { score, level: t(`read.${level}` as MessageKey), wps })),
             cellStatePlugin(() => t('code.stale')),
+            // FOLDER-021: `[[` and `#` complete with the notes and tags of the folder (before Enter's keymap).
+            completionPlugin((kind) => this.ctx.completions?.(kind), (kind) => t(kind === 'link' ? 'complete.notes' : 'complete.tags')),
             ...basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
           ],
         }),

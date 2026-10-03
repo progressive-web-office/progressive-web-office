@@ -920,6 +920,8 @@ export const zh: Record<MessageKey, string> = {
   'tpl.inBrowser': '此浏览器中',
   'tpl.inFolder': '文件夹 {path} 中',
   'tpl.savedInFolder': '模板已保存为 {path}：打开该文件夹时可在“模板和示例”中找到。',
+  'complete.notes': '可链接的笔记',
+  'complete.tags': '标签',
   'tpl.mine': '我的模板',
   'tpl.mineEmpty': '暂无：打开文档并在“另存为”中选择“另存为模板…”。',
   'tpl.delete': '删除模板 {name}',

@@ -1107,3 +1107,21 @@ body.distraction-free .ai-panel { display: none !important; }
 .notes-graph { max-height: 70vh; overflow: auto; background: #fff; border-radius: 6px; padding: 6px; }
 .notes-graph svg { display: block; max-width: none; margin: 0 auto; }
 .folder-related-why { display: block; margin-left: 1.6rem; font-size: 0.75rem; color: var(--muted); }
+
+/* FOLDER-021: completion of [[links]] and #tags in a note. */
+.completion-list {
+  position: absolute;
+  z-index: 60;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  min-width: 12rem;
+  max-width: 24rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+  font-size: 0.9rem;
+}
+.completion-list li { padding: 4px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.completion-list li[aria-selected='true'] { background: var(--accent); color: var(--accent-contrast, #fff); }

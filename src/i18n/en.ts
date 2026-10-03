@@ -918,6 +918,8 @@ export const en = {
   'tpl.inBrowser': 'In this browser',
   'tpl.inFolder': 'In the folder {path}',
   'tpl.savedInFolder': 'Template saved as {path}: find it in Templates and examples while the folder is open.',
+  'complete.notes': 'Notes to link to',
+  'complete.tags': 'Tags',
   'tpl.mine': 'My templates',
   'tpl.mineEmpty': 'None yet: open a document and choose “Save as template…” in Save as.',
   'tpl.delete': 'Delete the template {name}',

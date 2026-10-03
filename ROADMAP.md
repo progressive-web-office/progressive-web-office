@@ -87,8 +87,10 @@ group is not a commitment.
 - ✅ Typography as you type (DOC-031) and text transforms (DOC-032)
 - ✅ Readability (DOC-033), writing goals and statistics with a focus timer
   (DOC-034), focus and typewriter modes (DOC-035)
+- ✅ Completion of links (`[[`) and tags (`#`) in the notes of a folder
+  (FOLDER-021)
 - Snippets with fields (`${1:title}`, date, clipboard) inserted from a list,
-  and autocompletion of citations (`@`), tags (`#`), links (`[[`) and emoji
+  and autocompletion of citations (`@`) and emoji
 - Citation styles from CSL files (APA, Chicago, ISO 690…) and a reference
   library kept in sync with Zotero (Better BibTeX export)
 
