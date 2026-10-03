@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **History of a document in its repository** (VER-002, VER-003): the
+  commits that changed it, each compared with the one before or with the
+  document as it is now, opened, or restored by a new commit; **comparison
+  of versions** (VER-001): lines added, removed, changed word by word, or the
+  cells changed in a workbook — also for the versions kept in the browser.
 - Documentation of Git accounts rewritten: what needs a token, creating a
   personal access token forge by forge (GitHub fine-grained and classic,
   organisations and SSO, GitHub Enterprise, gitlab.com scopes and roles,

@@ -102,6 +102,9 @@ There you can:
 
 - **Keep the current state** as a version, with an optional name ("Sent to
   the class");
+- **Compare with now**: what changed since that version — lines added,
+  removed or changed, the words struck through or underlined (see
+  [Comparing versions](./git.md#comparing-versions));
 - **Open** an older version: it replaces the content of the document, which
   stays where it is, so saving makes it the current one;
 - **⬇ Download** a version as a file, or **✕** delete it.

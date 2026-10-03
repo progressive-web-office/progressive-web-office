@@ -478,3 +478,78 @@ test('another repository never shows the files of the one before, and tells who 
   await expect(page.getByRole('dialog', { name: /Visibility and collaborators/ }).locator('.git-visibility')).toHaveText('🌐 Public');
   expect(errors.filter((e) => !/404|500/.test(e))).toEqual([]);
 });
+
+test('shows the history of a document, what each commit changed, and restores an older version (VER-001..VER-003)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.evaluate(() => localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_test', label: 'github.com' }])));
+  const versions: Record<string, string> = { c3: '# Report\n\nThe results are good.\n', c2: '# Report\n\nThe results are bad.\n', c1: '# Report\n' };
+  const puts: Record<string, string>[] = [];
+  await page.route(`${API}/**`, async (route: Route) => {
+    const req = route.request();
+    const url = new URL(req.url());
+    const p = url.pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (p === '/user/repos') return json([]);
+    if (p === '/repos/me/notes') return json({ full_name: 'me/notes', default_branch: 'main', private: true, visibility: 'private', permissions: { push: true, pull: true } });
+    if (p === '/repos/me/notes/branches') return json([{ name: 'main' }]);
+    if (p === '/repos/me/notes/contents') return json([{ name: 'report.md', path: 'report.md', type: 'file', size: 30 }]);
+    if (p.startsWith('/repos/me/notes/git/trees/')) return json({ tree: [{ path: 'report.md', type: 'blob', sha: 'b3', size: 30 }], truncated: false });
+    if (p === '/repos/me/notes/commits') {
+      return json([
+        { sha: 'c3', commit: { message: 'docs: good results', author: { name: 'Ann', date: '2026-10-03T10:00:00Z' } }, author: { login: 'ann' } },
+        { sha: 'c2', commit: { message: 'docs: first results', author: { name: 'Bob', date: '2026-10-02T10:00:00Z' } }, author: null },
+        { sha: 'c1', commit: { message: 'docs: add report.md', author: { name: 'Bob', date: '2026-10-01T10:00:00Z' } }, author: null },
+      ]);
+    }
+    if (p === '/repos/me/notes/contents/report.md' && req.method() === 'PUT') {
+      puts.push(req.postDataJSON() as Record<string, string>);
+      return json({ content: { sha: 'b4' } });
+    }
+    if (p === '/repos/me/notes/contents/report.md') {
+      const ref = url.searchParams.get('ref') ?? 'main';
+      const text = versions[ref] ?? versions.c3!;
+      return json({ type: 'file', sha: ref === 'main' ? 'b3' : `b-${ref}`, content: b64(text), encoding: 'base64' });
+    }
+    return json({ message: 'Not Found' }, 404);
+  });
+  await page.getByRole('button', { name: 'Open from repository…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Open from repository' });
+  await dialog.getByLabel('Repository address').fill('https://github.com/me/notes/blob/main/report.md');
+  await expect(page.locator('.doc-page h1')).toHaveText('Report');
+  // The history, from the repository shown above the document.
+  await page.locator('.doc-source').click();
+  await page.getByLabel('History of this document…').check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  const history = page.getByRole('dialog', { name: 'History of report.md' });
+  await expect(history.getByText('3 commits on main.')).toBeVisible();
+  await expect(history.locator('.history-list li')).toHaveCount(3);
+  await expect(history.locator('.history-list li').first()).toContainText('docs: good results — Ann (@ann)');
+  // What the newest commit changed: a word.
+  await history.locator('.history-list li').first().getByRole('button', { name: 'Changes made' }).click();
+  const diff = page.getByRole('dialog', { name: 'Changes in report.md' });
+  await expect(diff.locator('del', { hasText: 'bad' })).toBeVisible();
+  await expect(diff.locator('ins', { hasText: 'good' })).toBeVisible();
+  await expect(diff.getByText('0 lines added, 0 removed, 1 changed.')).toBeVisible();
+  await diff.getByRole('button', { name: 'Close' }).click();
+  await history.getByRole('button', { name: 'Close' }).click();
+  // Compared with the document as it is now, unsaved changes included.
+  await page.locator('.doc-page p').first().click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' Really.');
+  await page.locator('.doc-source').click();
+  await page.getByLabel('History of this document…').check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await history.locator('.history-list li').first().getByRole('button', { name: 'Compare with now' }).click();
+  await expect(diff.locator('ins', { hasText: 'Really' })).toBeVisible();
+  await diff.getByRole('button', { name: 'Close' }).click();
+  // The oldest version restored: a new commit puts it back.
+  page.once('dialog', (d) => void d.accept());
+  await history.locator('.history-list li').nth(2).getByRole('button', { name: 'Restore…' }).click();
+  page.once('dialog', (d) => void d.accept());
+  await expect(page.getByRole('alert')).toContainText('report.md restored as it was on');
+  expect(puts).toHaveLength(1);
+  expect(Buffer.from(puts[0]!.content!, 'base64').toString()).toBe('# Report\n');
+  expect(puts[0]).toMatchObject({ message: 'docs: restore report.md as of c1', branch: 'main', sha: 'b3' });
+  await expect(page.locator('.doc-page p')).toHaveCount(0);
+  expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
+});

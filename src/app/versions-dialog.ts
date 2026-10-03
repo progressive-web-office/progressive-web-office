@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import type { VersionEntry } from '../storage/recent';
 
 export interface VersionChoice {
-  action: 'save' | 'open' | 'download' | 'delete';
+  action: 'save' | 'open' | 'download' | 'delete' | 'compare';
   version?: VersionEntry;
   label?: string;
 }
@@ -31,6 +31,8 @@ export function chooseVersion(host: HTMLElement, name: string, versions: Version
           'span',
           { class: 'version-actions' },
           button(t('versions.open'), () => finish({ action: 'open', version: v })),
+          // VER-001: what changed since this version.
+          button(t('versions.compare'), () => finish({ action: 'compare', version: v })),
           button(t('versions.download'), () => finish({ action: 'download', version: v }), { text: '⬇', className: 'icon' }),
           button(t('comment.delete'), () => {
             if (window.confirm(t('versions.deleteConfirm'))) finish({ action: 'delete', version: v });

@@ -1,5 +1,5 @@
 /** GitLab REST API v4 client (gitlab.com or self-hosted). */
-import { fromBase64, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitMember, type GitRepo, type GitRole, type GitTreeEntry } from './types';
+import { fromBase64, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitCommit, type GitMember, type GitRepo, type GitRole, type GitTreeEntry } from './types';
 
 interface ProjectJson {
   id: number;
@@ -66,6 +66,11 @@ export class GitLabClient implements GitClient {
   async listDir(repo: string, ref: string, path: string): Promise<GitEntry[]> {
     const items = await this.req<{ name: string; path: string; type: string }[]>(`/projects/${q(repo)}/repository/tree?ref=${q(ref)}&per_page=100${path ? `&path=${q(path)}` : ''}`);
     return sortEntries(items.filter((i) => i.type === 'blob' || i.type === 'tree').map((i) => ({ name: i.name, path: i.path, type: i.type === 'tree' ? 'dir' : 'file' })));
+  }
+
+  async listCommits(repo: string, ref: string, path: string): Promise<GitCommit[]> {
+    const list = await this.req<{ id: string; title?: string; message?: string; author_name?: string; authored_date?: string }[]>(`/projects/${q(repo)}/repository/commits?ref_name=${q(ref)}&path=${q(path)}&per_page=100`);
+    return list.map((c) => ({ id: c.id, message: (c.title ?? c.message ?? '').split('\n')[0]!, author: c.author_name ?? '?', date: c.authored_date ?? '' }));
   }
 
   async listCollaborators(repo: string): Promise<GitMember[]> {

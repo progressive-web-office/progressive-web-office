@@ -1,5 +1,5 @@
 /** GitHub REST API client (github.com or Enterprise `/api/v3`). */
-import { encodePath, fromBase64, GitError, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitMember, type GitRepo, type GitRole, type GitTreeEntry } from './types';
+import { encodePath, fromBase64, GitError, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitCommit, type GitMember, type GitRepo, type GitRole, type GitTreeEntry } from './types';
 
 interface Permissions {
   admin?: boolean;
@@ -138,6 +138,16 @@ export class GitHubClient implements GitClient {
     const commit = await this.req<{ sha: string }>(`${r}/git/commits`, { method: 'POST', body: JSON.stringify({ message, tree: newTree.sha, parents: [head] }) });
     // 422: not a fast-forward, the branch moved since.
     await this.req(`${r}/git/refs/heads/${encodePath(branch)}`, { method: 'PATCH', body: JSON.stringify({ sha: commit.sha, force: false }) }, (status) => status === 422);
+  }
+
+  async listCommits(repo: string, ref: string, path: string): Promise<GitCommit[]> {
+    const list = await this.req<{ sha: string; commit: { message: string; author?: { name?: string; date?: string } | null }; author?: { login?: string } | null }[]>(
+      `/repos/${encodePath(repo)}/commits?sha=${encodeURIComponent(ref)}&path=${encodeURIComponent(path)}&per_page=100`,
+    );
+    return list.map((c) => {
+      const name = c.commit.author?.name ?? c.author?.login ?? '?';
+      return { id: c.sha, message: c.commit.message.split('\n')[0]!, author: c.author?.login && c.author.login !== name ? `${name} (@${c.author.login})` : name, date: c.commit.author?.date ?? '' };
+    });
   }
 
   async listCollaborators(repo: string): Promise<GitMember[]> {

@@ -324,3 +324,32 @@ describe('GIT-013 who can see a repository, and who works on it', () => {
     ]);
   });
 });
+
+describe('VER-002 the history of a file', () => {
+  it('lists the commits of a file on GitHub, newest first', async () => {
+    const API = 'https://api.github.com';
+    const m = mockFetch({
+      [`GET ${API}/repos/me/notes/commits`]: () => ({
+        json: [
+          { sha: 'c2', commit: { message: 'docs: update notes.md\n\nMore words', author: { name: 'Ann', date: '2026-10-02T10:00:00Z' } }, author: { login: 'ann' } },
+          { sha: 'c1', commit: { message: 'docs: add notes.md', author: { name: 'Bob', date: '2026-10-01T09:00:00Z' } }, author: null },
+        ],
+      }),
+    });
+    const client = new GitHubClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.listCommits('me/notes', 'main', 'docs/notes.md')).toEqual([
+      { id: 'c2', message: 'docs: update notes.md', author: 'Ann (@ann)', date: '2026-10-02T10:00:00Z' },
+      { id: 'c1', message: 'docs: add notes.md', author: 'Bob', date: '2026-10-01T09:00:00Z' },
+    ]);
+    expect(m.calls[0]!.url).toContain('sha=main');
+    expect(m.calls[0]!.url).toContain('path=docs%2Fnotes.md');
+  });
+
+  it('lists the commits of a file on GitLab', async () => {
+    const API = 'https://gitlab.example.org/api/v4';
+    const m = mockFetch({ [`GET ${API}/projects/7/repository/commits`]: () => ({ json: [{ id: 'g1', title: 'docs: add a.md', message: 'docs: add a.md\n', author_name: 'Léa', authored_date: '2026-10-01T09:00:00Z' }] }) });
+    const client = new GitLabClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.listCommits('7', 'main', 'a.md')).toEqual([{ id: 'g1', message: 'docs: add a.md', author: 'Léa', date: '2026-10-01T09:00:00Z' }]);
+    expect(m.calls[0]!.url).toContain('ref_name=main');
+  });
+});

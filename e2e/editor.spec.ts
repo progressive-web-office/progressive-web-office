@@ -535,6 +535,11 @@ test('keeps a version at each save and opens an older one (FILE-025)', async ({ 
   // The list comes back with the new version.
   await expect(dialog.getByRole('listitem')).toHaveCount(3);
   await expect(dialog.getByRole('listitem').first()).toContainText('Before review');
+  // VER-001: what changed since the first version.
+  await dialog.getByRole('listitem').last().getByRole('button', { name: 'Compare with now' }).click();
+  const diff = page.getByRole('dialog', { name: /^Changes in/ });
+  await expect(diff.locator('ins', { hasText: 'Second part.' })).toBeVisible();
+  await diff.getByRole('button', { name: 'Close' }).click();
   await dialog.getByRole('listitem').last().getByRole('button', { name: 'Open' }).click();
   await expect(editor).toHaveText('First draft.');
 });

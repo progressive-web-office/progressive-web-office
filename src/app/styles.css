@@ -1451,3 +1451,20 @@ body.distraction-free .ai-panel { display: none !important; }
 .git-people { list-style: none; padding: 0; margin: 4px 0; max-height: 12rem; overflow: auto; }
 .git-people li { padding: 2px 0; }
 .git-role { font-weight: 600; }
+
+/* VER-001..VER-003: history and comparison of versions. */
+.diff-dialog, .history-dialog { width: min(900px, calc(100vw - 32px)); }
+.diff-legend del, .diff del { background: color-mix(in srgb, #d32f2f 18%, transparent); text-decoration: line-through; text-decoration-color: #b71c1c; }
+.diff-legend ins, .diff ins { background: color-mix(in srgb, #2e7d32 20%, transparent); text-decoration: none; }
+.diff-lines { font-family: ui-monospace, 'Cascadia Code', Menlo, monospace; font-size: 0.85rem; max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.diff-line { display: flex; gap: 6px; padding: 1px 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.diff-line.added { background: color-mix(in srgb, #2e7d32 8%, transparent); }
+.diff-line.removed { background: color-mix(in srgb, #d32f2f 8%, transparent); }
+.diff-line.changed { background: color-mix(in srgb, #f9a825 8%, transparent); }
+.diff-mark { width: 1em; flex: none; color: var(--muted); text-align: center; }
+.diff-fold { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: color-mix(in srgb, var(--muted) 10%, transparent); color: var(--muted); font-size: 0.8rem; }
+.diff-cells { border-collapse: collapse; width: 100%; }
+.diff-cells th, .diff-cells td { border: 1px solid var(--border); padding: 2px 6px; text-align: left; }
+.history-list { padding-left: 1.2rem; max-height: 60vh; overflow: auto; }
+.history-list li { margin: 6px 0; }
+.history-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }

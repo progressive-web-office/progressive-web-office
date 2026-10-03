@@ -272,6 +272,49 @@ button:
   give, and opens it in a new tab. Save first: changes not yet committed are
   not part of the request.
 
+## History of a document
+
+Git keeps every committed version of every file. For a document of a
+repository, **History of this document…** — in the menu of the repository
+shown above the document (`🔒 owner/name · main`), or in **⎇** of the folder
+panel for the document open — lists the **commits that changed it** on the
+branch, newest first, with their message, author and date. For each one:
+
+- **Changes made** — what that commit changed, compared with the one before;
+- **Compare with now** — the differences between that version and the
+  document as it is on screen, unsaved changes included;
+- **Open** — the version replaces the content of the document, which stays
+  where it is: read it, or save it to make it the newest one;
+- **Restore…** — after a confirmation, a **new commit** puts that version
+  back (`docs: restore report.md as of 1a2b3c4`). Nothing of the history is
+  lost: the versions in between stay, and can be restored in turn.
+
+The versions kept in the browser (**🕘 History**, see
+[Versions](./getting-started.md#versions)) can be compared the same way.
+
+### Comparing versions
+
+The comparison shows, in one column:
+
+- lines **added** (green, `+`), **removed** (red, struck through, `−`), and
+  **changed**, with the words that went struck through in red and those that
+  came underlined in green;
+- unchanged lines folded around the changes (*… 12 unchanged lines* opens
+  them);
+- a count: *3 lines added, 1 removed, 2 changed*.
+
+What is compared depends on the file:
+
+| File | Compared as |
+|------|-------------|
+| Markdown, LaTeX, CSV, code and other text files | their text, line by line |
+| Word (`.docx`), OpenDocument (`.odt`), MDZ | their text in Markdown: headings, emphasis, lists, tables, equations, citations |
+| Excel (`.xlsx`), OpenDocument spreadsheets (`.ods`) | their cells: sheet, cell, value or formula before and after |
+| PDF, presentations, pictures | not compared: open each version |
+
+This is why text formats are proposed first in a repository: their history
+reads line by line on the forge too.
+
 ## A repository as a folder
 
 Opening a file from a repository also shows the repository in the folder

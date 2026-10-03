@@ -543,6 +543,14 @@ integration is ever needed.
 | DEVSYNC-004 | S | 0.2.0 | A document deleted, or replaced by another device's version, shall go to the device's trash, kept 30 days. |
 | DEVSYNC-005 | S | 0.2.0 | The system shall check every path received from another device and serve only the synchronised documents. |
 
+## 9r. Versions and history (VER)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| VER-001 | S | 0.2.0 | The system shall compare two versions of a file: text files line by line, documents as their Markdown text, workbooks cell by cell; showing the lines added, removed and changed (word by word) with the unchanged ones folded, or the cells changed, and a count; it shall compare a version kept in the browser with the document as it is now. |
+| VER-002 | S | 0.2.0 | For a document of a GitHub or GitLab repository, the system shall list the commits that changed it on its branch, newest first, with message, author and date, and compare each with the one before or with the document as it is now (unsaved changes included). |
+| VER-003 | S | 0.2.0 | The system shall open a version of the history in place of the document's content, the document staying where it is, and restore a version as a new commit, after a confirmation, the history kept as it is. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.

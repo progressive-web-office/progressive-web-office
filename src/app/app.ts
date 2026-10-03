@@ -465,9 +465,12 @@ export class App {
     const { repo, branch } = source;
     const newBranch = t('git.workOnNewBranch');
     const propose = t(source.account.provider === 'gitlab' ? 'git.proposeMerge' : 'git.proposePull', { base: repo.defaultBranch });
-    const options = [newBranch, ...(branch !== repo.defaultBranch ? [propose] : [])];
-    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
+    const history = t('history.menu');
+    const options = [history, newBranch, ...(branch !== repo.defaultBranch ? [propose] : [])];
+    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, history, t('common.continue'));
     if (!choice) return;
+    // VER-002: the commits of this document, compared, opened or restored.
+    if (choice === history) return this.showRepoHistory(client, repo.id, branch, source.path);
     try {
       if (choice === newBranch) {
         const name = window.prompt(t('git.newBranchPrompt', { from: branch }), `pwo/${new Date().toISOString().slice(0, 10)}`)?.trim();
@@ -1435,6 +1438,54 @@ export class App {
    * propose the changes of this branch to the default one (pull request on
    * GitHub, merge request on GitLab).
    */
+  /**
+   * VER-002, VER-003: the history of the open document in its repository;
+   * a version opened replaces the content (the document stays where it is),
+   * a version restored is committed back.
+   */
+  private async showRepoHistory(client: import('../git/types').GitClient, repo: string, branch: string, path: string, folder?: import('../git/provider').GitRepoProvider): Promise<void> {
+    const doc = this.current;
+    if (!doc?.view.save) return;
+    const { historyDialog } = await import('../git/history');
+    const choice = await historyDialog(this.root, { client, repo, branch, path, current: async () => doc.view.save!(doc.format) });
+    if (!choice || this.current !== doc) return;
+    const when = new Date(choice.commit.date).toLocaleString();
+    const name = basename(path);
+    if (choice.action === 'restore') {
+      if (!this.confirmDiscard()) return;
+      await this.withBusy(async () => {
+        try {
+          const message = `docs: restore ${name} as of ${choice.commit.id.slice(0, 7)}`;
+          let version: string | undefined;
+          if (folder) await folder.write(path, new Blob([choice.bytes as BlobPart]));
+          else version = (await client.writeFile(repo, branch, path, choice.bytes, message, doc.source?.version ?? (await client.readFile(repo, branch, path)).version)).version;
+          const { source, folderPath } = doc;
+          if (!(await this.openBytes(name, choice.bytes))) return;
+          const now = this.current;
+          if (now) Object.assign(now, { ...(source ? { source: { ...source, ...(version ? { version } : {}) } } : {}), ...(folderPath ? { folderPath } : {}) });
+          this.dirty = false;
+          this.renderHeader();
+          this.showNotice(t('history.restored', { name, when, id: choice.commit.id.slice(0, 7) }));
+        } catch (err) {
+          this.showError(t('error.git', { message: (err as Error).message }));
+        }
+      });
+      return;
+    }
+    // Opened: in place of the content, to read it or save it as the newest version.
+    if (!this.confirmDiscard()) return;
+    const { source, folderPath } = doc;
+    await this.withBusy(async () => {
+      if (!(await this.openBytes(name, choice.bytes))) return;
+      const now = this.current;
+      if (!now) return;
+      Object.assign(now, { ...(source ? { source } : {}), ...(folderPath ? { folderPath } : {}) });
+      this.dirty = true;
+      this.renderHeader();
+      this.showNotice(t('history.opened', { when }));
+    });
+  }
+
   /** GIT-013: the visibility of a repository opened as a folder, the role of the account and the collaborators. */
   private async showRepoInfo(folder: import('../git/provider').GitRepoProvider): Promise<void> {
     const { repoInfo } = await import('../git/info');
@@ -1463,8 +1514,11 @@ export class App {
     const newBranch = t('git.workOnNewBranch');
     const other = t('git.switchBranch');
     const propose = t(client.provider === 'gitlab' ? 'git.proposeMerge' : 'git.proposePull', { base: repo.defaultBranch });
-    const options = [newBranch, other, ...(branch !== repo.defaultBranch ? [propose] : [])];
-    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
+    const history = t('history.menu');
+    const openPath = this.current?.folderPath;
+    const options = [...(openPath ? [history] : []), newBranch, other, ...(branch !== repo.defaultBranch ? [propose] : [])];
+    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, openPath ? history : branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
+    if (choice === history && openPath) return this.showRepoHistory(client, repo.id, branch, openPath, folder);
     if (!choice || !this.confirmDiscard()) return;
     try {
       if (choice === newBranch) {
@@ -2059,6 +2113,13 @@ export class App {
       }
       const bytes = await loadVersion(v.id);
       if (!bytes) return this.showError(t('versions.missing'));
+      if (choice.action === 'compare') {
+        const [{ versionView }, { showDiff }] = await Promise.all([import('../diff/views'), import('../diff/ui')]);
+        const now = await doc.view.save(doc.format);
+        const [before, after] = await Promise.all([versionView(v.name, bytes), versionView(doc.name, now)]);
+        await showDiff(this.root, t('diff.title', { name: doc.name }), [new Date(v.savedAt).toLocaleString(), t('history.now')], before, after);
+        continue;
+      }
       if (choice.action === 'download') {
         const stamp = new Date(v.savedAt).toISOString().slice(0, 16).replace(/[-:]/g, '').replace('T', '-');
         await saveFile(bytes, v.name.replace(/(\.[^.]+)?$/, `-${stamp}$1`), v.format);

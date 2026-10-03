@@ -80,6 +80,19 @@ export interface GitClient {
   createPullRequest(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; url: string }>;
   /** GIT-013: the people who work on the repository (needs a role allowed to see them). */
   listCollaborators(repo: string): Promise<GitMember[]>;
+  /** VER-002: the commits that changed a file on a branch, newest first. */
+  listCommits(repo: string, ref: string, path: string): Promise<GitCommit[]>;
+}
+
+/** A commit of the history of a file (VER-002). */
+export interface GitCommit {
+  /** Commit id, usable as a ref to read the file as it was. */
+  id: string;
+  /** First line of the message. */
+  message: string;
+  author: string;
+  /** ISO date. */
+  date: string;
 }
 
 export interface ClientConfig {
