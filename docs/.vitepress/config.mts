@@ -42,6 +42,7 @@ export default defineConfig({
           { text: 'Spreadsheets', link: '/guide/spreadsheets' },
           { text: 'Presentations', link: '/guide/presentations' },
           { text: 'PDF', link: '/guide/pdf' },
+          { text: 'Forms', link: '/guide/forms' },
           { text: 'Reading and reviewing', link: '/guide/review' },
           { text: 'Settings', link: '/guide/settings' },
           { text: 'Printing', link: '/guide/printing' },

@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Forms (FORM-001, FORM-002): **design a PDF form** by drawing its fields on
+  the pages — text, paragraph, check box, drop-down list, option buttons —
+  named, required or not, renamed or removed; saved as real AcroForm fields.
+  **Compile form answers** gathers the filled copies (picked, or the PDF
+  files of the open folder) into a new spreadsheet: one row per file, one
+  column per field.
+
 - Command palette in sight and complete (UI-022): a **⌘ Commands** button
   in the header and a round button on a phone (the palette then full screen);
   the commands folded in the toolbars' menus (Insert, Share…) and those of

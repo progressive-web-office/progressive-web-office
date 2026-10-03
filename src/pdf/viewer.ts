@@ -3,13 +3,14 @@
  * (PDF-008..PDF-015), built on pdf.js for rendering and pdf-lib for saving.
  */
 // The legacy build ships polyfills (e.g. Map.prototype.getOrInsertComputed) needed by current browsers.
+import { drawnRect, fieldDialog, freeName, KIND_ICONS, kindLabel } from './form-design';
 import { t, type MessageKey } from '../i18n';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { button, h } from '../app/dom';
 import type { EditorView, SaveVariant, ViewContext } from '../app/views';
-import { applyEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from './forms';
+import { applyEdits, NEW_FIELD_KINDS, type NewField, type NewFieldKind, type PdfEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from './forms';
 import { captureSignature } from './signature-pad';
 import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
 import { findInPages, type PdfMatch } from './find';
@@ -82,6 +83,14 @@ export class PdfViewer implements EditorView {
   private current = 1;
   private observer: IntersectionObserver | undefined;
   private values: Record<string, string | boolean | string[]> = {};
+  // FORM-001: the form's design: fields drawn, removed, renamed.
+  private designing = false;
+  private designKind: NewFieldKind | null = null;
+  private newFields: NewField[] = [];
+  private removedFields = new Set<string>();
+  private renamedFields: Record<string, string> = {};
+  private readonly designBar = h('div', { class: 'toolbar pdf-design-bar', role: 'toolbar', 'aria-label': t('form.design'), hidden: true });
+  private readonly kindButtons = new Map<NewFieldKind, HTMLButtonElement>();
   private stamps: Stamp[] = [];
   private resizeObserver: ResizeObserver | undefined;
   /** PDF-017: text search. */
@@ -130,8 +139,10 @@ export class PdfViewer implements EditorView {
         this.closeFind();
       }
     });
-    this.element = h('div', { class: 'pdf-viewer' }, this.toolbar(), this.findBar, notice, h('div', { class: 'pdf-body' }, this.scroller, this.notesPanel));
+    this.element = h('div', { class: 'pdf-viewer' }, this.toolbar(), this.designBar, this.findBar, notice, h('div', { class: 'pdf-body' }, this.scroller, this.notesPanel));
     this.pagesEl.addEventListener('click', (e) => this.placeNote(e));
+    this.buildDesignBar();
+    this.pagesEl.addEventListener('pointerdown', (e) => this.startDrawing(e));
     void this.loadExistingNotes();
     this.element.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
@@ -209,8 +220,14 @@ export class PdfViewer implements EditorView {
 
   /** Save with the form fields still editable, for later changes (PDF-009). */
   async save(): Promise<Uint8Array> {
-    if (!Object.keys(this.values).length && !this.stamps.length && !this.notes.length) return this.bytes;
-    return applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: false, notes: this.notes });
+    const designed = this.newFields.length || this.removedFields.size || Object.keys(this.renamedFields).length;
+    if (!Object.keys(this.values).length && !this.stamps.length && !this.notes.length && !designed) return this.bytes;
+    return applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: false, notes: this.notes, ...this.design() });
+  }
+
+  /** FORM-001: the design to apply on saving. */
+  private design(): Pick<PdfEdits, 'newFields' | 'removedFields' | 'renamedFields'> {
+    return { newFields: this.newFields, removedFields: [...this.removedFields], renamedFields: this.renamedFields };
   }
 
   /** "Flattened PDF": a copy whose filled fields become part of the page (PDF-010). */
@@ -222,7 +239,7 @@ export class PdfViewer implements EditorView {
         label: t('pdf.saveFlattened'),
         format: 'pdf',
         suffix: t('pdf.flattenedSuffix'),
-        save: () => applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: true, notes: this.notes }),
+        save: () => applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: true, notes: this.notes, ...this.design() }),
       },
     ];
   }
@@ -239,6 +256,146 @@ export class PdfViewer implements EditorView {
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
     this.release();
+  }
+
+  // --- form design (FORM-001) -----------------------------------------------------------
+
+  private buildDesignBar(): void {
+    for (const kind of NEW_FIELD_KINDS) {
+      const b = button(kindLabel(kind), () => this.setDesignKind(this.designKind === kind ? null : kind), { text: `${KIND_ICONS[kind]} ${kindLabel(kind)}`, title: t('form.drawHint'), pressed: false });
+      this.kindButtons.set(kind, b);
+    }
+    this.designBar.append(
+      h('span', { class: 'pdf-design-label' }, t('form.design')),
+      ...this.kindButtons.values(),
+      h('span', { class: 'sep' }),
+      h('span', { class: 'hint pdf-design-hint' }, t('form.drawHint')),
+      h('span', { class: 'sep' }),
+      button(t('form.done'), () => this.setDesigning(false), { text: `✓ ${t('form.done')}`, className: 'primary' }),
+    );
+  }
+
+  setDesigning(on: boolean): void {
+    this.designing = on;
+    this.designBar.hidden = !on;
+    this.element.classList.toggle('designing', on);
+    if (!on) this.setDesignKind(null);
+    else if (!this.designKind) this.setDesignKind('text');
+    for (const p of this.pages) if (p.rendered) this.renderDesignLayer(p);
+    this.ctx.statusChanged();
+  }
+
+  private setDesignKind(kind: NewFieldKind | null): void {
+    this.designKind = kind;
+    for (const [k, b] of this.kindButtons) b.setAttribute('aria-pressed', String(k === kind));
+  }
+
+  /** Names of the fields as they will be. */
+  private fieldNames(): Set<string> {
+    const names = new Set<string>();
+    for (const f of this.info.fields) if (!this.removedFields.has(f.name)) names.add(this.renamedFields[f.name] ?? f.name);
+    for (const f of this.newFields) names.add(f.name);
+    return names;
+  }
+
+  /** A field drawn with the pointer (or placed by a click) on a page. */
+  private startDrawing(e: PointerEvent): void {
+    const kind = this.designKind;
+    if (!this.designing || !kind || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('.pdf-design-field')) return;
+    const el = (e.target as HTMLElement).closest<HTMLElement>('.pdf-page');
+    const page = el ? this.pages[Number(el.dataset.page) - 1] : undefined;
+    const layer = el?.querySelector<HTMLElement>('.pdf-design-layer');
+    if (!page?.viewport || !el || !layer) return;
+    e.preventDefault();
+    const b = el.getBoundingClientRect();
+    const start = [e.clientX - b.left, e.clientY - b.top] as const;
+    const preview = h('div', { class: 'pdf-design-field drawing' });
+    layer.append(preview);
+    const move = (ev: PointerEvent): void => {
+      const x = ev.clientX - b.left;
+      const y = ev.clientY - b.top;
+      this.place(preview, { left: Math.min(x, start[0]), top: Math.min(y, start[1]), width: Math.abs(x - start[0]), height: Math.abs(y - start[1]) });
+    };
+    const up = (ev: PointerEvent): void => {
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      preview.remove();
+      const a = page.viewport!.convertToPdfPoint(start[0], start[1]) as [number, number];
+      const z = page.viewport!.convertToPdfPoint(ev.clientX - b.left, ev.clientY - b.top) as [number, number];
+      void this.addField(kind, page.index, drawnRect(kind, a, z));
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+  }
+
+  private async addField(kind: NewFieldKind, page: number, rect: NewField['rect']): Promise<void> {
+    const taken = this.fieldNames();
+    const groups = [...new Set([...this.info.fields.filter((f) => f.type === 'radio' && !this.removedFields.has(f.name)).map((f) => this.renamedFields[f.name] ?? f.name), ...this.newFields.filter((f) => f.kind === 'radio').map((f) => f.name)])];
+    const lastGroup = kind === 'radio' ? this.newFields.filter((f) => f.kind === 'radio').at(-1)?.name : undefined;
+    const props = await fieldDialog(this.element, kind, { name: lastGroup ?? freeName(kind, taken), taken, groups });
+    if (!props) return;
+    this.newFields.push({ kind, page, rect, ...props, ...(kind === 'radio' && !props.option ? { option: String(this.newFields.filter((f) => f.name === props.name).length + 1) } : {}) });
+    this.designChanged(page);
+  }
+
+  private designChanged(page?: number): void {
+    this.ctx.changed();
+    for (const p of this.pages) if (p.rendered && (page === undefined || p.index === page)) this.renderDesignLayer(p);
+    this.ctx.statusChanged();
+  }
+
+  /** The fields of a page, framed and named, in design mode. */
+  private renderDesignLayer(page: PageShell): void {
+    const layer = page.el.querySelector<HTMLElement>('.pdf-design-layer');
+    if (!layer || !page.viewport) return;
+    layer.replaceChildren();
+    if (!this.designing) return;
+    const frame = (name: string, rect: [number, number, number, number], kind: string, menu: () => void): void => {
+      const box = h('div', { class: `pdf-design-field ${kind}`, title: name, tabindex: '0', role: 'button', 'aria-label': name }, h('span', { class: 'pdf-design-name' }, name));
+      this.place(box, this.rect(page.viewport!, rect));
+      box.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu();
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Delete') {
+          e.preventDefault();
+          menu();
+        }
+      });
+      layer.append(box);
+    };
+    for (const f of this.info.fields) {
+      if (this.removedFields.has(f.name)) continue;
+      const shown = this.renamedFields[f.name] ?? f.name;
+      for (const w of f.widgets) if (w.page === page.index) frame(shown, w.rect, f.type, () => this.fieldMenu(page, w.rect, { existing: f.name, name: shown }));
+    }
+    this.newFields.forEach((f, i) => {
+      if (f.page === page.index) frame(f.kind === 'radio' && f.option ? `${f.name} = ${f.option}` : f.name, f.rect, `new ${f.kind}`, () => this.fieldMenu(page, f.rect, { added: i, name: f.name }));
+    });
+  }
+
+  /** Rename or remove a field. */
+  private fieldMenu(page: PageShell, rect: [number, number, number, number], field: { existing?: string; added?: number; name: string }): void {
+    const box = this.rect(page.viewport!, rect);
+    const b = page.el.getBoundingClientRect();
+    const rename = (): void => {
+      const name = window.prompt(t('form.renamePrompt'), field.name)?.trim();
+      if (!name || name === field.name) return;
+      if (this.fieldNames().has(name)) return void window.alert(t('form.nameTaken'));
+      if (field.existing !== undefined) this.renamedFields[field.existing] = name;
+      else for (const f of this.newFields) if (f.name === field.name) f.name = name;
+      this.designChanged();
+    };
+    const remove = (): void => {
+      if (field.existing !== undefined) this.removedFields.add(field.existing);
+      else if (field.added !== undefined) this.newFields.splice(field.added, 1);
+      this.designChanged();
+    };
+    void import('../app/context-menu').then(({ openContextMenu }) =>
+      openContextMenu(b.left + box.left, b.top + box.top + box.height, [{ title: field.name }, { label: t('form.rename'), icon: '✎', run: rename }, { label: t('form.delete'), icon: '🗑', run: remove }], { label: field.name }),
+    );
   }
 
   // --- annotations (PDF-018) ------------------------------------------------------------
@@ -530,6 +687,8 @@ export class PdfViewer implements EditorView {
             h('span', { class: 'sep pdf-form-tool' }),
             button(t('pdf.highlight'), () => this.highlightSelection(), { text: `🖍 ${t('pdf.highlight')}`, title: `${t('pdf.highlightTitle')} (c)` }),
             button(t('pdf.note'), () => this.startNote(), { text: `💬 ${t('pdf.note')}`, title: t('pdf.noteTitle') }),
+            h('span', { class: 'sep' }),
+            button(t('form.design'), () => this.setDesigning(!this.designing), { text: `📝 ${t('form.design')}`, title: t('form.designTitle'), className: 'pdf-design-toggle' }),
           ]
         : []),
     );
@@ -743,8 +902,10 @@ export class PdfViewer implements EditorView {
     const formLayer = h('div', { class: 'pdf-form-layer' });
     const stampLayer = h('div', { class: 'pdf-stamp-layer' });
     const noteLayer = h('div', { class: 'pdf-note-layer' });
-    page.el.replaceChildren(canvas, noteLayer, textLayer, formLayer, stampLayer);
+    const designLayer = h('div', { class: 'pdf-design-layer' });
+    page.el.replaceChildren(canvas, noteLayer, textLayer, formLayer, stampLayer, designLayer);
     this.renderNoteLayer(page);
+    this.renderDesignLayer(page);
     const context = canvas.getContext('2d');
     if (!context) return;
     try {

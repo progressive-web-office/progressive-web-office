@@ -48,8 +48,30 @@ export type Stamp =
   | { kind: 'image'; page: number; x: number; y: number; width: number; height: number; png: Uint8Array }
   | { kind: 'text'; page: number; x: number; y: number; width: number; height: number; text: string; size: number };
 
+/** FORM-001: kinds of fields drawn on a PDF. */
+export const NEW_FIELD_KINDS = ['text', 'multiline', 'checkbox', 'dropdown', 'radio'] as const;
+export type NewFieldKind = (typeof NEW_FIELD_KINDS)[number];
+
+/** FORM-001: a field drawn on a page, made a real AcroForm field on saving. */
+export interface NewField {
+  kind: NewFieldKind;
+  name: string;
+  page: number;
+  /** [x, y, width, height] in PDF points, origin at the bottom-left of the page. */
+  rect: [number, number, number, number];
+  /** Choices of a drop-down list. */
+  options?: string[];
+  /** The value of this button of a radio group (its other buttons are other fields of the same name). */
+  option?: string;
+  required?: boolean;
+}
+
 export interface PdfEdits {
   values: Record<string, string | boolean | string[]>;
+  /** FORM-001: fields drawn, removed and renamed. */
+  newFields?: NewField[];
+  removedFields?: string[];
+  renamedFields?: Record<string, string>;
   stamps: Stamp[];
   flatten: boolean;
   /** Highlights and notes (PDF-018). */
@@ -118,6 +140,38 @@ export async function applyEdits(bytes: Uint8Array, edits: PdfEdits): Promise<Ui
   const { doc, encrypted } = await load(bytes);
   if (encrypted) throw new Error('Encrypted PDF files cannot be modified.');
   const form = doc.getForm();
+  // FORM-001: the form's design first.
+  for (const name of edits.removedFields ?? []) {
+    const field = form.getFieldMaybe(name);
+    if (field) form.removeField(field);
+  }
+  for (const [from, to] of Object.entries(edits.renamedFields ?? {})) form.getFieldMaybe(from)?.acroField.setPartialName(to);
+  const pages0 = doc.getPages();
+  const look = { borderWidth: 1, borderColor: rgb(0.45, 0.5, 0.58), backgroundColor: rgb(0.93, 0.95, 1) };
+  for (const f of edits.newFields ?? []) {
+    const page = pages0[f.page];
+    if (!page) continue;
+    const [x, y, width, height] = f.rect;
+    const at = { x, y, width, height, ...look };
+    let field;
+    if (f.kind === 'radio') {
+      const group = (form.getFieldMaybe(f.name) as PDFRadioGroup | undefined) ?? form.createRadioGroup(f.name);
+      group.addOptionToPage(f.option || `${group.getOptions().length + 1}`, page, at);
+      field = group;
+    } else if (f.kind === 'checkbox') {
+      field = form.createCheckBox(f.name);
+      field.addToPage(page, at);
+    } else if (f.kind === 'dropdown') {
+      field = form.createDropdown(f.name);
+      field.setOptions(f.options ?? []);
+      field.addToPage(page, at);
+    } else {
+      field = form.createTextField(f.name);
+      if (f.kind === 'multiline') field.enableMultiline();
+      field.addToPage(page, at);
+    }
+    if (f.required) field.enableRequired();
+  }
   for (const [name, value] of Object.entries(edits.values)) {
     const field = form.getFieldMaybe(name);
     if (!field || field.isReadOnly()) continue;

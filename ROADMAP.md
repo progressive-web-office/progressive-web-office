@@ -37,6 +37,15 @@ group is not a commitment.
 - Executable notebooks: code cells (Python/JavaScript) that read and write
   the cells of an open workbook
 
+### Forms
+
+- ✅ Design PDF forms by drawing their fields (FORM-001); compile the answers
+  of filled copies into a spreadsheet (FORM-002)
+- Next: form fields in the word processor (OpenDocument form controls, Word
+  content controls), exported to a PDF form directly; answers sent to a Grist
+  table; compiling the answers of OpenDocument and Word forms; an online form
+  (a web page) whose answers come back as files
+
 ### Code cells
 
 - ✅ Completion as you type, with the TypeScript language service for

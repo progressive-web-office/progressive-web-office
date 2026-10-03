@@ -299,6 +299,8 @@ keyboard. Equations are stored as LaTeX in the document model.
 | PDF-017 | S | 0.2.0 | The system shall find a text in the pages of a PDF (Ctrl+F), ignoring case and accents, highlight every match and the current one, show their count, and go to the next and previous matches. |
 | PDF-018 | S | 0.2.0 | The system shall let the user highlight the selected text of a PDF and place notes on its pages, each with a comment, an author (asked once) and a date, listed in an annotations panel with the annotations already in the file; saving shall write them as standard PDF annotations (`/Highlight` with quadrilaterals, `/Text`) with appearance streams, shown by other PDF readers. |
 | PDF-007 | W | — | General PDF content editing; cryptographic digital signatures (PAdES / certificates). |
+| FORM-001 | S | 0.1.0 | When the user designs a PDF form, the system shall let the user draw text, paragraph, check box, drop-down list and option button fields on the pages, name them (unique names), mark them required, rename or remove fields, and save them as AcroForm fields of the file. |
+| FORM-002 | S | 0.1.0 | When the user compiles form answers from several filled PDF files (picked, or those of the open folder), the system shall make a spreadsheet with one row per file and one column per field, typed values (ticked boxes as booleans, plain numbers as numbers), and report the files that could not be read. |
 
 ## 8. User interface & accessibility (UI)
 

@@ -1293,3 +1293,18 @@ body.distraction-free .ai-panel { display: none !important; }
   .doc-page .space { background: none; box-shadow: none; }
   .doc-page .space::after { display: none; }
 }
+
+/* FORM-001: designing a PDF form: fields framed and named, drawn with the pointer. */
+.pdf-design-bar[hidden] { display: none !important; }
+.pdf-design-bar .pdf-design-label { font-weight: 600; }
+.pdf-design-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.pdf-viewer.designing .pdf-form-layer, .pdf-viewer.designing .textLayer { pointer-events: none !important; }
+.pdf-viewer.designing .pdf-form-layer { opacity: 0.35; }
+.pdf-viewer.designing .pdf-page { cursor: crosshair; touch-action: none; }
+.pdf-design-field { position: absolute; box-sizing: border-box; border: 2px solid var(--accent); background: rgba(31, 95, 191, 0.12); border-radius: 2px; pointer-events: auto; cursor: pointer; }
+.pdf-design-field.new { border-style: dashed; }
+.pdf-design-field.drawing { border-style: dashed; pointer-events: none; }
+.pdf-design-field:focus-visible { outline: 2px solid var(--focus, #e67e00); outline-offset: 2px; }
+.pdf-design-name { position: absolute; left: -2px; bottom: 100%; max-width: 20em; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; background: var(--accent); color: var(--accent-contrast); font-size: 10px; line-height: 1.4; white-space: nowrap; border-radius: 3px 3px 0 0; }
+.form-field-dialog .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.form-field-dialog textarea, .form-field-dialog input[type=text] { width: 100%; box-sizing: border-box; }

@@ -1037,6 +1037,8 @@ export class App {
     if (doc?.view.masterDocument?.()?.blocks.some((b) => b.type === 'include')) fileTools.push(button(t('master.export'), () => void this.exportAssembled(), { title: t('master.exportTitle') }));
     actions.append(button(t('file.open'), () => void this.pickAndOpen(), { title: t('file.openTitle') }));
     fileTools.push(button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }));
+    // FORM-002: the answers of filled forms, gathered in a spreadsheet.
+    fileTools.push(button(t('form.compile'), () => void this.compileForms(), { title: t('form.compileTitle'), text: '📋', className: 'icon' }));
     if (doc?.view.save) {
       actions.append(button(t('file.save'), () => void this.save(), { className: 'keep', title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : doc.dav ? t('dav.saveBackTitle', { path: doc.dav.path }) : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
       // FILE-025: the versions kept in this browser.
@@ -1774,6 +1776,43 @@ export class App {
       },
       theme: () => this.renderHeader(),
     }, category);
+  }
+
+  /** FORM-002: gather the answers of filled PDF forms (picked, or those of the open folder) into a new workbook. */
+  async compileForms(): Promise<void> {
+    let fromFolder = false;
+    if (this.folder) {
+      const choice = await this.choose(t('form.compile'), t('form.compileSource'), [t('form.compileFolder'), t('form.compilePick')], t('form.compileFolder'));
+      if (!choice) return;
+      fromFolder = choice === t('form.compileFolder');
+    }
+    let files: { name: string; read(): Promise<Uint8Array> }[];
+    if (fromFolder && this.folder) {
+      const provider = this.folder.provider;
+      const { listFiles, readBytes } = await import('../fs');
+      files = (await listFiles(provider)).filter((p) => /\.pdf$/i.test(p)).map((p) => ({ name: p, read: () => readBytes(provider, p) }));
+    } else {
+      const picked = await new Promise<File[]>((resolve) => {
+        const input = h('input', { type: 'file', accept: '.pdf,application/pdf', multiple: '' });
+        input.addEventListener('change', () => resolve(Array.from(input.files ?? [])));
+        input.addEventListener('cancel', () => resolve([]));
+        input.click();
+      });
+      files = picked.map((f) => ({ name: f.name, read: async () => new Uint8Array(await f.arrayBuffer()) }));
+    }
+    if (!files.length) return;
+    await this.withBusy(async () => {
+      const { answersTable, answersWorkbook, readPdfAnswers } = await import('../forms/collect');
+      const forms = await Promise.all(files.map(async (f) => readPdfAnswers(f.name, await f.read())));
+      const read = forms.filter((f) => !f.error && f.answers.length);
+      if (!read.length) return void this.showNotice(t('form.compileNone'));
+      const wb = answersWorkbook(answersTable(read, t('form.file')), t('form.sheet'));
+      const format = defaultFormat('spreadsheet');
+      const view = await newView('spreadsheet', this.viewContext(), format, { kind: 'spreadsheet', wb });
+      this.setDocument({ name: `${t('form.sheet')}.${fileExtension(format)}`, format, kind: 'spreadsheet', view });
+      const failed = forms.filter((f) => f.error).length;
+      if (failed) this.showNotice(t('form.compileErrors', { n: failed }));
+    });
   }
 
   async openPalette(): Promise<void> {
