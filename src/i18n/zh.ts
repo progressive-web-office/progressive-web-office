@@ -801,6 +801,8 @@ export const zh: Record<MessageKey, string> = {
   'vault.backlinks': '链接到此处的笔记',
   'vault.backlinksCount': '反向链接（{n}）',
   'vault.noBacklinks': '尚无笔记链接到此笔记。',
+  'vault.related': '相关笔记',
+  'vault.linked': '有链接',
   'remote.title': '指向服务器上文件的链接',
   'remote.menuTitle': '创建以只读方式打开 Web 服务器上文档的链接',
   'remote.intro': '输入 Web 服务器上文档的地址：此链接会在 Progressive Web Office 中以只读方式打开它，由打开者的浏览器下载。',

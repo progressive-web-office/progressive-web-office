@@ -86,6 +86,28 @@ export class NoteVault {
     return changed;
   }
 
+  /**
+   * Notes related to `path` (FOLDER-019): sharing its tags (2 points each) or
+   * linked with it either way (3 points), the closest first.
+   */
+  async related(path: string, notes: string[], max = 10): Promise<{ path: string; tags: string[]; linked: boolean }[]> {
+    const mine = new Map(noteTags(await this.text(path)).map((t) => [t.toLowerCase(), t]));
+    const links = await this.links(notes);
+    const linked = new Set(links.filter((l) => l.from === path || l.to === path).map((l) => (l.from === path ? l.to : l.from)));
+    const out: { path: string; tags: string[]; linked: boolean; score: number }[] = [];
+    for (const n of notes) {
+      if (n === path) continue;
+      const shared = noteTags(await this.text(n)).filter((t) => mine.has(t.toLowerCase())).map((t) => mine.get(t.toLowerCase())!);
+      const isLinked = linked.has(n);
+      const score = shared.length * 2 + (isLinked ? 3 : 0);
+      if (score) out.push({ path: n, tags: shared, linked: isLinked, score });
+    }
+    return out
+      .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+      .slice(0, max)
+      .map(({ score: _score, ...r }) => r);
+  }
+
   /** Links between the notes (wiki links and relative Markdown links), each once (FOLDER-018). */
   async links(notes: string[]): Promise<{ from: string; to: string }[]> {
     const aliases = await this.aliases(notes);

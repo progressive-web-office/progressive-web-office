@@ -269,6 +269,24 @@ export class FolderPanel {
         ? h('ul', { role: 'list' }, ...from.map((p) => h('li', {}, button(p, () => this.hooks.open(p), { className: 'folder-file', icon: '↩' }))))
         : h('p', { class: 'hint' }, t('vault.noBacklinks')),
     );
+    // FOLDER-019: notes sharing its tags or linked with it.
+    const related = await this.vault.related(path, this.notes());
+    if (!related.length) return;
+    this.backlinks.append(
+      h('h3', {}, t('vault.related')),
+      h(
+        'ul',
+        { role: 'list', class: 'folder-related' },
+        ...related.map((r) =>
+          h(
+            'li',
+            {},
+            button(r.path, () => this.hooks.open(r.path), { className: 'folder-file', icon: iconOf(r.path) }),
+            h('span', { class: 'folder-related-why' }, [...r.tags.map((tag) => `#${tag}`), ...(r.linked ? [t('vault.linked')] : [])].join(' · ')),
+          ),
+        ),
+      ),
+    );
   }
 
   private async runSearch(): Promise<void> {

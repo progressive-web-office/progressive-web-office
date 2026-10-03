@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Related notes beside the open note: sharing its tags or linked with it
+  (FOLDER-019).
+
 - Tags of the notes of a folder (FOLDER-017): front matter `tags` /
   `keywords` and `#tags`, counted in the panel, searched with `#tag`,
   renamed in every note; a graph of the links between the notes (FOLDER-018).

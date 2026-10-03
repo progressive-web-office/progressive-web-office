@@ -270,4 +270,6 @@ test('lists the tags of the notes, renames one everywhere and draws the graph of
   await graph.locator('svg g.node[data-note="b.md"]').click();
   await expect(graph).toBeHidden();
   await expect(page.locator('.doc-page h1')).toHaveText('B');
+  // FOLDER-019: beside the open note, the notes sharing its tags or linked with it.
+  await expect(panel.locator('.folder-related li')).toHaveText(['a.md#next · linked']);
 });

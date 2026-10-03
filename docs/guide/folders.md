@@ -105,7 +105,9 @@ A folder of Markdown notes works as a set of linked notes:
   not exist yet offers to create it.
 - `![[picture.png]]` shows a picture of the folder; `![[Note]]` is kept as a
   link to that note.
-- The panel lists the notes **linked from** the open note (backlinks).
+- The panel lists the notes **linked from** the open note (backlinks), and
+  the **related notes**: those sharing its tags or linked with it either
+  way, the closest first, with the shared tags.
 - Renaming a note in the panel updates the `[[links]]` to it in the other
   notes.
 - The YAML front matter of each note (tags, aliases, any key) is kept as it

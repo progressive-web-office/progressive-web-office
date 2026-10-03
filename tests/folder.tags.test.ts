@@ -77,3 +77,23 @@ describe('FOLDER-018 graph of the notes', () => {
     expect(src).toBe(['flowchart LR', '  n0["a"]', '  n1["b"]', '  n2["c #quot;x#quot;"]', '  n0 <--> n1', '  n0 --> n2'].join('\n'));
   });
 });
+
+describe('FOLDER-019 related notes', () => {
+  it('ranks the notes sharing tags or links with a note', async () => {
+    const v = new NoteVault(
+      new MemoryProvider('m', 'M', {
+        'a.md': '---\ntags: [physics, optics]\n---\nSee [[b]].',
+        'b.md': 'Nothing here.',
+        'c.md': '#physics #optics',
+        'd.md': '#physics',
+        'e.md': 'Unrelated #cooking',
+      }),
+    );
+    const related = await v.related('a.md', ['a.md', 'b.md', 'c.md', 'd.md', 'e.md']);
+    expect(related).toEqual([
+      { path: 'c.md', tags: ['physics', 'optics'], linked: false },
+      { path: 'b.md', tags: [], linked: true },
+      { path: 'd.md', tags: ['physics'], linked: false },
+    ]);
+  });
+});

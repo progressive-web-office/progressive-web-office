@@ -799,6 +799,8 @@ export const en = {
   'vault.backlinks': 'Notes linking here',
   'vault.backlinksCount': 'Linked from ({n})',
   'vault.noBacklinks': 'No note links to this one yet.',
+  'vault.related': 'Related notes',
+  'vault.linked': 'linked',
   'remote.title': 'Link to a file on a server',
   'remote.menuTitle': 'Make a link that opens a document of a web server read-only',
   'remote.intro': 'Give the address of a document kept on a web server: the link opens it read-only in Progressive Web Office, downloaded by the browser of whoever opens it.',

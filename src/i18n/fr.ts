@@ -801,6 +801,8 @@ export const fr: Record<MessageKey, string> = {
   'vault.backlinks': 'Notes qui pointent ici',
   'vault.backlinksCount': 'Liée depuis ({n})',
   'vault.noBacklinks': 'Aucune note ne pointe encore vers celle-ci.',
+  'vault.related': 'Notes liées',
+  'vault.linked': 'liée',
   'remote.title': 'Lien vers un fichier sur un serveur',
   'remote.menuTitle': 'Créer un lien qui ouvre en lecture seule un document d’un serveur web',
   'remote.intro': 'Indiquez l’adresse d’un document déposé sur un serveur web : le lien l’ouvre en lecture seule dans Progressive Web Office, téléchargé par le navigateur de la personne qui l’ouvre.',
