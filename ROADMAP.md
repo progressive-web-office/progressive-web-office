@@ -149,6 +149,49 @@ group is not a commitment.
   - the server address in the settings (none by default), quotas and
     limits on the server side
 
+### Typography and page (TeX's best ideas, WYSIWYG)
+
+- ✅ The page of the document: paper, orientation, margins, kept in every
+  format, the page on screen as on paper (DOC-046)
+- Graduated rulers, horizontal and vertical, in cm or inches: margins and
+  indents shown and dragged, page boundaries
+- Typographic quality as in TeX: hyphenation by language, line breaking over
+  the whole paragraph (optimal fit), widows and orphans, ligatures, kerning,
+  small capitals, non-breaking spaces of the language
+- True pages in the editor (the text cut into sheets), footnotes at the foot
+  of their page, floats (figures placed at the top or bottom of a page)
+
+### Scientific writing
+
+- An article template: title, authors and affiliations, abstract, keywords,
+  sections, equations, figures, citations, references
+- Zotero: search the library and cite from it (Web API, a key kept in this
+  browser), import a collection as the document's references
+- Citation styles from CSL files; cross-references, numbering and the list of
+  references as in LaTeX; export to journal templates
+
+### Desktop publishing
+
+- Text in columns (two to four, gap, rule between), column breaks, kept in
+  OpenDocument, Word and LaTeX: a newsletter, a school newspaper
+- Frames placed on the page, text flowing from one frame to the next,
+  pictures with text around them, master pages
+- Colours for print: RGB and CMYK (values typed in either), a print preview
+  of CMYK colours, spot colours; next: ICC profiles, PDF/X
+
+### Devices and safety of the documents
+
+- Synchronisation between one's own devices, peer to peer and end-to-end
+  encrypted (paired devices, revocable): the documents of the browser found
+  on every device — with clear warnings: synchronisation is not a backup, a
+  document deleted on one device is deleted on all (a trash kept for a
+  while, versions kept)
+- Real backups, distinct from synchronisation: dated, encrypted archives of
+  all the documents kept in the browser, to a folder, a WebDAV / Nextcloud
+  account or a Git repository, on a schedule with reminders, kept for days
+  and weeks, restored file by file or all at once; the last backup's date
+  always visible
+
 ### Images and drawing
 
 - ✅ Minimal photo editing: crop, turn, mirror, resize, brightness /
