@@ -382,6 +382,8 @@ export class App {
       location = chosen;
       version = await this.repoVersion(chosen);
     }
+    // GIT-008: a public repository opened without a token cannot be written to.
+    if (!location.account.token) return this.showError(t('git.needTokenToCommit'));
     const choice = await commitDialog(this.root, location.path, location.branch, version !== undefined);
     if (!choice) return;
     const client = clientFor(location.account);

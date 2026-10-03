@@ -68,6 +68,9 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
     const address = h('input', { type: 'url', placeholder: 'https://github.com/owner/repository', 'aria-label': t('git.address'), spellcheck: 'false', autocomplete: 'url' });
     /** An address waiting for its account to be added. */
     let pending: RepoAddress | undefined;
+    /** GIT-008: what the address was understood as. */
+    const understood = h('p', { class: 'git-understood', role: 'status', hidden: true });
+    let lastAddress = '';
 
     const finish = (value: RepoFile | RepoLocation | null): void => {
       generation++;
@@ -91,8 +94,8 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
         branchSelect.replaceChildren();
         list.replaceChildren();
         crumbs.replaceChildren();
-        setStatus(t('git.noAccount'));
-        showAddForm();
+        // GIT-008: the address comes first; a token only for a private repository or to save.
+        setStatus(t('git.noAccountYet'));
       }
     };
 
@@ -279,26 +282,39 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
 
     /** GIT-008: open the repository of an address with the account of its site, or ask for one. */
     const openAddress = async (at: RepoAddress): Promise<void> => {
+      const [owner, ...rest] = at.path.split('/');
+      understood.hidden = false;
+      understood.textContent = `✓ ${t('git.understood', { service: `${at.provider === 'github' ? 'GitHub' : 'GitLab'} (${at.host})`, owner: owner ?? '', repo: rest.join('/') })}${at.branch ? ` · ${t('git.branch')} ${at.branch}` : ''}${at.inside ? ` · ${at.inside}` : ''}`;
+      otherRepo.value = at.path;
+      provider.value = at.provider;
+      apiUrl.value = apiUrlFor(at.provider, at.host);
       const same = (a: GitAccount): boolean => a.provider === at.provider && (a.apiUrl.replace(/\/+$/, '') === at.apiUrl || hostOfApi(a.apiUrl) === at.host);
       const found = loadAccounts().find(same);
-      if (!found) {
-        pending = at;
-        provider.value = at.provider;
-        apiUrl.value = apiUrlFor(at.provider, at.host);
-        setStatus(t('git.needAccount', { site: at.host }));
-        showAddForm();
-        return;
-      }
-      if (found.id !== account?.id) {
+      if (found && found.id !== account?.id) {
         account = found;
         accountSelect.value = found.id;
         void selectAccount(found.id);
       }
-      client = clientFor(found);
+      // Without an account of the site, a public repository opens anyway (read only, no token).
+      const using: GitAccount = found ?? { id: `public:${at.host}`, provider: at.provider, apiUrl: at.apiUrl, token: '', label: t('git.publicAccess', { site: at.host }) };
+      client = clientFor(using);
       setStatus(t('git.loading'));
       try {
-        await selectRepo(await client.getRepo(at.path), at);
+        const r = await client.getRepo(at.path);
+        account = using;
+        await selectRepo(r, at);
+        if (!found) setStatus(t('git.openedPublic'));
       } catch (err) {
+        const status = (err as { status?: number }).status;
+        if (!found && (status === 404 || status === 401 || status === 403)) {
+          // Private (or missing): an account of the site is needed, its form filled in.
+          pending = at;
+          client = undefined;
+          setStatus(t('git.needAccountPrivate', { site: at.host, repo: at.path }));
+          showAddForm();
+          return;
+        }
+        if (found && status === 404) return setStatus(t('git.noAccess', { repo: at.path }), true);
         fail(err);
       }
     };
@@ -314,6 +330,17 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       }
       setStatus(t('git.badAddress'), true);
     };
+    // Pasted or typed: understood and opened at once (no need to press Go).
+    let typing: ReturnType<typeof setTimeout> | undefined;
+    address.addEventListener('input', () => {
+      clearTimeout(typing);
+      typing = setTimeout(() => {
+        const text = address.value.trim();
+        if (text === lastAddress || !parseRepoAddress(text)) return;
+        lastAddress = text;
+        goAddress();
+      }, 350);
+    });
     address.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -373,6 +400,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
 
     body.append(
       h('div', { class: 'git-row git-address' }, h('label', {}, t('git.address'), ' ', address), button(t('git.go'), goAddress, { className: 'primary' })),
+      understood,
       h('p', { class: 'hint' }, t('git.addressHint')),
       h('div', { class: 'git-row' }, h('label', {}, t('git.account'), ' ', accountSelect), forget, button(t('git.addAccount'), showAddForm)),
       addForm,

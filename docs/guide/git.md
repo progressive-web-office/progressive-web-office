@@ -24,10 +24,15 @@ in your browser — in the first field of **Open from repository…** or
 - a clone address (`git@github.com:owner/name.git`) or a self-hosted site
   (`https://gitlab.example.org/team/project`, GitHub Enterprise) works too.
 
-The service, the owner, the repository, the branch and the path are deduced
-from the address. If you already have an account for that site it is used;
-otherwise the form to add one opens, filled in: only the token is left to
-paste.
+As soon as the address is pasted, what was understood is shown — *GitHub
+(github.com) · owner s-celles · repository test-pwo* — with the branch and
+the path when the address has them, and the repository opens:
+
+- with your account of that site, if you have one;
+- **a public repository opens without any token**: it can be read and its
+  files opened; saving into it (a commit) needs an account with a token;
+- a private repository (or one that does not exist) asks for an account:
+  the form is filled in for that site, only the token is left to paste.
 
 ## Connect an account
 

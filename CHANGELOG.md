@@ -350,6 +350,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Git: a pasted repository address is understood at once (no need to press
+  *Go*), and what was understood is shown (service, owner, repository,
+  branch, path) with the fields filled in; a public repository opens without
+  any token, a private one asks for an account with its form filled in
+  (GIT-008).
 - Python completion in a code cell: when the interpreter was still loading
   jedi, the first completions answered too late and the list never opened;
   a late answer now opens it, if the cursor has not moved (CODE-011).

@@ -33,7 +33,8 @@ test('opens a file from GitHub, commits it and handles a conflict (GIT-001..GIT-
 
   await page.getByRole('button', { name: 'Open from repository…' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Open from repository' });
-  await expect(dialog.getByText('Add a GitHub or GitLab account to start.')).toBeVisible();
+  await expect(dialog.getByText('A token is needed only for a private repository')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Add account' }).click();
   await dialog.getByLabel('Personal access token').fill('ghp_test');
   await dialog.getByRole('button', { name: 'Connect' }).click();
   await dialog.getByLabel('Repository', { exact: true }).selectOption({ label: 'me/notes' });
@@ -230,33 +231,69 @@ test('starts a branch of a repository opened as a folder and proposes its change
   expect(errors).toEqual([]);
 });
 
-test('opens a file from its address, adding the account of its site (GIT-008, GIT-009)', async ({ page }) => {
+test('a pasted address is understood at once; a public repository opens without a token (GIT-008)', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const errors = await openApp(page);
+  const auth: (string | undefined)[] = [];
   await page.route(`${API}/**`, async (route: Route) => {
     const p = new URL(route.request().url()).pathname;
+    auth.push(route.request().headers().authorization);
     const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-    if (p === '/user/repos') return json([]);
-    if (p === '/repos/s-celles/test-pwo') return json({ full_name: 's-celles/test-pwo', default_branch: 'main', private: false });
-    if (p === '/repos/s-celles/test-pwo/branches') return json([{ name: 'main' }, { name: 'dev' }]);
-    if (p === '/repos/s-celles/test-pwo/contents/docs') return json([{ name: 'plan.md', path: 'docs/plan.md', type: 'file', size: 7 }]);
-    if (p === '/repos/s-celles/test-pwo/contents/docs/plan.md') return json({ type: 'file', sha: 's1', content: b64('# Plan\n'), encoding: 'base64' });
+    if (p === '/repos/s-celles/test-pwo-public') return json({ full_name: 's-celles/test-pwo-public', default_branch: 'main', private: false });
+    if (p === '/repos/s-celles/test-pwo-public/branches') return json([{ name: 'main' }]);
+    if (p === '/repos/s-celles/test-pwo-public/contents') return json([{ name: 'README.md', path: 'README.md', type: 'file', size: 9 }]);
+    if (p === '/repos/s-celles/test-pwo-public/contents/README.md') return json({ type: 'file', sha: 's1', content: b64('# Public\n'), encoding: 'base64' });
     return json({ message: 'Not Found' }, 404);
   });
   await page.getByRole('button', { name: 'Open from repository…' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Open from repository' });
-  const address = dialog.getByLabel('Repository address');
-  await expect(address).toBeFocused();
-  await address.fill('https://github.com/s-celles/test-pwo/blob/dev/docs/plan.md');
-  await address.press('Enter');
-  await expect(dialog.getByText('Add an account for github.com')).toBeVisible();
+  await page.evaluate(() => navigator.clipboard.writeText('https://github.com/s-celles/test-pwo-public'));
+  await dialog.getByLabel('Repository address').focus();
+  await page.keyboard.press('Control+V');
+  // Understood without pressing Go: the service, the owner, the repository.
+  await expect(dialog.locator('.git-understood')).toHaveText('✓ GitHub (github.com) · owner s-celles · repository test-pwo-public');
+  await expect(dialog.getByLabel('Other repository (owner/name)')).toHaveValue('s-celles/test-pwo-public');
+  await expect(dialog.getByText('Public repository opened without a token')).toBeVisible();
+  await dialog.getByRole('button', { name: '📄 README.md' }).click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Public');
+  expect(auth.every((a) => a === undefined)).toBe(true);
+  // Saving into it needs a token.
+  await page.locator('.doc-page h1').click();
+  await page.keyboard.type('!');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('opened without a token');
+  expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
+});
+
+test('a private repository asks for a token, the account form filled in (GIT-008, GIT-009)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.route(`${API}/**`, async (route: Route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    // Private: unknown without the token.
+    if (req.headers().authorization !== 'Bearer ghp_test') return json({ message: 'Not Found' }, 404);
+    if (p === '/user/repos') return json([]);
+    if (p === '/repos/s-celles/test-pwo-private') return json({ full_name: 's-celles/test-pwo-private', default_branch: 'main', private: true });
+    if (p === '/repos/s-celles/test-pwo-private/branches') return json([{ name: 'main' }, { name: 'dev' }]);
+    if (p === '/repos/s-celles/test-pwo-private/contents/docs') return json([{ name: 'plan.md', path: 'docs/plan.md', type: 'file', size: 7 }]);
+    if (p === '/repos/s-celles/test-pwo-private/contents/docs/plan.md') return json({ type: 'file', sha: 's1', content: b64('# Plan\n'), encoding: 'base64' });
+    return json({ message: 'Not Found' }, 404);
+  });
+  await page.getByRole('button', { name: 'Open from repository…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Open from repository' });
+  await dialog.getByLabel('Repository address').fill('https://github.com/s-celles/test-pwo-private/blob/dev/docs/plan.md');
+  await expect(dialog.locator('.git-understood')).toContainText('repository test-pwo-private · Branch dev · docs/plan.md');
+  await expect(dialog.getByText('s-celles/test-pwo-private is private, or does not exist')).toBeVisible();
   await expect(dialog.getByLabel('Provider')).toHaveValue('github');
+  await expect(dialog.getByLabel('API URL')).toHaveValue('https://api.github.com');
   // GIT-009: how to make the token, with the page to make it.
   await dialog.getByText('How to create a token?').click();
   await expect(dialog.getByRole('link', { name: 'https://github.com/settings/personal-access-tokens/new' })).toBeVisible();
   await dialog.getByLabel('Personal access token').fill('ghp_test');
   await dialog.getByRole('button', { name: 'Connect' }).click();
   await expect(page.locator('.doc-page h1')).toHaveText('Plan');
-  await expect(page.locator('.doc-source')).toHaveText('s-celles/test-pwo · dev');
+  await expect(page.locator('.doc-source')).toHaveText('s-celles/test-pwo-private · dev');
   expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
 });
 
