@@ -467,7 +467,7 @@ export class App {
     const propose = t(source.account.provider === 'gitlab' ? 'git.proposeMerge' : 'git.proposePull', { base: repo.defaultBranch });
     const history = t('history.menu');
     const options = [history, newBranch, ...(branch !== repo.defaultBranch ? [propose] : [])];
-    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, history, t('common.continue'));
+    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
     if (!choice) return;
     // VER-002: the commits of this document, compared, opened or restored.
     if (choice === history) return this.showRepoHistory(client, repo.id, branch, source.path);
@@ -1517,7 +1517,7 @@ export class App {
     const history = t('history.menu');
     const openPath = this.current?.folderPath;
     const options = [...(openPath ? [history] : []), newBranch, other, ...(branch !== repo.defaultBranch ? [propose] : [])];
-    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, openPath ? history : branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
+    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
     if (choice === history && openPath) return this.showRepoHistory(client, repo.id, branch, openPath, folder);
     if (!choice || !this.confirmDiscard()) return;
     try {
