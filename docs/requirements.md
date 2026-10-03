@@ -7,7 +7,8 @@ description: EARS requirements with MoSCoW priorities and roadmap milestones.
 ::: v-pre
 # Requirements specification
 
-- Status: Draft v1 (2026-10-01)
+- Author: [Sébastien Celles](https://github.com/s-celles)
+- Status: Draft v1 (2026-10-01, last updated 2026-10-03)
 - Notation: [EARS](https://alistairmavin.com/ears/) (Easy Approach to Requirements Syntax)
 - Prioritisation: MoSCoW — **M**ust / **S**hould / **C**ould / **W**on't (this time)
 - Milestones: see the [roadmap](https://github.com/s-celles/progressive-web-office/blob/main/ROADMAP.md) (0.0.x = development phases; 0.1.0 = first minor release)
