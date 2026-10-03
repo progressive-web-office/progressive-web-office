@@ -65,12 +65,12 @@ test('completes with the names known by the running interpreter (CODE-011)', asy
     });
   }
   await openApp(page);
-  await openFile(page, 'nb.md', '```python {run}\nvoltage_drop = 3.2\nimport statistics\n```\n\nNext.\n');
+  await openFile(page, 'nb.md', '```python {run}\nvoltage_drop = 3.2\nimport statistics\nprint("ready")\n```\n\nNext.\n');
   const cell = page.locator('.doc-page .code-cell');
   await cell.getByRole('button', { name: 'Run cell' }).click();
   await page.getByRole('dialog', { name: 'Run the code of this document?' }).getByRole('button', { name: 'Run' }).click();
-  await expect(cell.locator('.code-cell-output')).toHaveCount(0, { timeout: 150_000 }).catch(() => undefined);
-  await expect(cell.getByRole('button', { name: 'Run cell' })).toBeEnabled({ timeout: 150_000 });
+  // The interpreter is running once the cell has printed (loading Python takes a while on a busy machine).
+  await expect(cell.locator('.code-cell-output')).toHaveText('ready\n', { timeout: 150_000 });
   await page.getByText('Next.').click();
   await page.getByRole('button', { name: 'Insert code cell' }).click();
   const code = page.getByRole('dialog', { name: 'Insert code cell' }).getByLabel('Code');

@@ -165,10 +165,13 @@ test('copies, pastes, duplicates and downloads from the context menu and the key
   await expect(menu.getByRole('menuitem')).toContainText(['Open', 'Rename (F2)', 'Duplicate', 'Copy (Ctrl+C)', 'Cut (Ctrl+X)', 'Download', 'Copy the path', 'Delete (Del)']);
   await menu.getByRole('menuitem', { name: 'Duplicate' }).click();
   await expect.poll(files).toEqual(['notes/a.md', 'notes/b.md', 'z 2.md', 'z.md']);
+  // The tree shows the copy before the next step (it is drawn again).
+  await expect(panel.getByRole('button', { name: 'z 2.md' })).toBeVisible();
   // Copy with the keyboard, paste into the folder.
   await panel.getByRole('button', { name: 'z.md', exact: true }).focus();
   await page.keyboard.press('ControlOrMeta+c');
   await panel.getByRole('button', { name: 'notes', exact: true }).click();
+  await expect(panel.getByRole('button', { name: 'notes', exact: true })).toHaveAttribute('aria-expanded', 'true');
   await page.keyboard.press('ControlOrMeta+v');
   await expect.poll(files).toEqual(['notes/a.md', 'notes/b.md', 'notes/z.md', 'z 2.md', 'z.md']);
   // Download the folder as an archive.
