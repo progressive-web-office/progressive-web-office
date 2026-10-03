@@ -54,6 +54,9 @@ import { withBase } from 'vitepress';
   <figure><img :src="withBase('/screenshots/document.png')" alt="A lab report with an equation and a table in the word processor"><figcaption>Text documents: Word, OpenDocument, Markdown</figcaption></figure>
   <figure><img :src="withBase('/screenshots/spreadsheet.png')" alt="A spreadsheet with formulas"><figcaption>Spreadsheets with formulas and charts</figcaption></figure>
   <figure><img :src="withBase('/screenshots/start.png')" alt="The start screen of the application"><figcaption>Start from a file, a folder or a template</figcaption></figure>
+  <figure><img :src="withBase('/screenshots/letter.png')" alt="A French letter laid out as usual, dated by a field"><figcaption>Templates with fields and springs</figcaption></figure>
+  <figure><img :src="withBase('/screenshots/form-design.png')" alt="Fields drawn on a PDF page"><figcaption>PDF forms, designed and compiled</figcaption></figure>
+  <figure><img :src="withBase('/screenshots/palette.png')" alt="The command palette listing actions by category"><figcaption>Every action in the command palette</figcaption></figure>
 </div>
 
 </div>

@@ -139,7 +139,7 @@ export function openPalette(host: HTMLElement, commands: PaletteCommand[]): Prom
         const li = h(
           'li',
           { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' },
-          h('span', { class: 'palette-name' }, ...(c.category && !browsing ? [h('span', { class: 'palette-category' }, `${c.category}${t('palette.categorySep')}`)] : []), c.label),
+          h('span', { class: 'palette-name' }, ...(c.category && !browsing && !fold(c.label).startsWith(fold(c.category)) ? [h('span', { class: 'palette-category' }, `${c.category}${t('palette.categorySep')}`)] : []), c.label),
           h('span', { class: 'palette-keys' }, ...(c.keys ?? []).map((k) => h('kbd', {}, k))),
           h('small', { class: 'palette-where' }, c.where),
         );

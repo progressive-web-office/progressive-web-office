@@ -3,10 +3,12 @@
  * writes them to docs/public/screenshots/. Skipped in normal test runs.
  */
 import { test, type Page } from '@playwright/test';
+import { PDFDocument, StandardFonts } from '@pdfme/pdf-lib';
 import { openApp, openFile } from './helpers';
 
 test.skip(!process.env.SCREENSHOTS, 'only when SCREENSHOTS=1');
-test.use({ viewport: { width: 1280, height: 800 }, colorScheme: 'light' });
+// The settings of a first visit (compact toolbars), not those of the tests.
+test.use({ viewport: { width: 1280, height: 800 }, colorScheme: 'light', storageState: { cookies: [], origins: [] } });
 
 const OUT = 'docs/public/screenshots';
 
@@ -65,4 +67,49 @@ test('phone', async ({ browser }) => {
   await page.locator('.doc-page h1').waitFor();
   await shot(page, 'phone');
   await context.close();
+});
+
+test('letter (template, fields and springs)', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'light', locale: 'fr-FR' });
+  const page = await context.newPage();
+  await openApp(page);
+  await page.getByRole('button', { name: /Modèles et exemples/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Lettre', exact: true }).click();
+  await page.locator('.doc-page p').first().waitFor();
+  await shot(page, 'letter');
+  await context.close();
+});
+
+test('command palette', async ({ page }) => {
+  await openApp(page);
+  await openFile(page, 'lab-report.md', REPORT);
+  await page.locator('.doc-page h1').waitFor();
+  await page.getByRole('button', { name: 'Commands', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Commands' }).getByRole('combobox').fill('insert');
+  await shot(page, 'palette');
+});
+
+test('context menu', async ({ page }) => {
+  await openApp(page);
+  await openFile(page, 'lab-report.md', REPORT);
+  await page.locator('.doc-page td').first().click({ button: 'right' });
+  await shot(page, 'context-menu');
+});
+
+test('designing a PDF form', async ({ page }) => {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const pdfPage = doc.addPage([595, 842]);
+  pdfPage.drawText('Registration form', { x: 72, y: 760, size: 22, font: bold });
+  ['Name', 'E-mail', 'Level', 'Newsletter'].forEach((label, i) => pdfPage.drawText(label, { x: 72, y: 700 - i * 40, size: 12, font }));
+  const form = doc.getForm();
+  form.createTextField('Name').addToPage(pdfPage, { x: 170, y: 694, width: 250, height: 20 });
+  form.createTextField('E-mail').addToPage(pdfPage, { x: 170, y: 654, width: 250, height: 20 });
+  await openApp(page);
+  await openFile(page, 'registration.pdf', Buffer.from(await doc.save()), 'application/pdf');
+  await page.locator('.pdf-page canvas').first().waitFor();
+  await page.getByRole('button', { name: 'Design the form' }).click();
+  await page.waitForTimeout(800);
+  await shot(page, 'form-design');
 });

@@ -10,6 +10,8 @@ filled copies into a spreadsheet.
 
 ## Designing a form
 
+![Fields drawn on a PDF page, named, in the form design mode](/screenshots/form-design.png)
+
 1. Write the document as usual (in the word processor or elsewhere) and save
    it as PDF — or open any PDF.
 2. Open the PDF and click **📝 Design the form**. A bar of field kinds

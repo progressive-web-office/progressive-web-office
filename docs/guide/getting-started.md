@@ -157,6 +157,8 @@ offered.
 
 ## Command palette
 
+![The command palette: every action, by category](/screenshots/palette.png)
+
 Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, click **⌘ Commands** in
 the header, or — on a phone — the round **⌘** button at the bottom right of
 the screen. The palette holds **every action of the screen**: the buttons of

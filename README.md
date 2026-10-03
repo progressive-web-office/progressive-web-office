@@ -54,13 +54,22 @@ supported.
   OpenDocument marks, LaTeX `\cite` or pandoc citations.
 - Master documents that assemble chapters kept in separate files.
 - Equations (MathLive editor, LaTeX source), Mermaid diagrams.
+- Fields (date of the day, page, number of pages, title, author…) kept as
+  real fields in Word and OpenDocument, and springs as in LaTeX (`\vfill`,
+  `\hfill`) that fill the free space of a page or a line.
+- A context menu (right click, long press or the ⋮ button) with what can be
+  done where you are: table rows and columns, code cells, fields, springs…
 - Python and JavaScript code cells run in a sandbox without network access:
   completion as you type, reactive cells (dependencies between cells, shown
   as a graph), interactive widgets (anywidget, including the anywidget
-  instruments), code that can be hidden behind its output.
+  instruments), code that can be hidden behind its output. Lua, SQL, C,
+  C++ and R too, their runtime downloaded once you agree.
+- Source files run from the code viewer, with the other files of their
+  folder as a project (modules, headers, data), an optional `pwo.toml`
+  naming the entry point.
 - Find and replace, document properties, read-only mode, print preview.
 - Templates (letter, report, minutes, exercise sheet, budget, grade book,
-  invoice, talk), examples (a tour, a lab report with Python plots,
+  invoice, talk), examples (a tour, a lab report with Python plots, one program in each language,
   interactive widgets, an instrument panel, measurements and charts), and
   your own templates.
 - Review mode for text documents and PDF files: pages side by side or one
@@ -73,7 +82,11 @@ charts (column, bar, line, pie, scatter) saved as native charts.
 **Presentations**: text boxes, shapes, images, speaker notes, slideshow.
 
 **PDF**: viewer, form filling, drawn or imported signature (a visual
-signature, not a cryptographic one).
+signature, not a cryptographic one), highlights and notes.
+
+**Forms**: design a PDF form by drawing its fields (text, paragraph, check
+box, drop-down list, option buttons), then compile the answers of the filled
+copies into a spreadsheet — one row per file, one column per field.
 
 **Folders**: open a folder of the device, the browser's own storage, or a
 Nextcloud / WebDAV account; create, rename, move and delete files (several
@@ -104,11 +117,19 @@ more open in a code editor with syntax colouring, line numbers and search.
 **Other**: an optional AI assistant with your own key (Anthropic, OpenAI,
 Mistral, Albert, Ollama on your machine, or any OpenAI-compatible server)
 and WebMCP tools for browser agents; a settings window and a command
-palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) listing the keyboard
-shortcuts; English, French and Simplified Chinese; light and dark themes; a
+palette (**⌘ Commands**, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, a round
+button on a phone) holding every action by category, with its keyboard
+shortcut; English, French and Simplified Chinese; light and dark themes; a
 layout for phones.
 
 ![A spreadsheet with a line chart](docs/public/screenshots/spreadsheet.png)
+
+| | |
+|---|---|
+| ![A letter laid out as usual in French, dated by a field](docs/public/screenshots/letter.png) | ![Designing a PDF form: fields drawn on the page](docs/public/screenshots/form-design.png) |
+| *A letter template, dated by a field* | *Designing a PDF form* |
+| ![The command palette, every action by category](docs/public/screenshots/palette.png) | ![The context menu in a table](docs/public/screenshots/context-menu.png) |
+| *The command palette* | *The context menu in a table* |
 
 ## Share without a network
 
