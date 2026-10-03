@@ -4,7 +4,7 @@
  */
 import type { MessageKey } from '../i18n';
 import { readMarkdown } from '../document/markdown-reader';
-import { isTextRun, type Paragraph, type RichDocument } from '../document/model';
+import type { Paragraph, RichDocument } from '../document/model';
 import { getCell, newWorkbook, setInput, type Workbook } from '../sheet/model';
 import { applyCellStyle } from '../sheet/ops';
 import { contentSlide, DEFAULT_SIZE, textShape, titleSlide, type Presentation, type Slide } from '../slides/model';
@@ -125,13 +125,38 @@ function measurements(lang: TemplateLang): Workbook {
   return wb;
 }
 
-const textOf = (p: Paragraph): string => p.runs.map((r) => (isTextRun(r) ? r.text : '')).join('');
 
 /** A letter: the sender's block is one paragraph per line, the place and date on the right. */
-function letterLayout(doc: RichDocument): void {
-  const paragraphs = doc.blocks.filter((b): b is Paragraph => b.type === 'paragraph');
-  const dated = paragraphs.find((p) => /\d{4}$/.test(textOf(p)) && /,/.test(textOf(p)));
-  if (dated) dated.align = 'right';
+/** Centimetres in points, rounded. */
+const cm = (n: number): number => Math.round(n * 28.35);
+
+/**
+ * Lay a letter out as is usual in its language: in French (as in the NF Z 11-001
+ * standard), the recipient, the place and date and the signature on the right,
+ * from 9 cm; in English, every block on the left (block style). Blocks are
+ * separated by vertical space, not empty lines.
+ */
+function letterLayout(doc: RichDocument, lang: TemplateLang): void {
+  const p = doc.blocks.filter((b): b is Paragraph => b.type === 'paragraph');
+  const at = (i: number, layout: Partial<Paragraph>): void => void (p.at(i) && Object.assign(p.at(i)!, layout));
+  if (lang === 'fr') {
+    // Sender, recipient, place and date, subject (and enclosures), salutation, body, signature.
+    const right = cm(9);
+    at(1, { indent: right, spaceBefore: cm(1) });
+    at(2, { indent: right, spaceBefore: cm(0.8) });
+    at(3, { spaceBefore: cm(1.2) });
+    at(4, { spaceBefore: cm(0.8) });
+    for (let i = 5; i < p.length - 1; i++) at(i, { align: 'justify', firstLine: cm(1.25) });
+    at(-1, { indent: right, spaceBefore: cm(1.5) });
+  } else {
+    // Sender, date, recipient, subject, salutation, body, closing, signature, enclosures.
+    at(1, { spaceBefore: cm(0.6) });
+    at(2, { spaceBefore: cm(0.6) });
+    at(3, { spaceBefore: cm(0.8) });
+    at(4, { spaceBefore: cm(0.6) });
+    at(-2, { spaceBefore: cm(1.5) });
+    at(-1, { spaceBefore: cm(1) });
+  }
 }
 
 function budget(lang: TemplateLang): Workbook {

@@ -20,18 +20,20 @@ const EN: DocumentTexts = {
 title: Letter
 ---
 
-Jane Smith
-12 Garden Street
-Springfield
+Jane Smith\\
+12 Garden Street\\
+Springfield SP1 2AB\\
+jane.smith@example.org
 
-Springfield, {date}
+{date}
 
-Mr John Doe
-Head of Admissions
-1 University Avenue
-Capital City
+Mr John Doe\\
+Head of Admissions\\
+University of Capital City\\
+1 University Avenue\\
+Capital City CC1 1AA
 
-**Subject:** application for the master's programme
+**Subject: application for the master's programme in applied physics**
 
 Dear Mr Doe,
 
@@ -45,7 +47,7 @@ Yours sincerely,
 
 Jane Smith
 
-*Enclosures: CV, transcripts*
+Enclosures: CV, transcripts
 `,
 
   report: `---
@@ -252,18 +254,22 @@ const FR: DocumentTexts = {
 title: Lettre
 ---
 
-Jeanne Martin
-12 rue des Jardins
-75011 Paris
+Jeanne Martin\\
+12 rue des Jardins\\
+75011 Paris\\
+06 12 34 56 78\\
+jeanne.martin@example.org
+
+Monsieur Jean Dupont\\
+Responsable des admissions\\
+Université de Lyon\\
+1 avenue de l’Université\\
+69000 Lyon
 
 Paris, le {date}
 
-Monsieur Jean Dupont
-Responsable des admissions
-1 avenue de l’Université
-69000 Lyon
-
-**Objet :** candidature au master
+**Objet : candidature au master de physique appliquée**\\
+**P. J. :** curriculum vitæ, relevés de notes
 
 Monsieur,
 
@@ -273,11 +279,9 @@ Remplacez ce paragraphe par le corps de votre lettre : la raison de votre courri
 
 Je vous remercie de l’attention portée à ma demande et me tiens à votre disposition pour tout complément.
 
-Veuillez agréer, Monsieur, l’expression de mes salutations distinguées.
+Je vous prie d’agréer, Monsieur, l’expression de mes salutations distinguées.
 
 Jeanne Martin
-
-*Pièces jointes : CV, relevés de notes*
 `,
 
   report: `---

@@ -14,7 +14,7 @@ where you want. The templates are written in the language of the interface
 
 | Template | What it has |
 | --- | --- |
-| Letter | Sender, place and date on the right, recipient, subject, body, signature |
+| Letter | Laid out as usual in its language, each line of an address on its own line, blocks separated by space. In French: sender on the left; recipient, place and date ("Paris, le …") and signature from 9 cm; subject and enclosures; indented, justified paragraphs. In English: block style, everything on the left |
 | Report | Title page without header and footer, table of contents, page numbers, a captioned table referenced from the text |
 | Meeting minutes | Attendees, agenda, discussion, a table of actions |
 | Exercise sheet | Numbered exercises with equations, a name field in the header |

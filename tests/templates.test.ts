@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TEMPLATES, contentLang, type Built } from '../src/templates/catalog';
-import { allParagraphs, isCiteRun, isCodeCellRun, isDiagramRun, isFootnoteRun, isMathRun, isRefRun, isSeqRun, type RichDocument } from '../src/document/model';
+import { allParagraphs, type Paragraph, isCiteRun, isCodeCellRun, isDiagramRun, isFootnoteRun, isMathRun, isRefRun, isSeqRun, type RichDocument } from '../src/document/model';
 import { readDocument, writeDocument } from '../src/document/io';
 import { Calculator } from '../src/sheet/engine';
 import { isError } from '../src/sheet/model';
@@ -53,12 +53,6 @@ describe('FILE-018 built-in templates', () => {
     expect(tour.blocks.some((b) => b.type === 'bibliography')).toBe(true);
   });
 
-  it('letter: the place and date on the right, with the date of the day', () => {
-    const letter = doc('letter', 'fr');
-    const dated = allParagraphs(letter.blocks).find((p) => p.align === 'right');
-    expect(JSON.stringify(dated?.runs)).toMatch(/Paris, le \d+ \w+ \d{4}/);
-  });
-
   it('spreadsheets compute their totals', () => {
     const value = (id: string, ref: [number, number]) => {
       const wb = (byId(id).build('en') as Extract<Built, { kind: 'spreadsheet' }>).wb;
@@ -84,6 +78,31 @@ describe('FILE-018 examples with plots', () => {
     // The figures stay with the document when it is saved.
     const back = await readDocument('mdz', writeDocument(lab, 'mdz'));
     expect(runs(back).filter(isCodeCellRun).filter((c) => c.output?.images?.length)).toHaveLength(5);
+  });
+
+  it('letter: addresses on separate lines, laid out as usual in French (FILE-018)', () => {
+    const paras = doc('letter', 'fr').blocks.filter((b) => b.type === 'paragraph') as Paragraph[];
+    const text = (p: Paragraph) => p.runs.map((r) => ('text' in r ? r.text : '')).join('');
+    expect(text(paras[0]!).split('\n')).toEqual(['Jeanne Martin', '12 rue des Jardins', '75011 Paris', '06 12 34 56 78', 'jeanne.martin@example.org']);
+    expect(text(paras[1]!).split('\n')[0]).toBe('Monsieur Jean Dupont');
+    expect(text(paras[1]!).split('\n').at(-1)).toBe('69000 Lyon');
+    // Recipient, place and date, and signature from 9 cm; spaces between the blocks.
+    for (const i of [1, 2, paras.length - 1]) expect(paras[i]!.indent).toBe(255);
+    expect(text(paras[2]!)).toMatch(/^Paris, le \d{1,2} \p{L}+ \d{4}$/u);
+    expect(text(paras[3]!)).toContain('Objet :');
+    expect(paras[3]!.spaceBefore).toBeGreaterThan(0);
+    expect(text(paras.at(-1)!)).toBe('Jeanne Martin');
+  });
+
+  it('letter: block style in English', () => {
+    const paras = doc('letter', 'en').blocks.filter((b) => b.type === 'paragraph') as Paragraph[];
+    const text = (p: Paragraph) => p.runs.map((r) => ('text' in r ? r.text : '')).join('');
+    expect(text(paras[0]!).split('\n')).toHaveLength(4);
+    expect(text(paras[1]!)).toMatch(/^\d{1,2} \w+ \d{4}$/);
+    expect(text(paras[2]!).split('\n')[0]).toBe('Mr John Doe');
+    expect(paras.every((p) => !p.indent)).toBe(true);
+    expect(text(paras.at(-2)!)).toBe('Jane Smith');
+    expect(paras.at(-2)!.spaceBefore).toBeGreaterThan(0);
   });
 
   it.each(['en', 'fr'] as const)('widgets (%s): a reactive Python slider driving a plot, and a JavaScript widget (CODE-016)', (lang) => {

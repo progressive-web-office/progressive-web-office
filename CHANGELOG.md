@@ -268,6 +268,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- The letter template wrote each address on a single line: every line of an
+  address is now on its own line, and the letter is laid out as is usual in
+  its language (in French: recipient, place and date and signature from
+  9 cm, subject and enclosures, indented paragraphs; in English: block
+  style), with space between the blocks.
+
 - Code in colours again in the editor of a cell (the token colours were
   defined for the code viewer only), and now also in the cells shown in the
   document; completion of keywords, usual functions and words of the code
