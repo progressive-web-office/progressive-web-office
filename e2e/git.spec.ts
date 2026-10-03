@@ -303,3 +303,47 @@ test('opens a repository as a folder from its address (FOLDER-007, GIT-008)', as
   const panel = page.getByRole('complementary', { name: 'Folder' });
   await expect(panel.getByRole('heading', { name: '📁 s-celles/test-pwo (dev)' })).toBeVisible();
 });
+
+test('starts a branch and proposes its changes from a document of a repository (GIT-007)', async ({ page }) => {
+  const posts: { path: string; body: Record<string, unknown> }[] = [];
+  await page.addInitScript(() => {
+    localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh1', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_x', label: 'me' }]));
+  });
+  await page.route(`${API}/**`, async (route: Route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (req.method() === 'POST') posts.push({ path: p, body: JSON.parse(req.postData() ?? '{}') as Record<string, unknown> });
+    if (p === '/user/repos') return json([{ full_name: 'me/notes', default_branch: 'main' }]);
+    if (p === '/repos/me/notes/branches') return json([{ name: 'main' }]);
+    if (p === '/repos/me/notes/contents') return json([{ name: 'notes.md', path: 'notes.md', type: 'file', size: 8 }]);
+    if (p === '/repos/me/notes/contents/notes.md') return json({ type: 'file', sha: 's1', content: b64('# Notes\n'), encoding: 'base64' });
+    if (p === '/repos/me/notes/git/ref/heads/main') return json({ object: { sha: 'c0' } });
+    if (p === '/repos/me/notes/git/refs') return json({}, 201);
+    if (p === '/repos/me/notes/pulls') return json({ number: 7, html_url: 'https://github.com/me/notes/pull/7' }, 201);
+    return json({ message: 'Not Found' }, 404);
+  });
+  await openApp(page);
+  await page.getByRole('button', { name: 'Open from repository…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Open from repository' });
+  await dialog.getByLabel('Repository', { exact: true }).selectOption({ label: 'me/notes' });
+  await dialog.getByRole('button', { name: '📄 notes.md' }).click();
+
+  const source = page.locator('.doc-source');
+  await expect(source).toHaveText('me/notes · main');
+  page.once('dialog', (d) => void d.accept('draft'));
+  await source.click();
+  await page.getByRole('dialog', { name: 'Branches and pull requests' }).getByRole('button', { name: 'Continue' }).click();
+  await expect(source).toHaveText('me/notes · draft');
+  expect(posts[0]).toMatchObject({ path: '/repos/me/notes/git/refs', body: { ref: 'refs/heads/draft', sha: 'c0' } });
+
+  const popup = page.waitForEvent('popup');
+  page.once('dialog', (d) => void d.accept('My changes'));
+  await source.click();
+  const menu = page.getByRole('dialog', { name: 'Branches and pull requests' });
+  await expect(menu.getByLabel('Propose the changes to main (pull request)…')).toBeChecked();
+  await menu.getByRole('button', { name: 'Continue' }).click();
+  await popup;
+  expect(posts[1]).toMatchObject({ path: '/repos/me/notes/pulls', body: { head: 'draft', base: 'main', title: 'My changes' } });
+  await expect(page.getByRole('alert')).toContainText('Request #7 opened');
+});

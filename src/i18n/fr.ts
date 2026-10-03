@@ -965,6 +965,7 @@ export const fr: Record<MessageKey, string> = {
   'git.noOtherBranch': 'Le dépôt n’a pas d’autre branche.',
   'git.pullTitle': 'Titre de la demande :',
   'git.pullDefaultTitle': 'Modifications de {branch}',
+  'git.pullUnsaved': 'Les modifications non enregistrées ne font pas partie de la demande : enregistrez pour les ajouter.',
   'git.pullOpened': 'Demande n° {n} ouverte : {url}',
   'folder.tagColour': 'Couleur du tag {tag}',
   'folder.colourNone': 'Sans couleur',

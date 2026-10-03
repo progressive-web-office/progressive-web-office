@@ -495,6 +495,7 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .app-alert.notice { background: #1e6b3a; color: #fff; }
 .card.repo { border-left-color: var(--muted); }
 .doc-source { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
+button.doc-source { background: none; border: 0; padding: 0; font: inherit; font-size: 0.8rem; color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
 .git-dialog { width: min(720px, calc(100vw - 32px)); }
 .git-body { display: grid; gap: 8px; }
 .git-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

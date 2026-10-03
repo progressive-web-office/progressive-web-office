@@ -116,6 +116,19 @@ binary formats stay available: choose one when you need its exact layout
 
 **Save as…** still downloads a local copy in any format.
 
+### Branches and pull requests from a document
+
+The repository and branch shown in the header (`owner/name · main`) is a
+button:
+
+- **Work on a new branch…** creates a branch from the current one (named
+  `pwo/<date>` unless you choose another name): the next saves are commits
+  there, the default branch staying as it is;
+- **Propose the changes to main…** (on another branch) opens a **pull
+  request** on GitHub, or a **merge request** on GitLab, under the title you
+  give, and opens it in a new tab. Save first: changes not yet committed are
+  not part of the request.
+
 ## A repository as a folder
 
 **Open a folder** also lists your Git accounts (⎇): choose one, then a

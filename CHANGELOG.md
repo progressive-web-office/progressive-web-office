@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Git: the repository and branch in the header of a document opened from a
+  repository start a new branch for the next commits, or open a pull / merge
+  request to the default branch (GIT-007).
 - TextBundle packages (`.textpack`) open as text documents: `text.md` with its
   pictures, the other Markdown files of `assets/` left aside (MD-011).
 - PDF: the signature can be remembered on this device, only when the box is

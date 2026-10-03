@@ -432,6 +432,46 @@ export class App {
   }
 
   /** Current version of a file in a repository, or undefined when it does not exist. */
+  /**
+   * GIT-007: for a document of a repository, work on a new branch (the next
+   * saves are commits there), open it on another branch, or propose its
+   * branch's changes to the default one (pull request / merge request).
+   */
+  private async repoDocumentMenu(): Promise<void> {
+    const doc = this.current;
+    const source = doc?.source;
+    if (!doc || !source) return;
+    const { clientFor } = await import('../git/accounts');
+    const client = clientFor(source.account);
+    const { repo, branch } = source;
+    const newBranch = t('git.workOnNewBranch');
+    const propose = t(source.account.provider === 'gitlab' ? 'git.proposeMerge' : 'git.proposePull', { base: repo.defaultBranch });
+    const options = [newBranch, ...(branch !== repo.defaultBranch ? [propose] : [])];
+    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
+    if (!choice) return;
+    try {
+      if (choice === newBranch) {
+        const name = window.prompt(t('git.newBranchPrompt', { from: branch }), `pwo/${new Date().toISOString().slice(0, 10)}`)?.trim();
+        if (!name) return;
+        await this.withBusy(() => client.createBranch(repo.id, branch, name));
+        const version = await this.repoVersion({ ...source, branch: name });
+        if (this.current !== doc) return;
+        doc.source = { ...source, branch: name, version: version ?? source.version };
+        this.renderHeader();
+        this.showNotice(t('git.onBranch', { branch: name }));
+      } else {
+        const title = window.prompt(t('git.pullTitle'), t('git.pullDefaultTitle', { branch }))?.trim();
+        if (!title) return;
+        if (this.dirty) this.showNotice(t('git.pullUnsaved'));
+        const pr = await this.withBusy(() => client.createPullRequest(repo.id, branch, repo.defaultBranch, title, ''));
+        this.showNotice(t('git.pullOpened', { n: pr.number, url: pr.url }));
+        window.open(pr.url, '_blank', 'noopener');
+      }
+    } catch (err) {
+      this.showError(t('error.git', { message: (err as Error).message }));
+    }
+  }
+
   private async repoVersion(location: Omit<RepoSource, 'version'>): Promise<string | undefined> {
     const { clientFor } = await import('../git/accounts');
     try {
@@ -1023,7 +1063,8 @@ export class App {
     if (doc) {
       items.push(
         this.docNameElement(doc),
-        doc.source ? h('span', { class: 'doc-source' }, `${doc.source.repo.name} · ${doc.source.branch}`) : null,
+        // GIT-007: the repository's branches and requests, from the document.
+        doc.source ? button(`${doc.source.repo.name} · ${doc.source.branch}`, () => void this.repoDocumentMenu(), { className: 'doc-source', title: t('git.branchMenu') }) : null,
         doc.grist ? h('span', { class: 'doc-source' }, `Grist · ${new URL(doc.grist.account.serverUrl).host}`) : null,
         doc.dav ? h('span', { class: 'doc-source', title: doc.dav.path }, `☁ ${new URL(doc.dav.account.url).host}`) : null,
         this.dirty ? h('span', { class: 'modified', title: t('file.unsaved'), 'aria-label': t('file.unsaved') }, '●') : null,

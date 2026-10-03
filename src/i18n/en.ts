@@ -963,6 +963,7 @@ export const en = {
   'git.noOtherBranch': 'The repository has no other branch.',
   'git.pullTitle': 'Title of the request:',
   'git.pullDefaultTitle': 'Changes from {branch}',
+  'git.pullUnsaved': 'The changes not yet saved are not part of the request: save to add them.',
   'git.pullOpened': 'Request #{n} opened: {url}',
   'folder.tagColour': 'Colour of the tag {tag}',
   'folder.colourNone': 'No colour',

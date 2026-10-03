@@ -965,6 +965,7 @@ export const zh: Record<MessageKey, string> = {
   'git.noOtherBranch': '该仓库没有其他分支。',
   'git.pullTitle': '请求标题：',
   'git.pullDefaultTitle': '来自 {branch} 的更改',
+  'git.pullUnsaved': '尚未保存的修改不包含在请求中：保存后即可加入。',
   'git.pullOpened': '已创建请求 #{n}：{url}',
   'folder.tagColour': '标签 {tag} 的颜色',
   'folder.colourNone': '无颜色',
