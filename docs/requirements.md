@@ -506,7 +506,7 @@ integration is ever needed.
 |----|-----|-------|-------------|
 | IMG-001 | C | 0.2.0 | The system shall offer minimal photo editing of a picture (crop, quarter turns, mirror, resize, brightness and contrast, blur a region), keeping the original until applied and the change undoable. |
 | IMG-004 | C | 0.2.0 | The system shall let the user draw arrows, text and highlights on a picture, following its turns and mirroring. |
-| IMG-002 | C | — | The system shall offer minimal vector drawing (shapes, lines and arrows, text, freehand), saved as SVG and editable again in documents and presentations. |
+| IMG-002 | C | — | The system shall offer minimal vector drawing (shapes, lines and arrows, text, freehand), saved as SVG and editable again in documents and presentations — see DRAW-001..DRAW-011. |
 | IMG-003 | S | 0.2.0 | When the user inserts or pastes a picture, the system shall offer to give it a caption (numbered as a figure) and an alternative text, and shall list the pictures without alternative text. |
 
 ## 9l. Teaching (TEACH)
@@ -559,6 +559,22 @@ integration is ever needed.
 | UNIT-002 | S | 0.2.0 | A number typed with a unit (`12 mm`) shall be a quantity, kept as the number with the unit in its number format, so that XLSX, ODS and CSV files keep it and other spreadsheets show it; a formula giving a quantity shall be shown and saved in its unit; QTY and UNIT shall make a quantity and give its unit. |
 | UNIT-003 | S | 0.2.0 | Formulas shall compute with quantities in SI and check their dimensions: addition, subtraction, comparisons and aggregates (SUM, AVERAGE, MIN, MAX, MEDIAN) of one dimension only, products, quotients and powers combining them, functions of numbers on dimensionless values only — anything else being the error #UNIT!; the unit of a result is that of its first operand, combined units simplified (mm·m → mm², kg·m/s² → N). |
 | UNIT-004 | S | 0.2.0 | The user shall show cells in another unit: quantities converted, plain numbers given the unit, formulas shown in it; cells of another dimension left as they were. |
+
+## 9t. Drawing and schematics (DRAW)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| DRAW-001 | S | 0.2.0 | The system shall offer a vector drawing editor: rectangles (rounded or not), ellipses, polygons, lines and polylines with optional arrowheads, freehand strokes (smoothed), and text; each with its stroke colour, width and dash, fill colour and opacity; select, move, resize, rotate, duplicate, delete, group and ungroup, bring forward or back, align and distribute; with the mouse, the finger and the keyboard (arrows move by a grid step, Shift for a finer one); undo and redo; zoom and pan. |
+| DRAW-002 | S | 0.2.0 | The drawing shall have a grid the shapes, points and symbols snap to (its step chosen, shown or hidden), and guides showing the alignment with other shapes while moving. |
+| DRAW-003 | S | 0.2.0 | A drawing shall be saved as SVG, the editable drawing kept inside it, so that any SVG viewer shows it and the editor opens it again as it was; an SVG not made here shall open with its rectangles, circles, ellipses, lines, polylines, polygons, paths and texts editable; a drawing shall be exported as PNG (with a chosen scale) and printed. |
+| DRAW-004 | S | 0.2.0 | Connectors shall join shapes and symbols at their connection points and follow them when they move, straight or orthogonal (routed in right angles), with optional arrowheads and a label. |
+| DRAW-005 | S | 0.2.0 | The system shall offer libraries of symbols, searchable by name: electrical and electronic after IEC 60617 (resistor, potentiometer, capacitor, polarised capacitor, inductor, diode, LED, Zener diode, NPN and PNP transistors, MOSFETs, operational amplifier, voltage and current sources DC and AC, battery, ground, earth, switch, push button, changeover switch, fuse, lamp, motor, transformer, relay coil and contacts, voltmeter, ammeter, wattmeter), logic gates (IEC and ANSI shapes), control block diagrams (block, summing point, take-off point), pneumatic and hydraulic after ISO 1219 (single and double acting cylinders, 3/2 and 5/2 directional valves, pump, compressor, pressure source, exhaust, check valve, flow control), and flowcharts after ISO 5807 (terminal, process, decision, input/output, connector). |
+| DRAW-006 | S | 0.2.0 | In a schematic, symbols shall have pins on the grid; wires drawn from pin to pin shall be orthogonal and stay connected when a symbol moves, rotates (quarter turns) or is mirrored; a junction dot shall be drawn where three or more wires meet and none where wires only cross; each symbol shall get a reference numbered by kind (R1, R2, C1, Q1…) and an editable value (10 kΩ, 100 nF — with the units of UNIT-001), both placed beside it. |
+| DRAW-007 | S | 0.2.0 | A drawing shall be inserted in a text document or a slide as a picture that stays editable (a double click opens the editor; saved back in place), kept as SVG with a PNG version where a format needs one (DOCX, PDF, LaTeX). |
+| DRAW-008 | S | 0.2.0 | The system shall offer a bitmap painting editor, for a new picture or a picture of a document or a file (PNG, JPEG, WebP): pencil, brush, eraser, fill, line, rectangle, ellipse, text, colour picker, size and opacity of the tool, selection moved, copied or deleted, canvas resized, undo and redo, zoom. |
+| DRAW-009 | C | — | From an electrical schematic, the system should give a netlist (SPICE) and a bill of materials (reference, value, quantity) as a spreadsheet. |
+| DRAW-010 | C | — | The system should open and save OpenDocument drawings (`.odg`) and open draw.io diagrams (`.drawio`, uncompressed). |
+| DRAW-011 | S | 0.2.0 | The drawing editor shall be accessible: every shape reachable with Tab and named for screen readers (its kind, its reference and value, its text), moved and resized with the keyboard, and the drawing given an alternative text. |
 
 ## 10. Out of scope (Won't, this time)
 
