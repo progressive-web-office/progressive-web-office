@@ -101,8 +101,10 @@ test('binary documents are handed to QRShare, and receiving opens its QR receive
   const receive = context.waitForEvent('page');
   await page.getByRole('button', { name: 'Receive from another device…' }).click();
   const receiver = await receive;
-  await expect(receiver.getByRole('heading', { name: 'Receive via QR' })).toBeVisible();
+  // SHARE-005: QRShare's scanner that recognises a QR code, animated QR codes or CIMBAR.
+  await expect(receiver.getByRole('heading', { name: 'Smart scanner' })).toBeVisible();
   expect(new URL(receiver.url()).origin).toBe(new URL(QRSHARE_URL!).origin);
+  expect(new URL(receiver.url()).hash).toMatch(/^#\/scan\/auto\?/);
 });
 
 test('a file shared to QRShare through the system share sheet reaches its transfer chooser', async ({ page }) => {
