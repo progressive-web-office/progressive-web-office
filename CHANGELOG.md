@@ -198,6 +198,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- Documentation, source code and About are buttons under the title of the
+  start screen; in the toolbar, **?** opens the documentation and **ℹ**
+  the About window.
+
 - Documentation site: a visual identity matching the application (its icon
   as logo and favicon, its blue and the colours of documents, spreadsheets
   and presentations, light and dark), a home page with feature icons and

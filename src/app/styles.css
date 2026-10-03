@@ -905,7 +905,8 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
   .app-header.more-open .header-actions > * { display: flex; justify-content: flex-start; }
   .app-header.more-open .header-actions > .more-toggle { order: -1; align-self: flex-end; }
   /* Icon buttons show their name in the menu. */
-  .app-header.more-open .header-actions > button.icon[aria-label]::after { content: ' ' attr(aria-label); margin-left: 6px; }
+  .app-header.more-open .header-actions > button.icon[aria-label]::after,
+  .app-header.more-open .header-actions > a.icon[aria-label]::after { content: ' ' attr(aria-label); margin-left: 6px; }
   .toolbar { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding: 4px 8px; }
   .toolbar > * { flex: 0 0 auto; }
   .toolbar .sep { display: none; }
@@ -1173,3 +1174,25 @@ body.distraction-free .ai-panel { display: none !important; }
 .doc-page blockquote.callout-warning { --callout: #d9822b; }
 .doc-page blockquote.callout-danger { --callout: #d1453b; }
 .doc-page blockquote.callout-example { --callout: #8a4fd6; }
+
+/* The documentation, the source code and About, in plain sight on the start screen. */
+.start-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 20px; }
+.start-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.start-link[data-icon]::before { content: attr(data-icon) / ''; }
+.start-link:hover, .start-link:focus-visible { border-color: var(--accent); color: var(--accent); }

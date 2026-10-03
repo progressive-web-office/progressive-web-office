@@ -19,9 +19,11 @@ describe('UI-001 start screen', () => {
 
   it('links to the documentation and the source code', () => {
     new App(root);
-    const links = Array.from(root.querySelectorAll<HTMLAnchorElement>('.start .source-link a'));
-    expect(links.map((a) => a.textContent)).toEqual(['Documentation', 'Source code (GNU AGPL-3.0)']);
-    expect(links[0]!.href).toBe(new URL('docs/', document.baseURI).href);
+    const links = Array.from(root.querySelectorAll<HTMLElement>('.start .start-links .start-link'));
+    expect(links.map((a) => a.textContent)).toEqual(['Documentation', 'Source code (GNU AGPL-3.0)', 'About']);
+    expect((links[0] as HTMLAnchorElement).href).toBe(new URL('docs/', document.baseURI).href);
+    // And in the header: the documentation (?) and About (ℹ).
+    expect(root.querySelector<HTMLAnchorElement>('.header-actions a[aria-label="Documentation"]')!.href).toBe(new URL('docs/', document.baseURI).href);
   });
 
   it('UI-003 gives every button an accessible name', () => {

@@ -465,6 +465,8 @@ export const en = {
   'common.allow': 'Allow',
   'common.close': 'Close',
   'app.docs': 'Documentation',
+  'app.links': 'Links',
+  'app.docsTitle': 'Documentation: guides for every feature',
   'app.source': 'Source code (GNU AGPL-3.0)',
   'theme.label': 'Theme: {mode}',
   'theme.system': 'System',

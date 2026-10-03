@@ -898,6 +898,14 @@ export class App {
         { class: 'start' },
         h('h1', {}, t('app.name'), ' ', h('span', { class: 'app-version-title' }, versionLabel())),
         h('p', { class: 'tagline' }, t('app.tagline')),
+        // The documentation (published next to the app, under docs/, see pages.yml), the source and About, in plain sight.
+        h(
+          'nav',
+          { class: 'start-links', 'aria-label': t('app.links') },
+          h('a', { class: 'start-link', href: new URL('docs/', document.baseURI).href, target: '_blank', rel: 'noopener', 'data-icon': '📖' }, t('app.docs')),
+          h('a', { class: 'start-link', href: SOURCE_URL, target: '_blank', rel: 'noopener', 'data-icon': '⌨️' }, t('app.source')),
+          button(t('about.open'), () => void this.showAbout(), { className: 'start-link', title: t('about.openTitle'), icon: 'ℹ️' }),
+        ),
         h(
           'div',
           { class: 'start-actions' },
@@ -914,16 +922,6 @@ export class App {
         ),
         h('p', { class: 'hint' }, t('start.tip')),
         h('div', { class: 'start-prefs' }, this.languagePicker(), this.formatPicker()),
-        h(
-          'p',
-          { class: 'source-link' },
-          // The documentation is published next to the app, under docs/ (see pages.yml).
-          h('a', { href: new URL('docs/', document.baseURI).href, target: '_blank', rel: 'noopener' }, t('app.docs')),
-          ' · ',
-          h('a', { href: SOURCE_URL, target: '_blank', rel: 'noopener' }, t('app.source')),
-          ' · ',
-          button(t('about.open'), () => void this.showAbout(), { className: 'link', title: t('about.openTitle') }),
-        ),
         recent,
       ),
     );
@@ -1051,7 +1049,11 @@ export class App {
     actions.append(settings);
     actions.append(this.themeButton());
     actions.append(button(t('palette.label'), () => void this.openPalette(), { title: t('palette.button'), text: '⌘', className: 'icon' }));
-    actions.append(button(t('about.open'), () => void this.showAbout(), { title: t('about.openTitle'), text: '?', className: 'icon' }));
+    // The documentation (help) and About, always at hand.
+    actions.append(
+      h('a', { class: 'button-like icon', href: new URL('docs/', document.baseURI).href, target: '_blank', rel: 'noopener', title: t('app.docsTitle'), 'aria-label': t('app.docs') }, '?'),
+      button(t('about.open'), () => void this.showAbout(), { title: t('about.openTitle'), text: 'ℹ', className: 'icon' }),
+    );
     if (doc) {
       actions.append(
         button(t('file.print'), () => void this.print(), { title: t('file.printTitle') }),

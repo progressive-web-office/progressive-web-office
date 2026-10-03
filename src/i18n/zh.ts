@@ -467,6 +467,8 @@ export const zh: Record<MessageKey, string> = {
   'common.allow': '允许',
   'common.close': '关闭',
   'app.docs': '使用文档',
+  'app.links': '链接',
+  'app.docsTitle': '使用文档：每项功能的指南',
   'app.source': '源代码（GNU AGPL-3.0）',
   'theme.label': '主题：{mode}',
   'theme.system': '跟随系统',

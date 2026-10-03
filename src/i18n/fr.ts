@@ -467,6 +467,8 @@ export const fr: Record<MessageKey, string> = {
   'common.allow': 'Autoriser',
   'common.close': 'Fermer',
   'app.docs': 'Documentation',
+  'app.links': 'Liens',
+  'app.docsTitle': 'Documentation : les guides de chaque fonctionnalité',
   'app.source': 'Code source (GNU AGPL-3.0)',
   'theme.label': 'Thème : {mode}',
   'theme.system': 'Système',

@@ -111,9 +111,13 @@ Versions stay in this browser only: clearing the site's data erases them.
 | <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open a file |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save |
 
-## About
+## Documentation, source code and About
 
-**?** in the toolbar (or *About* on the start screen) shows the version and
+The start screen shows three buttons under the title: **📖 Documentation**
+(this site), **⌨️ Source code** and **ℹ️ About**. In the toolbar, **?** opens
+the documentation and **ℹ** the About window.
+
+**About** shows the version and
 the git commit of the build, whether the app is installed and works offline,
 and links to this documentation, the source code, the changelog and the
 problem tracker. Its **QR code** opens the app on another device: scan it with
