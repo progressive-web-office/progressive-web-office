@@ -38,3 +38,32 @@ describe('UI-018 shortcuts in the command palette', () => {
     expect(splitShortcut('Save')).toEqual({ label: 'Save', keys: [] });
   });
 });
+
+describe('UI-022 commands by category', () => {
+  it('finds the commands folded in the menus of a toolbar, with their menu as category', async () => {
+    const { collectCommands } = await import('../src/app/palette');
+    const { toolGroup } = await import('../src/app/tool-groups');
+    const { button, h } = await import('../src/app/dom');
+    const bar = h('div', { role: 'toolbar', 'aria-label': 'Formatting' }, button('Bold', () => undefined, { text: 'B' }), toolGroup('Insert', '＋', [button('Table', () => undefined, { text: '▦' })], 'compact'));
+    document.body.append(bar);
+    // jsdom lays nothing out: every element counts as shown.
+    for (const el of bar.querySelectorAll<HTMLElement>('*')) Object.defineProperty(el, 'offsetParent', { get: () => (el.closest('[hidden]') ? null : document.body) });
+    const commands = collectCommands(document.body);
+    expect(commands.map((c) => [c.category, c.label])).toEqual([
+      ['Formatting', 'Bold'],
+      ['Insert', 'Table'],
+    ]);
+    bar.remove();
+  });
+
+  it('finds a command by its category, and lists them all by category', async () => {
+    const { filterCommands, groupByCategory } = await import('../src/app/palette');
+    const cmds = [
+      { label: 'Send by QR code', category: 'Share', where: 'Header', run: () => undefined },
+      { label: 'Table', category: 'Insert', where: 'Formatting', run: () => undefined },
+      { label: 'Collaborate', category: 'Share', where: 'Header', run: () => undefined },
+    ];
+    expect(filterCommands(cmds, 'share').map((c) => c.label)).toEqual(['Collaborate', 'Send by QR code']);
+    expect(groupByCategory(cmds).map((c) => c.label)).toEqual(['Collaborate', 'Send by QR code', 'Table']);
+  });
+});

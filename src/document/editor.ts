@@ -1493,7 +1493,29 @@ export class DocumentEditor implements EditorView {
     const toggle = this.review.active
       ? { label: t('review.leaveTitle'), where: t('review.bar'), keys: ['Ctrl+Alt+R'], run: () => this.review.toggle(false) }
       : { label: t('review.mode'), where: t('doc.formatting'), keys: ['Ctrl+Alt+R'], keywords: REVIEW_KEYWORDS, run: () => this.review.toggle(true) };
-    return [toggle, ...this.review.commands()];
+    if (this.review.active || this.readOnly) return [toggle, ...this.review.commands()];
+    // UI-022: what the context menu offers, by category.
+    const where = t('doc.formatting');
+    const fields = FIELD_KINDS.map((kind) => ({ label: t(`field.${kind}`), category: t('field.menu'), where, run: () => this.insertField(kind) }));
+    const springs = (['spring', 'fixed', 'hfill'] as const).map((kind) => ({ label: t(kind === 'spring' ? 'space.insertSpring' : kind === 'fixed' ? 'space.insertFixed' : 'space.insertHfill'), category: t('space.menu'), where, run: () => this.insertSpace(kind) }));
+    const state = this.view.state;
+    const tableCmd = (key: MessageKey, cmd: Command) => ({ label: t(key), category: t('table.bar'), where, run: () => this.command(cmd) });
+    const table = isInTable(state)
+      ? [
+          tableCmd('table.rowAbove', addRowBefore),
+          tableCmd('table.rowBelow', addRowAfter),
+          tableCmd('table.colLeft', addColumnBefore),
+          tableCmd('table.colRight', addColumnAfter),
+          tableCmd('table.deleteRow', deleteRow),
+          tableCmd('table.deleteCol', deleteColumn),
+          tableCmd('table.merge', mergeCells),
+          tableCmd('table.split', splitCell),
+          tableCmd('table.header', toggleHeaderRow),
+          tableCmd('table.delete', deleteTable),
+        ].filter((_c, i) => [addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, mergeCells, splitCell, toggleHeaderRow, deleteTable][i]!(state))
+      : [];
+    const menu = { label: t('ctx.menu'), category: t('ctx.edit'), where, run: () => this.showContextMenuAtCursor() };
+    return [toggle, ...this.review.commands(), ...fields, ...springs, ...table, menu];
   }
 
   /** FOLDER-023: the colours of the tags changed. */

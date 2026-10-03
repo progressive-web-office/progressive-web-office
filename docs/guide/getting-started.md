@@ -157,9 +157,21 @@ offered.
 
 ## Command palette
 
-Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (or click **⌘** in the
-header) and type part of an action's name, in any order: *table*, *insert
-image*, *docx*, *solution*… The palette lists every button and menu entry of
-the screen (toolbars, panels, *Save as* formats); <kbd>↑</kbd> <kbd>↓</kbd>
-choose one, <kbd>Enter</kbd> runs it, <kbd>Esc</kbd> closes the palette. The keyboard shortcut of a command, when it has one, is shown beside it: next time, use it directly.
+Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, click **⌘ Commands** in
+the header, or — on a phone — the round **⌘** button at the bottom right of
+the screen. The palette holds **every action of the screen**: the buttons of
+the toolbars and panels, those folded in their menus (Insert, Format, Share,
+Review…), the *Save as* formats, and what the document's context menu offers
+(fields, springs, the rows and columns of the table the cursor is in).
+
+- With nothing typed, it lists them all **by category**: browse it to see
+  what can be done.
+- Type part of an action's name or of its category, in any order: *table*,
+  *insert image*, *share*, *docx*, *solution*… Each is shown as
+  **Category: Action** — *Share: Sync by QR*, *Insert: Table*.
+
+<kbd>↑</kbd> <kbd>↓</kbd> choose one, <kbd>Enter</kbd> runs it,
+<kbd>Esc</kbd> closes the palette; on a phone it takes the whole screen. The
+keyboard shortcut of a command, when it has one, is shown beside it: next
+time, use it directly.
 

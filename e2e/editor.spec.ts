@@ -454,6 +454,40 @@ test('runs an action found by name in the command palette (UI-018)', async ({ pa
   await expect(palette.getByRole('option').first().locator('kbd')).toHaveText('Ctrl+Alt+R');
 });
 
+test('lists every command by category, those of the menus too, and finds them by category (UI-022)', async ({ page }) => {
+  // Compact toolbars: the commands are folded in menus.
+  await page.addInitScript(() => localStorage.setItem('pwo.toolbar', 'compact'));
+  await newDocument(page);
+  await page.getByRole('button', { name: 'Commands', exact: true }).click();
+  const palette = page.getByRole('dialog', { name: 'Commands' });
+  // Nothing typed: every command, under its category.
+  await expect(palette.locator('.palette-group', { hasText: /^Share$/ })).toHaveCount(1);
+  await expect(palette.locator('.palette-group', { hasText: /^Insert$/ })).toHaveCount(1);
+  await expect(palette.locator('.palette-group', { hasText: /^Field$/ })).toHaveCount(1);
+  expect(await palette.getByRole('option').count()).toBeGreaterThan(60);
+  // Typed: "Category: Command".
+  await palette.getByRole('combobox').fill('share');
+  await expect(palette.getByRole('option').first().locator('.palette-category')).toHaveText('Share: ');
+  await expect(palette.getByRole('option').filter({ hasText: 'Sync by QR' })).toHaveCount(1);
+  await palette.getByRole('combobox').fill('insert table');
+  await palette.getByRole('option').first().click();
+  await expect(page.locator('.doc-page table')).toHaveCount(1);
+});
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true });
+
+  test('a round button opens the command palette, full screen (UI-022)', async ({ page }) => {
+    await newDocument(page);
+    const fab = page.locator('.palette-fab');
+    await expect(fab).toBeVisible();
+    await fab.click();
+    const palette = page.getByRole('dialog', { name: 'Commands' });
+    await expect(palette).toBeVisible();
+    expect((await palette.boundingBox())!.width).toBeGreaterThan(380);
+  });
+});
+
 test('keeps a version at each save and opens an older one (FILE-025)', async ({ page }) => {
   const editor = await newDocument(page);
   await page.keyboard.type('First draft.');

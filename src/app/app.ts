@@ -1077,7 +1077,11 @@ export class App {
     settings.dataset.keywords = 'settings preferences options configuration paramètres préférences réglages 设置 选项';
     actions.append(settings);
     actions.append(this.themeButton());
-    actions.append(button(t('palette.label'), () => void this.openPalette(), { title: t('palette.button'), text: '⌘', className: 'icon' }));
+    // UI-022: the command palette, in sight: named in the header, and a round button on a phone.
+    actions.append(button(t('palette.label'), () => void this.openPalette(), { title: t('palette.button'), text: `⌘ ${t('palette.label')}`, className: 'palette-button' }));
+    if (!this.root.querySelector(':scope > .palette-fab')) {
+      this.root.append(button(t('palette.label'), () => void this.openPalette(), { title: t('palette.button'), text: '⌘', className: 'palette-fab' }));
+    }
     // The documentation (help) and About, always at hand.
     actions.append(
       h('a', { class: 'button-like icon', href: new URL('docs/', document.baseURI).href, target: '_blank', rel: 'noopener', title: t('app.docsTitle'), 'aria-label': t('app.docs') }, '?'),

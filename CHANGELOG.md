@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Command palette in sight and complete (UI-022): a **⌘ Commands** button
+  in the header and a round button on a phone (the palette then full screen);
+  the commands folded in the toolbars' menus (Insert, Share…) and those of
+  the context menu (fields, springs, table) are listed too, as
+  "Category: Action", and with nothing typed the palette lists them all by
+  category.
+
 - Springs and spaces (DOC-042), as in LaTeX: vertical springs (`\vfill`)
   share the free height of the page, horizontal springs (`\hfill`) the free
   width of a line, in proportion to their weight; fixed vertical spaces

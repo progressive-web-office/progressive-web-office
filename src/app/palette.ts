@@ -1,6 +1,7 @@
 /**
- * Command palette (UI-018): every button and menu entry of the screen,
- * found by typing part of its name (Ctrl+Shift+P).
+ * Command palette (UI-018): every button and menu entry of the screen — those
+ * folded in the toolbars' menus too — found by typing part of its name or of
+ * its category (Ctrl+Shift+P), or browsed by category (UI-022).
  */
 import { h } from './dom';
 import { t } from '../i18n';
@@ -13,19 +14,21 @@ export interface PaletteCommand {
   keys?: string[];
   /** Where it is (the toolbar or panel), shown beside the name. */
   where: string;
+  /** UI-022: its menu or kind (Insert, Share, Table…), shown before the name: "Insert: Table". */
+  category?: string;
   run(): void;
 }
 
 const fold = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** Commands matching a query: every word of the query in the name, in any order; names starting with it first. */
-export function filterCommands<T extends { label: string; keywords?: string }>(commands: T[], query: string): T[] {
+export function filterCommands<T extends { label: string; keywords?: string; category?: string }>(commands: T[], query: string): T[] {
   const words = fold(query).split(/\s+/).filter(Boolean);
   if (!words.length) return commands;
   const scored = commands
     .map((c) => {
       const name = fold(c.label);
-      const all = c.keywords ? `${name} ${fold(c.keywords)}` : name;
+      const all = [name, c.category ? fold(c.category) : '', c.keywords ? fold(c.keywords) : ''].join(' ');
       if (!words.every((w) => all.includes(w))) return undefined;
       return { c, score: (name.startsWith(words[0]!) ? 0 : name.includes(words[0]!) ? 1 : 2) + name.length / 1000 };
     })
@@ -51,11 +54,20 @@ export function splitShortcut(title: string): { label: string; keys: string[] } 
 export function collectCommands(root: HTMLElement): PaletteCommand[] {
   const out: PaletteCommand[] = [];
   const seen = new Set<string>();
-  const visible = (el: HTMLElement): boolean => !el.closest('[hidden], dialog, .palette') && (el.offsetParent !== null || el.getClientRects().length > 0);
+  // Shown, or in a folded menu of a shown toolbar (UI-022).
+  const visible = (el: HTMLElement): boolean => {
+    if (el.closest('dialog, .palette, .context-menu')) return false;
+    const menu = el.closest<HTMLElement>('.tool-group-panel');
+    if (menu) return !menu.parentElement?.closest('[hidden]') && visible(menu.parentElement!.querySelector<HTMLElement>('.tool-group-toggle') ?? menu.parentElement!);
+    return !el.closest('[hidden]') && (el.offsetParent !== null || el.getClientRects().length > 0);
+  };
   // The toolbar, panel or menu around the control (not the control itself).
   const whereOf = (el: HTMLElement): string => el.parentElement?.closest<HTMLElement>('[role=toolbar], aside, header, [aria-label]')?.getAttribute('aria-label') ?? '';
+  // Its menu (Insert, Share…), or else its toolbar.
+  const categoryOf = (el: HTMLElement): string | undefined =>
+    el.closest<HTMLElement>('.tool-group-panel, .tool-group-inline')?.getAttribute('aria-label') ?? el.parentElement?.closest<HTMLElement>('[role=toolbar], aside, header')?.getAttribute('aria-label') ?? undefined;
   for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>('button'))) {
-    if (b.disabled || !visible(b)) continue;
+    if (b.disabled || b.classList.contains('tool-group-toggle') || !visible(b)) continue;
     const raw = (b.getAttribute('aria-label') || b.title || b.textContent || '').replace(/\s+/g, ' ').trim();
     // The shortcut is in the tooltip, the name in the label (or the tooltip).
     const fromTitle = splitShortcut(b.title.replace(/\s+/g, ' ').trim());
@@ -65,7 +77,8 @@ export function collectCommands(root: HTMLElement): PaletteCommand[] {
     const key = `${label}\u0000${where}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ label, where, ...(fromTitle.keys.length ? { keys: fromTitle.keys } : {}), ...(b.dataset.keywords ? { keywords: b.dataset.keywords } : {}), run: () => b.click() });
+    const category = categoryOf(b);
+    out.push({ label, where, ...(category ? { category } : {}), ...(fromTitle.keys.length ? { keys: fromTitle.keys } : {}), ...(b.dataset.keywords ? { keywords: b.dataset.keywords } : {}), run: () => b.click() });
   }
   // Entries of menus such as "Save as…".
   for (const select of Array.from(root.querySelectorAll<HTMLSelectElement>('select'))) {
@@ -73,9 +86,11 @@ export function collectCommands(root: HTMLElement): PaletteCommand[] {
     const name = select.getAttribute('aria-label') ?? '';
     for (const option of Array.from(select.options)) {
       if (!option.value || option.disabled) continue;
+      const category = categoryOf(select);
       out.push({
         label: `${name}: ${option.textContent?.trim() ?? option.value}`,
         where: whereOf(select),
+        ...(category ? { category } : {}),
         run: () => {
           select.value = option.value;
           select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -84,6 +99,21 @@ export function collectCommands(root: HTMLElement): PaletteCommand[] {
     }
   }
   return out;
+}
+
+/** Commands grouped by category (in the order categories first appear), sorted by name within each. */
+export function groupByCategory<T extends PaletteCommand>(commands: T[]): T[] {
+  const order: string[] = [];
+  const groups = new Map<string, T[]>();
+  for (const c of commands) {
+    const cat = c.category ?? c.where;
+    if (!groups.has(cat)) {
+      groups.set(cat, []);
+      order.push(cat);
+    }
+    groups.get(cat)!.push(c);
+  }
+  return order.flatMap((cat) => groups.get(cat)!.sort((a, b) => a.label.localeCompare(b.label)));
 }
 
 /** Show the palette; resolves when it is closed. */
@@ -96,18 +126,28 @@ export function openPalette(host: HTMLElement, commands: PaletteCommand[]): Prom
     let shown: PaletteCommand[] = [];
     let active = 0;
     const render = (): void => {
-      shown = filterCommands(commands, input.value).slice(0, 50);
+      const browsing = !input.value.trim();
+      // UI-022: with nothing typed, every command, by category.
+      shown = browsing ? groupByCategory(commands) : filterCommands(commands, input.value).slice(0, 80);
       active = Math.min(active, Math.max(0, shown.length - 1));
-      list.replaceChildren(
-        ...(shown.length
-          ? shown.map((c, i) => {
-              const li = h('li', { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' }, h('span', { class: 'palette-name' }, c.label), h('span', { class: 'palette-keys' }, ...(c.keys ?? []).map((k) => h('kbd', {}, k))), h('small', { class: 'palette-where' }, c.where));
-              li.addEventListener('mousedown', (e) => e.preventDefault());
-              li.addEventListener('click', () => run(i));
-              return li;
-            })
-          : [h('li', { class: 'hint' }, t('palette.none'))]),
-      );
+      const items: HTMLElement[] = [];
+      let category: string | undefined;
+      shown.forEach((c, i) => {
+        const cat = c.category ?? c.where;
+        if (browsing && cat !== category) items.push(h('li', { class: 'palette-group', role: 'presentation' }, cat || t('palette.other')));
+        category = cat;
+        const li = h(
+          'li',
+          { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' },
+          h('span', { class: 'palette-name' }, ...(c.category && !browsing ? [h('span', { class: 'palette-category' }, `${c.category}${t('palette.categorySep')}`)] : []), c.label),
+          h('span', { class: 'palette-keys' }, ...(c.keys ?? []).map((k) => h('kbd', {}, k))),
+          h('small', { class: 'palette-where' }, c.where),
+        );
+        li.addEventListener('mousedown', (e) => e.preventDefault());
+        li.addEventListener('click', () => run(i));
+        items.push(li);
+      });
+      list.replaceChildren(...(shown.length ? items : [h('li', { class: 'hint' }, t('palette.none'))]));
       if (shown.length) input.setAttribute('aria-activedescendant', `palette-${active}`);
       else input.removeAttribute('aria-activedescendant');
       list.querySelector('.active')?.scrollIntoView({ block: 'nearest' });

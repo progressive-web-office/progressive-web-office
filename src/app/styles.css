@@ -942,7 +942,18 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .a11y-list { padding-left: 1.2em; }
 .a11y-list li { margin: 4px 0; }
 
-/* UI-018: command palette. */
+/* UI-018: command palette. UI-022: in sight, by category. */
+.palette-button { font-weight: 600; border-color: var(--accent) !important; color: var(--accent); }
+.palette-fab { display: none; }
+@media (max-width: 700px), (pointer: coarse) and (max-width: 1000px) {
+  .palette-fab { display: grid; place-items: center; position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 900; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-contrast); font-size: 1.6rem; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
+  dialog.dialog.palette { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border-radius: 0; box-sizing: border-box; }
+  dialog.dialog.palette .palette-list { max-height: calc(100dvh - 80px); }
+  .palette-list li { padding: 10px; }
+}
+@media print { .palette-fab { display: none !important; } }
+.palette-list li.palette-group { display: block; position: sticky; top: 0; padding: 8px 10px 4px; background: var(--surface); color: var(--muted); font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; cursor: default; }
+.palette-category { color: var(--muted); }
 .dialog.palette { width: min(60rem, calc(100vw - 32px)); max-width: none; padding: 8px; align-self: start; margin-top: 10vh; }
 .palette-input { width: 100%; box-sizing: border-box; font-size: 1rem; padding: 8px 10px; }
 .palette-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 50vh; overflow: auto; }
