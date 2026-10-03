@@ -97,6 +97,35 @@ export class GristClient {
     return { docId, tables: out };
   }
 
+  /** The ids of the tables of a document. */
+  async listTables(docId: string): Promise<string[]> {
+    const { tables } = await this.request<{ tables: { id: string }[] }>('GET', `/docs/${encodeURIComponent(docId)}/tables`);
+    return tables.map((t) => t.id);
+  }
+
+  /** A table's columns and records. */
+  async readTable(docId: string, tableId: string): Promise<GristTable> {
+    const path = `/docs/${encodeURIComponent(docId)}/tables/${encodeURIComponent(tableId)}`;
+    const [{ columns }, { records }] = await Promise.all([
+      this.request<{ columns: { id: string; fields: { label?: string; type?: string; isFormula?: boolean } }[] }>('GET', `${path}/columns`),
+      this.request<{ records: GristRecord[] }>('GET', `${path}/records`),
+    ]);
+    return { tableId, columns: columns.map((c) => ({ id: c.id, label: c.fields.label || c.id, type: c.fields.type ?? 'Any', isFormula: !!c.fields.isFormula })), records };
+  }
+
+  /** Create a table; returns its id, as Grist made it. */
+  async createTable(docId: string, tableId: string, columns: { id: string; label: string; type: string }[]): Promise<string> {
+    const { tables } = await this.request<{ tables: { id: string }[] }>('POST', `/docs/${encodeURIComponent(docId)}/tables`, {
+      tables: [{ id: tableId, columns: columns.map((c) => ({ id: c.id, fields: { label: c.label, type: c.type } })) }],
+    });
+    return tables[0]?.id ?? tableId;
+  }
+
+  async addColumns(docId: string, tableId: string, columns: { id: string; label: string; type: string }[]): Promise<void> {
+    if (!columns.length) return;
+    await this.request('POST', `/docs/${encodeURIComponent(docId)}/tables/${encodeURIComponent(tableId)}/columns`, { columns: columns.map((c) => ({ id: c.id, fields: { label: c.label, type: c.type } })) });
+  }
+
   /** Apply changes table by table: updates, then additions, then deletions. */
   async apply(docId: string, changes: GristTableChanges[]): Promise<void> {
     const doc = encodeURIComponent(docId);

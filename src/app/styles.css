@@ -258,6 +258,12 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
 .doc-page .pm-atom.pm-display, .doc-page .pm-atom.pm-diagram, .doc-page .pm-atom.pm-code_cell { display: block; }
 .doc-page .pm-field { background: #e8ecf2; border-radius: 3px; padding: 0 1px; }
 @media print { .doc-page .pm-field { background: none; padding: 0; } }
+.form-input { display: inline-block; vertical-align: baseline; }
+.form-input input[type="text"] { font: inherit; color: inherit; min-width: 9em; border: 0; border-bottom: 1px solid currentColor; background: color-mix(in srgb, var(--accent, #2563eb) 7%, transparent); padding: 0 3px; }
+.form-input input[type="checkbox"] { width: 1em; height: 1em; margin: 0 2px; vertical-align: -0.1em; }
+.form-input select { font: inherit; color: inherit; background: color-mix(in srgb, var(--accent, #2563eb) 7%, transparent); }
+.form-input[data-required]::after { content: " *"; color: #c0392b; }
+@media print { .form-input input[type="text"], .form-input select { background: none; } }
 .doc-page .pm-atom.ProseMirror-selectednode { outline: 2px solid var(--accent); border-radius: 4px; }
 
 .doc-page code { padding: 0 3px; border-radius: 3px; }

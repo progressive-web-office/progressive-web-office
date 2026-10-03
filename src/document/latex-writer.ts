@@ -1,4 +1,5 @@
 /** LaTeX export (TEX-001, TEX-002): a compilable `article`. */
+import { inputLatex } from './inputs';
 import { fillText, spaceText } from './springs';
 import {
   cleanMeta,
@@ -28,6 +29,7 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  isInputRun,
   isFillRun,
   fieldValue,
   isRefRun,
@@ -300,6 +302,11 @@ class LatexWriter {
       }
       if (isFillRun(run)) {
         out += `${fillText(run)}{}`;
+        continue;
+      }
+      if (isInputRun(run)) {
+        if (run.input === 'checkbox') this.fieldPackages.add('amssymb');
+        out += inputLatex(run, escapeLatex);
         continue;
       }
       if (isFieldRun(run)) {

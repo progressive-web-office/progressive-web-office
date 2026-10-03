@@ -11,8 +11,8 @@
  */
 import { Schema, type DOMOutputSpec, type Mark, type Node as PmNode } from 'prosemirror-model';
 import { tableNodes } from 'prosemirror-tables';
-import { LAYOUT_KEYS, type Align, type CellOutput, type ParagraphStyle } from '../model';
-import { cssFontFamily, footnoteFromDom } from '../html';
+import { LAYOUT_KEYS, inputText, type Align, type CellOutput, type InputKind, type ParagraphStyle } from '../model';
+import { cssFontFamily, footnoteFromDom, inputOfElement } from '../html';
 import { t } from '../../i18n';
 
 const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code', 'caption'];
@@ -217,6 +217,28 @@ export const schema = new Schema({
       attrs: { kind: { default: 'date' } },
       parseDOM: [{ tag: 'span.field[data-field]', priority: 60, getAttrs: (d: HTMLElement) => ({ kind: d.dataset.field }) }],
       toDOM: (n) => ['span', { class: 'field', 'data-field': n.attrs.kind }, `{${n.attrs.kind as string}}`],
+    },
+    /** FORM-003: a form field, filled in where it stands. */
+    form_input: {
+      inline: true,
+      group: 'inline',
+      atom: true,
+      attrs: { input: { default: 'text' }, name: { default: '' }, value: { default: null }, checked: { default: false }, options: { default: null }, required: { default: false } },
+      parseDOM: [
+        {
+          tag: 'span.form-input[data-input]',
+          priority: 60,
+          getAttrs: (d: HTMLElement) => {
+            const run = inputOfElement(d);
+            return run ? { input: run.input, name: run.name, value: run.value ?? null, checked: !!run.checked, options: run.options ?? null, required: !!run.required } : false;
+          },
+        },
+      ],
+      toDOM: (n) => {
+        const a = n.attrs as { input: InputKind; name: string; value: string | null; checked: boolean; options: string[] | null; required: boolean };
+        const shown = inputText({ input: a.input, name: a.name, ...(a.value ? { value: a.value } : {}), checked: a.checked });
+        return ['span', { class: 'form-input', 'data-input': a.input, 'data-name': a.name, ...(a.required ? { 'data-required': '' } : {}) }, shown];
+      },
     },
     /** A cross-reference, showing its target's label (DOC-026). */
     xref: {

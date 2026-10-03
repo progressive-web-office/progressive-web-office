@@ -5,9 +5,9 @@
  */
 import type { Node as PmNode } from 'prosemirror-model';
 import type { EditorView, NodeView, NodeViewConstructor } from 'prosemirror-view';
-import { bibliographyElement, codeCellElement, diagramElement, mathElement, type ImageInfo } from '../html';
+import { bibliographyElement, codeCellElement, diagramElement, inputElement, mathElement, type ImageInfo } from '../html';
 import type { Citations } from '../bibliography';
-import { fieldValue, seqText, type CodeCellRun, type FieldContext, type FieldKind, type Run, type SeqKind } from '../model';
+import { fieldValue, seqText, type CodeCellRun, type FieldContext, type FieldKind, type InputKind, type InputRun, type Run, type SeqKind } from '../model';
 import type { PmCrossRefs } from './convert';
 import { t } from '../../i18n';
 
@@ -231,6 +231,66 @@ class FieldView extends AtomView {
 
   destroy(): void {
     this.hooks.tocViews.delete(this);
+  }
+}
+
+/**
+ * FORM-003: a form field as a live control: what is typed, ticked or chosen
+ * becomes the field's answer in the document.
+ */
+class InputView implements NodeView {
+  dom: HTMLElement;
+  private control!: HTMLInputElement | HTMLSelectElement;
+  constructor(
+    private node: PmNode,
+    private readonly view: EditorView,
+    private readonly getPos: () => number | undefined,
+  ) {
+    this.dom = document.createElement('span');
+    this.dom.contentEditable = 'false';
+    this.render();
+  }
+
+  private run(node: PmNode): InputRun {
+    const a = node.attrs;
+    return { input: a.input as InputKind, name: a.name as string, ...(a.value ? { value: a.value as string } : {}), checked: !!a.checked, ...(a.options ? { options: a.options as string[] } : {}), ...(a.required ? { required: true } : {}) };
+  }
+
+  private render(): void {
+    const el = inputElement(this.run(this.node));
+    this.dom.className = el.className;
+    Object.assign(this.dom.dataset, el.dataset);
+    if (!this.node.attrs.required) delete this.dom.dataset.required;
+    this.dom.title = this.node.attrs.name as string;
+    this.control = el.firstElementChild as HTMLInputElement | HTMLSelectElement;
+    this.control.addEventListener(this.node.attrs.input === 'text' ? 'input' : 'change', () => this.answer());
+    this.dom.replaceChildren(this.control);
+  }
+
+  private answer(): void {
+    const pos = this.getPos();
+    if (pos === undefined || !this.view.editable) return;
+    const attrs = this.control instanceof HTMLInputElement && this.control.type === 'checkbox' ? { ...this.node.attrs, checked: this.control.checked } : { ...this.node.attrs, value: this.control.value || null };
+    this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, null, attrs));
+  }
+
+  update(node: PmNode): boolean {
+    if (node.type !== this.node.type) return false;
+    const old = this.node;
+    this.node = node;
+    const a = node.attrs;
+    if (a.input !== old.attrs.input || a.name !== old.attrs.name || a.required !== old.attrs.required || JSON.stringify(a.options) !== JSON.stringify(old.attrs.options)) this.render();
+    else if (this.control instanceof HTMLInputElement && this.control.type === 'checkbox') this.control.checked = !!a.checked;
+    else if (this.control.value !== (a.value ?? '')) this.control.value = (a.value as string | null) ?? '';
+    return true;
+  }
+
+  stopEvent(e: Event): boolean {
+    return e.target === this.control;
+  }
+
+  ignoreMutation(): boolean {
+    return true;
   }
 }
 
@@ -501,6 +561,7 @@ export function nodeViews(hooks: ViewHooks): Record<string, NodeViewConstructor>
     seq: (node, view, getPos) => new SeqView(node, view, getPos, hooks),
     field: (node, view, getPos) => new FieldView(node, view, getPos, hooks),
     space: (node) => new SpaceView(node),
+    form_input: (node, view, getPos) => new InputView(node, view, getPos),
     xref: (node, view, getPos) => new XrefView(node, view, getPos, hooks),
     cite: (node, view, getPos) => new CiteView(node, view, getPos, hooks),
     bibliography: () => new BibliographyView(hooks),

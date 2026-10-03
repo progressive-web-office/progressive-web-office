@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type FieldKind, type Table, type TableCell, type TextFormat } from '../model';
+import { LAYOUT_KEYS, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type FieldKind, type InputKind, type InputRun, type Table, type TableCell, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -77,6 +77,8 @@ function runsToInline(runs: Run[]): PmNode[] {
       out.push(schema.nodes.field!.create({ kind: run.field }));
     } else if ('hfill' in run) {
       out.push(schema.nodes.hfill!.create({ weight: run.hfill }));
+    } else if ('input' in run) {
+      out.push(schema.nodes.form_input!.create({ input: run.input, name: run.name, value: run.value ?? null, checked: !!run.checked, options: run.options ? [...run.options] : null, required: !!run.required }));
     } else if ('ref' in run) {
       out.push(schema.nodes.xref!.create({ ref: run.ref }));
     } else if ('cite' in run) {
@@ -166,6 +168,15 @@ function inlineToRuns(node: PmNode): Run[] {
       case 'hfill':
         runs.push({ hfill: a.weight as number });
         break;
+      case 'form_input': {
+        const input: InputRun = { input: a.input as InputKind, name: a.name as string };
+        if (a.input === 'checkbox') input.checked = !!a.checked;
+        else if (a.value) input.value = a.value as string;
+        if (a.options) input.options = [...(a.options as string[])];
+        if (a.required) input.required = true;
+        runs.push(input);
+        break;
+      }
       case 'xref':
         runs.push({ ref: a.ref as string });
         break;

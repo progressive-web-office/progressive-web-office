@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { PDFDocument, StandardFonts } from '@pdfme/pdf-lib';
-import { openApp, openFile } from './helpers';
+import { openApp, openFile, saveAs } from './helpers';
 
 // FORM-001, FORM-002: designing a PDF form, then compiling the answers of filled copies.
 
@@ -97,6 +97,9 @@ test('compiles the answers of filled forms into a spreadsheet (FORM-002)', async
     { name: 'ada.pdf', mimeType: 'application/pdf', buffer: await filled('Ada', true, 'Expert') },
     { name: 'alan.pdf', mimeType: 'application/pdf', buffer: await filled('Alan', false, 'Beginner') },
   ]);
+  const where = page.getByRole('dialog', { name: 'Compile form answers…' });
+  await expect(where.getByLabel('A new spreadsheet')).toBeChecked();
+  await where.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('.file-name, .doc-name').first()).toContainText('Answers');
   const cell = (r: number, c: number) => page.locator(`td[data-r="${r}"][data-c="${c}"]`);
   await expect(cell(0, 0)).toHaveText('File');
@@ -105,5 +108,58 @@ test('compiles the answers of filled forms into a spreadsheet (FORM-002)', async
   await expect(cell(1, 1)).toHaveText('Ada');
   await expect(cell(1, 2)).toHaveText('TRUE');
   await expect(cell(2, 3)).toHaveText('Beginner');
+  expect(errors).toEqual([]);
+});
+
+test('form fields in a text document: inserted, filled, saved and compiled (FORM-003, FORM-004)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'registration.md', 'Name: \n\nPhotos: \n');
+  const editor = page.locator('.doc-page');
+  // A text zone, from the Insert group.
+  await editor.locator('p').first().click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' ');
+  await page.getByRole('button', { name: 'Form field', exact: true }).click();
+  await page.getByRole('menu', { name: 'Form fields' }).getByRole('menuitem', { name: 'Text' }).click();
+  const textDialog = page.getByRole('dialog', { name: 'Text' });
+  await textDialog.getByLabel('Name of the field').fill('Name');
+  await textDialog.getByRole('button', { name: 'Add' }).click();
+  // A check box, from the context menu.
+  await editor.locator('p').nth(1).click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' ');
+  await editor.locator('p').nth(1).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Check box' }).click();
+  await page.getByRole('dialog', { name: 'Check box' }).getByLabel('Name of the field').fill('Photos');
+  await page.getByRole('dialog', { name: 'Check box' }).getByRole('button', { name: 'Add' }).click();
+
+  // Filled in where they stand.
+  await editor.getByRole('textbox', { name: 'Name' }).fill('Ada LOVELACE');
+  await editor.getByRole('checkbox', { name: 'Photos' }).check();
+  // The properties of a field, from its context menu.
+  await editor.locator('.form-input').first().click({ button: 'right' });
+  await expect(page.getByRole('menu').getByRole('menuitem', { name: 'Field properties…' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
+  expect(md).toContain('Name: [Ada LOVELACE]{.input name="Name"}');
+  expect(md).toContain('Photos: [x]{.checkbox name="Photos"}');
+
+  // Two filled copies, compiled.
+  const chooser = page.waitForEvent('filechooser');
+  await page.keyboard.press('Control+Shift+P');
+  await page.getByRole('dialog', { name: 'Commands' }).getByRole('combobox').fill('compile form');
+  await page.keyboard.press('Enter');
+  await (await chooser).setFiles([
+    { name: 'ada.md', mimeType: 'text/markdown', buffer: Buffer.from(md) },
+    { name: 'alan.md', mimeType: 'text/markdown', buffer: Buffer.from(md.replace('Ada LOVELACE', 'Alan TURING').replace('[x]', '[ ]')) },
+  ]);
+  await page.getByRole('dialog', { name: 'Compile form answers…' }).getByRole('button', { name: 'Continue' }).click();
+  const cell = (r: number, c: number) => page.locator(`td[data-r="${r}"][data-c="${c}"]`);
+  await expect(cell(0, 1)).toHaveText('Name');
+  await expect(cell(2, 0)).toHaveText('alan.md');
+  await expect(cell(2, 1)).toHaveText('Alan TURING');
+  await expect(cell(1, 2)).toHaveText('TRUE');
+  await expect(cell(2, 2)).toHaveText('FALSE');
   expect(errors).toEqual([]);
 });

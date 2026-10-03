@@ -24,7 +24,7 @@ import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } 
 import { writeDocumentAsync, type TextFormat } from './io';
 import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, allParagraphs, isFillRun, FIELD_KINDS, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
+import { addResource, allParagraphs, isFillRun, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
@@ -103,6 +103,9 @@ const REMOTE = 'pwo-remote';
 
 
 /** DOC-041: symbols of the fields in menus. */
+/** FORM-003: the form fields of text documents. */
+const INPUT_ICONS: Record<InputKind, string> = { text: '▭', checkbox: '☑', dropdown: '▾' };
+const kindLabelOf = (kind: InputKind): string => t(`form.kind.${kind}`);
 const FIELD_ICONS: Record<FieldKind, string> = { date: '📅', time: '🕒', page: '#', pages: 'Σ', title: 'T', author: '👤', filename: '📄' };
 
 export class DocumentEditor implements EditorView {
@@ -580,6 +583,53 @@ export class DocumentEditor implements EditorView {
     openContextMenu(r.left, r.bottom, [{ title: t('field.menu') }, ...FIELD_KINDS.map((kind): MenuAction => ({ label: t(`field.${kind}`), icon: FIELD_ICONS[kind], run: () => this.insertField(kind) }))], { label: t('field.menu'), returnFocus: this.view.dom });
   }
 
+  /** FORM-003: the form fields to insert. */
+  private inputEntries(): MenuEntry[] {
+    return [{ title: t('form.inDoc') }, ...INPUT_KINDS.map((kind): MenuAction => ({ label: kindLabelOf(kind), icon: INPUT_ICONS[kind], run: () => void this.editInput(kind) }))];
+  }
+
+  private inputMenu(): void {
+    const r = this.view.coordsAtPos(this.view.state.selection.head);
+    openContextMenu(r.left, r.bottom, this.inputEntries(), { label: t('form.inDoc'), returnFocus: this.view.dom });
+  }
+
+  /** The names of the form fields of the document. */
+  private inputNames(except?: number): Set<string> {
+    const names = new Set<string>();
+    this.view.state.doc.descendants((node, pos) => {
+      if (node.type === schema.nodes.form_input && pos !== except) names.add(node.attrs.name as string);
+    });
+    return names;
+  }
+
+  /**
+   * FORM-003: insert a form field at the cursor, or change the one at `pos`:
+   * its name (the column of its answers), its choices, whether it is required.
+   */
+  private async editInput(kind: InputKind, pos?: number): Promise<void> {
+    if (this.readOnly) return;
+    const node = pos !== undefined ? this.view.state.doc.nodeAt(pos) : null;
+    const { fieldDialog, freeName } = await import('../pdf/form-design');
+    const taken = this.inputNames(pos);
+    const props = await fieldDialog(this.element, kind, {
+      name: node ? (node.attrs.name as string) : freeName(kind, taken),
+      taken,
+      groups: [],
+      ...(node?.attrs.options ? { options: node.attrs.options as string[] } : {}),
+      required: !!node?.attrs.required,
+      ...(node ? { submit: t('common.ok') } : {}),
+    });
+    if (!props) return this.refocus();
+    const options = kind === 'dropdown' ? props.options ?? [] : null;
+    if (node && pos !== undefined && node.type === schema.nodes.form_input) {
+      const value = options && node.attrs.value && !options.includes(node.attrs.value as string) ? null : node.attrs.value;
+      this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, name: props.name, options, required: props.required, value }));
+    } else {
+      this.command(insertInline(schema.nodes.form_input!.create({ input: kind, name: props.name, options, required: props.required })));
+    }
+    this.refocus();
+  }
+
   /** DOC-042: springs and spaces to insert. */
   private spaceEntries(): MenuEntry[] {
     return [
@@ -697,6 +747,18 @@ export class DocumentEditor implements EditorView {
       );
     }
     if (field !== undefined && editable) entries.push({ title: t('field.menu') }, { label: t('field.freeze'), icon: '📌', run: () => this.freezeField(field) }, 'separator');
+    // FORM-003: a form field under the pointer.
+    const inputEl = target?.closest<HTMLElement>('.form-input');
+    const inputPos = inputEl ? view.posAtDOM(inputEl, 0) : undefined;
+    const inputNode = inputPos !== undefined ? view.state.doc.nodeAt(inputPos) : null;
+    if (inputNode?.type === schema.nodes.form_input && inputPos !== undefined && editable) {
+      entries.push(
+        { title: `${INPUT_ICONS[inputNode.attrs.input as InputKind]} ${inputNode.attrs.name as string}` },
+        { label: t('form.properties'), icon: '⚙', run: () => void this.editInput(inputNode.attrs.input as InputKind, inputPos) },
+        { label: t('form.delete'), icon: '🗑', run: () => view.dispatch(view.state.tr.delete(inputPos, inputPos + inputNode.nodeSize)) },
+        'separator',
+      );
+    }
     entries.push(
       { title: t('ctx.edit') },
       ...(editable ? [{ label: t('ctx.cut'), icon: '✂', shortcut: 'Ctrl+X', disabled: empty, run: () => this.clipboard('cut') }] : []),
@@ -743,6 +805,7 @@ export class DocumentEditor implements EditorView {
         { label: t('comment.add'), icon: '💬', shortcut: 'Ctrl+Alt+M', run: () => this.addComment() },
         { title: t('field.menu') },
         ...FIELD_KINDS.map((kind): MenuAction => ({ label: t(`field.${kind}`), icon: FIELD_ICONS[kind], run: () => this.insertField(kind) })),
+        ...this.inputEntries(),
         ...this.spaceEntries(),
       );
       if (!empty) entries.push('separator', { label: t('fmt.clear'), icon: '⌫', run: cmd(clearFormatting) });
@@ -1499,6 +1562,7 @@ export class DocumentEditor implements EditorView {
     // UI-022: what the context menu offers, by category.
     const where = t('doc.formatting');
     const fields = FIELD_KINDS.map((kind) => ({ label: t(`field.${kind}`), category: t('field.menu'), where, run: () => this.insertField(kind) }));
+    const formInputs = INPUT_KINDS.map((kind) => ({ label: kindLabelOf(kind), category: t('form.inDoc'), where, run: () => void this.editInput(kind) }));
     const springs = (['spring', 'fixed', 'hfill'] as const).map((kind) => ({ label: t(kind === 'spring' ? 'space.insertSpring' : kind === 'fixed' ? 'space.insertFixed' : 'space.insertHfill'), category: t('space.menu'), where, run: () => this.insertSpace(kind) }));
     const state = this.view.state;
     const tableCmd = (key: MessageKey, cmd: Command) => ({ label: t(key), category: t('table.bar'), where, run: () => this.command(cmd) });
@@ -1517,7 +1581,7 @@ export class DocumentEditor implements EditorView {
         ].filter((_c, i) => [addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, mergeCells, splitCell, toggleHeaderRow, deleteTable][i]!(state))
       : [];
     const menu = { label: t('ctx.menu'), category: t('ctx.edit'), where, run: () => this.showContextMenuAtCursor() };
-    return [toggle, ...this.review.commands(), ...fields, ...springs, ...table, menu];
+    return [toggle, ...this.review.commands(), ...fields, ...formInputs, ...springs, ...table, menu];
   }
 
   /** FOLDER-023: the colours of the tags changed. */
@@ -1845,6 +1909,7 @@ export class DocumentEditor implements EditorView {
         act(t('doc.insertDiagram'), '⧉', () => void this.editDiagram(), t('doc.insertDiagramTitle')),
         act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
         act(t('field.insert'), '⌗', () => this.fieldMenu(), t('field.insertTitle')),
+        act(t('form.insertField'), '☑', () => this.inputMenu(), t('form.insertFieldTitle')),
         act(t('space.menu'), '⇕', () => this.spaceMenu(), t('space.menu')),
         act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
         act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),

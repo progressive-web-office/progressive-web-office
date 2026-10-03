@@ -1,4 +1,5 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { inputMarkdown } from './inputs';
 import { fillText, spaceText } from './springs';
 import { CALLOUT, isRelativeImage } from './markdown-reader';
 
@@ -40,6 +41,7 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  isInputRun,
   isFillRun,
   FIELD_SYNTAX,
   isRefRun,
@@ -321,6 +323,10 @@ class MarkdownWriter {
       }
       if (isFieldRun(run)) {
         out += `{${run.field}}`;
+        continue;
+      }
+      if (isInputRun(run)) {
+        out += inputMarkdown(run);
         continue;
       }
       if (isFillRun(run)) {

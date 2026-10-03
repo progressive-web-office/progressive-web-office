@@ -25,6 +25,7 @@ import {
   type TableCell,
   seqKindOf,
   type FieldKind,
+  type InputRun,
   resolveAnchors,
   unwrapEquationNumbers,
   type TextFormat,
@@ -122,6 +123,23 @@ function lengthPt(value: string | null): number | undefined {
   const n = Number(m[1]);
   const factor = { pt: 1, in: 72, cm: 72 / 2.54, mm: 72 / 25.4, px: 0.75, pc: 12 }[m[2] as 'pt'];
   return Math.round(n * factor * 10) / 10;
+}
+
+/** FORM-003: an input field (named by its description) or a drop-down field as a form field. */
+export function odfInputOf(el: Element): InputRun | undefined {
+  const value = Array.from(el.childNodes)
+    .filter((n) => n.nodeType === 3 || (n as Element).localName === 'span' || (n as Element).localName === 's')
+    .map((n) => ((n as Element).localName === 's' ? ' ' : (n.textContent ?? '')))
+    .join('');
+  if (el.localName === 'text-input') {
+    const name = attr(el, 'description');
+    return name ? { input: 'text', name, ...(value ? { value } : {}) } : undefined;
+  }
+  const name = attr(el, 'name');
+  if (!name) return undefined;
+  const options = children(el, 'label').map((l) => attr(l, 'value') ?? '');
+  if (options.length === 2 && options[0] === '☐' && options[1] === '☒') return { input: 'checkbox', name, checked: value.trim() === '☒' };
+  return { input: 'dropdown', name, options, ...(value ? { value } : {}) };
 }
 
 /** DOC-041: the fields of OpenDocument text read as fields. */
@@ -544,6 +562,14 @@ class OdtReader {
             // DOC-041: a field computed when shown; a fixed date or time is its text.
             const field = ODT_FIELDS[c.localName];
             if (field && attr(c, 'fixed') !== 'true' && (c.localName !== 'page-number' || (attr(c, 'select-page') ?? 'current') === 'current')) out.push({ field });
+            else this.readInline(c, fmt, out, pre);
+            break;
+          }
+          case 'text-input':
+          case 'drop-down': {
+            // FORM-003: a field filled in, by its name: text, list, or a ☐/☒ check box.
+            const input = odfInputOf(c);
+            if (input) out.push(input);
             else this.readInline(c, fmt, out, pre);
             break;
           }

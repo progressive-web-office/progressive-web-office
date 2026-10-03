@@ -3,6 +3,7 @@
  * markdown-it. Raw HTML is kept as literal text (MD-003), except `<u>` and
  * `<br>` which map to underline and line breaks.
  */
+import { parseInputMarkdown } from './inputs';
 import { parseFill, parseSpaceLine } from './springs';
 import { FENCE_CLOSE, SOLUTION_OPEN } from './solutions';
 import { readCriticComments } from './critic';
@@ -24,6 +25,7 @@ import {
   seqKindOf,
   isFieldKind,
   type FieldKind,
+  type InputRun,
   isFootnoteRun,
   isRefRun,
   resolveAnchors,
@@ -161,6 +163,16 @@ function fieldInline(state: StateInline, silent: boolean): boolean {
   return true;
 }
 
+/** FORM-003: a form field, `[answer]{.input name="…"}`. */
+function inputInline(state: StateInline, silent: boolean): boolean {
+  if (state.src[state.pos] !== '[') return false;
+  const found = parseInputMarkdown(state.src.slice(state.pos, state.posMax));
+  if (!found) return false;
+  if (!silent) state.push('pwo_input', '', 0).meta = { run: found.run };
+  state.pos += found.length;
+  return true;
+}
+
 /** DOC-042: `\\hfill` or `\\hspace{\\stretch{2}}`, a horizontal spring. */
 function fillInline(state: StateInline, silent: boolean): boolean {
   if (state.src[state.pos] !== '\\') return false;
@@ -182,6 +194,7 @@ function getParser(): MarkdownIt {
     parser.inline.ruler.after('emphasis', 'mark', highlightInline);
     parser.inline.ruler.after('escape', 'pwo_field', fieldInline);
     parser.inline.ruler.before('escape', 'pwo_hfill', fillInline);
+    parser.inline.ruler.before('link', 'pwo_input', inputInline);
     parser.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   }
   return parser;
@@ -622,6 +635,9 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         break;
       case 'pwo_field':
         runs.push({ field: (tok.meta as { field: FieldKind }).field });
+        break;
+      case 'pwo_input':
+        runs.push({ ...(tok.meta as { run: InputRun }).run });
         break;
       case 'math_inline':
         runs.push(tok.markup === '$$' ? { math: tok.content.trim(), display: true } : { math: tok.content });

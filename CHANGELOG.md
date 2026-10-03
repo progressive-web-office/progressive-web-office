@@ -15,6 +15,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   clone addresses); the service, repository, branch and path are deduced and
   the matching account used, or the add-account form opened pre-filled (GIT-008).
   **Open a folder** accepts a repository address too (FOLDER-007).
+- Forms in the word processor (FORM-003): text, check box and drop-down list
+  fields, named and optionally required, filled where they stand; kept as
+  OpenDocument input/drop-down fields, Word content controls, Markdown
+  bracketed spans (`[answer]{.input name="…"}`) and HTML controls.
+- Compiling form answers also reads ODT, DOCX and Markdown forms, and can
+  send the answers to a Grist table — created with typed columns, or
+  completed, files never sent twice (FORM-004).
 - Git: step-by-step help to create a personal access token with the least
   rights, linking to the token page of the site (GIT-009).
 - Git: saving to a repository proposes a text format Git can compare

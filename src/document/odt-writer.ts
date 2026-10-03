@@ -15,6 +15,7 @@ import {
   isFootnoteRun,
   isSeqRun,
   isFieldRun,
+  isInputRun,
   isFillRun,
   allParagraphs,
   fieldValue,
@@ -428,6 +429,11 @@ class OdtWriter {
         atStart = false;
         continue;
       }
+      if (isInputRun(run)) {
+        out += odfInput(run);
+        atStart = false;
+        continue;
+      }
       if (isFieldRun(run)) {
         // DOC-041: a field LibreOffice computes again; its value as it is now in between.
         const value = esc(fieldValue(run.field, { meta: this.doc.meta }));
@@ -686,4 +692,19 @@ function bibliographyMark(e: BibEntry, shown: string): string {
   }
   if (e.fields.doi) attrs += ` text:custom1="${esc(e.fields.doi)}"`;
   return `<text:bibliography-mark${attrs}>${esc(shown)}</text:bibliography-mark>`;
+}
+
+/** Labels of a check box written as a drop-down field (OpenDocument text has no check box field). */
+export const ODF_BOX = ['☐', '☒'] as const;
+
+/**
+ * FORM-003: a form field as a field LibreOffice fills in: an input field
+ * named by its description, a drop-down field (a check box: ☐ / ☒).
+ */
+export function odfInput(run: import('./model').InputRun): string {
+  if (run.input === 'text') return `<text:text-input text:description="${esc(run.name)}">${esc(run.value ?? '')}</text:text-input>`;
+  const options = run.input === 'checkbox' ? [...ODF_BOX] : (run.options ?? []);
+  const current = run.input === 'checkbox' ? ODF_BOX[run.checked ? 1 : 0] : (run.value ?? '');
+  const labels = options.map((o) => `<text:label text:value="${esc(o)}"${o === current ? ' text:current-selected="true"' : ''}/>`).join('');
+  return `<text:drop-down text:name="${esc(run.name)}">${labels}${esc(current)}</text:drop-down>`;
 }

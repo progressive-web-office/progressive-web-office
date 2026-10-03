@@ -41,10 +41,13 @@ group is not a commitment.
 
 - ✅ Design PDF forms by drawing their fields (FORM-001); compile the answers
   of filled copies into a spreadsheet (FORM-002)
-- Next: form fields in the word processor (OpenDocument form controls, Word
-  content controls), exported to a PDF form directly; answers sent to a Grist
-  table; compiling the answers of OpenDocument and Word forms; an online form
-  (a web page) whose answers come back as files
+- ✅ Form fields in the word processor: text, check box, drop-down list, kept
+  in ODT, DOCX, Markdown and HTML (FORM-003); compiling the answers of
+  OpenDocument, Word and Markdown forms; answers sent to a Grist table
+  (FORM-004)
+- Next: word processor form fields exported to a PDF form directly; option
+  buttons and dates in documents; an online form (a web page) whose answers
+  come back as files
 
 ### Code cells
 

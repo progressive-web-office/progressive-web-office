@@ -26,12 +26,14 @@ export interface FieldProps {
  * those of `groups` for option buttons, which join the group), choices or
  * value, required.
  */
-export function fieldDialog(host: HTMLElement, kind: NewFieldKind, opts: { name: string; taken: Set<string>; groups: string[] }): Promise<FieldProps | null> {
+export function fieldDialog(host: HTMLElement, kind: NewFieldKind, opts: { name: string; taken: Set<string>; groups: string[]; options?: string[]; required?: boolean; submit?: string }): Promise<FieldProps | null> {
   return new Promise((resolve) => {
     const name = h('input', { type: 'text', value: opts.name, required: '', list: 'pwo-radio-groups' });
     const options = h('textarea', { rows: '4', placeholder: 'Oui\nNon' });
+    options.value = (opts.options ?? []).join('\n');
     const option = h('input', { type: 'text', value: '' });
     const required = h('input', { type: 'checkbox' });
+    required.checked = !!opts.required;
     const error = h('p', { class: 'error', role: 'alert', hidden: '' });
     const groups = h('datalist', { id: 'pwo-radio-groups' }, ...(kind === 'radio' ? opts.groups : []).map((g) => h('option', { value: g })));
     const form = h(
@@ -44,7 +46,7 @@ export function fieldDialog(host: HTMLElement, kind: NewFieldKind, opts: { name:
       ...(kind === 'radio' ? [h('p', { class: 'hint' }, t('form.radioHint')), h('label', { class: 'field' }, t('form.option'), option)] : []),
       h('label', { class: 'check' }, required, ` ${t('form.required')}`),
       error,
-      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(null)), h('button', { type: 'submit', class: 'primary' }, t('form.add'))),
+      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(null)), h('button', { type: 'submit', class: 'primary' }, opts.submit ?? t('form.add'))),
     );
     const dialog = h('dialog', { class: 'dialog form-field-dialog', 'aria-label': kindLabel(kind) }, form);
     const finish = (value: FieldProps | null): void => {

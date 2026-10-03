@@ -32,6 +32,35 @@ export async function readPdfAnswers(file: string, bytes: Uint8Array): Promise<F
   }
 }
 
+/** The form fields of a filled text document — ODT, DOCX, Markdown (FORM-003). */
+export async function readDocumentAnswers(file: string, bytes: Uint8Array): Promise<FilledForm> {
+  try {
+    const [{ detectFormat }, { readDocument }, { allParagraphs, isInputRun, inputAnswer }] = await Promise.all([import('../core/format'), import('../document/io'), import('../document/model')]);
+    const format = detectFormat(file, bytes);
+    if (format !== 'odt' && format !== 'docx' && format !== 'md') return { file, answers: [], error: 'not a text document' };
+    const doc = await readDocument(format, bytes);
+    const answers: FormAnswer[] = [];
+    const seen = new Set<string>();
+    const visit = (runs: import('../document/model').Run[]): void => {
+      for (const run of runs) {
+        if (!isInputRun(run) || seen.has(run.name)) continue;
+        seen.add(run.name);
+        answers.push({ name: run.name, value: inputAnswer(run) });
+      }
+    };
+    for (const p of allParagraphs(doc.blocks)) visit(p.runs);
+    return { file, answers };
+  } catch (err) {
+    return { file, answers: [], error: (err as Error).message };
+  }
+}
+
+/** Files whose answers can be compiled. */
+export const FORM_FILES = /\.(pdf|odt|docx|md)$/i;
+
+/** The answers of a filled form, PDF or text document. */
+export const readFormAnswers = (file: string, bytes: Uint8Array): Promise<FilledForm> => (/\.pdf$/i.test(file) ? readPdfAnswers(file, bytes) : readDocumentAnswers(file, bytes));
+
 /** A plain number ("12", "3,5", "-0.25"), not a code such as "01234". */
 const NUMBER = /^-?(?:0|[1-9]\d*)(?:[.,]\d+)?$/;
 

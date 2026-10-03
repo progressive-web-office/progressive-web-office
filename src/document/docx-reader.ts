@@ -11,6 +11,7 @@ import {
   unwrapEquationNumbers,
   seqKindOf,
   type FieldKind,
+  type InputRun,
   PAGE_BREAK,
   cleanPageSetup,
   type PageSetup,
@@ -443,6 +444,13 @@ class DocxReader {
           if (choice) this.readInline(choice, fmt, out);
           break;
         }
+        case 'sdt': {
+          // FORM-003: a content control of a form; any other: its content.
+          const input = inputOfControl(el);
+          if (input) out.push(input);
+          else this.readInline(el, fmt, out);
+          break;
+        }
         case 'fldSimple': {
           const result: Run[] = [];
           this.readInline(el, fmt, result);
@@ -635,6 +643,29 @@ class DocxReader {
     return header ? { type: 'table', rows, header } : { type: 'table', rows };
   }
 
+}
+
+/** FORM-003: a content control of a form (text, check box, list), with its name and answer. */
+export function inputOfControl(sdt: Element): InputRun | undefined {
+  const props = child(sdt, 'sdtPr');
+  if (!props) return undefined;
+  const name = attr(child(props, 'tag') ?? props, 'val') || attr(child(props, 'alias') ?? props, 'val');
+  if (!name || name.startsWith('pwo:')) return undefined;
+  const content = child(sdt, 'sdtContent');
+  const placeholder = !!child(props, 'showingPlcHdr');
+  const text = placeholder ? '' : descendants(content ?? sdt, 't').map((t) => t.textContent ?? '').join('');
+  const box = children(props).find((c) => c.localName === 'checkbox');
+  if (box) {
+    const checked = children(box).find((c) => c.localName === 'checked');
+    return { input: 'checkbox', name, checked: checked ? ['1', 'true', 'on'].includes(attr(checked, 'val') ?? '1') : text.includes('☒') };
+  }
+  const list = child(props, 'dropDownList') ?? child(props, 'comboBox');
+  if (list) {
+    const options = children(list, 'listItem').map((i) => attr(i, 'displayText') ?? attr(i, 'value') ?? '').filter(Boolean);
+    return { input: 'dropdown', name, options, ...(text ? { value: text } : {}) };
+  }
+  if (child(props, 'text')) return { input: 'text', name, ...(text ? { value: text } : {}) };
+  return undefined;
 }
 
 /** DOC-041: Word fields read as fields of the body. */

@@ -33,6 +33,9 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  isInputRun,
+  isInputKind,
+  type InputRun,
   isFillRun,
   type FillRun,
   type Space,
@@ -102,6 +105,58 @@ export function fieldElement(kind: FieldKind, value: string, doc: Document = doc
   span.dataset.field = kind;
   span.textContent = value;
   return span;
+}
+
+/**
+ * FORM-003: a form field as a real control in its span, which keeps its name
+ * and kind: an HTML page of the document is a web form.
+ */
+export function inputElement(run: InputRun, doc: Document = document): HTMLElement {
+  const span = doc.createElement('span');
+  span.className = 'form-input';
+  span.dataset.input = run.input;
+  span.dataset.name = run.name;
+  if (run.required) span.dataset.required = '';
+  let control: HTMLInputElement | HTMLSelectElement;
+  if (run.input === 'dropdown') {
+    const select = doc.createElement('select');
+    const blank = doc.createElement('option');
+    blank.value = '';
+    select.append(blank);
+    for (const o of run.options ?? []) {
+      const opt = doc.createElement('option');
+      opt.value = opt.textContent = o;
+      if (o === run.value) opt.setAttribute('selected', '');
+      select.append(opt);
+    }
+    control = select;
+  } else {
+    const input = doc.createElement('input');
+    input.type = run.input === 'checkbox' ? 'checkbox' : 'text';
+    if (run.input === 'checkbox') {
+      if (run.checked) input.setAttribute('checked', '');
+    } else input.setAttribute('value', run.value ?? '');
+    control = input;
+  }
+  control.name = run.name;
+  control.setAttribute('aria-label', run.name);
+  if (run.required) control.required = true;
+  span.append(control);
+  return span;
+}
+
+/** The form field of a span made by `inputElement`, with the answer its control holds. */
+export function inputOfElement(el: HTMLElement): InputRun | undefined {
+  const kind = el.dataset.input ?? '';
+  const name = el.dataset.name;
+  if (!isInputKind(kind) || !name) return undefined;
+  const control = el.querySelector('input, select') as HTMLInputElement | HTMLSelectElement | null;
+  const run: InputRun = { input: kind, name };
+  if (kind === 'checkbox') run.checked = !!(control as HTMLInputElement | null)?.checked;
+  else if (control?.value) run.value = control.value;
+  if (kind === 'dropdown') run.options = control ? Array.from((control as HTMLSelectElement).options, (o) => o.value).filter(Boolean) : [];
+  if (el.dataset.required !== undefined) run.required = true;
+  return run;
 }
 
 /** A citation as shown: `[1]` or `(Knuth, 1984)` (DOC-027). */
@@ -288,6 +343,10 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
     }
     if (isFieldRun(run)) {
       el.append(fieldElement(run.field, fieldValue(run.field, fieldCtx), doc));
+      continue;
+    }
+    if (isInputRun(run)) {
+      el.append(inputElement(run, doc));
       continue;
     }
     if (isFillRun(run)) {
@@ -618,6 +677,11 @@ export function domToBlocks(
       const stretch = Number(el.dataset.stretch) || undefined;
       const size = el.dataset.size !== undefined ? Number(el.dataset.size) : undefined;
       blocks.push({ type: 'space', ...(stretch ? { stretch } : {}), ...(size !== undefined ? { size } : {}) });
+      return;
+    }
+    if (el.dataset?.input !== undefined && el.classList.contains('form-input')) {
+      const input = inputOfElement(el);
+      if (input) open(ctx).runs.push(input);
       return;
     }
     if (el.dataset?.field !== undefined && el.classList.contains('field') && isFieldKind(el.dataset.field)) {

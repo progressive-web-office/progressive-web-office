@@ -209,7 +209,34 @@ export interface FillRun {
   at?: number;
 }
 
-export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun | CiteRun | FieldRun | FillRun;
+/**
+ * FORM-003: a form field of a text document, filled in where it stands —
+ * a text zone, a check box, a drop-down list. Its name is the column of its
+ * answers when filled forms are compiled (FORM-002).
+ */
+export const INPUT_KINDS = ['text', 'checkbox', 'dropdown'] as const;
+export type InputKind = (typeof INPUT_KINDS)[number];
+
+export interface InputRun {
+  input: InputKind;
+  name: string;
+  /** The text typed, or the choice made; a check box: `checked`. */
+  value?: string;
+  checked?: boolean;
+  /** The choices of a drop-down list. */
+  options?: string[];
+  required?: boolean;
+}
+
+export const isInputKind = (s: string): s is InputKind => (INPUT_KINDS as readonly string[]).includes(s);
+
+/** The answer of a form field: its text, its choice, or whether it is ticked. */
+export const inputAnswer = (run: InputRun): string | boolean => (run.input === 'checkbox' ? !!run.checked : (run.value ?? ''));
+
+/** A form field as plain text: `☒`/`☐`, or its value (`____` when empty). */
+export const inputText = (run: InputRun): string => (run.input === 'checkbox' ? (run.checked ? '☒' : '☐') : run.value || '_____');
+
+export type Run = TextRun | ImageRun | MathRun | DiagramRun | CodeCellRun | FootnoteRun | SeqRun | RefRun | CiteRun | FieldRun | FillRun | InputRun;
 
 export interface ListInfo {
   ordered: boolean;
@@ -500,6 +527,7 @@ export const isRefRun = (run: Run): run is RefRun => 'ref' in run;
 export const isCiteRun = (run: Run): run is CiteRun => 'cite' in run;
 export const isFieldRun = (run: Run): run is FieldRun => 'field' in run;
 export const isFillRun = (run: Run): run is FillRun => 'hfill' in run;
+export const isInputRun = (run: Run): run is InputRun => 'input' in run;
 
 /** What a cross-reference can point to (DOC-026). */
 export interface CrossTarget {

@@ -14,6 +14,9 @@ import {
   isFootnoteRun,
   isSeqRun,
   isFieldRun,
+  isInputRun,
+  inputText,
+  type InputRun,
   isFillRun,
   allParagraphs,
   fieldValue,
@@ -154,7 +157,7 @@ class DocxWriter {
     const refs = furniture.map((f) => `<w:${f.kind}Reference w:type="${f.type}" r:id="${f.rid}"/>`).join('');
     const documentXml =
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      `<w:document xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}">` +
+      `<w:document xmlns:w="${NS.w}" xmlns:r="${NS.r}" xmlns:wp="${NS.wp}" xmlns:a="${NS.a}" xmlns:pic="${NS.pic}" xmlns:m="${OMML_NS}" xmlns:w14="${W14}">` +
       `<w:body>${body}<w:sectPr>${refs}<w:pgSz w:w="11906" w:h="16838"/>` +
       '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>' +
       `${numbering}${page?.hideOnFirstPage ? '<w:titlePg/>' : ''}</w:sectPr></w:body></w:document>`;
@@ -475,6 +478,7 @@ class DocxWriter {
       return run.seq === 'equation' ? `<w:r><w:t>(</w:t></w:r>${field}<w:r><w:t>)</w:t></w:r>` : field;
     }
     if (isFillRun(run)) return `<w:r><w:rPr><w:rStyle w:val="${fillStyleId(run.hfill)}"/></w:rPr><w:tab/></w:r>`;
+    if (isInputRun(run)) return inputControl(run);
     if (isFieldRun(run)) {
       // DOC-041: a field Word computes again (the date when the document is opened or printed).
       return `<w:fldSimple w:instr="${esc(DOCX_FIELDS[run.field])}"><w:r><w:t xml:space="preserve">${esc(fieldValue(run.field, { meta: this.doc.meta }))}</w:t></w:r></w:fldSimple>`;
@@ -654,6 +658,23 @@ const heading = (n: number, size: number): string =>
   `<w:rPr><w:b/><w:bCs/><w:sz w:val="${size}"/><w:szCs w:val="${size}"/></w:rPr></w:style>`;
 
 const W14 = 'http://schemas.microsoft.com/office/word/2010/wordml';
+
+/**
+ * FORM-003: a form field as a Word content control — plain text, check box
+ * (Word 2010) or drop-down list — tagged with its name.
+ */
+export function inputControl(run: InputRun): string {
+  const name = esc(run.name);
+  const kind =
+    run.input === 'checkbox'
+      ? `<w14:checkbox><w14:checked w14:val="${run.checked ? 1 : 0}"/><w14:checkedState w14:val="2612" w14:font="MS Gothic"/><w14:uncheckedState w14:val="2610" w14:font="MS Gothic"/></w14:checkbox>`
+      : run.input === 'dropdown'
+        ? `<w:dropDownList>${(run.options ?? []).map((o) => `<w:listItem w:displayText="${esc(o)}" w:value="${esc(o)}"/>`).join('')}</w:dropDownList>`
+        : '<w:text/>';
+  const empty = run.input !== 'checkbox' && !run.value;
+  const font = run.input === 'checkbox' ? '<w:rPr><w:rFonts w:ascii="MS Gothic" w:eastAsia="MS Gothic" w:hAnsi="MS Gothic"/></w:rPr>' : '';
+  return `<w:sdt><w:sdtPr><w:alias w:val="${name}"/><w:tag w:val="${name}"/>${empty ? '<w:showingPlcHdr/>' : ''}${kind}</w:sdtPr><w:sdtContent><w:r>${font}<w:t xml:space="preserve">${esc(inputText(run))}</w:t></w:r></w:sdtContent></w:sdt>`;
+}
 const W15 = 'http://schemas.microsoft.com/office/word/2012/wordml';
 /** The `w14:paraId` of the n-th comment's last paragraph. */
 const paraId = (n: number): string => (0x10000000 + n).toString(16).toUpperCase();
