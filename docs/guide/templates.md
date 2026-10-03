@@ -18,6 +18,7 @@ where you want. The templates are written in the language of the interface
 | Report | Title page without header and footer, table of contents, page numbers, a captioned table referenced from the text |
 | Meeting minutes | Attendees, agenda, discussion, a table of actions |
 | Exercise sheet | Numbered exercises with equations, a name field in the header |
+| Scientific article | A4 with 2.5 cm margins, title, authors and affiliations, abstract, keywords, introduction, methods with a numbered equation, results with a captioned table, discussion, conclusion, acknowledgements, citations and the list of references |
 
 ## Spreadsheets
 

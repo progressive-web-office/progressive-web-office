@@ -194,6 +194,22 @@ page if needed. Click a citation to change it; untick everything to remove
 it. *Insert the list of references here* (in 📚) adds the list of the cited
 sources, which updates as you cite.
 
+#### From Zotero
+
+Your **Zotero** library can be searched and cited directly:
+
+1. In ❝, click **Zotero…**. The first time, create a key on
+   [zotero.org/settings/keys/new](https://www.zotero.org/settings/keys/new)
+   (signed in): name it, tick *Allow library access* (read only is enough),
+   save it and paste it. The key is kept only in this browser and sent only
+   to `api.zotero.org`; **Forget the key** removes it.
+2. Type a title, an author or a year: the matching sources of the library are
+   listed. Tick them, then **Add and cite**: they join the document's sources,
+   with their Zotero citation keys, and are cited at the cursor.
+
+In 📚, **Import a Zotero collection…** adds all the sources of a collection
+(a thesis, an article in progress) at once.
+
 | Format | Sources | Citations | List |
 |--------|---------|-----------|------|
 | Word (`.docx`) | Word sources (*References › Manage Sources*) | `CITATION` fields | `BIBLIOGRAPHY` field |

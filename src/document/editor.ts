@@ -594,8 +594,18 @@ export class DocumentEditor implements EditorView {
   private async editCitation(pos?: number, node?: PmNode): Promise<void> {
     if (this.readOnly) return;
     const initial = node ? { cite: node.attrs.keys as string[], ...(node.attrs.locator ? { locator: node.attrs.locator as string } : {}) } : undefined;
-    const result = await pickCitation(this.element, this.doc.references?.entries ?? [], initial);
+    let result = await pickCitation(this.element, this.doc.references?.entries ?? [], initial);
     if (!result) return this.refocus();
+    if (result === 'zotero') {
+      // BIB-010: sources of the Zotero library, added to the document and cited.
+      const { pickFromZotero } = await import('./zotero');
+      const { mergeEntries } = await import('./bib-dialog');
+      const added = await pickFromZotero(this.element, 'search');
+      if (!added?.length) return this.refocus();
+      this.doc.references = { ...this.doc.references, entries: mergeEntries(this.doc.references?.entries ?? [], added) };
+      this.referencesChanged();
+      result = { cite: [...new Set([...(initial?.cite ?? []), ...added.map((e) => e.key)])], ...(initial?.locator ? { locator: initial.locator } : {}) };
+    }
     const tr = this.view.state.tr;
     if (result === 'remove') {
       if (pos !== undefined && node) tr.delete(pos, pos + node.nodeSize);

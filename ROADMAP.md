@@ -166,10 +166,11 @@ group is not a commitment.
 
 ### Scientific writing
 
-- An article template: title, authors and affiliations, abstract, keywords,
-  sections, equations, figures, citations, references
-- Zotero: search the library and cite from it (Web API, a key kept in this
-  browser), import a collection as the document's references
+- ✅ An article template: title, authors and affiliations, abstract,
+  keywords, sections, equations, tables, citations, references (BIB-011)
+- ✅ Zotero: search the library and cite from it (Web API, a key kept in this
+  browser), import a collection as the document's references (BIB-010);
+  next: group libraries, the Zotero desktop picker
 - Citation styles from CSL files; cross-references, numbering and the list of
   references as in LaTeX; export to journal templates
 

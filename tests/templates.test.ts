@@ -154,3 +154,20 @@ describe('FILE-018 examples with plots', () => {
     for (const fn of ['EXP(', 'SIN(', 'SLOPE(', 'INTERCEPT(', 'RSQ(', 'STDEV(']) expect(formulas).toContain(fn);
   });
 });
+
+describe('BIB-011 the scientific article template', () => {
+  it.each(['en', 'fr'] as const)('holds the parts of an article (%s)', async (lang) => {
+    const { TEMPLATES } = await import('../src/templates/catalog');
+    const { allParagraphs, isCiteRun } = await import('../src/document/model');
+    const built = TEMPLATES.find((x) => x.id === 'article')!.build(lang);
+    if (built.kind !== 'document') throw new Error('not a document');
+    const doc = built.doc;
+    expect(doc.page?.geometry).toMatchObject({ top: 25, left: 25 });
+    expect(doc.meta.keywords?.length).toBe(3);
+    expect(doc.references?.entries.map((e) => e.key)).toEqual(['knuth1984', 'lamport1994']);
+    const runs = allParagraphs(doc.blocks).flatMap((p) => p.runs);
+    expect(runs.filter(isCiteRun).map((r) => r.cite[0])).toEqual(['knuth1984', 'lamport1994']);
+    expect(runs.some((r) => 'math' in r && r.display)).toBe(true);
+    expect(doc.blocks.some((b) => b.type === 'bibliography')).toBe(true);
+  });
+});

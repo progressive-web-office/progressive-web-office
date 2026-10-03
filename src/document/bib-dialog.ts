@@ -83,7 +83,22 @@ export function manageReferences(host: HTMLElement, current: References | undefi
       h('h2', { id: 'bib-title' }, t('bib.title_')),
       count,
       list,
-      h('div', { class: 'bib-import' }, button(t('bib.importFile'), () => file.click()), file),
+      h(
+        'div',
+        { class: 'bib-import' },
+        button(t('bib.importFile'), () => file.click()),
+        file,
+        // BIB-010: a collection of the Zotero library.
+        button(t('zotero.importButton'), () =>
+          void import('./zotero').then(async ({ pickFromZotero }) => {
+            const added = await pickFromZotero(host, 'collection');
+            if (added?.length) {
+              entries = mergeEntries(entries, added);
+              render();
+            }
+          }),
+        ),
+      ),
       paste,
       h('div', { class: 'bib-import' }, button(t('bib.add'), () => add(paste.value))),
       error,
@@ -107,7 +122,7 @@ export function manageReferences(host: HTMLElement, current: References | undefi
 }
 
 /** Choose the sources of a citation and its page; no source removes the citation. */
-export function pickCitation(host: HTMLElement, entries: BibEntry[], initial?: CiteRun): Promise<CiteRun | null | 'remove'> {
+export function pickCitation(host: HTMLElement, entries: BibEntry[], initial?: CiteRun): Promise<CiteRun | null | 'remove' | 'zotero'> {
   return new Promise((resolve) => {
     const chosen = new Set(initial?.cite ?? []);
     const search = h('input', { type: 'search', 'aria-label': t('bib.search'), placeholder: t('bib.search') });
@@ -128,9 +143,10 @@ export function pickCitation(host: HTMLElement, entries: BibEntry[], initial?: C
     const locator = h('input', { type: 'text', 'aria-label': t('bib.locator'), placeholder: t('bib.locatorPlaceholder') });
     locator.value = initial?.locator ?? '';
     const dialog = h('dialog', { class: 'dialog cite-dialog', 'aria-labelledby': 'cite-title' });
-    const finish = (ok: boolean): void => {
+    const finish = (ok: boolean | 'zotero'): void => {
       dialog.close();
       dialog.remove();
+      if (ok === 'zotero') return resolve('zotero');
       if (!ok) return resolve(null);
       // Keep the order of the list, for stable citations.
       const keys = [...(initial?.cite ?? []).filter((k) => chosen.has(k)), ...entries.map((e) => e.key).filter((k) => chosen.has(k) && !initial?.cite.includes(k))];
@@ -141,7 +157,8 @@ export function pickCitation(host: HTMLElement, entries: BibEntry[], initial?: C
     dialog.append(
       h('h2', { id: 'cite-title' }, initial ? t('bib.editCite') : t('bib.cite')),
       ...(entries.length ? [search, list, locator] : [h('p', { class: 'hint' }, t('bib.noSourcesHint'))]),
-      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(false)), button(t('common.ok'), () => finish(true), { className: 'primary' })),
+      // BIB-010: or from the Zotero library.
+      h('div', { class: 'dialog-actions' }, button(t('zotero.button'), () => finish('zotero'), { title: t('zotero.searchTitle') }), button(t('common.cancel'), () => finish(false)), button(t('common.ok'), () => finish(true), { className: 'primary' })),
     );
     dialog.addEventListener('cancel', (e) => {
       e.preventDefault();

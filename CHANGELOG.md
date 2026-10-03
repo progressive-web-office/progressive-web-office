@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Zotero (BIB-010): search the Zotero library from ❝ and cite what is
+  found (its sources join the document's, with their citation keys), or
+  import a whole collection from 📚 — with an API key kept only in this
+  browser, its creation explained step by step.
+- A **scientific article** template (BIB-011): A4 with 2.5 cm margins,
+  authors and affiliations, abstract, keywords, numbered equation, captioned
+  table, citations and references.
 - Typography after TeX (DOC-048): paragraphs broken as a whole, balanced
   headings, hyphenation in the document's language (*View › Hyphenation*),
   kerning and ligatures, no widows or orphans on paper; **small capitals**

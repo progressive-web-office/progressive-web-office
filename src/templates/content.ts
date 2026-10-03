@@ -13,6 +13,7 @@ export interface DocumentTexts {
   minutes: string;
   exercises: string;
   tour: string;
+  article: string;
 }
 
 const EN: DocumentTexts = {
@@ -176,6 +177,70 @@ A ball thrown upwards is at height $y(t) = v_0 t - \\frac{1}{2} g t^2$, with $v_
 Study the variations of $f(x) = x^3 - 3x$ on $\\mathbb{R}$ and sketch its curve.
 `,
 
+  article: `---
+title: Title of the article
+author: SURNAME1 First name1; SURNAME2 First name2
+keywords: first keyword, second keyword, third keyword
+papersize: a4
+geometry: "margin=25mm"
+references:
+- {"id":"knuth1984","type":"book","title":"The TeXbook","author":[{"family":"Knuth","given":"Donald E."}],"issued":{"date-parts":[[1984]]},"publisher":"Addison-Wesley"}
+- {"id":"lamport1994","type":"book","title":"LaTeX: a document preparation system","author":[{"family":"Lamport","given":"Leslie"}],"issued":{"date-parts":[[1994]]},"publisher":"Addison-Wesley","edition":"2"}
+---
+
+# Title of the article
+
+**SURNAME1 First name1**¹ · **SURNAME2 First name2**²
+
+¹ Laboratory, University, City, Country · ² Laboratory, University, City, Country\
+*Corresponding author:* first.surname@example.org
+
+**Abstract.** In 150 to 250 words: the question, what was done, the main results and what they mean. The abstract is read alone: no citation, no abbreviation left unexplained.
+
+**Keywords:** first keyword, second keyword, third keyword
+
+## Introduction
+
+Set the context and what is already known, citing the sources that matter [@knuth1984]. State the question the article answers, then its plan.
+
+## Materials and methods
+
+Describe the data, the equipment and the steps precisely enough to be reproduced. The model is given by [Equation (1)](#eq-model):
+
+$$
+y(t) = y_\infty \left(1 - e^{-t/\tau}\right) \tag{1}\label{eq-model}
+$$
+
+where $\tau$ is the time constant and $y_\infty$ the final value.
+
+## Results
+
+[Table 1](#tab-results) gives the values measured for each sample.
+
+| Sample | $\tau$ (s) | $y_\infty$ | $R^2$ |
+|---|---|---|---|
+| A | 1.20 | 4.98 | 0.998 |
+| B | 1.35 | 5.02 | 0.996 |
+| C | 1.18 | 4.95 | 0.999 |
+
+<a id="tab-results"></a>Table 1: Parameters fitted for each sample
+
+## Discussion
+
+Interpret the results, compare them with earlier work [@lamport1994], and state the limits of the study.
+
+## Conclusion
+
+Answer the question of the introduction in a few sentences, and give the next steps.
+
+## Acknowledgements
+
+Funding, help received, data or software used.
+
+## References
+
+<div id="refs"></div>
+`,
   tour: `---
 title: A tour of Progressive Web Office
 author: Progressive Web Office
@@ -416,6 +481,71 @@ Une balle lancée vers le haut est à la hauteur $y(t) = v_0 t - \\frac{1}{2} g 
 Étudier les variations de $f(x) = x^3 - 3x$ sur $\\mathbb{R}$ et tracer l’allure de sa courbe.
 `,
 
+  article: `---
+title: Titre de l’article
+author: NOM1 Prénom1 ; NOM2 Prénom2
+keywords: premier mot-clé, deuxième mot-clé, troisième mot-clé
+lang: fr
+papersize: a4
+geometry: "margin=25mm"
+references:
+- {"id":"knuth1984","type":"book","title":"The TeXbook","author":[{"family":"Knuth","given":"Donald E."}],"issued":{"date-parts":[[1984]]},"publisher":"Addison-Wesley"}
+- {"id":"lamport1994","type":"book","title":"LaTeX: a document preparation system","author":[{"family":"Lamport","given":"Leslie"}],"issued":{"date-parts":[[1994]]},"publisher":"Addison-Wesley","edition":"2"}
+---
+
+# Titre de l’article
+
+**NOM1 Prénom1**¹ · **NOM2 Prénom2**²
+
+¹ Laboratoire, Université, Ville, Pays · ² Laboratoire, Université, Ville, Pays\
+*Auteur correspondant :* prenom.nom@example.org
+
+**Résumé.** En 150 à 250 mots : la question, ce qui a été fait, les principaux résultats et leur portée. Le résumé se lit seul : ni citation, ni abréviation non expliquée.
+
+**Mots-clés :** premier mot-clé, deuxième mot-clé, troisième mot-clé
+
+## Introduction
+
+Présentez le contexte et ce que l’on sait déjà, en citant les sources utiles [@knuth1984]. Énoncez la question à laquelle l’article répond, puis son plan.
+
+## Matériels et méthodes
+
+Décrivez les données, le matériel et les étapes assez précisément pour qu’on puisse les reproduire. Le modèle est donné par l’[Équation (1)](#eq-model) :
+
+$$
+y(t) = y_\infty \left(1 - e^{-t/\tau}\right) \tag{1}\label{eq-model}
+$$
+
+où $\tau$ est la constante de temps et $y_\infty$ la valeur finale.
+
+## Résultats
+
+Le [Tableau 1](#tab-results) donne les valeurs mesurées pour chaque échantillon.
+
+| Échantillon | $\tau$ (s) | $y_\infty$ | $R^2$ |
+|---|---|---|---|
+| A | 1,20 | 4,98 | 0,998 |
+| B | 1,35 | 5,02 | 0,996 |
+| C | 1,18 | 4,95 | 0,999 |
+
+<a id="tab-results"></a>Tableau 1 : Paramètres ajustés pour chaque échantillon
+
+## Discussion
+
+Interprétez les résultats, comparez-les aux travaux antérieurs [@lamport1994] et précisez les limites de l’étude.
+
+## Conclusion
+
+Répondez en quelques phrases à la question de l’introduction, puis donnez les perspectives.
+
+## Remerciements
+
+Financements, aides reçues, données ou logiciels utilisés.
+
+## Références
+
+<div id="refs"></div>
+`,
   tour: `---
 title: Découverte de Progressive Web Office
 author: Progressive Web Office
