@@ -297,6 +297,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Completing a Python cell with the interpreter's names could show nothing
+  the first time: loading jedi took longer than a keystroke waits. It is
+  loaded as soon as the editor of a cell opens.
+
 - The button leaving the review mode is now where the one entering it is,
   first in the bar.
 
