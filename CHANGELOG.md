@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Tags of the notes of a folder (FOLDER-017): front matter `tags` /
+  `keywords` and `#tags`, counted in the panel, searched with `#tag`,
+  renamed in every note; a graph of the links between the notes (FOLDER-018).
+
 - Git repositories as folders (FOLDER-007): *Open a folder* lists the GitHub
   and GitLab accounts; a branch of a repository opens in the explorer, each
   change (saving, creating, renaming, moving, deleting) being one commit; the

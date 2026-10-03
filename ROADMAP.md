@@ -94,11 +94,11 @@ group is not a commitment.
 
 ### Notes and knowledge
 
-- Tags (`#tag` and front matter keywords): a tag panel with counts,
-  colours and renaming across the folder, search by tag
+- ✅ Tags (`#tag` and front matter keywords): a tag panel with counts,
+  renaming across the folder, search by tag (FOLDER-017); next: colours
 - Related notes (shared tags and links) and the other files of the folder
   beside the open note
-- A graph of the links between the notes of a folder
+- ✅ A graph of the links between the notes of a folder (FOLDER-018)
 - Note identifiers (timestamps) and links by identifier
 
 ### Working on several documents

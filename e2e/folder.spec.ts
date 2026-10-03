@@ -120,7 +120,7 @@ test('creates, renames and deletes documents in the folder (FOLDER-004)', async 
   await openLocalFolder(page);
   const panel = page.getByRole('complementary', { name: 'Folder' });
   const files = () => page.evaluate(() => [...(window as unknown as { __folder: Map<string, string> }).__folder.keys()].sort());
-  await panel.getByRole('button', { name: 'notes' }).click();
+  await panel.getByRole('button', { name: 'notes', exact: true }).click();
   page.once('dialog', (d) => void d.accept('Plan.md'));
   await panel.getByRole('button', { name: 'New document' }).click();
   await expect(page.locator('.doc-page h1')).toHaveText('Untitled');
@@ -143,7 +143,7 @@ test('imports files, moves with the keyboard, sorts, filters names and undoes a 
   const panel = page.getByRole('complementary', { name: 'Folder' });
   const files = () => page.evaluate(() => [...(window as unknown as { __folder: Map<string, string> }).__folder.keys()].sort());
   // Keyboard: open the folder with the right arrow, go down into it.
-  await panel.getByRole('button', { name: 'notes' }).focus();
+  await panel.getByRole('button', { name: 'notes', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(panel.getByRole('button', { name: 'a.md' })).toBeVisible();
   await page.keyboard.press('ArrowRight');
@@ -228,11 +228,11 @@ test('copies, pastes, duplicates and downloads from the context menu and the key
   // Copy with the keyboard, paste into the folder.
   await panel.getByRole('button', { name: 'z.md', exact: true }).focus();
   await page.keyboard.press('ControlOrMeta+c');
-  await panel.getByRole('button', { name: 'notes' }).click();
+  await panel.getByRole('button', { name: 'notes', exact: true }).click();
   await page.keyboard.press('ControlOrMeta+v');
   await expect.poll(files).toEqual(['notes/a.md', 'notes/b.md', 'notes/z.md', 'z 2.md', 'z.md']);
   // Download the folder as an archive.
-  await panel.getByRole('button', { name: 'notes' }).click({ button: 'right' });
+  await panel.getByRole('button', { name: 'notes', exact: true }).click({ button: 'right' });
   const download = page.waitForEvent('download');
   await menu.getByRole('menuitem', { name: 'Download' }).click();
   const file = await download;
@@ -241,4 +241,33 @@ test('copies, pastes, duplicates and downloads from the context menu and the key
   const zip = readFileSync((await file.path())!);
   expect(zip.subarray(0, 2).toString()).toBe('PK');
   expect(zip.toString('latin1')).toContain('notes/z.md');
+});
+
+test('lists the tags of the notes, renames one everywhere and draws the graph of the notes (FOLDER-017, FOLDER-018)', async ({ page }) => {
+  await fakeFolder(page, {
+    'a.md': '---\ntags: [physics]\n---\n# A\n\nSee [[b]]. #todo\n',
+    'b.md': '# B\n\nBack to [[a]]. #todo\n',
+    'c.md': '# C\n',
+  });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByText('Tags', { exact: true }).click();
+  await expect(panel.locator('.folder-tag .link')).toHaveText(['#todo', '#physics']);
+  await panel.getByRole('button', { name: '#todo' }).click();
+  await expect(panel.getByLabel('Search the folder')).toHaveValue('#todo');
+  await expect(panel.locator('.folder-results .folder-file')).toHaveText(['a.md', 'b.md']);
+  // Renaming a tag rewrites every note using it.
+  page.once('dialog', (d) => void d.accept('next'));
+  await panel.getByRole('button', { name: 'Rename the tag todo' }).click();
+  await expect(panel.locator('.folder-tag .link')).toHaveText(['#next', '#physics']);
+  const files = () => page.evaluate(() => Object.fromEntries((window as unknown as { __folder: Map<string, string> }).__folder));
+  await expect.poll(async () => (await files())['b.md']).toBe('# B\n\nBack to [[a]]. #next\n');
+  // The graph of the notes; a click opens one.
+  await panel.getByRole('button', { name: 'Graph of the notes' }).click();
+  const graph = page.getByRole('dialog', { name: 'Graph of the notes' });
+  await expect(graph).toContainText('3 notes, 2 links, 1 notes without links');
+  await expect(graph.locator('svg g.node')).toHaveCount(3, { timeout: 30_000 });
+  await graph.locator('svg g.node[data-note="b.md"]').click();
+  await expect(graph).toBeHidden();
+  await expect(page.locator('.doc-page h1')).toHaveText('B');
 });

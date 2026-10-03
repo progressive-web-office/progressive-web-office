@@ -111,6 +111,21 @@ A folder of Markdown notes works as a set of linked notes:
 - The YAML front matter of each note (tags, aliases, any key) is kept as it
   is.
 
+### Tags
+
+**Tags** (below the tree) lists the tags of the notes, the most used first
+with the number of notes: the `tags` (or `keywords`) of their front matter,
+and `#tags` written in the text (`#todo`, nested `#course/semester-1`; not
+in code, links, headings or colours like `#fff`). Click a tag, or search
+`#tag`, to list its notes. **✎** renames a tag in every note of the folder.
+
+### Graph of the notes
+
+**🕸** next to the folder's name draws the notes and the links between them
+(`[[wiki links]]` and relative Markdown links; a link both ways is a double
+arrow), with the number of notes without links. Click a note, or its name
+in the list below the graph, to open it.
+
 ## Master documents
 
 A **master document** gathers **sub-documents** — the chapters of a thesis,

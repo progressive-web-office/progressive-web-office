@@ -21,6 +21,8 @@ export interface FolderPanelHooks {
   confirm(message: string): Promise<boolean>;
   /** Buttons added next to the folder's name (e.g. download an archive, FILE-021). */
   actions?: HTMLElement[];
+  /** Notes rewritten by the panel (a tag renamed): the open one may need reloading. */
+  notesChanged?(paths: string[]): void | Promise<void>;
 }
 
 const ICONS: [RegExp, string][] = [
@@ -56,6 +58,9 @@ export class FolderPanel {
   private readonly backlinks: HTMLElement;
   private readonly results: HTMLElement;
   private readonly search: HTMLInputElement;
+  /** FOLDER-017: the tags of the notes. */
+  private readonly tagSection: HTMLDetailsElement;
+  private readonly tagList = h('div', { class: 'folder-tags' });
   private paths: string[] = [];
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -129,14 +134,19 @@ export class FolderPanel {
       this.searchTimer = setTimeout(() => void this.runSearch(), 250);
     });
     this.results = h('section', { class: 'folder-results', 'aria-label': t('folder.results'), 'aria-live': 'polite', hidden: true });
+    this.tagSection = h('details', { class: 'folder-tag-section' }, h('summary', {}, t('folder.tags')), this.tagList) as HTMLDetailsElement;
+    this.tagSection.addEventListener('toggle', () => {
+      if (this.tagSection.open) void this.renderTags();
+    });
     this.element = h(
       'aside',
       { class: 'folder-panel', 'aria-label': t('folder.panel') },
-      h('div', { class: 'folder-head' }, h('h2', { title: provider.label }, `📁 ${provider.label}`), ...(hooks.actions ?? []), button(t('folder.close'), () => hooks.close(), { text: '✕', className: 'icon' })),
+      h('div', { class: 'folder-head' }, h('h2', { title: provider.label }, `📁 ${provider.label}`), ...(hooks.actions ?? []), button(t('folder.graph'), () => void this.showGraph(), { text: '🕸', className: 'icon', title: t('folder.graphTitle') }), button(t('folder.close'), () => hooks.close(), { text: '✕', className: 'icon' })),
       provider.capabilities.write ? '' : h('p', { class: 'folder-readonly' }, t('folder.readOnlyHint')),
       this.search,
       this.results,
       this.explorer.element,
+      this.tagSection,
       this.backlinks,
     );
   }
@@ -164,6 +174,62 @@ export class FolderPanel {
     save(new Blob([writeZip(files) as BlobPart], { type: 'application/zip' }), `${name}.zip`);
   }
 
+  private notes(): string[] {
+    return this.paths.filter(isNote);
+  }
+
+  /** The tags of the notes, the most used first; a click lists their notes (FOLDER-017). */
+  private async renderTags(): Promise<void> {
+    const tags = await this.vault.tags(this.notes());
+    this.tagList.replaceChildren(
+      ...(tags.size
+        ? [...tags].map(([tag, notes]) =>
+            h(
+              'span',
+              { class: 'folder-tag' },
+              button(`#${tag}`, () => {
+                this.search.value = `#${tag}`;
+                void this.runSearch();
+              }, { className: 'link', title: t('folder.tagNotes', { n: notes.length }) }),
+              h('span', { class: 'folder-tag-count' }, String(notes.length)),
+              this.provider.capabilities.write ? button(t('folder.renameTag', { tag }), () => void this.renameTag(tag), { text: '✎', className: 'icon folder-tag-rename' }) : '',
+            ),
+          )
+        : [h('p', { class: 'hint' }, t('folder.noTags'))]),
+    );
+  }
+
+  private async showTag(tag: string): Promise<void> {
+    const tags = await this.vault.tags(this.notes());
+    const notes = [...tags].find(([t]) => t.toLowerCase() === tag.toLowerCase())?.[1] ?? [];
+    if (`#${tag}` !== this.search.value.trim()) return;
+    this.results.replaceChildren(
+      h('p', { class: 'hint' }, notes.length ? t('folder.tagNotes', { n: notes.length }) : t('folder.notFound')),
+      h('ul', { role: 'list' }, ...notes.map((p) => h('li', {}, button(p, () => this.hooks.open(p), { className: 'folder-file', icon: iconOf(p) })))),
+    );
+  }
+
+  private async renameTag(tag: string): Promise<void> {
+    const name = (await this.hooks.prompt(t('folder.renameTagPrompt', { tag }), tag))?.trim().replace(/^#/, '');
+    if (!name || name === tag || /\s/.test(name)) return;
+    try {
+      const changed = await this.vault.renameTag(tag, name, this.notes());
+      await this.renderTags();
+      await this.hooks.notesChanged?.(changed);
+    } catch (err) {
+      this.hooks.error((err as Error).message);
+    }
+  }
+
+  /** The notes and the links between them, as a graph; a click opens a note (FOLDER-018). */
+  private async showGraph(): Promise<void> {
+    const notes = this.notes().slice(0, 200);
+    const { notesGraphDialog } = await import('./graph');
+    const links = await this.vault.links(notes);
+    const path = await notesGraphDialog(document.body, notes, links);
+    if (path) this.hooks.open(path);
+  }
+
   private async reindex(): Promise<void> {
     this.paths = (await listFiles(this.provider)).filter((p) => OPENABLE.test(p));
   }
@@ -171,6 +237,10 @@ export class FolderPanel {
   async refresh(): Promise<void> {
     await this.reindex();
     await this.explorer.refresh();
+    if (this.tagSection.open) {
+      this.vault.clear();
+      await this.renderTags();
+    }
     if (this.search.value.trim()) await this.runSearch();
   }
 
@@ -206,6 +276,8 @@ export class FolderPanel {
     this.results.hidden = !query;
     this.explorer.element.hidden = !!query;
     if (!query) return;
+    // FOLDER-017: `#tag` lists the notes with that tag.
+    if (/^#[^\s#]+$/.test(query)) return this.showTag(query.slice(1));
     const all = await listFiles(this.provider);
     if (query !== this.search.value.trim()) return;
     // FOLDER-008: files whose name matches come first, at once.

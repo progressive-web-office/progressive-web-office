@@ -1095,3 +1095,14 @@ body.distraction-free .ai-panel { display: none !important; }
 .code-widget-frame { display: block; width: 100%; border: 0; background: transparent; color-scheme: normal; }
 .code-cell-widget img { max-width: 100%; height: auto; }
 .print-document .code-widget-frame { display: none; }
+
+/* FOLDER-017, FOLDER-018: tags of the notes, graph of their links. */
+.folder-tag-section { margin: 8px 0; font-size: 0.9rem; }
+.folder-tag-section > summary { cursor: pointer; font-weight: 600; }
+.folder-tags { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 6px 0; }
+.folder-tag { display: inline-flex; align-items: center; gap: 2px; }
+.folder-tag-count { font-size: 0.75rem; color: var(--muted); }
+.folder-tag-rename { width: 1.6rem; height: 1.6rem; padding: 0; font-size: 0.8rem; }
+.notes-graph-dialog { width: min(92vw, 1100px); }
+.notes-graph { max-height: 70vh; overflow: auto; background: #fff; border-radius: 6px; padding: 6px; }
+.notes-graph svg { display: block; max-width: none; margin: 0 auto; }

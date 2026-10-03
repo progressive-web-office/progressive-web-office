@@ -1212,6 +1212,15 @@ export class App {
       open: (path, query) => void this.openFromFolder(path, query),
       close: () => this.closeFolder(),
       changed: (change) => this.folderChanged(change),
+      // FOLDER-017: notes rewritten by the panel (a tag renamed): the open one follows when it has no unsaved changes.
+      notesChanged: async (paths) => {
+        const doc = this.current;
+        if (doc?.folderPath && paths.includes(doc.folderPath) && !this.dirty) {
+          const path = doc.folderPath;
+          delete doc.folderPath;
+          await this.openFromFolder(path);
+        }
+      },
       error: (message) => this.showError(message),
       prompt: async (message, value) => window.prompt(message, value),
       confirm: async (message) => window.confirm(message),
