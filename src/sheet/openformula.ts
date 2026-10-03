@@ -66,6 +66,9 @@ export function ofToExcel(formula: string): string {
     } else if (ch === ';') {
       out += ',';
       i++;
+    } else if (/^COM\.MICROSOFT\./i.test(src.slice(i, i + 14)) && !/[A-Za-z0-9_.]/.test(src[i - 1] ?? '')) {
+      // SHEET-025: functions LibreOffice writes with Excel's namespace (IFS, XLOOKUP…).
+      i += 14;
     } else {
       out += ch;
       i++;
@@ -81,6 +84,9 @@ function partText(p: RefPart): string {
 function ofSheet(name: string): string {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ? name : `'${name.replace(/'/g, "''")}'`;
 }
+
+/** SHEET-025: functions OpenDocument files name in Excel's namespace, as LibreOffice does. */
+const OF_MICROSOFT = new Set(['IFS', 'SWITCH', 'TEXTJOIN', 'MAXIFS', 'MINIFS', 'XLOOKUP', 'CEILING.MATH', 'FLOOR.MATH', 'RANK.EQ', 'MODE.SNGL', 'PERCENTILE.INC', 'QUARTILE.INC']);
 
 /** `SUM(A1:B2,S!C3)` -> `of:=SUM([.A1:.B2];[$S.C3])` */
 export function excelToOf(formula: string): string {
@@ -100,6 +106,9 @@ export function excelToOf(formula: string): string {
       last = tok.end;
     } else if (tok.type === ',') {
       out += formula.slice(last, tok.start) + ';';
+      last = tok.end;
+    } else if (tok.type === 'name' && OF_MICROSOFT.has(tok.value)) {
+      out += `${formula.slice(last, tok.start)}COM.MICROSOFT.${tok.value}`;
       last = tok.end;
     }
   }

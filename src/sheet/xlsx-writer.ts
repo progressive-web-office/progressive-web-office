@@ -10,8 +10,8 @@ import { BUILTIN_FORMATS, pxToWidth } from './xlsx-reader';
 import { chartXml, CT_CHART, CT_DRAWING, drawingXml, REL_DRAWING } from './chart-ooxml';
 
 /** Functions that Excel stores with a `_xlfn.` prefix. */
-const FUTURE_FUNCTIONS = ['CONCAT', 'IFS', 'SWITCH', 'TEXTJOIN', 'MAXIFS', 'MINIFS', 'XLOOKUP'];
-const addFn = (f: string): string => f.replace(new RegExp(`\\b(${FUTURE_FUNCTIONS.join('|')})\\(`, 'g'), '_xlfn.$1(');
+const FUTURE_FUNCTIONS = ['CONCAT', 'IFS', 'SWITCH', 'TEXTJOIN', 'MAXIFS', 'MINIFS', 'XLOOKUP', 'IFNA', 'XOR', 'DAYS', 'RANK.EQ', 'MODE.SNGL', 'PERCENTILE.INC', 'QUARTILE.INC', 'CEILING.MATH', 'FLOOR.MATH'];
+const addFn = (f: string): string => f.replace(new RegExp(`(?<![\\w.])(${FUTURE_FUNCTIONS.map((n) => n.replace('.', '\\.')).join('|')})\\(`, 'g'), '_xlfn.$1(');
 
 /** The sheet view: the selected tab and frozen panes (SHEET-017). */
 function sheetViews(sheet: Sheet, selected: boolean): string {

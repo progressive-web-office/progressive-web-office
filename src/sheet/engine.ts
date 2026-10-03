@@ -2,6 +2,7 @@
 import { cellKey, parseKey, parseRef } from './address';
 import { FormulaSyntaxError, parseFormula, type Ast } from './formula';
 import { isError, serialToDate, dateToSerial, type ErrorValue, type Scalar, type Value, type Workbook } from './model';
+import { formatValue } from './number-format';
 
 type Range = { range: Value[][] };
 type EvalResult = Value | Range;
@@ -145,6 +146,27 @@ function matcher(criteria: Value): (v: Value) => boolean {
         return c === 0;
     }
   };
+}
+
+/**
+ * Where `needle` is in `list`: an exact match (`mode` 0), or the last value
+ * not above it in an ascending list (1), or the last not below it in a
+ * descending one (−1).
+ */
+function lookupIndex(list: Value[], needle: Value, mode: number): number {
+  let found = -1;
+  for (let i = 0; i < list.length; i++) {
+    const v = list[i] ?? null;
+    if (isError(v) || v === null) continue;
+    const c = compare(v, needle);
+    if (c === 0) return i;
+    if (mode === 1 && c < 0) found = i;
+    else if (mode === 1 && c > 0) break;
+    else if (mode === -1 && c > 0) found = i;
+    else if (mode === -1 && c < 0) break;
+  }
+  if (found < 0 || mode === 0) throw new FormulaError(NA);
+  return found;
 }
 
 // --- calculator -----------------------------------------------------------------
@@ -372,6 +394,16 @@ export class Calculator {
     if (!a) throw new FormulaError(VALUE);
     const v = this.eval(a, si);
     return isRange(v) ? v.range : [[v]];
+  }
+
+  /** The value of an argument, an error being a value (ISERROR, IFNA). */
+  private caught(a: Ast, si: number): Value {
+    try {
+      return this.scalar(this.eval(a, si));
+    } catch (e) {
+      if (e instanceof FormulaError) return e.value;
+      throw e;
+    }
   }
 
   private call(name: string, args: Ast[], si: number): EvalResult {
@@ -636,6 +668,409 @@ export class Calculator {
         }
         if (found < 0) throw new FormulaError(NA);
         return table[found]![col - 1] ?? null;
+      }
+
+      // SHEET-025: logic and information.
+      case 'TRUE':
+        return true;
+      case 'FALSE':
+        return false;
+      case 'NA':
+        throw new FormulaError(NA);
+      case 'XOR':
+        return this.values(args, si).filter((v) => v !== null).map(toBool).filter(Boolean).length % 2 === 1;
+      case 'IFS': {
+        if (!args.length || args.length % 2) throw new FormulaError(VALUE);
+        for (let i = 0; i < args.length; i += 2) if (toBool(this.val(args[i]!, si))) return this.eval(args[i + 1]!, si);
+        throw new FormulaError(NA);
+      }
+      case 'SWITCH': {
+        need(3);
+        const v = this.val(args[0]!, si);
+        let i = 1;
+        for (; i + 1 < args.length; i += 2) if (compare(v, this.val(args[i]!, si)) === 0) return this.eval(args[i + 1]!, si);
+        if (i < args.length) return this.eval(args[i]!, si);
+        throw new FormulaError(NA);
+      }
+      case 'IFNA': {
+        need(2, 2);
+        const v = this.caught(args[0]!, si);
+        return isError(v) && v.error === '#N/A' ? this.eval(args[1]!, si) : v;
+      }
+      case 'ISERROR':
+      case 'ISERR':
+      case 'ISNA': {
+        need(1, 1);
+        const v = this.caught(args[0]!, si);
+        if (!isError(v)) return false;
+        return name === 'ISERROR' || (name === 'ISNA' ? v.error === '#N/A' : v.error !== '#N/A');
+      }
+      case 'ISLOGICAL':
+        need(1, 1);
+        return typeof this.scalar(this.eval(args[0]!, si)) === 'boolean';
+      case 'ISNONTEXT':
+        need(1, 1);
+        return typeof this.scalar(this.eval(args[0]!, si)) !== 'string';
+      case 'ISEVEN':
+      case 'ISODD':
+        need(1, 1);
+        return (Math.abs(Math.trunc(n(0))) % 2 === 0) === (name === 'ISEVEN');
+      // SHEET-025: mathematics.
+      case 'TRUNC': {
+        need(1, 2);
+        const m = 10 ** (args.length > 1 ? Math.trunc(n(1)) : 0);
+        return Math.trunc(n(0) * m) / m;
+      }
+      case 'CEILING':
+      case 'FLOOR':
+      case 'CEILING.MATH':
+      case 'FLOOR.MATH':
+      case 'MROUND': {
+        need(1, 3);
+        const x = n(0);
+        const step = Math.abs(args.length > 1 ? n(1) : 1);
+        if (step === 0) return 0;
+        if (name === 'MROUND') {
+          if (x * (args.length > 1 ? n(1) : 1) < 0) throw new FormulaError(err('#NUM!'));
+          return round(Math.round(x / step) * step, 12);
+        }
+        const up = name.startsWith('CEILING');
+        return round((up ? Math.ceil(x / step - 1e-12) : Math.floor(x / step + 1e-12)) * step, 12);
+      }
+      case 'EVEN':
+      case 'ODD': {
+        need(1, 1);
+        const x = n(0);
+        const sign = x < 0 ? -1 : 1;
+        let k = Math.ceil(Math.abs(x));
+        if (name === 'EVEN' ? k % 2 : k % 2 === 0) k++;
+        if (name === 'ODD' && k === 0) k = 1;
+        return sign * k;
+      }
+      case 'FACT': {
+        need(1, 1);
+        const x = Math.trunc(n(0));
+        if (x < 0) throw new FormulaError(err('#NUM!'));
+        let f = 1;
+        for (let i = 2; i <= x; i++) f *= i;
+        return finite(f);
+      }
+      case 'COMBIN':
+      case 'PERMUT': {
+        need(2, 2);
+        const [m, k] = [Math.trunc(n(0)), Math.trunc(n(1))];
+        if (m < 0 || k < 0 || k > m) throw new FormulaError(err('#NUM!'));
+        let r = 1;
+        for (let i = 0; i < k; i++) r *= (m - i) / (name === 'COMBIN' ? i + 1 : 1);
+        return Math.round(r);
+      }
+      case 'GCD':
+      case 'LCM': {
+        const xs = this.numbers(args, si).map((x) => Math.trunc(x));
+        if (xs.some((x) => x < 0)) throw new FormulaError(err('#NUM!'));
+        const gcd = (a: number, b: number): number => (b ? gcd(b, a % b) : a);
+        if (name === 'GCD') return xs.reduce(gcd, 0);
+        return xs.reduce((a, b) => (a === 0 || b === 0 ? 0 : (a / gcd(a, b)) * b), 1);
+      }
+      case 'QUOTIENT': {
+        need(2, 2);
+        const d = n(1);
+        if (d === 0) throw new FormulaError(DIV0);
+        return Math.trunc(n(0) / d);
+      }
+      case 'RAND':
+        return Math.random();
+      case 'RANDBETWEEN': {
+        need(2, 2);
+        const [lo, hi] = [Math.ceil(n(0)), Math.floor(n(1))];
+        if (lo > hi) throw new FormulaError(err('#NUM!'));
+        return lo + Math.floor(Math.random() * (hi - lo + 1));
+      }
+      case 'SUMPRODUCT': {
+        need(1);
+        const arrays = args.map((a) => this.rangeArg(a, si).flat());
+        const len = arrays[0]!.length;
+        if (arrays.some((a) => a.length !== len)) throw new FormulaError(VALUE);
+        let total = 0;
+        for (let i = 0; i < len; i++) total += arrays.reduce((p, a) => p * (typeof a[i] === 'number' ? (a[i] as number) : 0), 1);
+        return total;
+      }
+      // SHEET-025: conditional aggregates, several criteria.
+      case 'COUNTIFS':
+      case 'SUMIFS':
+      case 'AVERAGEIFS':
+      case 'MAXIFS':
+      case 'MINIFS':
+      case 'AVERAGEIF': {
+        const single = name === 'AVERAGEIF';
+        if (single) need(2, 3);
+        const counting = name === 'COUNTIFS';
+        const target = counting ? undefined : this.rangeArg(single ? (args[2] ?? args[0]) : args[0], si).flat();
+        const start = counting || single ? 0 : 1;
+        const pairs: { cells: Value[]; test: (v: Value) => boolean }[] = [];
+        if (single) pairs.push({ cells: this.rangeArg(args[0], si).flat(), test: matcher(this.val(args[1]!, si)) });
+        else {
+          if (args.length - start < 2 || (args.length - start) % 2) throw new FormulaError(VALUE);
+          for (let i = start; i < args.length; i += 2) pairs.push({ cells: this.rangeArg(args[i], si).flat(), test: matcher(this.val(args[i + 1]!, si)) });
+        }
+        const size = pairs[0]!.cells.length;
+        if (pairs.some((p) => p.cells.length !== size) || (target && target.length !== size)) throw new FormulaError(VALUE);
+        const hits: number[] = [];
+        let count = 0;
+        for (let i = 0; i < size; i++) {
+          if (!pairs.every((p) => p.test(p.cells[i] ?? null))) continue;
+          count++;
+          const x = target?.[i];
+          if (typeof x === 'number') hits.push(x);
+        }
+        if (counting) return count;
+        if (name === 'SUMIFS') return hits.reduce((a, b) => a + b, 0);
+        if (name === 'MAXIFS') return hits.length ? Math.max(...hits) : 0;
+        if (name === 'MINIFS') return hits.length ? Math.min(...hits) : 0;
+        if (!hits.length) throw new FormulaError(DIV0);
+        return hits.reduce((a, b) => a + b, 0) / hits.length;
+      }
+      // SHEET-025: statistics.
+      case 'LARGE':
+      case 'SMALL': {
+        need(2, 2);
+        const xs = this.numbers([args[0]!], si).sort((a, b) => (name === 'LARGE' ? b - a : a - b));
+        const k = Math.trunc(n(1));
+        if (k < 1 || k > xs.length) throw new FormulaError(err('#NUM!'));
+        return xs[k - 1]!;
+      }
+      case 'RANK':
+      case 'RANK.EQ': {
+        need(2, 3);
+        const x = n(0);
+        const xs = this.numbers([args[1]!], si);
+        const ascending = args.length > 2 && n(2) !== 0;
+        if (!xs.includes(x)) throw new FormulaError(NA);
+        return 1 + xs.filter((y) => (ascending ? y < x : y > x)).length;
+      }
+      case 'MODE':
+      case 'MODE.SNGL': {
+        const xs = this.numbers(args, si);
+        const counts = new Map<number, number>();
+        let best: number | undefined;
+        let most = 1;
+        for (const x of xs) {
+          const c = (counts.get(x) ?? 0) + 1;
+          counts.set(x, c);
+          if (c > most) [best, most] = [x, c];
+        }
+        if (best === undefined) throw new FormulaError(NA);
+        return best;
+      }
+      case 'PERCENTILE':
+      case 'PERCENTILE.INC':
+      case 'QUARTILE':
+      case 'QUARTILE.INC': {
+        need(2, 2);
+        const xs = this.numbers([args[0]!], si).sort((a, b) => a - b);
+        const p = name.startsWith('QUARTILE') ? Math.trunc(n(1)) / 4 : n(1);
+        if (!xs.length || p < 0 || p > 1) throw new FormulaError(err('#NUM!'));
+        const h = (xs.length - 1) * p;
+        const lo = Math.floor(h);
+        return xs[lo]! + (h - lo) * ((xs[lo + 1] ?? xs[lo]!) - xs[lo]!);
+      }
+      case 'GEOMEAN': {
+        const xs = this.numbers(args, si);
+        if (!xs.length || xs.some((x) => x <= 0)) throw new FormulaError(err('#NUM!'));
+        return Math.exp(xs.reduce((a, x) => a + Math.log(x), 0) / xs.length);
+      }
+      case 'AVERAGEA': {
+        const vs = this.values(args, si).filter((v) => v !== null);
+        if (!vs.length) throw new FormulaError(DIV0);
+        return vs.reduce<number>((a, v) => a + (typeof v === 'number' ? v : v === true ? 1 : 0), 0) / vs.length;
+      }
+      // SHEET-025: text.
+      case 'TEXTJOIN': {
+        need(3);
+        const sep = s(0);
+        const skip = toBool(this.val(args[1]!, si));
+        return this.values(args.slice(2), si)
+          .filter((v) => !(skip && (v === null || v === '')))
+          .map(toText)
+          .join(sep);
+      }
+      case 'SUBSTITUTE': {
+        need(3, 4);
+        const [text, from, to] = [s(0), s(1), s(2)];
+        if (!from) return text;
+        if (args.length < 4) return text.split(from).join(to);
+        const nth = Math.trunc(n(3));
+        let at = -1;
+        for (let i = 0; i < nth; i++) {
+          at = text.indexOf(from, at + 1);
+          if (at < 0) return text;
+        }
+        return text.slice(0, at) + to + text.slice(at + from.length);
+      }
+      case 'REPLACE': {
+        need(4, 4);
+        const text = s(0);
+        const start = Math.trunc(n(1)) - 1;
+        return text.slice(0, start) + s(3) + text.slice(start + Math.trunc(n(2)));
+      }
+      case 'FIND':
+      case 'SEARCH': {
+        need(2, 3);
+        const start = args.length > 2 ? Math.trunc(n(2)) - 1 : 0;
+        const [needle, hay] = [s(0), s(1)];
+        let at: number;
+        if (name === 'FIND') at = hay.indexOf(needle, start);
+        else {
+          const re = new RegExp(needle.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/~\*/g, '\u0001').replace(/\*/g, '.*').replace(/\?/g, '.').replace(/\u0001/g, '\\*'), 'i');
+          const m = re.exec(hay.slice(start));
+          at = m ? start + m.index : -1;
+        }
+        if (at < 0 || start < 0) throw new FormulaError(VALUE);
+        return at + 1;
+      }
+      case 'REPT': {
+        need(2, 2);
+        const times = Math.trunc(n(1));
+        if (times < 0) throw new FormulaError(VALUE);
+        return s(0).repeat(times);
+      }
+      case 'PROPER':
+        need(1, 1);
+        return s(0).toLowerCase().replace(/(^|[^\p{L}\p{N}'])(\p{L})/gu, (_m, a: string, b: string) => a + b.toUpperCase());
+      case 'EXACT':
+        need(2, 2);
+        return s(0) === s(1);
+      case 'VALUE': {
+        need(1, 1);
+        const v = this.val(args[0]!, si);
+        if (typeof v === 'number') return v;
+        const text = toText(v).trim().replace(/\s/g, '').replace(',', '.');
+        const pct = text.endsWith('%');
+        const x = Number(pct ? text.slice(0, -1) : text);
+        if (!text || !Number.isFinite(x)) throw new FormulaError(VALUE);
+        return pct ? x / 100 : x;
+      }
+      case 'TEXT':
+        need(2, 2);
+        return formatValue(n(0), s(1));
+      case 'CHAR':
+        need(1, 1);
+        return String.fromCharCode(Math.trunc(n(0)));
+      case 'CODE': {
+        need(1, 1);
+        const text = s(0);
+        if (!text) throw new FormulaError(VALUE);
+        return text.charCodeAt(0);
+      }
+      case 'CLEAN':
+        need(1, 1);
+        return s(0).replace(/[\x00-\x1f]/g, '');
+      // SHEET-025: lookup and reference.
+      case 'CHOOSE': {
+        need(2);
+        const i = Math.trunc(n(0));
+        if (i < 1 || i >= args.length) throw new FormulaError(VALUE);
+        return this.eval(args[i]!, si);
+      }
+      case 'HLOOKUP': {
+        need(3, 4);
+        const needle = this.val(args[0]!, si);
+        const table = this.rangeArg(args[1], si);
+        const row = Math.trunc(n(2));
+        const approx = args[3] ? toBool(this.val(args[3], si)) : true;
+        if (row < 1 || row > table.length) throw new FormulaError(REF);
+        const found = lookupIndex(table[0] ?? [], needle, approx ? 1 : 0);
+        return table[row - 1]![found] ?? null;
+      }
+      case 'MATCH': {
+        need(2, 3);
+        const needle = this.val(args[0]!, si);
+        const list = this.rangeArg(args[1], si).flat();
+        return lookupIndex(list, needle, args.length > 2 ? Math.sign(n(2)) : 1) + 1;
+      }
+      case 'INDEX': {
+        need(2, 3);
+        const table = this.rangeArg(args[0], si);
+        let r = Math.trunc(n(1));
+        let c = args.length > 2 ? Math.trunc(n(2)) : 1;
+        // A single row: the second argument is the column.
+        if (args.length === 2 && table.length === 1) [r, c] = [1, r];
+        if (r < 1 || c < 1 || r > table.length || c > (table[0]?.length ?? 0)) throw new FormulaError(REF);
+        return table[r - 1]![c - 1] ?? null;
+      }
+      case 'XLOOKUP': {
+        need(3, 4);
+        const needle = this.val(args[0]!, si);
+        const keys = this.rangeArg(args[1], si);
+        const results = this.rangeArg(args[2], si);
+        const vertical = keys.length > 1 || (keys[0]?.length ?? 0) === 1;
+        const list = keys.flat();
+        const i = list.findIndex((v) => !isError(v) && v !== null && compare(v, needle) === 0);
+        if (i < 0) {
+          if (args[3]) return this.eval(args[3], si);
+          throw new FormulaError(NA);
+        }
+        return (vertical ? results[i]?.[0] : results[0]?.[i]) ?? null;
+      }
+      // SHEET-025: dates and times.
+      case 'WEEKDAY': {
+        need(1, 2);
+        const day = serialToDate(n(0)).getUTCDay();
+        const type = args.length > 1 ? Math.trunc(n(1)) : 1;
+        if (type === 2) return ((day + 6) % 7) + 1;
+        if (type === 3) return (day + 6) % 7;
+        return day + 1;
+      }
+      case 'EDATE':
+      case 'EOMONTH': {
+        need(2, 2);
+        const d = serialToDate(n(0));
+        const months = Math.trunc(n(1));
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth() + months;
+        if (name === 'EOMONTH') return dateToSerial(y, m + 2, 0);
+        const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+        return dateToSerial(y, m + 1, Math.min(d.getUTCDate(), last));
+      }
+      case 'DAYS':
+        need(2, 2);
+        return Math.trunc(n(0)) - Math.trunc(n(1));
+      case 'HOUR':
+      case 'MINUTE':
+      case 'SECOND': {
+        need(1, 1);
+        const secs = Math.round((n(0) - Math.floor(n(0))) * 86400);
+        return name === 'HOUR' ? Math.floor(secs / 3600) % 24 : name === 'MINUTE' ? Math.floor(secs / 60) % 60 : secs % 60;
+      }
+      case 'TIME':
+        need(3, 3);
+        return ((n(0) * 3600 + n(1) * 60 + n(2)) / 86400) % 1;
+      case 'NETWORKDAYS': {
+        need(2, 3);
+        let [a, b] = [Math.trunc(n(0)), Math.trunc(n(1))];
+        const sign = a <= b ? 1 : -1;
+        if (sign < 0) [a, b] = [b, a];
+        const holidays = new Set(args[2] ? this.numbers([args[2]], si).map(Math.trunc) : []);
+        let count = 0;
+        for (let d = a; d <= b; d++) {
+          const day = serialToDate(d).getUTCDay();
+          if (day !== 0 && day !== 6 && !holidays.has(d)) count++;
+        }
+        return sign * count;
+      }
+      case 'DATEDIF': {
+        need(3, 3);
+        const [a, b] = [Math.trunc(n(0)), Math.trunc(n(1))];
+        if (a > b) throw new FormulaError(err('#NUM!'));
+        const unit = s(2).toUpperCase();
+        if (unit === 'D') return b - a;
+        const [da, db] = [serialToDate(a), serialToDate(b)];
+        let months = (db.getUTCFullYear() - da.getUTCFullYear()) * 12 + db.getUTCMonth() - da.getUTCMonth();
+        if (db.getUTCDate() < da.getUTCDate()) months--;
+        if (unit === 'M') return months;
+        if (unit === 'Y') return Math.floor(months / 12);
+        if (unit === 'YM') return months % 12;
+        throw new FormulaError(err('#NUM!'));
       }
       default:
         throw new FormulaError(NAME);

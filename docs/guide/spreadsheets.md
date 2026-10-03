@@ -46,14 +46,14 @@ Operators: `+ - * / ^`, `%`, `&` (text concatenation), comparisons
 
 | Category | Functions |
 |----------|-----------|
-| Math | `SUM`, `PRODUCT`, `SUMSQ`, `AVERAGE`, `MEDIAN`, `MIN`, `MAX`, `ROUND`, `ROUNDUP`, `ROUNDDOWN`, `INT`, `ABS`, `SIGN`, `SQRT`, `POWER`, `MOD`, `PI`, `EXP`, `LN`, `LOG`, `LOG10` |
+| Math | `SUM`, `PRODUCT`, `SUMSQ`, `AVERAGE`, `MEDIAN`, `MIN`, `MAX`, `ROUND`, `ROUNDUP`, `ROUNDDOWN`, `INT`, `ABS`, `SIGN`, `SQRT`, `POWER`, `MOD`, `PI`, `EXP`, `LN`, `LOG`, `LOG10`, `TRUNC`, `CEILING`, `FLOOR`, `MROUND`, `EVEN`, `ODD`, `FACT`, `COMBIN`, `PERMUT`, `GCD`, `LCM`, `QUOTIENT`, `RAND`, `RANDBETWEEN`, `SUMPRODUCT` |
 | Trigonometry | `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATAN`, `ATAN2` (x, y), `SINH`, `COSH`, `TANH`, `DEGREES`, `RADIANS` (angles in radians) |
-| Statistics | `VAR`, `VARP`, `STDEV`, `STDEVP`, `SLOPE`, `INTERCEPT`, `RSQ`, `CORREL` (`SLOPE(known_y, known_x)`) |
-| Counting | `COUNT`, `COUNTA`, `COUNTBLANK`, `COUNTIF`, `SUMIF` |
-| Logic | `IF`, `IFERROR`, `AND`, `OR`, `NOT`, `ISBLANK`, `ISNUMBER`, `ISTEXT` |
-| Text | `CONCAT`, `CONCATENATE`, `LEN`, `UPPER`, `LOWER`, `TRIM`, `LEFT`, `RIGHT`, `MID` |
-| Lookup | `VLOOKUP` |
-| Dates | `TODAY`, `NOW`, `DATE`, `YEAR`, `MONTH`, `DAY` |
+| Statistics | `VAR`, `VARP`, `STDEV`, `STDEVP`, `SLOPE`, `INTERCEPT`, `RSQ`, `CORREL` (`SLOPE(known_y, known_x)`), `LARGE`, `SMALL`, `RANK` / `RANK.EQ`, `MODE`, `PERCENTILE`, `QUARTILE`, `GEOMEAN`, `AVERAGEA` |
+| Counting | `COUNT`, `COUNTA`, `COUNTBLANK`, `COUNTIF`, `SUMIF`, `AVERAGEIF`, and with several criteria `COUNTIFS`, `SUMIFS`, `AVERAGEIFS`, `MAXIFS`, `MINIFS` |
+| Logic | `IF`, `IFERROR`, `AND`, `OR`, `NOT`, `ISBLANK`, `ISNUMBER`, `ISTEXT`, `IFS`, `SWITCH`, `XOR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA`, `NA`, `ISLOGICAL`, `ISNONTEXT`, `ISEVEN`, `ISODD`, `TRUE`, `FALSE` |
+| Text | `CONCAT`, `CONCATENATE`, `LEN`, `UPPER`, `LOWER`, `TRIM`, `LEFT`, `RIGHT`, `MID`, `TEXTJOIN`, `SUBSTITUTE`, `REPLACE`, `FIND`, `SEARCH` (wildcards), `REPT`, `PROPER`, `EXACT`, `VALUE`, `TEXT` (number format), `CHAR`, `CODE`, `CLEAN` |
+| Lookup | `VLOOKUP`, `HLOOKUP`, `INDEX`, `MATCH`, `XLOOKUP`, `CHOOSE` |
+| Dates | `TODAY`, `NOW`, `DATE`, `YEAR`, `MONTH`, `DAY`, `WEEKDAY`, `EDATE`, `EOMONTH`, `DAYS`, `DATEDIF`, `NETWORKDAYS`, `TIME`, `HOUR`, `MINUTE`, `SECOND` |
 
 Errors are shown in the cell: `#DIV/0!`, `#VALUE!`, `#NAME?` (unknown
 function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`

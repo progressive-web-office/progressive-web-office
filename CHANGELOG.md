@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Spreadsheets: about 90 more functions — `IFS`, `SWITCH`, `COUNTIFS`,
+  `SUMIFS`, `AVERAGEIFS`, `MAXIFS`, `INDEX`, `MATCH`, `XLOOKUP`, `TEXTJOIN`,
+  `SUBSTITUTE`, `FIND`, `LARGE`, `RANK`, `PERCENTILE`, `EDATE`, `DATEDIF`,
+  `NETWORKDAYS`… — written under the names Excel and LibreOffice expect
+  (SHEET-025).
 - Links containing a document can be protected by a password: the document
   and its name are encrypted in the link (AES-GCM, PBKDF2), the password
   asked when it is opened (SHARE-014).

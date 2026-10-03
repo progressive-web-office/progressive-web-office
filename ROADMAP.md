@@ -33,7 +33,7 @@ group is not a commitment.
   merged cells
 - ✅ Sort (SHEET-016) and autofilter (SHEET-018); next: fill handle,
   conditional formatting, data validation
-- About a hundred more functions
+- More functions (financial, engineering, array formulas)
 - Executable notebooks: code cells (Python/JavaScript) that read and write
   the cells of an open workbook
 
