@@ -9,7 +9,7 @@ describe('CODE-018 runtimes downloaded when needed', () => {
   it('pins every file to a version and a SHA-256', () => {
     for (const rt of Object.values(RUNTIMES))
       for (const f of Object.values(rt.files)) {
-        expect(f.url).toMatch(/^https:\/\/cdn\.jsdelivr\.net\/npm\/[\w.-]+@\d/);
+        expect(f.url).toMatch(/^https:\/\/cdn\.jsdelivr\.net\/npm\/(@[\w.-]+\/)?[\w.-]+@\d/);
         expect(f.sha256).toMatch(/^[0-9a-f]{64}$/);
       }
   });
