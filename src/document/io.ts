@@ -8,6 +8,7 @@ import { readLatex } from './latex-reader';
 import { writeLatex } from './latex-writer';
 import { readMarkdown } from './markdown-reader';
 import { readKaimonSlate, writeKaimonSlate } from './kslate';
+import { readMarimo, writeMarimo } from './marimo';
 import { writeMarkdown } from './markdown-writer';
 import { readMdz, type MdzReadOptions } from './mdz-reader';
 import type { MarkdownReadOptions } from './markdown-reader';
@@ -16,7 +17,7 @@ import { collectDiagrams, collectMath, type RenderedDiagram, type RichDocument, 
 import { readOdt } from './odt-reader';
 import { writeOdt } from './odt-writer';
 
-export type TextFormat = Extract<DocumentFormat, 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl'>;
+export type TextFormat = Extract<DocumentFormat, 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl' | 'marimo'>;
 
 export async function readDocument(format: TextFormat, bytes: Uint8Array, opts: MdzReadOptions & MarkdownReadOptions = {}): Promise<RichDocument> {
   switch (format) {
@@ -34,6 +35,8 @@ export async function readDocument(format: TextFormat, bytes: Uint8Array, opts: 
       return readLatexZip(bytes);
     case 'jl':
       return readKaimonSlate(new TextDecoder().decode(bytes));
+    case 'marimo':
+      return readMarimo(new TextDecoder().decode(bytes));
   }
 }
 
@@ -55,6 +58,9 @@ export function writeDocument(doc: RichDocument, format: TextFormat, opts: Write
     // DOC-038: a KaimonSlate notebook, its cells and headers kept.
     case 'jl':
       return new TextEncoder().encode(writeKaimonSlate(acceptAll(doc)));
+    // DOC-039: a marimo notebook, its cells kept as written where unchanged.
+    case 'marimo':
+      return new TextEncoder().encode(writeMarimo(acceptAll(doc)));
   }
 }
 

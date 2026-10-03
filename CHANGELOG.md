@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- marimo notebooks (DOC-039): a marimo `.py` file opens as a document (text
+  cells, reactive Python cells), runs here with a small `marimo` stand-in, and
+  saves back as marimo reads it. A Python file importing a package missing
+  offline offers to download it and run again.
+
 - KaimonSlate notebooks (DOC-038): a `.jl` file of `#%%` cells opens as a
   document (text cells, Julia code cells with their headers) and saves back
   unchanged where it was not edited.

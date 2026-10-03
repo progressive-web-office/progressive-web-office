@@ -233,6 +233,31 @@ export class TextView implements PwoView {
       ...this.images.map((src, i) => h('img', { src, alt: t('textfile.figure', { n: i + 1 }) })),
       ...(!result.text && !this.images.length ? [h('p', { class: 'hint' }, t('textfile.noOutput'))] : []),
     );
+    // A package missing from the offline Python: offered from the package index (pure-Python packages).
+    const missing = this.lang === 'python' && result.error ? /ModuleNotFoundError: No module named '([\w.]+)'/.exec(result.text)?.[1]?.split('.')[0] : undefined;
+    if (missing) {
+      this.output.append(
+        h(
+          'p',
+          { class: 'code-file-missing' },
+          t('textfile.missing', { name: missing }),
+          ' ',
+          button(t('textfile.install', { name: missing }), () => void this.installAndRun(missing), { className: 'primary' }),
+        ),
+      );
+    }
+  }
+
+  /** Download a package from the package index (after the user agrees for the site), then run again. */
+  private async installAndRun(name: string): Promise<void> {
+    if (!this.runner) return;
+    const status = h('p', { class: 'code-file-status' }, t('textfile.installing', { name }));
+    this.showOutput([status]);
+    const result = await this.runner.run('python', `import pwo\nawait pwo.install(${JSON.stringify(name)})`, (s) => {
+      if (s.startsWith('packages:')) status.textContent = `${t('code.packages')} ${s.slice('packages:'.length)}`;
+    });
+    if (result.error) return this.showOutput([h('pre', { class: 'code-file-text error' }, result.text)]);
+    await this.run();
   }
 
   private showOutput(children: HTMLElement[]): void {

@@ -1,11 +1,12 @@
 /** Document format detection (FILE-003, FILE-004). */
 import { strFromU8, unzipSync } from 'fflate';
 import { readZipText, type ZipEntries } from './zip';
+import { isMarimo } from '../document/marimo-detect';
 
 const EMPTY = new Uint8Array();
 import { t } from '../i18n';
 
-export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf' | 'text' | 'image';
+export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl' | 'marimo' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf' | 'text' | 'image';
 /** `file`: text and source files (FILE-022) and pictures (FILE-023), which keep their own name and extension. */
 export type DocumentKind = 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'file';
 
@@ -21,6 +22,7 @@ export const MIME_TYPES: Record<DocumentFormat, string> = {
   mdz: 'application/x-mdz',
   tex: 'application/x-tex',
   jl: 'text/x-julia',
+  marimo: 'text/x-python',
   texzip: 'application/zip',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ods: 'application/vnd.oasis.opendocument.spreadsheet',
@@ -50,6 +52,7 @@ export function formatKind(format: DocumentFormat): DocumentKind {
     case 'tex':
     case 'texzip':
     case 'jl':
+    case 'marimo':
       return 'document';
     case 'xlsx':
     case 'ods':
@@ -70,7 +73,7 @@ export function formatKind(format: DocumentFormat): DocumentKind {
 /** Formats a document can be saved in, the preferred family first (FILE-016). */
 export function saveFormatsFor(kind: DocumentKind, family: 'open' | 'microsoft' = 'open'): DocumentFormat[] {
   const pair = (open: DocumentFormat, ms: DocumentFormat): DocumentFormat[] => (family === 'open' ? [open, ms] : [ms, open]);
-  if (kind === 'document') return [...pair('odt', 'docx'), 'md', 'mdz', 'tex', 'texzip', 'jl'];
+  if (kind === 'document') return [...pair('odt', 'docx'), 'md', 'mdz', 'tex', 'texzip', 'jl', 'marimo'];
   if (kind === 'spreadsheet') return [...pair('ods', 'xlsx'), 'csv'];
   if (kind === 'presentation') return pair('odp', 'pptx');
   if (kind === 'file') return [];
@@ -87,7 +90,7 @@ const extensionOf = (name: string): string => {
 
 /** File extension used when saving a format. */
 export function fileExtension(format: DocumentFormat): string {
-  return format === 'texzip' ? 'zip' : format === 'text' ? 'txt' : format === 'image' ? 'png' : format;
+  return format === 'texzip' ? 'zip' : format === 'text' ? 'txt' : format === 'image' ? 'png' : format === 'marimo' ? 'py' : format;
 }
 
 /**
@@ -105,6 +108,8 @@ export function detectFormat(name: string, bytes: Uint8Array): DocumentFormat | 
   if (ext === 'tex' || ext === 'latex' || ext === 'ltx') return 'tex';
   // DOC-038: a Julia file made of `#%%` cells is a KaimonSlate notebook; other Julia files are source files.
   if (ext === 'jl' && /^\s*#%%/.test(new TextDecoder().decode(bytes.subarray(0, 4096)))) return 'jl';
+  // DOC-039: a marimo notebook (cells as `@app.cell` functions); other Python files are source files.
+  if (ext === 'py' && isMarimo(new TextDecoder().decode(bytes))) return 'marimo';
   if (ext === 'svg' && /<svg[\s>]/.test(new TextDecoder().decode(bytes.subarray(0, 4096)))) return 'image';
   if (TEXT_EXTENSIONS.has(ext) || TEXT_NAMES.test(baseName(name))) return 'text';
   return null;

@@ -280,6 +280,21 @@ application. Other pure-Python packages can be installed by a cell with
 package index, once you allowed the site (see [widgets](#packages-of-widgets)).
 Packages with compiled code are only those of Pyodide.
 
+## marimo notebooks
+
+A [marimo](https://marimo.io) notebook — a `.py` file whose cells are
+`@app.cell` functions — opens as a document: cells holding only
+`mo.md("""…""")` become text, the others Python cells (those marked
+`hide_code=True` show their output only). The cells run here like any Python
+cells, reactively: `import marimo as mo` gives a small stand-in offering
+`mo.md` and `marimo.App`; the rest of marimo (`mo.ui`…) needs marimo itself.
+**Save** writes the notebook back as marimo reads it: unchanged cells exactly
+as they were, edited cells with their arguments (the names they use from other
+cells) and returned names computed again. A `.py` file that is no marimo
+notebook opens as Python source code, which runs with **▶ Run**; when it
+imports a package the offline Python lacks, a button downloads it from the
+package index (pure-Python packages) and runs the file again.
+
 ## KaimonSlate notebooks (Julia)
 
 A [KaimonSlate](https://github.com/kahliburke/KaimonSlate.jl) notebook — a

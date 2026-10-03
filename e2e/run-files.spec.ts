@@ -22,5 +22,10 @@ test('runs a Python, JavaScript or TypeScript file opened in the code viewer (CO
   const py = page.getByRole('region', { name: 'Output' });
   await expect(py).toContainText('3.1416', { timeout: 90_000 });
   await expect(py.locator('.code-file-text.error')).toContainText('ZeroDivisionError');
+  // A package missing offline: offered from the package index.
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await openFile(page, 'deps.py', 'import tomlkit_like_pkg\n', 'text/x-python');
+  await page.getByRole('button', { name: 'Run', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Output' }).getByRole('button', { name: 'Download tomlkit_like_pkg and run again' })).toBeVisible({ timeout: 60_000 });
   expect(errors).toEqual([]);
 });

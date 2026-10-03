@@ -16,7 +16,7 @@ describe('FILE-016 preference for open formats', () => {
   });
 
   it('offers the preferred family first', () => {
-    expect(saveFormatsFor('document')).toEqual(['odt', 'docx', 'md', 'mdz', 'tex', 'texzip', 'jl']);
+    expect(saveFormatsFor('document')).toEqual(['odt', 'docx', 'md', 'mdz', 'tex', 'texzip', 'jl', 'marimo']);
     expect(saveFormatsFor('spreadsheet', 'microsoft')).toEqual(['xlsx', 'ods', 'csv']);
     expect(saveFormatsFor('presentation')).toEqual(['odp', 'pptx']);
   });

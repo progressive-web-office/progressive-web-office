@@ -257,3 +257,24 @@ test('opens a KaimonSlate notebook as a document and saves it back unchanged (DO
   expect(again.data.toString()).toContain('#%% code id=controls collapsed\n@bind n Slider(20:5:200)\n@bind m Slider(1:3)\n');
   expect(errors).toEqual([]);
 });
+
+test('opens a marimo notebook as a document, runs its cells and saves it back unchanged (DOC-039)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const { MARIMO_NB } = await import('../tests/fixtures-marimo');
+  const errors = await openApp(page);
+  await openFile(page, 'intro.py', MARIMO_NB, 'text/x-python');
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await expect(editor).toContainText('marimo knows how your cells are related');
+  const cells = editor.locator('.code-cell[data-lang="python"]');
+  await expect(cells).toHaveCount(4);
+  // import marimo as mo works; the last cell shows x.
+  await cells.nth(3).getByRole('button', { name: 'Run all cells' }).click();
+  await page.getByRole('dialog', { name: 'Run the code of this document?' }).getByRole('button', { name: 'Run' }).click();
+  await expect(cells.nth(3).locator('.code-cell-output')).toHaveText('0\n', { timeout: 90_000 });
+  await expect(cells.nth(0).locator('.code-cell-output.error')).toHaveCount(0);
+  const saved = await saveAs(page, 'marimo notebook (.py)');
+  expect(saved.name).toBe('intro.py');
+  // Outputs are not part of a marimo file: it comes back as it was.
+  expect(saved.data.toString()).toBe(MARIMO_NB);
+  expect(errors.filter((e) => !e.includes('ERR_TUNNEL_CONNECTION_FAILED'))).toEqual([]);
+});
