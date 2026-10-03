@@ -12,6 +12,7 @@ to a server.
 
 The app is published at
 **[s-celles.github.io/progressive-web-office](https://s-celles.github.io/progressive-web-office/)**
+(short link: **[s-celles.github.io/pwo](https://s-celles.github.io/pwo)**)
 (the **Open the app** link at the top of this documentation); its start
 screen links back here.
 

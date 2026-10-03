@@ -5,7 +5,7 @@ description: A simple, private office suite that runs entirely in your browser.
 hero:
   name: Progressive Web Office
   text: Your office suite, in the browser
-  tagline: Documents, spreadsheets, presentations and PDF — nothing leaves your device.
+  tagline: "Documents, spreadsheets, presentations and PDF — nothing leaves your device. Short link: s-celles.github.io/pwo"
   image:
     src: /logo.svg
     alt: Progressive Web Office
