@@ -14,6 +14,9 @@ once.
   of a synchronisation without a network). Without one, it is asked once,
   the first time it is needed; renaming yourself in a collaboration changes
   it too.
+- **Toolbars**: *compact* (the default) keeps the most used tools in sight
+  and groups the others in menus; *full* shows every tool, as before. It
+  applies to the next document opened.
 - **New files in**: OpenDocument (open standard) or Microsoft Office
   formats, for new documents and the format offered first when saving.
 

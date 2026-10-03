@@ -9,6 +9,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173/',
     trace: 'retain-on-failure',
+    // UI-020: the tests reach every tool directly (full toolbars); toolbars.spec.ts covers the compact ones.
+    storageState: { cookies: [], origins: [{ origin: 'http://localhost:4173', localStorage: [{ name: 'pwo.toolbar', value: 'full' }] }] },
   },
   projects: [
     {

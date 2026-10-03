@@ -908,7 +908,7 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
   .app-header.more-open .header-actions > button.icon[aria-label]::after,
   .app-header.more-open .header-actions > a.icon[aria-label]::after { content: ' ' attr(aria-label); margin-left: 6px; }
   .toolbar { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; padding: 4px 8px; }
-  .toolbar > * { flex: 0 0 auto; }
+  .toolbar > *, .toolbar .tool-group-inline > * { flex: 0 0 auto; }
   .toolbar .sep { display: none; }
   .doc-page { min-height: 70vh; }
 }
@@ -1209,3 +1209,41 @@ body.distraction-free .ai-panel { display: none !important; }
 .snippet-new { margin-top: 12px; display: grid; gap: 6px; }
 .snippet-new[open] { display: grid; }
 .snippet-new textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
+
+/* UI-020: toolbars in groups, each a menu below its button. */
+.tool-group { display: inline-flex; position: relative; }
+.tool-group-toggle { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.tool-group-toggle[aria-expanded='true'] { background: var(--sel); border-color: var(--accent); }
+.tool-group-caret { font-size: 0.75em; opacity: 0.7; }
+.tool-group-panel {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: min(420px, calc(100vw - 16px));
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.tool-group-panel[hidden] { display: none; }
+.tool-group-inline { display: contents; }
+/* Menus as select lists stay as wide as their title, not as their longest entry. */
+.toolbar select.text-tools, .toolbar select.view-tools { width: auto; max-width: 6.5rem; }
+.header-actions select { width: auto; max-width: 9rem; }
+/* A narrow toolbar shows the menus by their icon only (their name stays the tooltip). */
+@media (min-width: 701px) { .toolbar { container-type: inline-size; } }
+@container (max-width: 1320px) {
+  .tool-group-label { display: none; }
+}
+@media (max-width: 1100px) {
+  .header-actions .tool-group-label { display: none; }
+}
+/* In a menu, each tool shows its name after its icon, in two columns. */
+.tool-group-panel { display: grid; grid-template-columns: repeat(2, minmax(10rem, 1fr)); max-width: min(30rem, calc(100vw - 16px)); }
+.tool-group-panel[hidden] { display: none; }
+.tool-group-panel > button { justify-content: flex-start; text-align: left; white-space: nowrap; }
+.tool-group-panel > button[aria-label]::after { content: ' ' attr(aria-label); font-size: 0.9rem; }
+@media (max-width: 600px) { .tool-group-panel { grid-template-columns: 1fr; } }

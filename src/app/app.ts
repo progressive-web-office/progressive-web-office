@@ -16,6 +16,7 @@ import {
 import { isTemplate, isTemplateBase, TEMPLATE_FORMATS, templateExtension, templateMimeType, toTemplate, type TemplateBase } from '../core/template-format';
 import { defaultFormat, FORMAT_FAMILIES, loadFormatFamily, saveFormatFamily, type FormatFamily } from '../core/format-preference';
 import { pickFile, readFileBytes, replaceExtension, saveFile } from '../storage/file-io';
+import { toolGroup } from './tool-groups';
 import { renamedKeepingExtension, splitExtension } from '../core/filename';
 import type { AssistantPanel } from '../ai/panel';
 import type { GitAccount } from '../git/accounts';
@@ -1010,18 +1011,19 @@ export class App {
       );
     }
     const actions = h('nav', { class: 'header-actions', 'aria-label': t('file.actions') });
+    // UI-020: the file and sharing actions used less often are grouped in menus.
+    const fileTools: HTMLElement[] = [];
+    const shareTools: HTMLElement[] = [];
     if (this.folder) actions.append(button(t('folder.panel'), () => this.toggleFolderPanel(), { text: '📁', className: 'icon', title: t('folder.toggleTitle', { name: this.folder.provider.label }), pressed: this.root.classList.contains('with-folder') }));
-    if (doc?.view.masterDocument?.()?.blocks.some((b) => b.type === 'include')) actions.append(button(t('master.export'), () => void this.exportAssembled(), { title: t('master.exportTitle') }));
-    actions.append(
-      button(t('file.open'), () => void this.pickAndOpen(), { title: t('file.openTitle') }),
-      button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }),
-    );
+    if (doc?.view.masterDocument?.()?.blocks.some((b) => b.type === 'include')) fileTools.push(button(t('master.export'), () => void this.exportAssembled(), { title: t('master.exportTitle') }));
+    actions.append(button(t('file.open'), () => void this.pickAndOpen(), { title: t('file.openTitle') }));
+    fileTools.push(button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }));
     if (doc?.view.save) {
       actions.append(button(t('file.save'), () => void this.save(), { className: 'keep', title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : doc.dav ? t('dav.saveBackTitle', { path: doc.dav.path }) : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
       // FILE-025: the versions kept in this browser.
-      actions.append(button(t('versions.button'), () => void this.showVersions(), { title: t('versions.title'), text: '🕘', className: 'icon' }));
-      if (!doc.source && !doc.grist) actions.append(button(t('dav.saveToCloud'), () => void this.saveToCloud(true), { title: t('dav.saveToCloudTitle'), text: '☁', className: 'icon' }));
-      if (!doc.source && !doc.grist) actions.append(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
+      fileTools.push(button(t('versions.button'), () => void this.showVersions(), { title: t('versions.title'), text: '🕘', className: 'icon' }));
+      if (!doc.source && !doc.grist) fileTools.push(button(t('dav.saveToCloud'), () => void this.saveToCloud(true), { title: t('dav.saveToCloudTitle'), text: '☁', className: 'icon' }));
+      if (!doc.source && !doc.grist) fileTools.push(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
       const select = h(
         'select',
         { 'aria-label': t('file.saveAsFormat'), title: t('file.saveAsTitle') },
@@ -1041,14 +1043,16 @@ export class App {
       });
       actions.append(select);
     }
-    if (doc?.view.setReadOnly && !doc.locked) actions.append(button(t('ro.toggle'), () => this.setReadOnly(!doc.readOnly), { title: doc.readOnly ? t('ro.allowTitle') : t('ro.lockTitle'), text: doc.readOnly ? '🔒' : '🔓', className: 'icon', pressed: !!doc.readOnly }));
+    if (doc?.view.setReadOnly && !doc.locked) fileTools.push(button(t('ro.toggle'), () => this.setReadOnly(!doc.readOnly), { title: doc.readOnly ? t('ro.allowTitle') : t('ro.lockTitle'), text: doc.readOnly ? '🔒' : '🔓', className: 'icon', pressed: !!doc.readOnly }));
+    actions.append(toolGroup(t('group.file'), '🗂', fileTools));
     if (doc?.view.agentTools) actions.append(button(t('ai.open'), () => this.toggleAssistant(), { title: t('ai.openTitle'), text: '✨', className: 'icon', pressed: this.root.classList.contains('with-ai') }));
-    if (doc?.view.save) actions.append(button(t('share.send'), () => void this.sendToDevice(), { title: t('share.sendTitle'), text: '📲', className: 'icon' }));
+    if (doc?.view.save) shareTools.push(button(t('share.send'), () => void this.sendToDevice(), { title: t('share.sendTitle'), text: '📲', className: 'icon' }));
     if (doc?.view.collab && (doc.kind === 'document' || doc.kind === 'spreadsheet')) {
-      actions.append(button(t('collab.start'), () => (this.collab ? this.leaveCollaboration() : void this.startCollaboration()), { title: this.collab ? t('collab.leaveTitle') : t('collab.startTitle'), text: '👥', className: 'icon', pressed: !!this.collab }));
+      shareTools.push(button(t('collab.start'), () => (this.collab ? this.leaveCollaboration() : void this.startCollaboration()), { title: this.collab ? t('collab.leaveTitle') : t('collab.startTitle'), text: '👥', className: 'icon', pressed: !!this.collab }));
     }
-    if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) actions.append(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
-    actions.append(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
+    if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) shareTools.push(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
+    shareTools.push(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
+    actions.append(toolGroup(t('group.share'), '📤', shareTools));
     // SET-001: the settings window.
     const settings = button(t('settings.open'), () => void this.openSettings(), { title: t('settings.openTitle'), text: '⚙', className: 'icon' });
     settings.dataset.keywords = 'settings preferences options configuration paramètres préférences réglages 设置 选项';
@@ -1076,7 +1080,7 @@ export class App {
     actions.append(more);
     actions.addEventListener('click', (e) => {
       const target = (e.target as HTMLElement).closest('button, select');
-      if (target && target !== more && target.tagName === 'BUTTON') this.header.classList.remove('more-open');
+      if (target && target !== more && target.tagName === 'BUTTON' && !target.classList.contains('tool-group-toggle')) this.header.classList.remove('more-open');
     });
     actions.addEventListener('change', () => this.header.classList.remove('more-open'));
     this.header.classList.remove('more-open');

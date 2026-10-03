@@ -202,6 +202,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- Compact toolbars (UI-020): the word processor and the header keep the
+  most used tools in sight and group the others in menus (Format,
+  Paragraph, Insert, Review, Teaching, Document; File, Share); *Settings ›
+  Toolbars › Full* shows every tool.
+
+
 - Documentation, source code and About are buttons under the title of the
   start screen; in the toolbar, **?** opens the documentation and **ℹ**
   the About window.

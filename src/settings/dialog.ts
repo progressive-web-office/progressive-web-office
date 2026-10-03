@@ -14,6 +14,7 @@ import { loadTypography, saveTypography } from '../document/typography';
 import { loadPrintSettings, PAPER_SIZES, savePrintSettings, type Paper } from '../print/settings';
 import { loadCollabNetwork, parseRelays, saveCollabNetwork } from '../collab/network';
 import { loadReactivity, REACTIVITY, saveReactivity } from '../code/settings';
+import { loadToolbarMode, saveToolbarMode } from '../app/tool-groups';
 
 export type SettingsCategory = 'general' | 'reading' | 'writing' | 'printing' | 'collab';
 export const CATEGORIES: SettingsCategory[] = ['general', 'reading', 'writing', 'printing', 'collab'];
@@ -69,6 +70,8 @@ function generalPanel(hooks: SettingsHooks): HTMLElement[] {
       hooks.theme?.(th);
     })),
     field(t('settings.name'), name, t('settings.nameHint')),
+    // UI-020: tools in menus, or all in sight.
+    field(t('settings.toolbars'), select([['compact', t('settings.toolbarCompact')], ['full', t('settings.toolbarFull')]], loadToolbarMode(), saveToolbarMode), t('settings.toolbarsHint')),
     field(t('formats.label'), select(FORMAT_FAMILIES.map((f) => [f, t(families[f])]), loadFormatFamily(), saveFormatFamily), t('formats.title')),
   ];
 }

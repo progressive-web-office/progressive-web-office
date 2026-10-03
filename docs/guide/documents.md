@@ -10,6 +10,20 @@ and any ZIP archive of Markdown files.
 
 ## Editing
 
+The toolbar keeps the most used tools in sight — review mode, undo, the
+paragraph style, bold, italic, underline and lists — and groups the others
+in menus that open below their button: **A ▾ Format** (strikethrough, code,
+font, size, colours), **¶ ▾ Paragraph** (alignment, indents, line spacing),
+**＋ ▾ Insert** (links, pictures, tables, equations, code cells, diagrams,
+notes, references, table of contents, breaks, snippets), **💬 ▾ Review**
+(comments, tracked changes, accessibility), **🎓 ▾ Teaching** (answers,
+variants, mail merge) and **📄 ▾ Document** (text tools, view, properties,
+page setup). A tool used closes its menu; <kbd>Esc</kbd> or a click elsewhere
+too. In a narrow window the menus show their icon only. The header groups the
+file actions (**🗂 File**: repository, versions, cloud, commit, read-only) and
+the sharing ones (**📤 Share**). **Settings › Toolbars › Full** shows every
+tool instead.
+
 | Action | Toolbar | Shortcut |
 |--------|---------|----------|
 | Undo / redo | ↶ ↷ | <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> (or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>) |
