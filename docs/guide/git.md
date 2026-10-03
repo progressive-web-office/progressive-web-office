@@ -98,6 +98,25 @@ drafts, exported files or logs. Use **Forget** to delete it from this device.
 Prefer short-lived tokens limited to the repositories you need.
 :::
 
+## Who can see a repository, and who works on it
+
+Once a repository is chosen, the window tells:
+
+- its **visibility**: **🌐 Public** (anyone on the Internet can see it and
+  its history; only its collaborators can change it), **🔒 Private** (only
+  its collaborators, and members of its organisation or group as allowed),
+  or **🏢 Internal** on GitLab (every signed-in user of the site);
+- **your role** (GitHub: Read, Triage, Write, Maintain, Admin; GitLab:
+  Guest, Planner, Reporter, Developer, Maintainer, Owner) and whether you can
+  save there;
+- **Collaborators and their roles**, opened on demand. The services show
+  them only to people allowed to write in the repository, and only with a
+  token.
+
+The same is shown for a repository opened as a folder (🔒, 🌐 or 🏢 in the
+folder panel), and the icon precedes the repository's name above a document
+opened from it.
+
 ## Open a file
 
 Pick a repository (or type `owner/name` for any repository you can read),
@@ -148,6 +167,11 @@ button:
   not part of the request.
 
 ## A repository as a folder
+
+Opening a file from a repository also shows the repository in the folder
+panel, with its whole tree, the file selected; **📁 Open the repository as a
+folder** in the window opens it without a file.
+
 
 **Open a folder** also lists your Git accounts (⎇): choose one, then a
 repository and a branch — or choose **⎇ GitHub / GitLab repository…** and

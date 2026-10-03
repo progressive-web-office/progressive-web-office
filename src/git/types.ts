@@ -9,7 +9,27 @@ export interface GitRepo {
   name: string;
   defaultBranch: string;
   private?: boolean;
+  /** GIT-013: who can see it (GitLab's `internal`: every signed-in user of the site). */
+  visibility?: GitVisibility;
+  /** GIT-013: what the account may do in it. */
+  role?: GitRole;
 }
+
+export type GitVisibility = 'public' | 'private' | 'internal';
+
+/** GitHub's roles (read, triage, write, maintain, admin) and GitLab's (guest, planner, reporter, developer, maintainer, owner). */
+export type GitRole = 'read' | 'triage' | 'write' | 'maintain' | 'admin' | 'guest' | 'planner' | 'reporter' | 'developer' | 'maintainer' | 'owner';
+
+/** A person who works on a repository, and their role (GIT-013). */
+export interface GitMember {
+  login: string;
+  name?: string;
+  role: GitRole;
+  avatar?: string;
+}
+
+/** Whether a role may write (commit) in the repository. */
+export const canWrite = (role: GitRole | undefined): boolean => !!role && ['write', 'maintain', 'admin', 'developer', 'maintainer', 'owner'].includes(role);
 
 export interface GitEntry {
   name: string;
@@ -42,6 +62,8 @@ export type GitChange =
 
 export interface GitClient {
   readonly provider: GitProvider;
+  /** Requests carry a token. */
+  readonly signedIn?: boolean;
   listRepos(): Promise<GitRepo[]>;
   getRepo(name: string): Promise<GitRepo>;
   listBranches(repo: string): Promise<string[]>;
@@ -56,6 +78,8 @@ export interface GitClient {
   commit(repo: string, branch: string, message: string, changes: GitChange[]): Promise<void>;
   /** Propose the changes of `head` for `base`: a pull request (GitHub) or merge request (GitLab) (FOLDER-022). */
   createPullRequest(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; url: string }>;
+  /** GIT-013: the people who work on the repository (needs a role allowed to see them). */
+  listCollaborators(repo: string): Promise<GitMember[]>;
 }
 
 export interface ClientConfig {

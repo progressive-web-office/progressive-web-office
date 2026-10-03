@@ -1437,3 +1437,14 @@ body.distraction-free .ai-panel { display: none !important; }
 .devsync-peers { list-style: none; padding: 0; margin: 4px 0; }
 .devsync-code { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .devsync-code-text { word-break: break-all; font-size: 0.8rem; max-width: 18rem; }
+
+/* GIT-013: who can see a repository, and who works on it. */
+.git-repo-info { margin: 6px 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); }
+.git-info p { margin: 4px 0; }
+.git-visibility { font-weight: 600; padding: 1px 8px; border-radius: 10px; border: 1px solid var(--border); white-space: nowrap; }
+.git-visibility.public { background: color-mix(in srgb, #2e7d32 12%, transparent); }
+.git-visibility.private { background: color-mix(in srgb, #c77700 14%, transparent); }
+.git-visibility.internal { background: color-mix(in srgb, #1565c0 12%, transparent); }
+.git-people { list-style: none; padding: 0; margin: 4px 0; max-height: 12rem; overflow: auto; }
+.git-people li { padding: 2px 0; }
+.git-role { font-weight: 600; }

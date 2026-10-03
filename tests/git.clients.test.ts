@@ -123,7 +123,7 @@ describe('GIT-001..004 GitLab client', () => {
       [`GET ${API}/projects/7/repository/branches`]: () => ({ json: [{ name: 'master' }] }),
       [`GET ${API}/projects/7/repository/tree`]: () => ({ json: [{ name: 'main.tex', path: 'main.tex', type: 'blob' }, { name: 'fig', path: 'fig', type: 'tree' }] }),
     });
-    expect(await client.listRepos()).toEqual([{ id: '7', name: 'grp/paper', defaultBranch: 'master', private: true }]);
+    expect(await client.listRepos()).toEqual([{ id: '7', name: 'grp/paper', defaultBranch: 'master', private: true, visibility: 'private' }]);
     expect(await client.listBranches('7')).toEqual(['master']);
     expect(await client.listDir('7', 'master', '')).toEqual([
       { name: 'fig', path: 'fig', type: 'dir' },
@@ -284,5 +284,43 @@ describe('GIT-011 an empty repository', () => {
   it('tells an empty repository by its missing branches', async () => {
     const m = mockFetch({ [`GET ${API}/repos/me/empty/branches`]: () => ({ json: [] }) });
     expect(await new GitHubClient({ apiUrl: API, token: '' }, m.fetchFn).listBranches('me/empty')).toEqual([]);
+  });
+});
+
+describe('GIT-013 who can see a repository, and who works on it', () => {
+  it('tells the visibility, the role and the collaborators on GitHub', async () => {
+    const API = 'https://api.github.com';
+    const m = mockFetch({
+      [`GET ${API}/repos/me/notes/collaborators`]: () => ({
+        json: [
+          { login: 'me', role_name: 'admin', avatar_url: 'https://a/me' },
+          { login: 'ann', role_name: 'write' },
+          { login: 'bob', permissions: { pull: true, triage: false, push: false, maintain: false, admin: false } },
+        ],
+      }),
+      [`GET ${API}/repos/me/notes`]: () => ({ json: { full_name: 'me/notes', default_branch: 'main', private: true, visibility: 'private', permissions: { admin: false, maintain: true, push: true, triage: true, pull: true } } }),
+    });
+    const client = new GitHubClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.getRepo('me/notes')).toEqual({ id: 'me/notes', name: 'me/notes', defaultBranch: 'main', private: true, visibility: 'private', role: 'maintain' });
+    expect(await client.listCollaborators('me/notes')).toEqual([
+      { login: 'me', role: 'admin', avatar: 'https://a/me' },
+      { login: 'ann', role: 'write' },
+      { login: 'bob', role: 'read' },
+    ]);
+  });
+
+  it('tells the visibility, the role and the members on GitLab', async () => {
+    const API = 'https://gitlab.example.org/api/v4';
+    const m = mockFetch({
+      [`GET ${API}/projects/team%2Fsite/members/all`]: () => ({ json: [{ username: 'lea', name: 'Léa', access_level: 50 }, { username: 'max', name: 'Max', access_level: 30 }, { username: 'guest1', name: 'G', access_level: 10 }] }),
+      [`GET ${API}/projects/team%2Fsite`]: () => ({ json: { id: 7, path_with_namespace: 'team/site', default_branch: 'main', visibility: 'internal', permissions: { project_access: { access_level: 30 }, group_access: { access_level: 40 } } } }),
+    });
+    const client = new GitLabClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.getRepo('team/site')).toEqual({ id: '7', name: 'team/site', defaultBranch: 'main', private: true, visibility: 'internal', role: 'maintainer' });
+    expect(await client.listCollaborators('team/site')).toEqual([
+      { login: 'lea', name: 'Léa', role: 'owner' },
+      { login: 'max', name: 'Max', role: 'developer' },
+      { login: 'guest1', name: 'G', role: 'guest' },
+    ]);
   });
 });

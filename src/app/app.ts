@@ -354,10 +354,19 @@ export class App {
     const { browseRepository } = await import('../git/ui');
     const file = await browseRepository(this.root, 'open');
     if (!file) return;
+    // GIT-013: the repository is shown as a folder, with its tree, beside the file opened.
+    const [{ clientFor }, { GitRepoProvider }] = await Promise.all([import('../git/accounts'), import('../git/provider')]);
+    const folder = new GitRepoProvider(clientFor(file.account), file.repo, file.branch);
+    if (!('bytes' in file)) {
+      await this.setFolder(folder);
+      return;
+    }
     const { bytes, ...location } = file;
+    await this.setFolder(folder);
     await this.withBusy(async () => {
       await this.openBytes(basename(file.path), bytes, location);
     });
+    this.folder?.setCurrent(file.path);
   }
 
   /** Commit the current document to its repository, or to a chosen one (GIT-003..GIT-005). */
@@ -1139,7 +1148,7 @@ export class App {
       items.push(
         this.docNameElement(doc),
         // GIT-007: the repository's branches and requests, from the document.
-        doc.source ? button(`${doc.source.repo.name} · ${doc.source.branch}`, () => void this.repoDocumentMenu(), { className: 'doc-source', title: t('git.branchMenu') }) : null,
+        doc.source ? button(`${doc.source.repo.visibility === 'internal' ? '🏢' : (doc.source.repo.visibility ?? (doc.source.repo.private ? 'private' : 'public')) === 'private' ? '🔒' : '🌐'} ${doc.source.repo.name} · ${doc.source.branch}`, () => void this.repoDocumentMenu(), { className: 'doc-source', title: t('git.branchMenu') }) : null,
         doc.grist ? h('span', { class: 'doc-source' }, `Grist · ${new URL(doc.grist.account.serverUrl).host}`) : null,
         doc.dav ? h('span', { class: 'doc-source', title: doc.dav.path }, `☁ ${new URL(doc.dav.account.url).host}`) : null,
         this.dirty ? h('span', { class: 'modified', title: t('file.unsaved'), 'aria-label': t('file.unsaved') }, '●') : null,
@@ -1426,6 +1435,28 @@ export class App {
    * propose the changes of this branch to the default one (pull request on
    * GitHub, merge request on GitLab).
    */
+  /** GIT-013: the visibility of a repository opened as a folder, the role of the account and the collaborators. */
+  private async showRepoInfo(folder: import('../git/provider').GitRepoProvider): Promise<void> {
+    const { repoInfo } = await import('../git/info');
+    const dialog = h('dialog', { class: 'dialog git-dialog', 'aria-labelledby': 'repo-info-title' });
+    const close = (): void => {
+      dialog.close();
+      dialog.remove();
+    };
+    dialog.append(
+      h('h2', { id: 'repo-info-title' }, `${t('git.infoMenu')} — ${folder.repo.name}`),
+      repoInfo(folder.client, folder.repo, !!folder.client.signedIn),
+      h('div', { class: 'dialog-actions' }, button(t('common.close'), close, { className: 'primary' })),
+    );
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      close();
+    });
+    this.root.append(dialog);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+
   private async gitFolderMenu(folder: import('../git/provider').GitRepoProvider): Promise<void> {
     const { GitRepoProvider } = await import('../git/provider');
     const { client, repo, branch } = folder;
@@ -1490,7 +1521,15 @@ export class App {
       // FILE-021: an archive is written back as a whole, by download.
       ...(folder instanceof ArchiveProvider ? { actions: [button(t('zip.download'), () => void this.downloadArchive(folder), { text: '⬇', className: 'icon' })] } : {}),
       // FOLDER-022: branches and pull requests of a repository opened as a folder.
-      ...(folder instanceof GitRepoProvider ? { actions: [button(t('git.branchMenu'), () => void this.gitFolderMenu(folder), { text: '⎇', className: 'icon' })] } : {}),
+      ...(folder instanceof GitRepoProvider
+        ? {
+            actions: [
+              button(t('git.branchMenu'), () => void this.gitFolderMenu(folder), { text: '⎇', className: 'icon' }),
+              // GIT-013: who can see the repository, and who works on it.
+              button(t('git.infoMenu'), () => void this.showRepoInfo(folder), { text: folder.repo.visibility === 'internal' ? '🏢' : (folder.repo.visibility ?? (folder.repo.private ? 'private' : 'public')) === 'private' ? '🔒' : '🌐', className: 'icon', title: t('git.infoMenu') }),
+            ],
+          }
+        : {}),
     });
     this.root.append(this.folder.element);
     this.root.classList.add('with-folder');

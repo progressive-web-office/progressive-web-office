@@ -17,6 +17,7 @@ test('opens a file from GitHub, commits it and handles a conflict (GIT-001..GIT-
     if (req.method() === 'GET' && p === '/repos/me/notes/branches') return json([{ name: 'main' }]);
     if (req.method() === 'GET' && p === '/repos/me/notes/contents') return json([{ name: 'notes.md', path: 'notes.md', type: 'file', size: 8 }, { name: 'img.bin', path: 'img.bin', type: 'file', size: 1 }]);
     if (req.method() === 'GET' && p === '/repos/me/notes/contents/notes.md') return json({ type: 'file', sha: url.searchParams.get('ref') === 'main' ? 's1' : 's3', content: b64('# Notes\n'), encoding: 'base64' });
+    if (req.method() === 'GET' && p.startsWith('/repos/me/notes/git/trees/')) return json({ tree: [{ path: 'notes.md', type: 'blob', sha: 's1', size: 8 }, { path: 'img.bin', type: 'blob', sha: 'i', size: 1 }], truncated: false });
     if (req.method() === 'GET' && p === '/repos/me/notes/git/ref/heads/main') return json({ object: { sha: 'c0' } });
     if (req.method() === 'POST' && p === '/repos/me/notes/git/refs') return json({}, 201);
     if (req.method() === 'PUT' && p === '/repos/me/notes/contents/notes.md') {
@@ -42,7 +43,7 @@ test('opens a file from GitHub, commits it and handles a conflict (GIT-001..GIT-
   await dialog.getByRole('button', { name: '📄 notes.md' }).click();
 
   await expect(page.locator('.doc-page h1')).toHaveText('Notes');
-  await expect(page.locator('.doc-source')).toHaveText('me/notes · main');
+  await expect(page.locator('.doc-source')).toHaveText(/me\/notes · main/);
   const editor = page.getByRole('textbox', { name: 'Document' });
   await editor.click();
   await page.keyboard.press('Control+End');
@@ -308,7 +309,7 @@ test('a private repository asks for a token, the account form filled in (GIT-008
   await dialog.getByLabel('Personal access token').fill('ghp_test');
   await dialog.getByRole('button', { name: 'Connect' }).click();
   await expect(page.locator('.doc-page h1')).toHaveText('Plan');
-  await expect(page.locator('.doc-source')).toHaveText('s-celles/test-pwo-private · dev');
+  await expect(page.locator('.doc-source')).toHaveText('🔒 s-celles/test-pwo-private · dev');
   expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
 });
 
@@ -370,6 +371,7 @@ test('starts a branch and proposes its changes from a document of a repository (
     if (p === '/repos/me/notes/branches') return json([{ name: 'main' }]);
     if (p === '/repos/me/notes/contents') return json([{ name: 'notes.md', path: 'notes.md', type: 'file', size: 8 }]);
     if (p === '/repos/me/notes/contents/notes.md') return json({ type: 'file', sha: 's1', content: b64('# Notes\n'), encoding: 'base64' });
+    if (p.startsWith('/repos/me/notes/git/trees/') && req.method() === 'GET') return json({ tree: [{ path: 'notes.md', type: 'blob', sha: 's1', size: 8 }], truncated: false });
     if (p === '/repos/me/notes/git/ref/heads/main') return json({ object: { sha: 'c0' } });
     if (p === '/repos/me/notes/git/refs') return json({}, 201);
     if (p === '/repos/me/notes/pulls') return json({ number: 7, html_url: 'https://github.com/me/notes/pull/7' }, 201);
@@ -382,11 +384,11 @@ test('starts a branch and proposes its changes from a document of a repository (
   await dialog.getByRole('button', { name: '📄 notes.md' }).click();
 
   const source = page.locator('.doc-source');
-  await expect(source).toHaveText('me/notes · main');
+  await expect(source).toHaveText('🌐 me/notes · main');
   page.once('dialog', (d) => void d.accept('draft'));
   await source.click();
   await page.getByRole('dialog', { name: 'Branches and pull requests' }).getByRole('button', { name: 'Continue' }).click();
-  await expect(source).toHaveText('me/notes · draft');
+  await expect(source).toHaveText('🌐 me/notes · draft');
   expect(posts[0]).toMatchObject({ path: '/repos/me/notes/git/refs', body: { ref: 'refs/heads/draft', sha: 'c0' } });
 
   const popup = page.waitForEvent('popup');
@@ -433,4 +435,46 @@ test('saves the first document of an empty repository, just created (GIT-011)', 
   await expect(page.getByRole('alert')).toContainText('to main.');
   expect(puts.map((b) => b.branch)).toEqual(['main', undefined]);
   expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
+});
+
+test('another repository never shows the files of the one before, and tells who can see it (GIT-013)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.evaluate(() => localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_test', label: 'github.com' }])));
+  await page.route(`${API}/**`, async (route: Route) => {
+    const p = new URL(route.request().url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (p === '/user/repos') return json([]);
+    if (p === '/repos/s-celles/test-pwo-public') return json({ full_name: 's-celles/test-pwo-public', default_branch: 'main', private: false, visibility: 'public', permissions: { admin: true, push: true, pull: true } });
+    if (p === '/repos/s-celles/test-pwo-public/branches') return json([{ name: 'main' }]);
+    if (p === '/repos/s-celles/test-pwo-public/contents') return json([{ name: 'Lettre.md', path: 'Lettre.md', type: 'file', size: 9 }, { name: 'README.md', path: 'README.md', type: 'file', size: 9 }]);
+    if (p === '/repos/s-celles/test-pwo-public/git/trees/main') return json({ tree: [{ path: 'Lettre.md', type: 'blob', sha: 'a', size: 9 }, { path: 'README.md', type: 'blob', sha: 'b', size: 9 }], truncated: false });
+    if (p === '/repos/s-celles/test-pwo-public/collaborators') return json([{ login: 's-celles', role_name: 'admin' }, { login: 'ann', role_name: 'read' }]);
+    if (p === '/repos/s-celles/broken') return json({ full_name: 's-celles/broken', default_branch: 'main', private: true, visibility: 'private', permissions: { pull: true } });
+    if (p === '/repos/s-celles/broken/branches') return json({ message: 'Server Error' }, 500);
+    return json({ message: 'Not Found' }, 404);
+  });
+  await page.getByRole('button', { name: 'Open from repository…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Open from repository' });
+  await dialog.getByLabel('Repository address').fill('https://github.com/s-celles/test-pwo-public');
+  await expect(dialog.getByRole('button', { name: '📄 Lettre.md' })).toBeVisible();
+  // Who can see it, the role of the account, the collaborators.
+  await expect(dialog.locator('.git-visibility')).toHaveText('🌐 Public');
+  await expect(dialog.getByText('Your role: Admin')).toBeVisible();
+  await dialog.getByText('Collaborators and their roles').click();
+  await expect(dialog.locator('.git-people li')).toHaveText(['s-celles — Admin', 'ann — Read · cannot save']);
+  // Another repository that fails to load: nothing of the first one stays.
+  await dialog.getByLabel('Repository address').fill('https://github.com/s-celles/broken');
+  await expect(dialog.locator('.git-status')).toHaveClass(/error/);
+  await expect(dialog.locator('.git-list li')).toHaveCount(0);
+  await expect(dialog.locator('.git-crumbs')).toBeEmpty();
+  await expect(dialog.getByRole('button', { name: '📁 Open the repository as a folder' })).toBeHidden();
+  // A repository opened shows its tree as a folder.
+  await dialog.getByLabel('Repository address').fill('https://github.com/s-celles/test-pwo-public');
+  await dialog.getByRole('button', { name: '📁 Open the repository as a folder' }).click();
+  const panel = page.locator('.folder-panel');
+  await expect(panel.getByText('Lettre.md')).toBeVisible();
+  await expect(panel.getByText('README.md')).toBeVisible();
+  await panel.getByRole('button', { name: 'Visibility and collaborators' }).click();
+  await expect(page.getByRole('dialog', { name: /Visibility and collaborators/ }).locator('.git-visibility')).toHaveText('🌐 Public');
+  expect(errors.filter((e) => !/404|500/.test(e))).toEqual([]);
 });

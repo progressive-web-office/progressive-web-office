@@ -1,14 +1,26 @@
 /** GitLab REST API v4 client (gitlab.com or self-hosted). */
-import { fromBase64, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitRepo, type GitTreeEntry } from './types';
+import { fromBase64, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitMember, type GitRepo, type GitRole, type GitTreeEntry } from './types';
 
 interface ProjectJson {
   id: number;
   path_with_namespace: string;
   default_branch?: string;
   visibility?: string;
+  permissions?: { project_access?: { access_level?: number } | null; group_access?: { access_level?: number } | null };
 }
 
-const repoOf = (p: ProjectJson): GitRepo => ({ id: String(p.id), name: p.path_with_namespace, defaultBranch: p.default_branch ?? 'main', private: p.visibility !== 'public' });
+/** GIT-013: GitLab's access levels. */
+function roleOfLevel(level: number | undefined): GitRole | undefined {
+  if (!level) return undefined;
+  return level >= 50 ? 'owner' : level >= 40 ? 'maintainer' : level >= 30 ? 'developer' : level >= 20 ? 'reporter' : level >= 15 ? 'planner' : level >= 10 ? 'guest' : undefined;
+}
+
+const repoOf = (p: ProjectJson): GitRepo => {
+  const level = Math.max(p.permissions?.project_access?.access_level ?? 0, p.permissions?.group_access?.access_level ?? 0);
+  const role = roleOfLevel(level);
+  const visibility = p.visibility === 'public' || p.visibility === 'private' || p.visibility === 'internal' ? p.visibility : undefined;
+  return { id: String(p.id), name: p.path_with_namespace, defaultBranch: p.default_branch ?? 'main', private: p.visibility !== 'public', ...(visibility ? { visibility } : {}), ...(role ? { role } : {}) };
+};
 const q = encodeURIComponent;
 
 /** GitLab answers 400 when `last_commit_id` is stale or when creating an existing file. */
@@ -23,6 +35,11 @@ export class GitLabClient implements GitClient {
     private readonly fetchFn: FetchFn = (i, init) => fetch(i, init),
   ) {
     this.api = config.apiUrl.replace(/\/+$/, '');
+  }
+
+  /** Whether requests carry a token (GIT-013). */
+  get signedIn(): boolean {
+    return !!this.config.token;
   }
 
   private req<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -49,6 +66,14 @@ export class GitLabClient implements GitClient {
   async listDir(repo: string, ref: string, path: string): Promise<GitEntry[]> {
     const items = await this.req<{ name: string; path: string; type: string }[]>(`/projects/${q(repo)}/repository/tree?ref=${q(ref)}&per_page=100${path ? `&path=${q(path)}` : ''}`);
     return sortEntries(items.filter((i) => i.type === 'blob' || i.type === 'tree').map((i) => ({ name: i.name, path: i.path, type: i.type === 'tree' ? 'dir' : 'file' })));
+  }
+
+  async listCollaborators(repo: string): Promise<GitMember[]> {
+    const people = await this.req<{ username: string; name?: string; access_level: number }[]>(`/projects/${q(repo)}/members/all?per_page=100`);
+    return people.flatMap((p) => {
+      const role = roleOfLevel(p.access_level);
+      return role ? [{ login: p.username, ...(p.name ? { name: p.name } : {}), role }] : [];
+    });
   }
 
   async readFile(repo: string, ref: string, path: string): Promise<GitFile> {

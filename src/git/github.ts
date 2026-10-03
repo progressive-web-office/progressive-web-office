@@ -1,13 +1,35 @@
 /** GitHub REST API client (github.com or Enterprise `/api/v3`). */
-import { encodePath, fromBase64, GitError, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitRepo, type GitTreeEntry } from './types';
+import { encodePath, fromBase64, GitError, requestJson, sortEntries, toBase64, type ClientConfig, type FetchFn, type GitChange, type GitClient, type GitEntry, type GitFile, type GitMember, type GitRepo, type GitRole, type GitTreeEntry } from './types';
+
+interface Permissions {
+  admin?: boolean;
+  maintain?: boolean;
+  push?: boolean;
+  triage?: boolean;
+  pull?: boolean;
+}
 
 interface RepoJson {
   full_name: string;
   default_branch: string;
   private?: boolean;
+  visibility?: string;
+  permissions?: Permissions;
 }
 
-const repoOf = (r: RepoJson): GitRepo => ({ id: r.full_name, name: r.full_name, defaultBranch: r.default_branch, private: !!r.private });
+/** GIT-013: the highest role the permissions give. */
+function roleOf(p: Permissions | undefined): GitRole | undefined {
+  if (!p) return undefined;
+  return p.admin ? 'admin' : p.maintain ? 'maintain' : p.push ? 'write' : p.triage ? 'triage' : p.pull ? 'read' : undefined;
+}
+
+const GITHUB_ROLES = new Set<GitRole>(['read', 'triage', 'write', 'maintain', 'admin']);
+
+const repoOf = (r: RepoJson): GitRepo => {
+  const role = roleOf(r.permissions);
+  const visibility = r.visibility === 'public' || r.visibility === 'private' || r.visibility === 'internal' ? r.visibility : undefined;
+  return { id: r.full_name, name: r.full_name, defaultBranch: r.default_branch, private: !!r.private, ...(visibility ? { visibility } : {}), ...(role ? { role } : {}) };
+};
 
 export class GitHubClient implements GitClient {
   readonly provider = 'github' as const;
@@ -18,6 +40,11 @@ export class GitHubClient implements GitClient {
     private readonly fetchFn: FetchFn = (i, init) => fetch(i, init),
   ) {
     this.api = config.apiUrl.replace(/\/+$/, '');
+  }
+
+  /** Whether requests carry a token (GIT-013). */
+  get signedIn(): boolean {
+    return !!this.config.token;
   }
 
   private req<T>(path: string, init: RequestInit = {}, conflict?: (s: number, m: string) => boolean): Promise<T> {
@@ -111,6 +138,16 @@ export class GitHubClient implements GitClient {
     const commit = await this.req<{ sha: string }>(`${r}/git/commits`, { method: 'POST', body: JSON.stringify({ message, tree: newTree.sha, parents: [head] }) });
     // 422: not a fast-forward, the branch moved since.
     await this.req(`${r}/git/refs/heads/${encodePath(branch)}`, { method: 'PATCH', body: JSON.stringify({ sha: commit.sha, force: false }) }, (status) => status === 422);
+  }
+
+  async listCollaborators(repo: string): Promise<GitMember[]> {
+    const people = await this.req<{ login: string; role_name?: string; permissions?: Permissions; avatar_url?: string }[]>(`/repos/${encodePath(repo)}/collaborators?per_page=100`);
+    return people.map((p) => {
+      // `role_name` is "admin", "maintain", "write", "triage", "read" (or a custom role, read from the permissions).
+      const named = p.role_name === 'pull' ? 'read' : p.role_name === 'push' ? 'write' : p.role_name;
+      const role = named && GITHUB_ROLES.has(named as GitRole) ? (named as GitRole) : (roleOf(p.permissions) ?? 'read');
+      return { login: p.login, role, ...(p.avatar_url ? { avatar: p.avatar_url } : {}) };
+    });
   }
 
   async createBranch(repo: string, from: string, name: string): Promise<void> {

@@ -392,6 +392,7 @@ Should to **Must**).
 | GIT-010 | S | 0.2.0 | When a document is saved to a repository, the system shall propose a text format Git can compare (Markdown, LaTeX, CSV) before binary formats (DOCX, ODT, XLSX…), explaining why, without forbidding the others. |
 | GIT-011 | S | 0.2.0 | The system shall open an empty repository (no commit, no branch yet) without error, saying it is empty, and save a first document into it, as a file or opened as a folder, on its default branch. |
 | GIT-012 | S | 0.2.0 | The system shall remember the token of an account in this browser unless the user chooses to keep it only until the application is closed; a repository opened without a token shall offer to add one, and saving into it shall ask for one, checked on the repository. |
+| GIT-013 | S | 0.2.0 | When a repository is chosen, the system shall tell its visibility (public, private, internal) and what it means, the role of the account and whether it can save there, and list on demand the collaborators with their roles (when the service shows them); a file opened from a repository shall show the repository as a folder with its tree, and a repository can be opened as a folder from the same window; the files of a repository shown before shall never stay on screen while another loads or fails to. |
 
 ## 9e. Device-to-device exchange with QRShare (SHARE)
 

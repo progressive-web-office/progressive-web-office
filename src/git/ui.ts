@@ -2,6 +2,7 @@
 import { button, h } from '../app/dom';
 import { ACCEPTED_EXTENSIONS } from '../core/format';
 import { t } from '../i18n';
+import { repoInfo } from './info';
 import { addAccount, clientFor, commitMessage, defaultApiUrl, forgetAccount, isRemembered, loadAccounts, type GitAccount } from './accounts';
 import type { GitClient, GitEntry, GitProvider, GitRepo } from './types';
 import { apiUrlFor, hostOfApi, parseRepoAddress, tokenPage, type RepoAddress } from './url';
@@ -42,7 +43,7 @@ function modal(host: HTMLElement, className: string, title: string): { dialog: H
  * Browse repositories. In "open" mode resolves with the chosen file; in
  * "save" mode with the chosen location (folder + file name).
  */
-export function browseRepository(host: HTMLElement, mode: 'open', suggestedName?: string): Promise<RepoFile | null>;
+export function browseRepository(host: HTMLElement, mode: 'open', suggestedName?: string): Promise<RepoFile | RepoLocation | null>;
 export function browseRepository(host: HTMLElement, mode: 'save', suggestedName?: string, extensions?: string[]): Promise<RepoLocation | null>;
 /** FOLDER-007, GIT-008: a repository and a branch to open as a folder. */
 export function browseRepository(host: HTMLElement, mode: 'folder'): Promise<RepoLocation | null>;
@@ -62,6 +63,8 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
     const otherRepo = h('input', { type: 'text', placeholder: t('git.otherRepo'), 'aria-label': t('git.otherRepo'), spellcheck: 'false' });
     const branchSelect = h('select', { 'aria-label': t('git.branch') });
     const crumbs = h('div', { class: 'git-crumbs', 'aria-label': t('git.folder') });
+    // GIT-013: who can see the repository, and who works on it.
+    const info = h('div', { class: 'git-repo-info', hidden: true });
     const list = h('ul', { class: 'git-list', 'aria-label': t('git.folder') });
     // GIT-010: a text format, which Git can compare, is proposed first.
     const fileName = h('input', { type: 'text', value: preferDiffable(suggestedName, extensions), 'aria-label': t('git.fileName'), spellcheck: 'false' });
@@ -103,6 +106,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       account = loadAccounts().find((a) => a.id === id);
       if (!account) return;
       client = clientFor(account);
+      clearRepo();
       const gen = ++generation;
       setStatus(t('git.loading'));
       try {
@@ -116,9 +120,25 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       }
     };
 
+    /** Nothing of the repository shown before stays on screen while another loads (or fails to). */
+    const clearRepo = (): void => {
+      repo = undefined;
+      folder = '';
+      branchSelect.replaceChildren();
+      crumbs.replaceChildren();
+      list.replaceChildren();
+      info.replaceChildren();
+      info.hidden = true;
+      if (asFolder) asFolder.hidden = true;
+    };
+
     const selectRepo = async (r: GitRepo, at?: RepoAddress): Promise<void> => {
       if (!client) return;
+      clearRepo();
       repo = r;
+      info.hidden = false;
+      info.replaceChildren(repoInfo(client, r, !!account?.token && !account.id.startsWith('public:')));
+      if (asFolder) asFolder.hidden = false;
       const gen = ++generation;
       setStatus(t('git.loading'));
       try {
@@ -148,6 +168,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
           await openFolder(slash < 0 ? '' : inside.slice(0, slash));
         } else await openFolder(inside);
       } catch (err) {
+        if (gen === generation) clearRepo();
         fail(err);
       }
     };
@@ -282,6 +303,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
 
     /** GIT-008: open the repository of an address with the account of its site, or ask for one. */
     const openAddress = async (at: RepoAddress): Promise<void> => {
+      clearRepo();
       const [owner, ...rest] = at.path.split('/');
       understood.hidden = false;
       understood.textContent = `✓ ${t('git.understood', { service: `${at.provider === 'github' ? 'GitHub' : 'GitLab'} (${at.host})`, owner: owner ?? '', repo: rest.join('/') })}${at.branch ? ` · ${t('git.branch')} ${at.branch}` : ''}${at.inside ? ` · ${at.inside}` : ''}`;
@@ -392,6 +414,16 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       );
     }
 
+    // GIT-013: the whole repository, as a folder with its tree.
+    const asFolder = mode === 'open' ? button(t('git.openAsFolderButton'), () => {
+      if (!account || !repo) return void address.focus();
+      finish({ account, repo, branch, path: '' });
+    }) : undefined;
+    if (asFolder) {
+      asFolder.hidden = true;
+      actions.append(asFolder);
+    }
+
     if (mode === 'folder') {
       actions.append(
         button(
@@ -413,6 +445,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       addForm,
       h('div', { class: 'git-row' }, h('label', {}, t('git.repository'), ' ', repoSelect), otherRepo, button(t('git.go'), goOther)),
       h('div', { class: 'git-row' }, h('label', {}, t('git.branch'), ' ', branchSelect)),
+      info,
       crumbs,
       list,
     );

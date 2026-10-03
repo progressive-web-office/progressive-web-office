@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Git repositories (GIT-013): their visibility (🌐 public, 🔒 private, 🏢
+  internal) and what it means, your role and whether you can save there,
+  and the collaborators with their roles; a file opened from a repository
+  shows the repository as a folder with its tree, and **📁 Open the
+  repository as a folder** opens it without a file.
 - **Syncing my devices** (DEVSYNC-001..DEVSYNC-005): the documents kept in
   the browser copied between one's own devices, peer to peer and end-to-end
   encrypted, paired with a secret code or a QR code; warnings first
@@ -393,6 +398,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Git: choosing another repository (by its address or the list) no longer
+  leaves the files of the previous one on screen when it fails to load —
+  saving could then go to a repository other than the one shown.
 - Git: an empty repository, just created, opens without error and takes a
   first document on its default branch (GIT-011); a token can be added — and
   is remembered in this browser — from a repository opened without one, and
