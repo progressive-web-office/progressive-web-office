@@ -1250,11 +1250,14 @@ export class App {
     const { loadAccounts } = await import('../git/accounts');
     const gitAccounts = loadAccounts();
     const git = gitAccounts.map((a) => `⎇ ${a.label} (${a.provider === 'github' ? 'GitHub' : 'GitLab'})`);
-    const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud, ...git], local);
+    // GIT-008: any repository, by its address, adding its account if needed.
+    const byAddress = t('folder.gitAddress');
+    const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud, ...git, byAddress], local);
     if (!choice) return;
     let folder;
     try {
-      if (git.includes(choice)) folder = await this.pickRepositoryFolder(gitAccounts[git.indexOf(choice)]!);
+      if (choice === byAddress) folder = await this.repositoryFolderByAddress();
+      else if (git.includes(choice)) folder = await this.pickRepositoryFolder(gitAccounts[git.indexOf(choice)]!);
       else if (choice === browser) folder = await privateStorage('Documents', browser);
       else if (cloud.includes(choice)) {
         const account = accounts[cloud.indexOf(choice)]!;
@@ -1268,6 +1271,13 @@ export class App {
       return;
     }
     if (folder) await this.setFolder(folder);
+  }
+
+  /** A repository chosen in the repository dialog — by its address first — as a folder (FOLDER-007, GIT-008). */
+  private async repositoryFolderByAddress(): Promise<import('../fs').StorageProvider | undefined> {
+    const [{ browseRepository }, { clientFor }, { GitRepoProvider }] = await Promise.all([import('../git/ui'), import('../git/accounts'), import('../git/provider')]);
+    const chosen = await browseRepository(this.root, 'folder');
+    return chosen ? new GitRepoProvider(clientFor(chosen.account), chosen.repo, chosen.branch) : undefined;
   }
 
   /** A repository and a branch of a Git account, as a folder (FOLDER-007). */

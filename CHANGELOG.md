@@ -14,6 +14,7 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   links to a branch, folder or file, GitLab groups, self-hosted sites, SSH
   clone addresses); the service, repository, branch and path are deduced and
   the matching account used, or the add-account form opened pre-filled (GIT-008).
+  **Open a folder** accepts a repository address too (FOLDER-007).
 - Git: step-by-step help to create a personal access token with the least
   rights, linking to the token page of the site (GIT-009).
 - Git: saving to a repository proposes a text format Git can compare

@@ -44,9 +44,11 @@ function modal(host: HTMLElement, className: string, title: string): { dialog: H
  */
 export function browseRepository(host: HTMLElement, mode: 'open', suggestedName?: string): Promise<RepoFile | null>;
 export function browseRepository(host: HTMLElement, mode: 'save', suggestedName?: string, extensions?: string[]): Promise<RepoLocation | null>;
-export function browseRepository(host: HTMLElement, mode: 'open' | 'save', suggestedName = '', extensions: string[] = []): Promise<RepoFile | RepoLocation | null> {
+/** FOLDER-007, GIT-008: a repository and a branch to open as a folder. */
+export function browseRepository(host: HTMLElement, mode: 'folder'): Promise<RepoLocation | null>;
+export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'folder', suggestedName = '', extensions: string[] = []): Promise<RepoFile | RepoLocation | null> {
   return new Promise((resolve) => {
-    const { dialog, body, close } = modal(host, 'git-dialog', mode === 'open' ? t('git.dialogOpen') : t('git.dialogSave'));
+    const { dialog, body, close } = modal(host, 'git-dialog', mode === 'open' ? t('git.dialogOpen') : mode === 'folder' ? t('git.dialogFolder') : t('git.dialogSave'));
     let account: GitAccount | undefined;
     let client: GitClient | undefined;
     let repo: GitRepo | undefined;
@@ -128,7 +130,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
           const name = inside.slice(slash + 1);
           if (mode === 'open') {
             if (supported(name)) return void (await openEntry({ name, path: inside, type: 'file' }));
-          } else fileName.value = name;
+          } else if (mode === 'save') fileName.value = name;
           await openFolder(slash < 0 ? '' : inside.slice(0, slash));
         } else await openFolder(inside);
       } catch (err) {
@@ -171,8 +173,10 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
           const b = button(`📄 ${e.name}`, () => void openEntry(e), { className: 'git-entry file', title: ok ? e.path : t('git.unsupported') });
           b.disabled = !ok;
           items.push(h('li', {}, b));
-        } else {
+        } else if (mode === 'save') {
           items.push(h('li', {}, button(`📄 ${e.name}`, () => (fileName.value = e.name), { className: 'git-entry file' })));
+        } else {
+          items.push(h('li', { class: 'git-entry file' }, `📄 ${e.name}`));
         }
       }
       list.replaceChildren(...items);
@@ -348,6 +352,19 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save', sugge
               return;
             }
             finish({ account, repo, branch, path: folder ? `${folder}/${name}` : name });
+          },
+          { className: 'primary' },
+        ),
+      );
+    }
+
+    if (mode === 'folder') {
+      actions.append(
+        button(
+          t('git.openAsFolder'),
+          () => {
+            if (!account || !repo) return void address.focus();
+            finish({ account, repo, branch, path: '' });
           },
           { className: 'primary' },
         ),

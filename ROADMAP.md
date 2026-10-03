@@ -134,6 +134,21 @@ group is not a commitment.
   codes with QRShare, signed frames, trusted devices, an import log
 - Offline synchronisation of spreadsheets, images sent once by SHA-256
   (blob frames), the Yjs history embedded in ODT and DOCX files
+- Self-hostable PWO server, for when the current approach (WebRTC, Nostr
+  relays, links carrying the document) does not work — networks blocking
+  WebRTC and WebSockets to public relays, documents too large for a link,
+  recipients offline at the same time:
+  - server code in the repository (`server/`), small, without a database
+    (files on disk), with a Docker image and a deployment guide;
+  - real-time collaboration through the server (WebSocket, with HTTP
+    long-polling as a fallback), as one more way next to direct and relays;
+  - sharing a document by link: uploaded end-to-end encrypted, the key
+    staying in the link fragment, so the server never reads it; expiry
+    date, download limit, deletion by the sender;
+  - asynchronous collaboration: the shared document (Yjs updates) kept
+    encrypted on the server, so that people need not be online together;
+  - the server address in the settings (none by default), quotas and
+    limits on the server side
 
 ### Images and drawing
 

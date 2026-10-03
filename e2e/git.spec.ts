@@ -275,3 +275,31 @@ test('proposes a text format when saving to a repository (GIT-010)', async ({ pa
   await expect(dialog.getByLabel('File name')).toHaveValue(/\.docx$/);
   await expect(dialog.getByText(/binary file.*prefer \.md/)).toBeVisible();
 });
+
+test('opens a repository as a folder from its address (FOLDER-007, GIT-008)', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh1', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_x', label: 'me' }]));
+  });
+  await page.route(`${API}/**`, async (route: Route) => {
+    const p = new URL(route.request().url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (p === '/user/repos') return json([]);
+    if (p === '/repos/s-celles/test-pwo') return json({ full_name: 's-celles/test-pwo', default_branch: 'main' });
+    if (p === '/repos/s-celles/test-pwo/branches') return json([{ name: 'main' }, { name: 'dev' }]);
+    if (p === '/repos/s-celles/test-pwo/contents') return json([{ name: 'README.md', path: 'README.md', type: 'file', size: 8 }]);
+    if (p === '/repos/s-celles/test-pwo/git/trees/dev') return json({ tree: [{ path: 'README.md', type: 'blob', sha: 'b1', size: 8 }], truncated: false });
+    return json({ message: 'Not Found' }, 404);
+  });
+  await openApp(page);
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  const where = page.getByRole('dialog', { name: 'Open a folder' });
+  await where.getByLabel('⎇ GitHub / GitLab repository…').check();
+  await where.getByRole('button', { name: 'Open' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Open a repository as a folder' });
+  await dialog.getByLabel('Repository address').fill('https://github.com/s-celles/test-pwo/tree/dev');
+  await dialog.getByLabel('Repository address').press('Enter');
+  await expect(dialog.getByLabel('Branch')).toHaveValue('dev');
+  await dialog.getByRole('button', { name: 'Open as folder' }).click();
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await expect(panel.getByRole('heading', { name: '📁 s-celles/test-pwo (dev)' })).toBeVisible();
+});

@@ -119,8 +119,10 @@ binary formats stay available: choose one when you need its exact layout
 ## A repository as a folder
 
 **Open a folder** also lists your Git accounts (⎇): choose one, then a
-repository and a branch, and the repository opens in the folder panel like
-a folder of the device — tree, search, links between notes, master
+repository and a branch — or choose **⎇ GitHub / GitLab repository…** and
+paste the repository address (`https://github.com/owner/name`, or
+`…/tree/dev` for a branch), the account being added if needed — and the
+repository opens in the folder panel like a folder of the device — tree, search, links between notes, master
 documents. Every change is a **commit** on that branch:
 
 - saving a document of the repository (`docs: update report.md`);
