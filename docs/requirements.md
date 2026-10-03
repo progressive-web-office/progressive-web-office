@@ -322,6 +322,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-018 | S | 0.2.0 | The system shall offer a command palette (Ctrl+Shift+P and a header button) listing the buttons and menu entries of the screen, filtered by the words typed (in any order, ignoring case and accents), run with Enter and navigable with the arrow keys, in three columns: the command, its keyboard shortcuts when it has some, and where it is; the commands of the view (such as the review mode and the review actions) shall be listed even when no button shows them, and some commands shall also be found by keywords in other languages (the review mode by "correction", "relecture", "proofreading"…). |
 | UI-019 | S | 0.2.0 | While the system waits — a long operation, a collaboration looking for the others or receiving the document, a code cell queued, loading Python or running — it shall show a spinner (slowed down when the user prefers reduced motion). |
 | UI-020 | S | 0.1.0 | The toolbars shall keep the most used tools in sight and group the others in menus opening below their button (closing on use, Escape or a click elsewhere), unless the user chooses full toolbars in the settings. |
+| UI-021 | S | 0.1.0 | When the user right-clicks in a document, long-presses it on a touch screen or uses the Actions button, the system shall show a menu of the actions available there (clipboard, link, table rows and columns, code cell, insertions including a table of a chosen size), as a sheet at the bottom of the screen on a phone. |
 
 ## 9. Quality (QA)
 

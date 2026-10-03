@@ -81,7 +81,8 @@ function modal(host: HTMLElement, titleId: string): { dialog: HTMLDialogElement;
  * Insert or edit a cell. Resolves to null when cancelled. `complete` gives
  * the completions of the running interpreter (CODE-011).
  */
-export async function editCell(host: HTMLElement, initial?: CellValue, complete?: SmartComplete): Promise<CellValue | null> {
+/** Edit a cell, or insert one (`isNew`, by default when there is no `initial` value: a language may be given). */
+export async function editCell(host: HTMLElement, initial?: CellValue, complete?: SmartComplete, isNew = !initial): Promise<CellValue | null> {
   const { createCellEditor } = await import('./cell-editor');
   return new Promise((resolve) => {
     const m = modal(host, 'code-title');
@@ -97,7 +98,7 @@ export async function editCell(host: HTMLElement, initial?: CellValue, complete?
       resolve(ok ? { lang: lang.value as CodeLang, code } : null);
     };
     m.dialog.append(
-      h('h2', { id: 'code-title' }, initial ? t('code.editTitle') : t('code.insertTitle')),
+      h('h2', { id: 'code-title' }, isNew ? t('code.insertTitle') : t('code.editTitle')),
       h('label', { class: 'code-lang-label' }, `${t('code.language')} `, lang),
       source,
       h('p', { class: 'hint' }, t('code.hint')),
@@ -105,7 +106,7 @@ export async function editCell(host: HTMLElement, initial?: CellValue, complete?
         'div',
         { class: 'dialog-actions' },
         button(t('common.cancel'), () => finish(false)),
-        button(initial ? t('code.update') : t('code.insert'), () => finish(true), { className: 'primary' }),
+        button(isNew ? t('code.insert') : t('code.update'), () => finish(true), { className: 'primary' }),
       ),
     );
     m.dialog.addEventListener('cancel', (e) => {

@@ -14,8 +14,12 @@ and *Instrument panel* (Templates and examples) show them at work.
 
 ## Inserting and running
 
-1. Click **{ }** in the toolbar, choose the language and type the code
-   (<kbd>Tab</kbd> indents).
+1. Click **{ }** in the toolbar (or **Code cell to run…** in the
+   [context menu](./documents.md#the-context-menu): right click, long press
+   or **⋮**), choose the language and type the code (<kbd>Tab</kbd> indents).
+   Typing ```` ``` ```` and a language at the start of a line, then
+   <kbd>Enter</kbd> (```` ```python ````, ```` ```lua ````, ```` ```r ````…),
+   opens it in that language.
 2. Click **Insert**: the cell is added on its own line.
 3. Click **▶** to run the cell, or **⏩** to run all the cells of the document
    (in the order of what they use, see below).

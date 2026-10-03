@@ -143,6 +143,34 @@ export function linkAt(state: EditorState): Mark | undefined {
   return schema.marks.link!.isInSet(state.selection.$from.marks()) ?? undefined;
 }
 
+/** The extent of the link at the cursor (or around the selection), if any. */
+export function linkRange(state: EditorState): { from: number; to: number } | undefined {
+  const type = schema.marks.link!;
+  const $from = state.selection.$from;
+  const mark = type.isInSet($from.marks()) ?? (state.selection.empty ? undefined : type.isInSet($from.nodeAfter?.marks ?? []));
+  if (!mark) return undefined;
+  // The children of the paragraph carrying this very link, around the cursor.
+  const kids: { from: number; to: number; linked: boolean }[] = [];
+  $from.parent.forEach((child, offset) => {
+    const from = $from.start() + offset;
+    kids.push({ from, to: from + child.nodeSize, linked: !!mark.isInSet(child.marks) });
+  });
+  let i = kids.findIndex((k) => k.linked && k.from <= $from.pos && $from.pos <= k.to);
+  if (i < 0) return undefined;
+  let j = i;
+  while (i > 0 && kids[i - 1]!.linked) i--;
+  while (j < kids.length - 1 && kids[j + 1]!.linked) j++;
+  return { from: kids[i]!.from, to: kids[j]!.to };
+}
+
+/** Remove the link at the cursor, keeping its text. */
+export const removeLink: Command = (state, dispatch) => {
+  const range = linkRange(state);
+  if (!range) return false;
+  dispatch?.(state.tr.removeMark(range.from, range.to, schema.marks.link!));
+  return true;
+};
+
 /** Link the selection, or insert the URL as a linked text at the cursor. */
 export const setLink =
   (href: string): Command =>

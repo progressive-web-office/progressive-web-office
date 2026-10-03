@@ -17,16 +17,18 @@ import { documentTools, type AgentTool } from '../ai/tools';
 import type { PrintSettings } from '../print/settings';
 import { getLocale, t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
+import { onContextMenu, openContextMenu, tableSizePicker, type MenuAction, type MenuEntry } from '../app/context-menu';
 import { sizeInput, type SizeInput } from '../app/size-input';
 import type { EditorView, SaveVariant, SyncableDocument, ViewContext } from '../app/views';
 import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
-import { decodeDataUri, readMarkdown } from './markdown-reader';
+import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64 } from './markdown-writer';
-import { addResource, newAnchor, wordCount, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
+import { addResource, newAnchor, wordCount, type CodeLang, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
+import { linkRange, removeLink } from './pm/commands';
 import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReference, numberEquation, insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
@@ -281,6 +283,8 @@ export class DocumentEditor implements EditorView {
         },
         handleDrop: (_view, event) => this.onDrop(event as DragEvent),
         handleKeyDown: (_view, event) => {
+          // CODE-001: ``` and a language, then Enter, starts a code cell.
+          if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) return this.fenceToCell();
           // REV-001: Ctrl+Alt+M comments the selection.
           if (!(event.ctrlKey || event.metaKey) || !event.altKey || event.key.toLowerCase() !== 'm') return false;
           this.addComment();
@@ -288,6 +292,8 @@ export class DocumentEditor implements EditorView {
         },
       },
     );
+    // UI-021: a menu of what can be done where the pointer is (right click, long press).
+    onContextMenu(this.view.dom, (x, y, target) => this.showContextMenu(x, y, target));
     this.updateToolbar();
     this.renderNotes();
     this.comments.refresh();
@@ -516,6 +522,140 @@ export class DocumentEditor implements EditorView {
 
   // --- code cells (CODE-001..CODE-005) ----------------------------------------
 
+  // --- context menu (UI-021) ----------------------------------------------------
+
+  /**
+   * ``` and a language, then Enter, starts a code cell: typed ``` makes a code
+   * paragraph, holding then only the language (`lua`, `python {run}`).
+   */
+  private fenceToCell(): boolean {
+    const { $from, empty } = this.view.state.selection;
+    const para = $from.parent;
+    if (!empty || this.readOnly || para.type !== schema.nodes.paragraph) return false;
+    const m = para.attrs.style === 'code' ? /^\s*([\w+#.-]+)\s*(\{run\})?\s*$/.exec(para.textContent) : /^```\s*([\w+#.-]+)\s*(\{run\})?\s*$/.exec(para.textContent);
+    const lang = m && FENCE_LANGS[m[1]!.toLowerCase()];
+    if (!lang) return false;
+    this.view.dispatch(this.view.state.tr.delete($from.start(), $from.end()).setNodeMarkup($from.before(), undefined, { ...para.attrs, style: 'normal' }));
+    void this.editCell(undefined, undefined, lang);
+    return true;
+  }
+
+  /** The menu at the cursor (the ⋮ button, the keyboard). */
+  private showContextMenuAtCursor(): void {
+    const { head } = this.view.state.selection;
+    const r = this.view.coordsAtPos(head);
+    this.showContextMenu(r.left, r.bottom, null);
+  }
+
+  private showContextMenu(x: number, y: number, target: HTMLElement | null): boolean {
+    const view = this.view;
+    const editable = !this.readOnly && !this.reviewing;
+    // A code cell under the pointer.
+    const cellEl = target?.closest<HTMLElement>('.code-cell');
+    const cellPos = cellEl ? cellHandle(cellEl)?.getPos() : undefined;
+    const cell = cellPos !== undefined ? view.state.doc.nodeAt(cellPos) : null;
+    if (cell?.type !== schema.nodes.code_cell && target) {
+      // Elsewhere, the cursor goes where the pointer is, unless it is in the selection.
+      const at = view.posAtCoords({ left: x, top: y });
+      const { from, to } = view.state.selection;
+      if (at && (at.pos < from || at.pos > to)) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(at.pos))));
+    }
+    const state = view.state;
+    const empty = state.selection.empty;
+    const cmd = (c: Command) => () => {
+      this.command(c);
+      this.refocus();
+    };
+    const entries: MenuEntry[] = [];
+    if (cell?.type === schema.nodes.code_cell && cellPos !== undefined) {
+      const julia = cell.attrs.lang === 'julia';
+      entries.push(
+        { title: t('ctx.cell') },
+        ...(julia || !editable ? [] : [{ label: t('code.run'), icon: '▶', run: () => this.onCellAction('run', cellPos, cell) }, { label: t('code.runAll'), icon: '⏩', run: () => this.onCellAction('run-all', cellPos, cell) }]),
+        ...(editable
+          ? [
+              { label: t('code.edit'), icon: '✎', run: () => this.onCellAction('edit', cellPos, cell) },
+              { label: t(cell.attrs.hidden ? 'code.showCode' : 'code.hideCode'), icon: cell.attrs.hidden ? '👁' : '🙈', run: () => this.onCellAction('toggle-code', cellPos, cell) },
+              { label: t('ctx.deleteCell'), icon: '🗑', run: () => view.dispatch(view.state.tr.delete(cellPos, cellPos + cell.nodeSize)) },
+            ]
+          : []),
+        'separator',
+      );
+    }
+    entries.push(
+      { title: t('ctx.edit') },
+      ...(editable ? [{ label: t('ctx.cut'), icon: '✂', shortcut: 'Ctrl+X', disabled: empty, run: () => this.clipboard('cut') }] : []),
+      { label: t('ctx.copy'), icon: '⧉', shortcut: 'Ctrl+C', disabled: empty, run: () => this.clipboard('copy') },
+      ...(editable ? [{ label: t('ctx.paste'), icon: '📋', shortcut: 'Ctrl+V', run: () => void this.pasteFromClipboard() }] : []),
+    );
+    if (editable) {
+      const link = linkRange(state);
+      if (link) {
+        const href = linkAt(state)?.attrs.href as string | undefined;
+        entries.push(
+          { title: t('ctx.link') },
+          { label: t('ctx.openLink'), icon: '↗', run: () => href && !href.startsWith('#') && (this.ctx.openLink?.(href) || (isSafeUrl(href) && window.open(href, '_blank', 'noopener'))) },
+          { label: t('ctx.editLink'), icon: '🔗', run: () => this.insertLink() },
+          { label: t('ctx.removeLink'), icon: '⛓', run: cmd(removeLink) },
+        );
+      }
+      if (isInTable(state)) {
+        const can = (c: Command): boolean => c(state);
+        const table = (key: MessageKey, icon: string, c: Command): MenuAction => ({ label: t(key), icon, disabled: !can(c), run: cmd(c) });
+        entries.push(
+          { title: t('table.bar') },
+          table('table.rowAbove', '⬆', addRowBefore),
+          table('table.rowBelow', '⬇', addRowAfter),
+          table('table.colLeft', '⬅', addColumnBefore),
+          table('table.colRight', '➡', addColumnAfter),
+          table('table.deleteRow', '⬌', deleteRow),
+          table('table.deleteCol', '⬍', deleteColumn),
+          table('table.merge', '⊞', mergeCells),
+          table('table.split', '⊟', splitCell),
+          table('table.header', 'H', toggleHeaderRow),
+          table('table.delete', '🗑', deleteTable),
+        );
+      }
+      entries.push(
+        { title: t('group.insert') },
+        { label: t('ctx.codeCell'), icon: '{ }', run: () => void this.editCell() },
+        ...(isInTable(state) ? [] : [{ title: t('ctx.table') }, tableSizePicker((rows, cols) => t('ctx.tableSize', { rows, cols }), (rows, cols) => cmd(insertTable(rows, cols))())]),
+        'separator',
+        { label: t('common.insertImage'), icon: '🖼', run: () => void this.pickImage() },
+        { label: t('doc.insertEquation'), icon: '∑', run: () => void this.editMath() },
+        ...(link ? [] : [{ label: t('doc.insertLink'), icon: '🔗', run: () => this.insertLink() }]),
+        { label: t('note.button'), icon: '¹', run: () => void this.editNote() },
+        { label: t('comment.add'), icon: '💬', shortcut: 'Ctrl+Alt+M', run: () => this.addComment() },
+      );
+      if (!empty) entries.push('separator', { label: t('fmt.clear'), icon: '⌫', run: cmd(clearFormatting) });
+    }
+    openContextMenu(x, y, entries, { label: t('ctx.menu'), returnFocus: view.dom });
+    return true;
+  }
+
+  /** Cut or copy the selection, as the keyboard does (ProseMirror serialises it). */
+  private clipboard(action: 'cut' | 'copy'): void {
+    this.view.focus();
+    if (!document.execCommand(action)) this.ctx.notify?.(t('ctx.clipboardKeys'));
+  }
+
+  /** Paste what the clipboard holds, when the browser lets the page read it. */
+  private async pasteFromClipboard(): Promise<void> {
+    this.view.focus();
+    try {
+      if (navigator.clipboard?.read) {
+        for (const item of await navigator.clipboard.read()) {
+          if (item.types.includes('text/html')) return void this.view.pasteHTML(await (await item.getType('text/html')).text());
+          if (item.types.includes('text/plain')) return void this.view.pasteText(await (await item.getType('text/plain')).text());
+        }
+        return;
+      }
+      this.view.pasteText(await navigator.clipboard.readText());
+    } catch {
+      this.ctx.notify?.(t('ctx.clipboardKeys'));
+    }
+  }
+
   private onCellAction(action: string, pos: number, node: PmNode): void {
     if (this.readOnly) return;
     if ((action === 'run' || action === 'run-all') && node.attrs.lang === 'julia') return void window.alert(t('kslate.runHint'));
@@ -546,13 +686,13 @@ export class DocumentEditor implements EditorView {
     return out;
   }
 
-  /** Insert a new cell on its own line, or edit an existing one (CODE-001). */
-  private async editCell(pos?: number, node?: PmNode): Promise<void> {
+  /** Insert a new cell on its own line (in `lang`), or edit an existing one (CODE-001). */
+  private async editCell(pos?: number, node?: PmNode, lang?: CodeLang): Promise<void> {
     if (this.readOnly) return;
     const { editCell } = await import('../code/ui');
     const current = node?.attrs as { cell: string; lang: 'python' | 'javascript'; output: unknown } | undefined;
     // CODE-011: the interpreter of the document's cells completes with what it knows, once running.
-    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : undefined, (code, line, column) => this.runner?.complete(code, line, column) ?? Promise.resolve(null));
+    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : lang ? { lang, code: '' } : undefined, (code, line, column) => this.runner?.complete(code, line, column) ?? Promise.resolve(null), !current);
     if (!value) return;
     // Changing the code makes the previous output stale.
     const unchanged = current && current.cell === value.code && current.lang === value.lang;
@@ -1503,6 +1643,8 @@ export class DocumentEditor implements EditorView {
       ]),
       h('span', { class: 'sep' }),
       act(t('find.title'), '🔍', () => this.findBar.open(false), `${t('find.title')} (Ctrl+F, Ctrl+H)`),
+      // UI-021: the context menu at the cursor, for touch screens (also a long press) and the keyboard.
+      act(t('ctx.button'), '⋮', () => this.showContextMenuAtCursor(), t('ctx.buttonTitle')),
       ...(compact ? [] : [this.textToolsMenu(), this.viewToolsMenu()]),
       toolGroup(t('group.review'), '💬', [act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`), this.trackButton, act(t('a11y.button'), '♿', () => void this.checkAccessibility(), t('a11y.buttonTitle'))]),
       toolGroup(t('group.teach'), '🎓', [

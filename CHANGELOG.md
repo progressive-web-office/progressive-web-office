@@ -10,6 +10,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Context menu in documents (UI-021): a right click, a long press on a touch
+  screen or the ⋮ Actions button shows what can be done there: cut, copy,
+  paste; open, edit or remove a link; rows and columns of a table; run, edit,
+  hide or delete a code cell; insert a code cell, a table of the size picked
+  in a grid, a picture, an equation, a link, a note, a comment. On a phone it
+  is a sheet at the bottom of the screen. Typing ```` ```lua ```` (or another
+  language) then Enter starts a code cell in that language.
+
 - Projects (CODE-019): a code file opened from a folder runs with the other
   files of its project (its folder, or the folder above holding `pwo.toml`,
   `pyproject.toml`, `package.json`…): Python and Lua modules, JavaScript and

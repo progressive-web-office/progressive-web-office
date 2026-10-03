@@ -24,6 +24,29 @@ file actions (**🗂 File**: repository, versions, cloud, commit, read-only) and
 the sharing ones (**📤 Share**). **Settings › Toolbars › Full** shows every
 tool instead.
 
+### The context menu
+
+A **right click** in the document — or a **long press** on a touch screen, or
+the **⋮ Actions** button of the toolbar, or the context-menu key — opens a menu
+of what can be done there:
+
+- **Edit**: cut, copy, paste (when the browser lets the page read the
+  clipboard; otherwise use <kbd>Ctrl</kbd>+<kbd>V</kbd> or the device's menu);
+- on a **link**: open it, edit it, remove it (the text stays);
+- in a **table**: insert a row above or below, a column on the left or
+  right, delete the row or the column, merge or split cells, make the first
+  row a header, delete the table;
+- on a **code cell**: run it, run all the cells, edit its code, hide or show
+  the code, delete the cell;
+- **Insert**: a code cell to run, a **table of the size you pick** in a grid
+  (up to 8 × 8; rows and columns can be added afterwards), a picture, an
+  equation, a link, a footnote, a comment;
+- with a selection, **clear formatting**.
+
+On a phone the menu opens as a sheet at the bottom of the screen, with large
+entries; a tap outside closes it. With the keyboard, the arrows move in the
+menu, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes it.
+
 | Action | Toolbar | Shortcut |
 |--------|---------|----------|
 | Undo / redo | ↶ ↷ | <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd> (or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>) |
