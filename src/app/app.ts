@@ -998,10 +998,11 @@ export class App {
         h(
           'div',
           { class: 'start-actions' },
+          // FILE-018: starting from a template comes first.
+          button(t('tpl.open'), () => void this.newFromTemplate(), { className: 'card template', icon: '🧩', title: t('tpl.openTitle') }),
           button(t('start.newDocument'), () => void this.newDocument('document'), { className: 'card doc', icon: '📝' }),
           button(t('start.newSpreadsheet'), () => void this.newDocument('spreadsheet'), { className: 'card sheet', icon: '📊' }),
           button(t('start.newPresentation'), () => void this.newDocument('presentation'), { className: 'card pres', icon: '📽️' }),
-          button(t('tpl.open'), () => void this.newFromTemplate(), { className: 'card template', icon: '🧩', title: t('tpl.openTitle') }),
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open', icon: '📂' }),
           button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
           button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
