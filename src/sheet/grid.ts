@@ -1,4 +1,6 @@
 /** Spreadsheet editor view: virtualized grid, formula bar, sheet tabs (SHEET-004/005/010/011/013). */
+import { parseUnit, unitOfFormat } from './units';
+import { setCellsUnit } from './unit-cells';
 import { colorMoreButton } from '../color/more';
 import { beforeMutation, sheetTools, type AgentTool } from '../ai/tools';
 import type { PrintSettings } from '../print/settings';
@@ -24,6 +26,8 @@ const MIN_RENDER_ROWS = 40;
 const MAX_UNDO = 100;
 
 const CUSTOM_FORMAT = '\u0000custom';
+/** UNIT-004: a unit for the cells chosen. */
+const UNIT_FORMAT = '\u0000unit';
 const FORMATS = (): [string, string][] => [
   ['', t('sheet.fmt.general')],
   ['0', '0'],
@@ -88,7 +92,7 @@ export class SheetEditor implements EditorView {
   private readonly lookButtons = new Map<string, HTMLButtonElement>();
   private readonly textColor = h('input', { type: 'color', value: '#c00000', 'aria-label': t('sheet.textColor'), title: t('sheet.textColor') });
   private readonly fillColor = h('input', { type: 'color', value: '#ffff00', 'aria-label': t('sheet.fillColor'), title: t('sheet.fillColor') });
-  private readonly formatSelect = h('select', { 'aria-label': t('sheet.numberFormat'), title: t('sheet.numberFormat') }, ...FORMATS().map(([v, l]) => h('option', { value: v }, l)), h('option', { value: CUSTOM_FORMAT }, t('sheet.fmt.custom')));
+  private readonly formatSelect = h('select', { 'aria-label': t('sheet.numberFormat'), title: t('sheet.numberFormat') }, ...FORMATS().map(([v, l]) => h('option', { value: v }, l)), h('option', { value: CUSTOM_FORMAT }, t('sheet.fmt.custom')), h('option', { value: UNIT_FORMAT }, t('sheet.fmt.unit')));
   private readonly viewport = h('div', { class: 'grid-viewport', tabindex: '0', role: 'grid', 'aria-label': t('sheet.label') });
   private readonly table = h('table', { class: 'grid' });
   private readonly tabs = h('div', { class: 'sheet-tabs', role: 'tablist', 'aria-label': t('sheet.sheets') });
@@ -222,7 +226,7 @@ export class SheetEditor implements EditorView {
           const cell = sheet.cells.get(cellKey(r, c));
           const v = cell ? this.calc.value(si, [r, c]) : null;
           const td = h('td', { class: typeof v === 'number' ? 'num' : undefined });
-          if (cell) fillWithMath(td, formatValue(v, cell.numFmt));
+          if (cell) fillWithMath(td, formatValue(v, this.calc.format(si, [r, c])));
           if (cell?.style) applyLook(td, cell.style, true);
           tr.append(td);
         }
@@ -249,7 +253,7 @@ export class SheetEditor implements EditorView {
       for (let c = 0; c < cols; c++) {
         const cell = sheet.cells.get(cellKey(r, c));
         const v = cell ? this.calc.value(this.si, [r, c]) : null;
-        tr.append(h('td', { class: typeof v === 'number' ? 'num' : undefined }, cell ? formatValue(v, cell.numFmt) : ''));
+        tr.append(h('td', { class: typeof v === 'number' ? 'num' : undefined }, cell ? formatValue(v, this.calc.format(this.si, [r, c])) : ''));
       }
       table.append(tr);
     }
@@ -356,7 +360,7 @@ export class SheetEditor implements EditorView {
         if (r < frozen.rows || c < frozen.cols) this.freezeCell(td, r, c, frozen);
         if (cell) {
           const v = this.calc.value(this.si, [r, c]);
-          if (fillWithMath(td, formatValue(v, cell.numFmt))) hasMath = true;
+          if (fillWithMath(td, formatValue(v, this.calc.format(this.si, [r, c])))) hasMath = true;
           if (typeof v === 'number') td.classList.add('num');
           else if (typeof v === 'boolean') td.classList.add('bool');
           else if (isError(v)) td.classList.add('err');
@@ -884,6 +888,7 @@ export class SheetEditor implements EditorView {
   private toolbar(): HTMLElement {
     const act = (label: string, text: string, fn: () => void) => button(label, fn, { text, title: label });
     this.formatSelect.addEventListener('change', () => {
+      if (this.formatSelect.value === UNIT_FORMAT) return void this.chooseUnit();
       if (this.formatSelect.value !== CUSTOM_FORMAT) return this.applyFormat(this.formatSelect.value);
       // SHEET-014: any number format code (0.000, # ##0 "kg", dd/mm/yyyy hh:mm…).
       const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
@@ -976,6 +981,24 @@ export class SheetEditor implements EditorView {
     this.snapshot();
     fn();
     this.changed(true);
+  }
+
+  /** UNIT-004: the cells chosen in a unit: quantities converted, numbers given it, formulas shown in it. */
+  private chooseUnit(): void {
+    this.commitEdit();
+    const sheet = this.wb.sheets[this.si]!;
+    const cell = getCell(sheet, [this.focusCell.row, this.focusCell.col]);
+    const current = unitOfFormat(this.calc.format(this.si, [this.focusCell.row, this.focusCell.col])) ?? '';
+    const unit = window.prompt(t('sheet.fmt.unitPrompt'), current || (cell ? '' : 'mm'))?.trim();
+    if (!unit) return this.renderSelection();
+    if (!parseUnit(unit)) {
+      window.alert(t('sheet.fmt.unitUnknown', { unit }));
+      return this.renderSelection();
+    }
+    this.snapshot();
+    const result = setCellsUnit(sheet, this.range(), unit);
+    if (result.refused) window.alert(t('sheet.fmt.unitRefused', { n: result.refused, unit }));
+    this.changed();
   }
 
   private applyFormat(fmt: string): void {

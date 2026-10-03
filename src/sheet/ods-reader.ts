@@ -35,8 +35,13 @@ function dataStyleToFormat(el: Element): string | undefined {
   for (const c of children(el)) {
     switch (c.localName) {
       case 'number': {
-        const decimals = Number(attr(c, 'decimal-places') ?? 0);
         const grouping = attr(c, 'grouping') === 'true';
+        // No number of decimals: the standard ("General") number.
+        if (attr(c, 'decimal-places') === null && !grouping) {
+          code += 'General';
+          break;
+        }
+        const decimals = Number(attr(c, 'decimal-places') ?? 0);
         code += `${grouping ? '#,##0' : '0'}${decimals ? `.${'0'.repeat(decimals)}` : ''}`;
         break;
       }

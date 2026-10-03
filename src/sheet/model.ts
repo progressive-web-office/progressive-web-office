@@ -1,5 +1,6 @@
 /** Workbook model: sheets of sparse cells holding values and/or formulas. */
 import { cellKey, parseKey, parseRef } from './address';
+import { parseUnit, unitOfFormat, withUnit } from './units';
 
 export type Scalar = string | number | boolean | null;
 export interface ErrorValue {
@@ -126,6 +127,9 @@ export function parseInput(input: string): Cell | undefined {
     const decimals = pct[1]!.includes('.') ? pct[1]!.split('.')[1]!.length : 0;
     return { value: Number(pct[1]) / 100, numFmt: decimals ? `0.${'0'.repeat(decimals)}%` : '0%' };
   }
+  // UNIT-002: a number and a unit (`12 mm`, `9.81 m/s²`): the number, its unit in the number format.
+  const measure = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([^\d\s+\-.][^]*)$/.exec(t);
+  if (measure && parseUnit(measure[2]!.trim())) return { value: Number(measure[1]), numFmt: withUnit(measure[2]!.trim()) };
   const upper = t.toUpperCase();
   if (upper === 'TRUE' || upper === 'FALSE') return { value: upper === 'TRUE' };
   const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
@@ -151,6 +155,8 @@ export function cellInput(cell: Cell | undefined): string {
   if (cell.value === null) return '';
   if (typeof cell.value === 'boolean') return cell.value ? 'TRUE' : 'FALSE';
   if (typeof cell.value === 'number' && cell.numFmt) {
+    const unit = unitOfFormat(cell.numFmt);
+    if (unit) return `${cell.value} ${unit}`;
     if (/y|d/.test(cell.numFmt) && !cell.numFmt.includes('%')) return serialToDate(cell.value).toISOString().slice(0, 10);
     if (cell.numFmt.includes('%')) return `${+(cell.value * 100).toPrecision(15)}%`;
   }

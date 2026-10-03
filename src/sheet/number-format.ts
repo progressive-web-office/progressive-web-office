@@ -71,6 +71,12 @@ function formatNumber(n: number, fmt: string): string {
   }
   // Currency/locale tags like [$€-40C] -> €
   section = section.replace(/\[\$([^\]-]*)(-[^\]]*)?\]/g, '"$1"').replace(/\[[^\]]*\]/g, '');
+  // UNIT-002: "General" followed (or preceded) by literal text: `General" mm"`.
+  const general = /general/i.exec(section.replace(/"[^"]*"/g, (q) => ' '.repeat(q.length)));
+  if (general) {
+    const lit = (s: string): string => s.replace(/"([^"]*)"/g, '$1').replace(/\\(.)/g, '$1');
+    return `${lit(section.slice(0, general.index))}${formatGeneral(n)}${lit(section.slice(general.index + 7))}`;
+  }
   const m = /[#0?][#0?,.]*%?/.exec(stripLiterals(section).length ? section.replace(/"[^"]*"/g, (q) => ' '.repeat(q.length)) : '');
   if (!m) return formatGeneral(n);
   const pattern = m[0];

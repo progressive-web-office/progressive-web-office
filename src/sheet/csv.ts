@@ -1,4 +1,5 @@
 /** CSV/TSV reading and writing (SHEET-003, SHEET-009). */
+import { unitOfFormat } from './units';
 import { Calculator } from './engine';
 import { formatGeneral } from './engine';
 import { cellKey, parseKey } from './address';
@@ -116,7 +117,10 @@ export function writeCsv(wb: Workbook, sheetIndex = 0, delim = ','): Uint8Array 
     const [r, c] = parseKey(key);
     const v = calc.value(sheetIndex, [r, c]);
     let text: string;
-    if (typeof v === 'number') text = isDateFormat(cell.numFmt) ? formatValue(v, cell.numFmt) : formatGeneral(v);
+    // UNIT-002: a quantity keeps its unit (`12 mm`), read back as a quantity.
+    const unit = unitOfFormat(calc.format(sheetIndex, [r, c]));
+    if (typeof v === 'number' && unit) text = `${formatGeneral(v)} ${unit}`;
+    else if (typeof v === 'number') text = isDateFormat(cell.numFmt) ? formatValue(v, cell.numFmt) : formatGeneral(v);
     else text = isError(v) ? v.error : formatValue(v);
     grid[r]![c] = quote(text, delim);
   }

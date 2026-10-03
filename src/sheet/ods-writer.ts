@@ -39,6 +39,13 @@ function dataStyle(name: string, fmt: string): string {
     });
     return `<number:${tag} style:name="${name}">${body}</number:${tag}>`;
   }
+  // UNIT-002: "General" with text around it (`General" mm"`): ODF's standard number, and the text.
+  const general = /general/i.exec(fmt.replace(/"[^"]*"/g, (q) => ' '.repeat(q.length)));
+  if (general) {
+    const lit = (t: string) => t.replace(/"/g, '');
+    const text = (t: string) => (t ? `<number:text>${esc(t)}</number:text>` : '');
+    return `<number:number-style style:name="${name}">${text(lit(fmt.slice(0, general.index)))}<number:number number:min-integer-digits="1"/>${text(lit(fmt.slice(general.index + 7)))}</number:number-style>`;
+  }
   const percent = fmt.includes('%');
   const core = /[#0][#0,]*(\.0+)?/.exec(fmt.replace(/"[^"]*"/g, (q) => ' '.repeat(q.length)));
   const decimals = core?.[1] ? core[1].length - 1 : 0;
@@ -256,7 +263,8 @@ export function writeOds(wb: Workbook): Uint8Array {
         const v = cell.formula !== undefined ? calc.value(si, [r, c]) : cell.value;
         const formula = cell.formula !== undefined ? ` table:formula="${esc(excelToOf(cell.formula))}"` : '';
         const text = display(v);
-        rowXml += `<table:table-cell${cellStyle(cell.numFmt, cell.style)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
+        // UNIT-002: a formula giving a quantity is written with its unit in the number format.
+        rowXml += `<table:table-cell${cellStyle(cell.formula !== undefined ? calc.format(si, [r, c]) : cell.numFmt, cell.style)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
       }
       if (gap) rowXml += `<table:table-cell${gap > 1 ? ` table:number-columns-repeated="${gap}"` : ''}/>`;
       if (!rowXml) rowXml = `<table:table-cell table:number-columns-repeated="${cols}"/>`;

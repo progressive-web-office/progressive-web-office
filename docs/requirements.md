@@ -551,6 +551,15 @@ integration is ever needed.
 | VER-002 | S | 0.2.0 | For a document of a GitHub or GitLab repository, the system shall list the commits that changed it on its branch, newest first, with message, author and date, and compare each with the one before or with the document as it is now (unsaved changes included). |
 | VER-003 | S | 0.2.0 | The system shall open a version of the history in place of the document's content, the document staying where it is, and restore a version as a new commit, after a confirmation, the history kept as it is. |
 
+## 9s. Physical quantities (UNIT)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| UNIT-001 | S | 0.2.0 | The system shall know units — SI base and named units with their prefixes, common other units — combined by products, quotients and powers (`kN·m`, `km/h`, `m/s²`), with their dimension over the seven SI base quantities, and provide Excel's CONVERT (temperatures included). |
+| UNIT-002 | S | 0.2.0 | A number typed with a unit (`12 mm`) shall be a quantity, kept as the number with the unit in its number format, so that XLSX, ODS and CSV files keep it and other spreadsheets show it; a formula giving a quantity shall be shown and saved in its unit; QTY and UNIT shall make a quantity and give its unit. |
+| UNIT-003 | S | 0.2.0 | Formulas shall compute with quantities in SI and check their dimensions: addition, subtraction, comparisons and aggregates (SUM, AVERAGE, MIN, MAX, MEDIAN) of one dimension only, products, quotients and powers combining them, functions of numbers on dimensionless values only — anything else being the error #UNIT!; the unit of a result is that of its first operand, combined units simplified (mm·m → mm², kg·m/s² → N). |
+| UNIT-004 | S | 0.2.0 | The user shall show cells in another unit: quantities converted, plain numbers given the unit, formulas shown in it; cells of another dimension left as they were. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.

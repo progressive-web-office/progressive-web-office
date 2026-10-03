@@ -3,9 +3,12 @@ import { cellKey, parseKey, parseRef } from './address';
 import { FormulaSyntaxError, parseFormula, type Ast } from './formula';
 import { isError, serialToDate, dateToSerial, type ErrorValue, type Scalar, type Value, type Workbook } from './model';
 import { formatValue } from './number-format';
+import { add as qAdd, convertExcel, convertTo, display as qDisplay, div as qDiv, isQty, mul as qMul, pow as qPow, quantity, sameDim, scalarQty, sub as qSub, unitOfFormat, inUnit, withUnit, type Qty } from './units';
 
-type Range = { range: Value[][] };
-type EvalResult = Value | Range;
+/** UNIT-003: a value in a formula: a cell value, or a quantity with its unit. */
+type V = Value | Qty;
+type Range = { range: V[][] };
+type EvalResult = V | Range;
 
 const err = (e: string): ErrorValue => ({ error: e });
 const DIV0 = err('#DIV/0!');
@@ -15,8 +18,11 @@ const REF = err('#REF!');
 const NA = err('#N/A');
 const CYCLE = err('#CYCLE!');
 const SYNTAX = err('#ERROR!');
+/** UNIT-003: dimensions that do not match (a length plus a time…). */
+const UNIT = err('#UNIT!');
 
 const isRange = (v: EvalResult): v is Range => typeof v === 'object' && v !== null && 'range' in v;
+const dimensionless = (q: Qty): boolean => q.dim.every((d) => d === 0);
 
 class FormulaError extends Error {
   constructor(readonly value: ErrorValue) {
@@ -51,7 +57,12 @@ function finite(x: number): number {
   return x;
 }
 
-export function toNumber(v: Value): number {
+export function toNumber(v: V): number {
+  if (isQty(v)) {
+    // A quantity with a dimension is not a plain number (SIN of a length…).
+    if (!dimensionless(v)) throw new FormulaError(UNIT);
+    return v.v;
+  }
   if (isError(v)) throw new FormulaError(v);
   if (v === null || v === '') return 0;
   if (typeof v === 'number') return v;
@@ -61,7 +72,11 @@ export function toNumber(v: Value): number {
   throw new FormulaError(VALUE);
 }
 
-export function toText(v: Value): string {
+export function toText(v: V): string {
+  if (isQty(v)) {
+    const d = qDisplay(v);
+    return d.unit ? `${formatGeneral(+d.value.toPrecision(15))} ${d.unit}` : formatGeneral(d.value);
+  }
   if (isError(v)) throw new FormulaError(v);
   if (v === null) return '';
   if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
@@ -69,7 +84,8 @@ export function toText(v: Value): string {
   return v;
 }
 
-function toBool(v: Value): boolean {
+function toBool(v: V): boolean {
+  if (isQty(v)) return toNumber(v) !== 0;
   if (isError(v)) throw new FormulaError(v);
   if (typeof v === 'boolean') return v;
   if (v === null) return false;
@@ -95,7 +111,14 @@ function round(x: number, digits: number, mode: 'half' | 'up' | 'down' = 'half')
   return (Math.sign(x) * r) / m;
 }
 
-function compare(a: Value, b: Value): number {
+function compare(a: V, b: V): number {
+  // UNIT-003: quantities compare in SI, of the same dimension only.
+  if (isQty(a) || isQty(b)) {
+    const x = isQty(a) ? a : typeof a === 'number' ? scalarQty(a) : undefined;
+    const y = isQty(b) ? b : typeof b === 'number' ? scalarQty(b) : undefined;
+    if (!x || !y || !sameDim(x.dim, y.dim)) throw new FormulaError(UNIT);
+    return x.v - y.v;
+  }
   const rank = (v: Value): number => (typeof v === 'number' || v === null ? 0 : typeof v === 'string' ? 1 : 2);
   if (isError(a)) throw new FormulaError(a);
   if (isError(b)) throw new FormulaError(b);
@@ -114,7 +137,7 @@ function compare(a: Value, b: Value): number {
 
 // --- criteria (COUNTIF / SUMIF) ------------------------------------------------
 
-function matcher(criteria: Value): (v: Value) => boolean {
+function matcher(criteria: V): (v: V) => boolean {
   if (typeof criteria === 'number' || typeof criteria === 'boolean') return (v) => !isError(v) && v !== null && compare(v, criteria) === 0;
   const text = toText(criteria);
   const m = /^(<=|>=|<>|<|>|=)?(.*)$/s.exec(text)!;
@@ -153,7 +176,7 @@ function matcher(criteria: Value): (v: Value) => boolean {
  * not above it in an ascending list (1), or the last not below it in a
  * descending one (−1).
  */
-function lookupIndex(list: Value[], needle: Value, mode: number): number {
+function lookupIndex(list: V[], needle: V, mode: number): number {
   let found = -1;
   for (let i = 0; i < list.length; i++) {
     const v = list[i] ?? null;
@@ -172,7 +195,7 @@ function lookupIndex(list: Value[], needle: Value, mode: number): number {
 // --- calculator -----------------------------------------------------------------
 
 export class Calculator {
-  private cache = new Map<string, Value>();
+  private cache = new Map<string, V>();
   private computing = new Set<string>();
   private parsed = new Map<string, Ast | ErrorValue>();
 
@@ -183,13 +206,56 @@ export class Calculator {
     this.cache.clear();
   }
 
-  /** Computed value of a cell (A1 reference or [row, col]). */
+  /**
+   * Computed value of a cell (A1 reference or [row, col]); a quantity is
+   * given as a number in the unit it is shown in (that of the cell's number
+   * format, else its own) — see `format` for that unit (UNIT-002).
+   */
   value(sheetIndex: number, ref: string | [number, number]): Value {
-    const [row, col] = Array.isArray(ref) ? ref : (() => {
-      const r = parseRef(ref);
-      if (!r) throw new Error(`Invalid reference ${ref}`);
-      return [r.row, r.col] as const;
-    })();
+    const [row, col] = this.rowCol(ref);
+    const v = this.computed(sheetIndex, row, col);
+    if (!isQty(v)) return v;
+    const cell = this.wb.sheets[sheetIndex]?.cells.get(cellKey(row, col));
+    // A typed quantity: the number typed.
+    if (cell && cell.formula === undefined && typeof cell.value === 'number') return cell.value;
+    const wanted = unitOfFormat(cell?.numFmt);
+    if (wanted) {
+      const x = inUnit(v, wanted);
+      return x === undefined ? UNIT : +x.toPrecision(15);
+    }
+    const d = qDisplay(v);
+    return +d.value.toPrecision(15);
+  }
+
+  /** UNIT-002: the quantity of a cell, if it holds one. */
+  quantity(sheetIndex: number, ref: string | [number, number]): Qty | undefined {
+    const [row, col] = this.rowCol(ref);
+    const v = this.computed(sheetIndex, row, col);
+    return isQty(v) && !dimensionless(v) ? v : undefined;
+  }
+
+  /**
+   * UNIT-002: the number format a cell is shown with: its own, or, for a
+   * formula giving a quantity, one showing the quantity's unit.
+   */
+  format(sheetIndex: number, ref: string | [number, number]): string | undefined {
+    const [row, col] = this.rowCol(ref);
+    const cell = this.wb.sheets[sheetIndex]?.cells.get(cellKey(row, col));
+    if (!cell || cell.formula === undefined || unitOfFormat(cell.numFmt)) return cell?.numFmt;
+    const q = this.quantity(sheetIndex, [row, col]);
+    if (!q) return cell.numFmt;
+    const base = cell.numFmt && !/general/i.test(cell.numFmt) && /^[#0?][#0?,.]*$/.test(cell.numFmt) ? cell.numFmt : 'General';
+    return withUnit(q.unit, base);
+  }
+
+  private rowCol(ref: string | [number, number]): [number, number] {
+    if (Array.isArray(ref)) return ref;
+    const r = parseRef(ref);
+    if (!r) throw new Error(`Invalid reference ${ref}`);
+    return [r.row, r.col];
+  }
+
+  private computed(sheetIndex: number, row: number, col: number): V {
     try {
       return this.cell(sheetIndex, row, col);
     } catch (e) {
@@ -215,7 +281,7 @@ export class Calculator {
     });
   }
 
-  private cell(si: number, row: number, col: number): Value {
+  private cell(si: number, row: number, col: number): V {
     const sheet = this.wb.sheets[si];
     if (!sheet) return REF;
     const key = `${si}:${cellKey(row, col)}`;
@@ -223,10 +289,15 @@ export class Calculator {
     if (cached !== undefined) return cached;
     const cell = sheet.cells.get(cellKey(row, col));
     if (!cell) return null;
-    if (cell.formula === undefined) return cell.value;
+    if (cell.formula === undefined) {
+      // UNIT-002: a number with a unit in its format is a quantity.
+      const unit = typeof cell.value === 'number' ? unitOfFormat(cell.numFmt) : undefined;
+      const q = unit ? quantity(cell.value as number, unit) : undefined;
+      return q ?? cell.value;
+    }
     if (this.computing.has(key)) return CYCLE;
     this.computing.add(key);
-    let result: Value;
+    let result: V;
     try {
       const ast = this.parse(cell.formula);
       result = isError(ast) ? ast : this.scalar(this.eval(ast, si));
@@ -237,6 +308,9 @@ export class Calculator {
       this.computing.delete(key);
     }
     if (typeof result === 'number' && !Number.isFinite(result)) result = err('#NUM!');
+    if (isQty(result) && !Number.isFinite(result.v)) result = err('#NUM!');
+    // A dimensionless quantity is a plain number.
+    if (isQty(result) && dimensionless(result)) result = result.v;
     this.cache.set(key, result);
     return result;
   }
@@ -256,7 +330,7 @@ export class Calculator {
   }
 
   /** Reduce a range to its top-left value (implicit intersection light). */
-  private scalar(v: EvalResult): Value {
+  private scalar(v: EvalResult): V {
     if (!isRange(v)) return v;
     return v.range[0]?.[0] ?? null;
   }
@@ -290,7 +364,9 @@ export class Calculator {
       case 'pct':
         return toNumber(this.val(ast.e, si)) / 100;
       case 'un': {
-        const n = toNumber(this.val(ast.e, si));
+        const x = this.val(ast.e, si);
+        if (isQty(x)) return ast.op === '-' ? { ...x, v: -x.v } : x;
+        const n = toNumber(x);
         return ast.op === '-' ? -n : n;
       }
       case 'bin':
@@ -301,13 +377,13 @@ export class Calculator {
   }
 
   /** Evaluate to a scalar, propagating errors. */
-  private val(ast: Ast, si: number): Value {
+  private val(ast: Ast, si: number): V {
     const v = this.scalar(this.eval(ast, si));
     if (isError(v)) throw new FormulaError(v);
     return v;
   }
 
-  private range(si: number, r1: number, c1: number, r2: number, c2: number): Value[][] {
+  private range(si: number, r1: number, c1: number, r2: number, c2: number): V[][] {
     const sheet = this.wb.sheets[si]!;
     // Clamp whole-row/column ranges to the used area.
     let maxR = -1;
@@ -319,16 +395,18 @@ export class Calculator {
     }
     r2 = Math.min(r2, maxR);
     c2 = Math.min(c2, maxC);
-    const out: Value[][] = [];
+    const out: V[][] = [];
     for (let r = r1; r <= r2; r++) {
-      const row: Value[] = [];
+      const row: V[] = [];
       for (let c = c1; c <= c2; c++) row.push(this.cell(si, r, c));
       out.push(row);
     }
     return out;
   }
 
-  private binary(op: string, a: Value, b: Value): Value {
+  private binary(op: string, a: V, b: V): V {
+    // UNIT-003: arithmetic of quantities, dimensions checked.
+    if ((isQty(a) || isQty(b)) && ['+', '-', '*', '/', '^'].includes(op)) return this.quantityOp(op, a, b);
     switch (op) {
       case '+':
         return toNumber(a) + toNumber(b);
@@ -363,6 +441,25 @@ export class Calculator {
     }
   }
 
+  private quantityOp(op: string, a: V, b: V): V {
+    const asQty = (x: V): Qty => (isQty(x) ? x : scalarQty(toNumber(x)));
+    const x = asQty(a);
+    const y = asQty(b);
+    let r: Qty | undefined;
+    if (op === '+') r = qAdd(x, y);
+    else if (op === '-') r = qSub(x, y);
+    else if (op === '*') r = qMul(x, y);
+    else if (op === '/') {
+      if (y.v === 0) throw new FormulaError(DIV0);
+      r = qDiv(x, y);
+    } else {
+      // A power: the exponent has no dimension.
+      r = qPow(x, toNumber(b));
+    }
+    if (!r) throw new FormulaError(UNIT);
+    return r;
+  }
+
   /** Numbers from arguments: ranges contribute numbers only, scalars are coerced. */
   private numbers(args: Ast[], si: number): number[] {
     const out: number[] = [];
@@ -372,6 +469,7 @@ export class Calculator {
         for (const row of v.range) for (const x of row) {
           if (isError(x)) throw new FormulaError(x);
           if (typeof x === 'number') out.push(x);
+          else if (isQty(x)) out.push(toNumber(x));
         }
       } else {
         out.push(toNumber(v));
@@ -380,8 +478,44 @@ export class Calculator {
     return out;
   }
 
-  private values(args: Ast[], si: number): Value[] {
-    const out: Value[] = [];
+  /**
+   * UNIT-003: the numbers of the arguments in SI, all of the same dimension,
+   * and the quantity whose unit the result is shown in (the first one).
+   */
+  private measures(args: Ast[], si: number): { xs: number[]; like?: Qty; items: (Qty | undefined)[] } {
+    const xs: number[] = [];
+    const items: (Qty | undefined)[] = [];
+    let like: Qty | undefined;
+    let plain = false;
+    const take = (x: V, fromRange: boolean): void => {
+      if (isError(x)) throw new FormulaError(x);
+      if (isQty(x)) {
+        if (like && !sameDim(like.dim, x.dim)) throw new FormulaError(UNIT);
+        like ??= x;
+        xs.push(x.v);
+        items.push(x);
+      } else if (typeof x === 'number' || !fromRange) {
+        plain = true;
+        xs.push(toNumber(x));
+        items.push(undefined);
+      }
+    };
+    for (const a of args) {
+      const v = this.eval(a, si);
+      if (isRange(v)) for (const row of v.range) for (const x of row) take(x, true);
+      else take(v, false);
+    }
+    if (like && plain && !dimensionless(like)) throw new FormulaError(UNIT);
+    return like ? { xs, like, items } : { xs, items };
+  }
+
+  /** A number in SI as a quantity like `like` (or a plain number). */
+  private measured(x: number, like: Qty | undefined): V {
+    return like && !dimensionless(like) ? { ...like, v: x } : x;
+  }
+
+  private values(args: Ast[], si: number): V[] {
+    const out: V[] = [];
     for (const a of args) {
       const v = this.eval(a, si);
       if (isRange(v)) for (const row of v.range) out.push(...row);
@@ -390,14 +524,14 @@ export class Calculator {
     return out;
   }
 
-  private rangeArg(a: Ast | undefined, si: number): Value[][] {
+  private rangeArg(a: Ast | undefined, si: number): V[][] {
     if (!a) throw new FormulaError(VALUE);
     const v = this.eval(a, si);
     return isRange(v) ? v.range : [[v]];
   }
 
   /** The value of an argument, an error being a value (ISERROR, IFNA). */
-  private caught(a: Ast, si: number): Value {
+  private caught(a: Ast, si: number): V {
     try {
       return this.scalar(this.eval(a, si));
     } catch (e) {
@@ -413,31 +547,66 @@ export class Calculator {
       if (args.length < min || args.length > max) throw new FormulaError(VALUE);
     };
     switch (name) {
-      case 'SUM':
-        return this.numbers(args, si).reduce((a, b) => a + b, 0);
-      case 'PRODUCT':
-        return this.numbers(args, si).reduce((a, b) => a * b, 1);
+      case 'SUM': {
+        const { xs, like } = this.measures(args, si);
+        return this.measured(xs.reduce((a, b) => a + b, 0), like);
+      }
+      case 'PRODUCT': {
+        // UNIT-003: units multiply too.
+        let acc: V = 1;
+        for (const v of this.values(args, si)) {
+          if (isError(v)) throw new FormulaError(v);
+          if (isQty(v) || typeof v === 'number') acc = isQty(v) || isQty(acc) ? this.quantityOp('*', acc, v) : (acc as number) * v;
+        }
+        return acc;
+      }
       case 'AVERAGE': {
-        const xs = this.numbers(args, si);
+        const { xs, like } = this.measures(args, si);
         if (!xs.length) throw new FormulaError(DIV0);
-        return xs.reduce((a, b) => a + b, 0) / xs.length;
+        return this.measured(xs.reduce((a, b) => a + b, 0) / xs.length, like);
       }
-      case 'MIN': {
-        const xs = this.numbers(args, si);
-        return xs.length ? Math.min(...xs) : 0;
-      }
+      case 'MIN':
       case 'MAX': {
-        const xs = this.numbers(args, si);
-        return xs.length ? Math.max(...xs) : 0;
+        // UNIT-003: the quantity found, in its own unit.
+        const { xs, like, items } = this.measures(args, si);
+        if (!xs.length) return 0;
+        const best = name === 'MIN' ? Math.min(...xs) : Math.max(...xs);
+        return this.measured(best, items[xs.indexOf(best)] ?? like);
       }
       case 'MEDIAN': {
-        const xs = this.numbers(args, si).sort((a, b) => a - b);
+        const { xs, like } = this.measures(args, si);
+        xs.sort((a, b) => a - b);
         if (!xs.length) throw new FormulaError(NA);
         const mid = Math.floor(xs.length / 2);
-        return xs.length % 2 ? xs[mid]! : (xs[mid - 1]! + xs[mid]!) / 2;
+        return this.measured(xs.length % 2 ? xs[mid]! : (xs[mid - 1]! + xs[mid]!) / 2, like);
       }
       case 'COUNT':
-        return this.values(args, si).filter((v) => typeof v === 'number').length;
+        return this.values(args, si).filter((v) => typeof v === 'number' || isQty(v)).length;
+      case 'CONVERT': {
+        // UNIT-001: Excel's CONVERT; a quantity is converted from its own unit.
+        need(3, 3);
+        const x = this.val(args[0]!, si);
+        if (isQty(x)) {
+          const q = convertTo(x, s(2));
+          if (!q) throw new FormulaError(NA);
+          return q;
+        }
+        const r = convertExcel(toNumber(x), s(1), s(2));
+        if (r === undefined) throw new FormulaError(NA);
+        return r;
+      }
+      case 'QTY': {
+        // UNIT-002: a quantity in a formula: QTY(12; "mm").
+        need(2, 2);
+        const q = quantity(n(0), s(1));
+        if (!q) throw new FormulaError(NA);
+        return q;
+      }
+      case 'UNIT': {
+        need(1, 1);
+        const x = this.val(args[0]!, si);
+        return isQty(x) ? x.unit : '';
+      }
       case 'COUNTA':
         return this.values(args, si).filter((v) => v !== null && v !== '').length;
       case 'COUNTBLANK':
@@ -472,29 +641,44 @@ export class Calculator {
         need(1, 1);
         return !toBool(this.val(args[0]!, si));
       case 'ROUND':
-        need(1, 2);
-        return round(n(0), n(1));
       case 'ROUNDUP':
+      case 'ROUNDDOWN': {
         need(1, 2);
-        return round(n(0), n(1), 'up');
-      case 'ROUNDDOWN':
-        need(1, 2);
-        return round(n(0), n(1), 'down');
+        const mode = name === 'ROUND' ? 'half' : name === 'ROUNDUP' ? 'up' : 'down';
+        const x = this.val(args[0]!, si);
+        // UNIT-003: a quantity is rounded in the unit it is shown in.
+        if (isQty(x) && !dimensionless(x)) {
+          const d = qDisplay(x);
+          return quantity(round(d.value, n(1), mode), d.unit)!;
+        }
+        return round(toNumber(x), n(1), mode);
+      }
       case 'INT':
         need(1, 1);
         return Math.floor(n(0));
-      case 'ABS':
+      case 'ABS': {
         need(1, 1);
-        return Math.abs(n(0));
+        const x = this.val(args[0]!, si);
+        if (isQty(x)) return { ...x, v: Math.abs(x.v) };
+        return Math.abs(toNumber(x));
+      }
       case 'SQRT': {
         need(1, 1);
-        const x = n(0);
-        if (x < 0) throw new FormulaError(err('#NUM!'));
-        return Math.sqrt(x);
+        const x = this.val(args[0]!, si);
+        if (isQty(x) && !dimensionless(x)) {
+          if (x.v < 0) throw new FormulaError(err('#NUM!'));
+          return qPow(x, 0.5)!;
+        }
+        const y = toNumber(x);
+        if (y < 0) throw new FormulaError(err('#NUM!'));
+        return Math.sqrt(y);
       }
-      case 'POWER':
+      case 'POWER': {
         need(2, 2);
-        return n(0) ** n(1);
+        const x = this.val(args[0]!, si);
+        if (isQty(x) && !dimensionless(x)) return this.quantityOp('^', x, this.val(args[1]!, si));
+        return toNumber(x) ** n(1);
+      }
       case 'MOD': {
         need(2, 2);
         const d = n(1);
@@ -807,7 +991,7 @@ export class Calculator {
         const counting = name === 'COUNTIFS';
         const target = counting ? undefined : this.rangeArg(single ? (args[2] ?? args[0]) : args[0], si).flat();
         const start = counting || single ? 0 : 1;
-        const pairs: { cells: Value[]; test: (v: Value) => boolean }[] = [];
+        const pairs: { cells: V[]; test: (v: V) => boolean }[] = [];
         if (single) pairs.push({ cells: this.rangeArg(args[0], si).flat(), test: matcher(this.val(args[1]!, si)) });
         else {
           if (args.length - start < 2 || (args.length - start) % 2) throw new FormulaError(VALUE);

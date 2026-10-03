@@ -45,6 +45,8 @@ function filterNames(wb: Workbook): string {
   return names.length ? `<definedNames>${names.join('')}</definedNames>` : '';
 }
 
+
+const EXCEL_ERRORS = new Set(['#NULL!', '#DIV/0!', '#VALUE!', '#REF!', '#NAME?', '#NUM!', '#N/A', '#GETTING_DATA']);
 export function writeXlsx(wb: Workbook): Uint8Array {
   const calc = new Calculator(wb);
   const strings: string[] = [];
@@ -102,13 +104,15 @@ export function writeXlsx(wb: Workbook): Uint8Array {
     for (const [key, cell] of sheet.cells) {
       const [r, c] = parseKey(key);
       const ref = refName(r, c);
-      const s = style(cell.numFmt, cell.style);
+      // UNIT-002: a formula giving a quantity is written with its unit in the number format.
+      const s = style(cell.formula !== undefined ? calc.format(si, [r, c]) : cell.numFmt, cell.style);
       const sAttr = s ? ` s="${s}"` : '';
       let xml: string;
       if (cell.formula !== undefined) {
         const v = calc.value(si, [r, c]);
         const f = `<f>${esc(addFn(cell.formula))}</f>`;
-        if (isError(v)) xml = `<c r="${ref}"${sAttr} t="e">${f}<v>${esc(v.error)}</v></c>`;
+        // Errors of this application only (#UNIT!) are #VALUE! for other spreadsheets.
+        if (isError(v)) xml = `<c r="${ref}"${sAttr} t="e">${f}<v>${esc(EXCEL_ERRORS.has(v.error) ? v.error : '#VALUE!')}</v></c>`;
         else if (typeof v === 'number') xml = `<c r="${ref}"${sAttr}>${f}<v>${v}</v></c>`;
         else if (typeof v === 'boolean') xml = `<c r="${ref}"${sAttr} t="b">${f}<v>${v ? 1 : 0}</v></c>`;
         else if (typeof v === 'string') xml = `<c r="${ref}"${sAttr} t="str">${f}<v>${esc(v)}</v></c>`;

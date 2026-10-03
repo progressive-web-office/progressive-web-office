@@ -59,6 +59,74 @@ Errors are shown in the cell: `#DIV/0!`, `#VALUE!`, `#NAME?` (unknown
 function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`
 (syntax error) and `#CYCLE!` (circular reference).
 
+## Physical quantities and units
+
+A cell can hold a **quantity**: a number and its unit. Type them together:
+`12 mm`, `3.5 kN`, `9.81 m/s²`, `230 V`, `50 km/h`, `2.5 kWh`. The cell
+shows `12 mm`, the formula bar too, and formulas compute with the units —
+**dimensional analysis**, as in physics:
+
+| Formula | Result | Why |
+|---------|--------|-----|
+| `=A1+A2` with `12 mm` and `3 m` | `3012 mm` | lengths add up, in the unit of the first |
+| `=A2+A1` | `3.012 m` | |
+| `=A1*A1` | `144 mm²` | units multiply |
+| `=B1*B2` with `2 kN` and `0.5 m` | `1 kN·m` | |
+| `=C1/C2` with `100 km` and `2 h` | `50 km/h` | |
+| `=D1*D2` with `3 kg` and `2 m/s²` | `6 N` | several units of a named dimension: the named unit |
+| `=A1/A2` | `0.004` | same dimension: a pure number |
+| `=SQRT(A1*A1)` | `12 mm` | |
+| `=A1+E1` with `12 mm` and `2 s` | **`#UNIT!`** | a length and a time cannot be added |
+| `=A1+1` | **`#UNIT!`** | a length and a pure number neither |
+| `=SIN(A1)` | **`#UNIT!`** | functions of numbers need a dimensionless value |
+
+What understands units:
+
+- `+` and `-` (same dimension), `*`, `/`, `^` (dimensions combined),
+  comparisons (`=`, `<`, `>`… between the same dimension);
+- `SUM`, `AVERAGE`, `MIN`, `MAX`, `MEDIAN` of quantities of one dimension —
+  a column in `m`, `cm` and `mm` adds up correctly; `PRODUCT`, `ABS`,
+  `ROUND`/`ROUNDUP`/`ROUNDDOWN` (in the unit shown), `SQRT`, `POWER`,
+  `COUNT`;
+- **`CONVERT(number; "from"; "to")`**, as in Excel and LibreOffice
+  (`=CONVERT(100;"C";"F")` → 212, `=CONVERT(1;"in";"mm")` → 25.4); given a
+  quantity, it converts it from its own unit: `=CONVERT(A3;"km";"mi")`;
+- **`QTY(number; "unit")`** makes a quantity in a formula
+  (`=QTY(9.81;"m/s²")*A1`), and **`UNIT(cell)`** gives the unit of a
+  quantity as text.
+
+**Number format › Unit…** shows the selected cells in another unit: a
+quantity is **converted** (`12 mm` → `1.2 cm`), a plain number **gets** the
+unit, a formula is **shown** in it (`=B1*B2` in `N·m` → `1000 N·m`); cells of
+another dimension are left as they were, and a formula whose result is not of
+the dimension of its unit shows `#UNIT!`.
+
+### Units known
+
+- SI base units and their **prefixes** from quecto (`q`) to quetta (`Q`):
+  `m`, `g`, `s`, `A`, `K`, `mol`, `cd` — `mm`, `km`, `µs` (or `us`), `kg`, `mA`…
+- named SI units: `N`, `J`, `W`, `Pa`, `Hz`, `C`, `V`, `Ω` (or `ohm`), `F`,
+  `H`, `T`, `Wb`, `S`, `lm`, `lx`, `Bq`, `Gy`, `Sv`, `kat`, `rad`, `sr`;
+- others: `L` (or `l`), `t`, `eV`, `Wh`, `Ah`, `bar`, `cal`, `min`, `h`,
+  `d`, `yr`, `ha`, `Å`, `in`, `ft`, `yd`, `mi`, `nmi`, `lb`, `oz`, `lbf`, `gal`,
+  `atm`, `psi`, `mmHg`, `Torr`, `hp`, `°C`, `°F`;
+- combined with `·` (or `*`, `.`, a space) and `/`, with powers as `²`,
+  `^2`, `^-1` or `m2`: `kN·m`, `km/h`, `m/s²`, `kg·m^-3`, `1/(mol·L)`.
+
+`°C` and `°F` count as temperature **differences** in calculations (1 °C =
+1 K): to convert a temperature reading, use `CONVERT` (`=CONVERT(20;"C";"K")`
+→ 293.15).
+
+### In files
+
+A quantity is saved as a **number in its unit with the unit in its number
+format** (`General" mm"`), in XLSX and ODS: Excel and LibreOffice show
+`12 mm` and compute with the number (without checking the units); opened
+again here, the cells are quantities again. A formula giving a quantity is
+saved with its result in the unit shown. In CSV, quantities are written as
+`12 mm` and read back as quantities. `QTY` and `UNIT` are functions of this
+application: other spreadsheets show `#NAME?` for them.
+
 ## Sheets, rows and columns
 
 - **+** adds a sheet; double-click a tab to rename it; 🗑 deletes the current

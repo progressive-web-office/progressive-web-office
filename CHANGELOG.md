@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Physical quantities and dimensional analysis** in spreadsheets
+  (UNIT-001..UNIT-004): type `12 mm`, `3.5 kN`, `9.81 m/s²`; formulas compute
+  with the units (`12 mm + 3 m` → `3012 mm`, `2 kN × 0.5 m` → `1 kN·m`) and
+  refuse what makes no sense (`#UNIT!` for a length plus a time); SUM, MIN,
+  MAX… of quantities; `CONVERT` as in Excel, `QTY` and `UNIT`; *Number format
+  › Unit…* converts cells; units kept in XLSX, ODS and CSV, shown by other
+  spreadsheets.
 - **History of a document in its repository** (VER-002, VER-003): the
   commits that changed it, each compared with the one before or with the
   document as it is now, opened, or restored by a new commit; **comparison
