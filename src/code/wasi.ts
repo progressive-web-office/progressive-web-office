@@ -82,7 +82,7 @@ export function runWasi(module: WebAssembly.Module, args: string[], write: (fd: 
     fd_prestat_get: () => EBADF,
     fd_prestat_dir_name: () => EBADF,
     random_get(ptr, len) {
-      crypto.getRandomValues(bytes().subarray(ptr, ptr + len));
+      crypto.getRandomValues(bytes().subarray(ptr, ptr + len) as Uint8Array<ArrayBuffer>);
       return 0;
     },
     sched_yield: () => 0,
