@@ -129,13 +129,13 @@ button.doc-name:hover { border-color: var(--border); background: var(--sel); }
   background: var(--surface); border-top: 1px solid var(--border);
 }
 .app-busy {
-  position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+  position: fixed; bottom: calc(40px + var(--keyboard-inset, 0px)); left: 50%; transform: translateX(-50%);
   background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 20px;
 }
 .app-busy[hidden] { display: none; }
 
 .update-banner {
-  position: fixed; bottom: 16px; right: 16px; display: flex; gap: 8px; align-items: center;
+  position: fixed; bottom: calc(16px + var(--keyboard-inset, 0px)); right: 16px; display: flex; gap: 8px; align-items: center;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 10px 14px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
@@ -994,7 +994,7 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .palette-button { font-weight: 600; border-color: var(--accent) !important; color: var(--accent); }
 .palette-fab { display: none; }
 @media (max-width: 700px), (pointer: coarse) and (max-width: 1000px) {
-  .palette-fab { display: grid; place-items: center; position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 900; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-contrast); font-size: 1.6rem; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
+  .palette-fab { display: grid; place-items: center; position: fixed; right: 16px; bottom: calc(16px + max(env(safe-area-inset-bottom), var(--keyboard-inset, 0px))); z-index: 900; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-contrast); font-size: 1.6rem; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); }
   dialog.dialog.palette { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border-radius: 0; box-sizing: border-box; }
   dialog.dialog.palette .palette-list { max-height: calc(100dvh - 80px); }
   .palette-list li { padding: 10px; }

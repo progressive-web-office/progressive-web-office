@@ -486,6 +486,33 @@ test.describe('on a phone', () => {
     await expect(palette).toBeVisible();
     expect((await palette.boundingBox())!.width).toBeGreaterThan(380);
   });
+
+  test('the round button stays above the on-screen keyboard (UI-022)', async ({ page }) => {
+    // The visible part of the screen, as the browser reports it when a keyboard opens.
+    await page.addInitScript(() => {
+      const vv = Object.assign(new EventTarget(), { height: 800, width: 390, offsetTop: 0, offsetLeft: 0, scale: 1, pageTop: 0, pageLeft: 0 });
+      Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+    });
+    const editor = await newDocument(page);
+    const fab = page.locator('.palette-fab');
+    await expect(fab).toBeVisible();
+    await editor.click();
+    // The keyboard covers the bottom 320 px.
+    await page.evaluate(() => {
+      const vv = window.visualViewport as unknown as EventTarget & { height: number };
+      vv.height = 480;
+      vv.dispatchEvent(new Event('resize'));
+    });
+    await expect.poll(async () => { const b = (await fab.boundingBox())!; return b.y + b.height; }).toBeLessThanOrEqual(480);
+    await expect(page.locator('html')).toHaveClass(/keyboard-open/);
+    // Closed: back to the corner.
+    await page.evaluate(() => {
+      const vv = window.visualViewport as unknown as EventTarget & { height: number };
+      vv.height = 800;
+      vv.dispatchEvent(new Event('resize'));
+    });
+    await expect.poll(async () => { const b = (await fab.boundingBox())!; return b.y + b.height; }).toBeGreaterThan(760);
+  });
 });
 
 test('keeps a version at each save and opens an older one (FILE-025)', async ({ page }) => {

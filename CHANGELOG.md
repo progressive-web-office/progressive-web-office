@@ -393,6 +393,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- On a phone, the round ⌘ Commands button (and the busy and update notices)
+  stay above the on-screen keyboard instead of being hidden behind it (UI-022).
 - Git: a pasted repository address is understood at once (no need to press
   *Go*), and what was understood is shown (service, owner, repository,
   branch, path) with the fields filled in; a public repository opens without
