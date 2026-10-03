@@ -91,7 +91,7 @@ test('race signs in very large letters, turned to portrait and back (FILE-018, P
 test('the background of a slide and the vertical alignment of a text box can be changed (PRES-005)', async ({ page }) => {
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'New presentation' }).first().click();
-  const bg = page.getByLabel('Slide background colour');
+  const bg = page.getByLabel('Slide background colour', { exact: true });
   await bg.evaluate((el: HTMLInputElement) => {
     el.value = '#ffd400';
     el.dispatchEvent(new Event('change'));

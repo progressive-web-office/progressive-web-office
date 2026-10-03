@@ -1569,6 +1569,8 @@ export class DocumentEditor implements EditorView {
         h('option', { value: 'mode-reading' }, `${mark(this.mode === 'reading')}${t('mode.reading')}`),
         h('option', { value: 'hyphenate' }, `${mark(this.element.classList.contains('hyphenate'))}${t('typo.hyphenate')}`),
         h('option', { value: 'rulers' }, `${mark(this.element.classList.contains('show-rulers'))}${t('ruler.menu')}`),
+        // COLOR-002: the colours as a printer would print them.
+        h('option', { value: 'proof' }, `${mark(this.element.classList.contains('soft-proof'))}${t('color.proof')}`),
         h('option', { value: 'readability' }, `${mark(this.writing.readability)}${t('wview.readability')}`),
         h('option', { value: 'focus' }, `${mark(this.writing.focus)}${t('wview.focus')}`),
         h('option', { value: 'typewriter' }, `${mark(this.writing.typewriter)}${t('wview.typewriter')}`),
@@ -1592,6 +1594,7 @@ export class DocumentEditor implements EditorView {
         return;
       }
       if (value === 'rulers') this.setRulers(!this.element.classList.contains('show-rulers'));
+      if (value === 'proof') this.element.classList.toggle('soft-proof');
       if (value === 'hyphenate') {
         const on = !this.element.classList.contains('hyphenate');
         this.element.classList.toggle('hyphenate', on);
@@ -2396,7 +2399,18 @@ export class DocumentEditor implements EditorView {
       apply(null);
       this.refocus();
     }, { text: '×', title: resetLabel, className: 'color-reset' });
-    return h('span', { class: 'color-control' }, main, picker, reset);
+    // COLOR-001: a colour by its RGB or CMYK values.
+    const more = button(`${label}: ${t('color.more')}`, async () => {
+      const { colorDialog } = await import('../color/dialog');
+      const hex = await colorDialog(this.element, { title: label, current: picker.value });
+      if (hex) {
+        picker.value = hex;
+        main.style.setProperty('--swatch', hex);
+        apply(hex);
+      }
+      this.refocus();
+    }, { text: '⋯', title: t('color.more'), className: 'color-more' });
+    return h('span', { class: 'color-control' }, main, picker, more, reset);
   }
 
   /** Paragraph spacing dialog (DOC-020). */

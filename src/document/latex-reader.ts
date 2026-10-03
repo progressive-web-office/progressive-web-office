@@ -5,6 +5,7 @@
 import { parseGeometryOptions } from './geometry';
 import { cleanColumns, defaultGeometry, inColumns } from './model';
 import { lengthPt, spaceOf, stretchOf } from './springs';
+import { latexColor } from '../color/convert';
 import { parseBibtex, type BibEntry } from './bibliography';
 import { addResource, type PageNumberFormat, cleanFormat, cleanMeta, cleanPageSetup, emptyDocument, normalizeRuns, type Align, type Block, type Paragraph, type ParagraphStyle, type RichDocument, type Run, type TableCell, type TextFormat, type SeqKind, seqKindOf, crossTargets, allParagraphs, isRefRun, resolveAnchors } from './model';
 
@@ -578,8 +579,11 @@ class Builder {
       case 'makebox':
         return void arg(0);
       case 'textcolor':
-      case 'colorbox':
-        return void arg(1);
+      case 'colorbox': {
+        // COLOR-001: xcolor's colours (HTML, rgb, RGB, cmyk, gray, base colours).
+        const color = latexColor(node.opt, args[0] ?? '');
+        return void arg(1, color ? { ...fmt, [name === 'textcolor' ? 'color' : 'highlight']: color } : fmt);
+      }
       case 'verb':
         return void this.text(args[0] ?? '', { ...fmt, code: true }, ctx);
       case 'href':

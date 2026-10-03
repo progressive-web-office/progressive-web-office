@@ -117,8 +117,8 @@ test('character formatting and paragraph spacing reach the file (DOC-020)', asyn
   // UI-016: any size can be typed, beyond the suggested ones.
   await page.getByLabel('Font size').fill('150');
   await page.getByLabel('Font size').press('Enter');
-  await page.getByRole('button', { name: 'Text colour' }).click(); // applies the default red
-  await page.getByRole('button', { name: 'Highlight colour' }).click();
+  await page.getByRole('button', { name: 'Text colour', exact: true }).click(); // applies the default red
+  await page.getByRole('button', { name: 'Highlight colour', exact: true }).click();
   const span = editor.locator('span[data-font="Georgia"]');
   await expect(span).toHaveText('Titre rouge');
   await expect(editor.locator('[data-size="150"]')).toHaveText('Titre rouge');

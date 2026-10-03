@@ -57,7 +57,7 @@ menu, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes it.
 | Strikethrough | S | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> |
 | Inline code | `</>` | <kbd>Ctrl</kbd>+<kbd>`</kbd> |
 | Font and size | *Default ▾* and the size field: pick a size or type any one from 1 to 999 pt, then <kbd>Enter</kbd> | <kbd>↑</kbd> / <kbd>↓</kbd> in the size field |
-| Text colour / highlight | **A** 🖍 (the swatch chooses the colour, × removes it) | |
+| Text colour / highlight | **A** 🖍 (the swatch chooses the colour, **⋯** by its RGB or CMYK values — see [Colours for print](./printing.md#colours-for-print) —, × removes it) | |
 | Clear formatting | ⌫ | <kbd>Ctrl</kbd>+<kbd>Space</kbd> |
 | Indent / outdent | ⇢ ⇠ | <kbd>Ctrl</kbd>+<kbd>]</kbd> / <kbd>Ctrl</kbd>+<kbd>[</kbd> |
 | Line spacing | ↕ ▾ (1, 1.15, 1.5, 2…) | |

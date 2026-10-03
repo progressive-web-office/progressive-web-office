@@ -1,4 +1,5 @@
 /** Presentation editor view (PRES-004..PRES-010). */
+import { colorMoreButton } from '../color/more';
 import { beforeMutation, slideTools, type AgentTool } from '../ai/tools';
 import { contentHeightPx, contentWidthPx, mmToPx, type PrintSettings } from '../print/settings';
 import { t } from '../i18n';
@@ -700,7 +701,9 @@ export class SlideEditor implements EditorView {
       h('span', { class: 'sep' }),
       this.anchorSelect,
       this.fillInput,
+      colorMoreButton(this.fillInput, t('slides.fill')),
       this.backgroundInput,
+      colorMoreButton(this.backgroundInput, t('slides.background')),
       b(t('slides.forward'), '⬆', () => this.reorder(1)),
       b(t('slides.backward'), '⬇', () => this.reorder(-1)),
       b(t('slides.deleteShape'), '✕', () => this.deleteShape()),

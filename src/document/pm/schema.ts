@@ -15,6 +15,7 @@ import { LAYOUT_KEYS, inputText, type Align, type CellOutput, type InputKind, ty
 import { cssFontFamily, footnoteFromDom, inputOfElement } from '../html';
 import { t } from '../../i18n';
 import { columnsCss } from '../columns';
+import { proofColor } from '../../color/convert';
 
 const STYLES: ParagraphStyle[] = ['normal', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'code', 'caption'];
 const ALIGNS: Align[] = ['left', 'center', 'right', 'justify'];
@@ -337,7 +338,7 @@ export const schema = new Schema({
     color: {
       attrs: { hex: {} },
       parseDOM: [{ tag: 'span[data-color]', getAttrs: (d: HTMLElement) => ({ hex: d.dataset.color }) }],
-      toDOM: (m: Mark) => ['span', { style: `color: ${m.attrs.hex}`, 'data-color': m.attrs.hex }, 0],
+      toDOM: (m: Mark) => ['span', { style: `color: ${m.attrs.hex}; --proof: ${proofColor(m.attrs.hex as string)}`, 'data-color': m.attrs.hex }, 0],
     },
     font: {
       attrs: { family: {} },
@@ -347,7 +348,7 @@ export const schema = new Schema({
     highlight: {
       attrs: { hex: {} },
       parseDOM: [{ tag: 'mark[data-highlight]', getAttrs: (d: HTMLElement) => ({ hex: d.dataset.highlight }) }],
-      toDOM: (m: Mark) => ['mark', { style: `background-color: ${m.attrs.hex}`, 'data-highlight': m.attrs.hex }, 0],
+      toDOM: (m: Mark) => ['mark', { style: `background-color: ${m.attrs.hex}; --proof: ${proofColor(m.attrs.hex as string)}`, 'data-highlight': m.attrs.hex }, 0],
     },
     /** The text of a comment (REV-001); several comments can cover the same text. */
     comment: {

@@ -10,6 +10,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Colours for print (COLOR-001, COLOR-002): a colour dialog (**⋯** next to
+  the colours of documents, spreadsheets and presentations) with swatches,
+  recent colours and the hexadecimal, RGB and CMYK values; a warning for
+  screen colours a printer cannot print, with the printable one, and for
+  more than 300 % of ink; *View › Print colours (CMYK preview)*. LaTeX keeps
+  text colours and highlights (xcolor), CMYK included on import.
 - Text in **columns** (DOC-049), for newsletters and school newspapers:
   ▥ *Columns…* sets the selected paragraphs in two to six columns, with
   their gap and an optional line between them, changed again or removed

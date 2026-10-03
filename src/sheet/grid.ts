@@ -1,4 +1,5 @@
 /** Spreadsheet editor view: virtualized grid, formula bar, sheet tabs (SHEET-004/005/010/011/013). */
+import { colorMoreButton } from '../color/more';
 import { beforeMutation, sheetTools, type AgentTool } from '../ai/tools';
 import type { PrintSettings } from '../print/settings';
 import { t } from '../i18n';
@@ -953,7 +954,9 @@ export class SheetEditor implements EditorView {
       toggle('italic', t('common.italic'), 'I'),
       toggle('underline', t('common.underline'), 'U'),
       h('label', { class: 'color-pick', title: t('sheet.textColor') }, 'A', this.textColor),
+      colorMoreButton(this.textColor, t('sheet.textColor')),
       h('label', { class: 'color-pick fill', title: t('sheet.fillColor') }, '▧', this.fillColor),
+      colorMoreButton(this.fillColor, t('sheet.fillColor')),
       toggle('border', t('sheet.border'), '▦'),
       align('left', t('common.alignLeft'), '⇤'),
       align('center', t('common.alignCenter'), '↔'),

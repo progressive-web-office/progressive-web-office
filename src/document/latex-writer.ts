@@ -3,6 +3,7 @@ import { geometryOptions } from './geometry';
 import { inputLatex } from './inputs';
 import { fillText, spaceText } from './springs';
 import { multicols } from './columns';
+import { latexHtmlColor } from '../color/convert';
 import {
   columnSegments,
   cleanMeta,
@@ -144,6 +145,7 @@ class LatexWriter {
       // DOC-046: the paper and its margins.
       ...(this.doc.page?.geometry ? [`\\usepackage[${geometryOptions(this.doc.page.geometry)}]{geometry}`] : []),
       '\\usepackage{amsmath,amssymb}',
+      ...(this.xcolor ? ['\\usepackage{xcolor}'] : []),
       '\\usepackage{graphicx}',
       '\\usepackage[normalem]{ulem}',
       '\\usepackage{hyperref}',
@@ -170,6 +172,7 @@ class LatexWriter {
   }
 
   private multicol = false;
+  private xcolor = false;
 
   /** DOC-049: text in columns in multicols environments. */
   private blocks(blocks: Block[]): string {
@@ -370,6 +373,15 @@ class LatexWriter {
       if (run.underline) text = `\\uline{${text}}`;
       if (run.italic) text = `\\textit{${text}}`;
       if (run.bold) text = `\\textbf{${text}}`;
+      // COLOR-001: colours with xcolor.
+      if (run.color) {
+        this.xcolor = true;
+        text = `\\textcolor${latexHtmlColor(run.color)}{${text}}`;
+      }
+      if (run.highlight) {
+        this.xcolor = true;
+        text = `\\colorbox${latexHtmlColor(run.highlight)}{${text}}`;
+      }
       if (run.link) text = `\\href{${escapeUrl(run.link)}}{${text}}`;
       out += text;
     }

@@ -180,8 +180,10 @@ group is not a commitment.
   OpenDocument, Word, LaTeX and Markdown; a newspaper template (DOC-049)
 - Frames placed on the page, text flowing from one frame to the next,
   pictures with text around them, master pages
-- Colours for print: RGB and CMYK (values typed in either), a print preview
-  of CMYK colours, spot colours; next: ICC profiles, PDF/X
+- ✅ Colours for print: RGB and CMYK (values typed in either), colours a
+  printer cannot print, total ink, a print preview of the colours
+  (COLOR-001, COLOR-002); next: spot colours, ICC profiles, PDF/X, CMYK kept
+  in files
 
 ### Devices and safety of the documents
 

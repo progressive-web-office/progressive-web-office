@@ -81,7 +81,7 @@ test('formats cells: bold, colours, alignment, borders, kept in the file (SHEET-
   await page.locator('td[data-r="0"][data-c="0"]').click();
   await page.locator('td[data-r="0"][data-c="1"]').click({ modifiers: ['Shift'] });
   await page.getByRole('button', { name: 'Bold' }).click();
-  await page.getByLabel('Fill colour').fill('#ffff00');
+  await page.getByLabel('Fill colour', { exact: true }).fill('#ffff00');
   await page.getByRole('button', { name: 'Align center' }).click();
   await page.getByRole('button', { name: 'Borders' }).click();
   const header = page.locator('td[data-r="0"][data-c="0"]');

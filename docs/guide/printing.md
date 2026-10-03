@@ -35,3 +35,31 @@ The settings are remembered in this browser.
 
 Click **Print…** and choose **Save as PDF** (or *Microsoft Print to PDF*) as
 the printer in the browser dialog. Everything stays on your device.
+
+## Colours for print
+
+Screens show colours with light (**RGB**: red, green, blue); printers with
+inks (**CMYK**: cyan, magenta, yellow and black). The **⋯** button next to
+every colour — text and highlight in documents, text and fill in
+spreadsheets, fill and background in presentations — opens a colour dialog:
+
+- swatches, and the colours used lately;
+- the colour's **hexadecimal**, **RGB** and **CMYK** values, each typed
+  in and the others following — a printer's CMYK values give the colour to
+  use on screen;
+- a warning when the colour is **brighter than a printer can print** (very
+  vivid blues, greens, purples…), with how it would print next to it and
+  **Use the printable colour**;
+- the **total ink** of the CMYK values, with a warning above 300 %, when
+  the ink may not dry and may smear.
+
+In a document, *View › Print colours (CMYK preview)* shows the coloured
+text and highlights as a printer would print them; the document keeps its
+colours.
+
+These are approximations, as in office suites: CMYK values are converted
+without a colour profile, and what prints is checked against a coated paper
+offset press (close to FOGRA39). Files keep RGB colours; LaTeX reads
+xcolor's `HTML`, `rgb`, `RGB`, `cmyk` and `gray` models and its base
+colours. ICC profiles and PDF/X are on the roadmap.
+

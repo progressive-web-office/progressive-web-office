@@ -1401,3 +1401,18 @@ body.distraction-free .ai-panel { display: none !important; }
 .pdf-design-name { position: absolute; left: -2px; bottom: 100%; max-width: 20em; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; background: var(--accent); color: var(--accent-contrast); font-size: 10px; line-height: 1.4; white-space: nowrap; border-radius: 3px 3px 0 0; }
 .form-field-dialog .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .form-field-dialog textarea, .form-field-dialog input[type=text] { width: 100%; box-sizing: border-box; }
+
+/* COLOR-001, COLOR-002: colours by their values; the colours as printed. */
+.color-control .color-more { min-width: 0; padding: 0 4px; }
+.color-dialog .color-swatches { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
+.color-dialog .color-swatch { width: 22px; height: 22px; min-width: 0; padding: 0; border: 1px solid #8892a0; border-radius: 3px; }
+.color-dialog .color-preview { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.color-dialog .color-swatch-big { width: 56px; height: 36px; border: 1px solid #8892a0; border-radius: 4px; }
+.color-dialog .color-swatch-big.printed { position: relative; }
+.color-dialog .color-values { display: flex; flex-wrap: wrap; gap: 6px 12px; border: 1px solid var(--border, #ccc); border-radius: 4px; margin: 6px 0; }
+.color-dialog .color-num { width: 5em; }
+.color-dialog .color-warning { margin: 4px 0; }
+.color-dialog .color-warning.warn { color: #9a4b00; }
+.soft-proof .doc-page span[data-color] { color: var(--proof) !important; }
+.soft-proof .doc-page mark[data-highlight] { background-color: var(--proof) !important; }
+.soft-proof .doc-page { box-shadow: 0 0 0 3px #e8d9b5, 0 2px 10px rgba(0, 0, 0, 0.25); }
