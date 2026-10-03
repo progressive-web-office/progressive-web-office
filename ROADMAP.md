@@ -84,7 +84,6 @@ group is not a commitment.
   sub-documents
 - ✅ Mail merge: a document combined with a CSV file or a workbook gives N
   documents or one document to print (DOC-036)
-- Form fields (text, check box, list), exported as a fillable PDF
 - Grammar checking with LanguageTool (public or self-hosted instance)
 - Visual comparison of two versions of a document
 - ✅ Review mode: text documents shown as pages like PDF files, page by page
@@ -209,7 +208,7 @@ group is not a commitment.
   (tags, aliases, any key kept), `[[wiki links]]`, `[[note#heading]]`,
   `[[note|alias]]`, `![[embeds]]`, backlinks, and links that follow renames
 - Crash recovery from an operation log in IndexedDB, beyond autosave
-- TextBundle import; upstream MDZ collaboration
+- Upstream MDZ collaboration
 
 ### Cross-cutting
 
@@ -220,4 +219,3 @@ group is not a commitment.
 - ✅ Templates (FILE-018 to FILE-020), command palette (UI-018), local
   version history (FILE-025)
 - ✅ Accessibility checker for text documents (DOC-030)
-- Encrypted share links

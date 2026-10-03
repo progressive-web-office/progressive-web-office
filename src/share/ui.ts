@@ -3,7 +3,7 @@ import { button, h } from '../app/dom';
 import type { DocumentFormat } from '../core/format';
 import { t } from '../i18n';
 import { sendFileToWindow, type WindowLike } from './handoff';
-import { encodeDocumentLink, LINK_MAX_LENGTH, LINK_WARN_LENGTH } from './link';
+import { encodeDocumentLink, encodeEncryptedLink, LINK_MAX_LENGTH, LINK_WARN_LENGTH } from './link';
 import { canShareFiles, handoffSendUrl, loadShareSettings, planSend, probeHandoff, prepareTransferUrl, qrshareOrigin, saveShareSettings, SEND_POLICIES, sendTextUrl, type SendPolicy } from './qrshare';
 
 /** How long to wait for QRShare to announce it is ready before falling back. */
@@ -32,7 +32,9 @@ export async function openSendDialog(
 ): Promise<boolean> {
   const plan = await planSend(file, format);
   // SHARE-009: prepared up front so that the copy runs within the click.
-  const link = encodeDocumentLink(location.origin + location.pathname, linkFile.name, new Uint8Array(await linkFile.arrayBuffer()));
+  const linkBytes = new Uint8Array(await linkFile.arrayBuffer());
+  const plainLink = encodeDocumentLink(location.origin + location.pathname, linkFile.name, linkBytes);
+  let link = plainLink;
   const settings = loadShareSettings();
   return new Promise((resolve) => {
     const dialog = h('dialog', { class: 'dialog share-dialog', 'aria-labelledby': 'share-title' });
@@ -100,6 +102,32 @@ export async function openSendDialog(
     const kb = Math.max(1, Math.round(link.length / 1024));
     const linkField = h('input', { type: 'text', readonly: true, class: 'share-link', value: link, 'aria-label': t('share.link'), spellcheck: 'false' });
     linkField.addEventListener('focus', () => linkField.select());
+    // SHARE-014: the link encrypted with a password, made again as it is typed.
+    const password = h('input', { type: 'password', autocomplete: 'new-password', 'aria-label': t('share.linkPassword'), placeholder: t('share.linkPasswordPlaceholder') });
+    const copy = button(t('share.copyLink'), () => {
+      linkField.select();
+      void navigator.clipboard
+        ?.writeText(link)
+        .then(() => notify(link.length > LINK_WARN_LENGTH ? t('share.linkCopiedLong') : t('share.linkCopied')))
+        .catch(() => notify(t('share.linkCopyFailed')));
+      finish(true);
+    });
+    let round = 0;
+    password.addEventListener('input', () => {
+      const n = ++round;
+      const pw = password.value;
+      if (!pw) {
+        link = linkField.value = plainLink;
+        copy.disabled = false;
+        return;
+      }
+      copy.disabled = true;
+      void encodeEncryptedLink(location.origin + location.pathname, linkFile.name, linkBytes, pw).then((made) => {
+        if (n !== round) return;
+        link = linkField.value = made;
+        copy.disabled = false;
+      });
+    });
     const linkSection =
       link.length > LINK_MAX_LENGTH
         ? h('p', { class: 'hint' }, t('share.linkTooLong'))
@@ -107,19 +135,8 @@ export async function openSendDialog(
             'div',
             { class: 'share-link-section' },
             h('p', {}, t('share.linkIntro', { size: `${kb} KB` })),
-            h(
-              'div',
-              { class: 'git-row' },
-              linkField,
-              button(t('share.copyLink'), () => {
-                linkField.select();
-                void navigator.clipboard
-                  ?.writeText(link)
-                  .then(() => notify(link.length > LINK_WARN_LENGTH ? t('share.linkCopiedLong') : t('share.linkCopied')))
-                  .catch(() => notify(t('share.linkCopyFailed')));
-                finish(true);
-              }),
-            ),
+            h('div', { class: 'git-row' }, linkField, copy),
+            h('details', { class: 'share-protect' }, h('summary', {}, `🔒 ${t('share.linkProtect')}`), h('label', { class: 'git-row' }, t('share.linkPassword'), ' ', password), h('p', { class: 'hint' }, t('share.linkPasswordHint'))),
             link.length > LINK_WARN_LENGTH ? h('p', { class: 'hint' }, t('share.linkLong')) : null,
           );
     dialog.append(
@@ -140,5 +157,39 @@ export async function openSendDialog(
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     policy.focus();
+  });
+}
+
+/** SHARE-014: ask the password of a protected link. */
+export function askLinkPassword(host: HTMLElement, wrong: boolean): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = h('input', { type: 'password', autocomplete: 'off', 'aria-label': t('share.linkPassword') });
+    const form = h(
+      'form',
+      { method: 'dialog' },
+      h('h2', { id: 'link-pw-title' }, `🔒 ${t('share.linkLocked')}`),
+      h('p', {}, t('share.linkLockedIntro')),
+      wrong ? h('p', { class: 'error', role: 'alert' }, t('share.linkWrongPassword')) : null,
+      h('label', { class: 'git-row' }, t('share.linkPassword'), ' ', input),
+      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(null)), h('button', { type: 'submit', class: 'primary' }, t('common.open'))),
+    );
+    const dialog = h('dialog', { class: 'dialog', 'aria-labelledby': 'link-pw-title' }, form);
+    const finish = (value: string | null): void => {
+      dialog.close();
+      dialog.remove();
+      resolve(value);
+    };
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (input.value) finish(input.value);
+    });
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      finish(null);
+    });
+    host.append(dialog);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    input.focus();
   });
 }

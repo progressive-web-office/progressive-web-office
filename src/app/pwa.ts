@@ -54,7 +54,23 @@ async function openLinkedDocument(app: App): Promise<void> {
     return;
   }
   if (!location.hash.startsWith('#doc=')) return;
-  const { decodeDocumentLink } = await import('../share/link');
+  const { decodeDocumentLink, decodeEncryptedLink, isEncryptedLink } = await import('../share/link');
+  if (isEncryptedLink(location.hash)) {
+    // SHARE-014: asked until it opens or the user gives up; the link stays in the address meanwhile.
+    const hash = location.hash;
+    const { askLinkPassword } = await import('../share/ui');
+    for (let wrong = false; ; wrong = true) {
+      const password = await askLinkPassword(document.body, wrong);
+      if (password === null) break;
+      const opened = await decodeEncryptedLink(hash, password);
+      if (!opened) continue;
+      history.replaceState(null, '', `${location.pathname}${location.search}`);
+      await app.openFile(new File([opened.bytes as BlobPart], opened.name));
+      return;
+    }
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+    return;
+  }
   const linked = decodeDocumentLink(location.hash);
   // The document stays open; drop it from the address so that a reload does not reopen it.
   history.replaceState(null, '', `${location.pathname}${location.search}`);

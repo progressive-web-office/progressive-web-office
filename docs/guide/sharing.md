@@ -51,7 +51,18 @@ Office, ready to edit and save.
   or mail clients may cut it — send the file (or use QRShare) instead. Very
   large documents cannot be put in a link at all.
 - Anyone who has the link can read the document: share it as you would share
-  the file.
+  the file — or protect it with a password (below).
+
+### Protect the link with a password
+
+Under the link, **🔒 Protect with a password** encrypts the document — its
+name too — inside the link (AES-256-GCM, the key derived from the password
+with PBKDF2-SHA-256, 600 000 iterations, a random salt and nonce). Whoever
+opens the link is asked the password; without it the link reveals nothing
+but its length, even to a server or a messaging app that keeps a copy.
+
+Give the password by another way than the link (in person, by phone). There
+is no way to recover a forgotten password: share the document again.
 
 Opening a damaged (cut) link shows an error; the address is cleaned up once
 the document is open, so reloading the page does not reopen it.

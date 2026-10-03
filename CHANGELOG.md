@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Links containing a document can be protected by a password: the document
+  and its name are encrypted in the link (AES-GCM, PBKDF2), the password
+  asked when it is opened (SHARE-014).
 - Git: the repository and branch in the header of a document opened from a
   repository start a new branch for the next commits, or open a pull / merge
   request to the default branch (GIT-007).
