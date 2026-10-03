@@ -676,7 +676,8 @@ export function domToBlocks(
       flush();
       const stretch = Number(el.dataset.stretch) || undefined;
       const size = el.dataset.size !== undefined ? Number(el.dataset.size) : undefined;
-      blocks.push({ type: 'space', ...(stretch ? { stretch } : {}), ...(size !== undefined ? { size } : {}) });
+      const fraction = Number(el.dataset.fraction) || undefined;
+      blocks.push({ type: 'space', ...(stretch ? { stretch } : {}), ...(!stretch && fraction ? { fraction } : {}), ...(size !== undefined ? { size } : {}) });
       return;
     }
     if (el.dataset?.input !== undefined && el.classList.contains('form-input')) {
@@ -930,6 +931,7 @@ export function spaceElement(space: Space, doc: Document = document): HTMLElemen
   div.className = space.stretch ? 'space spring' : 'space';
   if (space.stretch) div.dataset.stretch = String(space.stretch);
   if (space.size !== undefined) div.dataset.size = String(space.size);
+  if (space.fraction) div.dataset.fraction = String(space.fraction);
   div.style.height = `${space.size ?? 0}pt`;
   return div;
 }

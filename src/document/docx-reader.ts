@@ -1,5 +1,5 @@
 /** DOCX (Office Open XML word-processing) reader (DOC-001). */
-import { fillOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
+import { fillOfStyle, fractionOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText, type ZipEntries } from '../core/zip';
 import {
@@ -342,9 +342,11 @@ class DocxReader {
     // DOC-042: a spring or a space, kept as the space it was last shown with.
     const styleNames = this.styleChain(styleId).map((s) => s.name);
     const stretch = styleNames.map(stretchOfStyle).find((w) => w !== undefined);
-    if (stretch !== undefined || styleNames.some(isSpaceStyle)) {
+    const fraction = styleNames.map(fractionOfStyle).find((f) => f !== undefined);
+    if (stretch !== undefined || fraction !== undefined || styleNames.some(isSpaceStyle)) {
       const before = Number(attr(child(pPr!, 'spacing') ?? pPr!, 'before') ?? 0) / 20;
-      return stretch !== undefined ? { type: 'space', stretch, ...(before ? { size: before } : {}) } : { type: 'space', size: before };
+      if (stretch !== undefined) return { type: 'space', stretch, ...(before ? { size: before } : {}) };
+      return fraction !== undefined ? { type: 'space', fraction, ...(before ? { size: before } : {}) } : { type: 'space', size: before };
     }
     const para: Paragraph = { type: 'paragraph', style: this.paragraphStyle(styleId), runs: [] };
     if (pPr) {

@@ -58,8 +58,19 @@ function extent(el: HTMLElement): { top: number; bottom: number } {
  */
 export function layoutSprings(view: EditorView, pageHeight: number): boolean {
   const nodes = topLevel(view);
+  // Spaces of a share of the page height: their height first, the springs share what is left.
+  let changed = false;
+  for (const n of nodes) {
+    const fraction = n.node.type.name === 'space' && !n.node.attrs.stretch ? (n.node.attrs.fraction as number | null) : null;
+    if (!fraction) continue;
+    const height = `${Math.round(fraction * pageHeight)}px`;
+    if (n.dom.style.height !== height) {
+      n.dom.style.height = height;
+      changed = true;
+    }
+  }
   const springs = nodes.filter((n) => n.node.type.name === 'space' && n.node.attrs.stretch);
-  if (!springs.length) return false;
+  if (!springs.length) return changed;
   const before = springs.map((s) => s.dom.style.height);
   for (const s of springs) s.dom.style.height = '0px';
   // Pages: between page breaks.
@@ -77,7 +88,7 @@ export function layoutSprings(view: EditorView, pageHeight: number): boolean {
     const total = mine.reduce((n, s) => n + (s.node.attrs.stretch as number), 0);
     for (const s of mine) s.dom.style.height = `${Math.floor((free * (s.node.attrs.stretch as number)) / total)}px`;
   }
-  return springs.some((s, i) => s.dom.style.height !== before[i]);
+  return changed || springs.some((s, i) => s.dom.style.height !== before[i]);
 }
 
 /**
@@ -92,7 +103,7 @@ export function measureSprings(view: EditorView): { spaces: number[]; fills: num
   view.state.doc.descendants((node, pos) => {
     if (node.type.name === 'space') {
       const dom = view.nodeDOM(pos);
-      spaces.push(node.attrs.stretch && dom instanceof HTMLElement ? pt(dom.getBoundingClientRect().height) : (node.attrs.size as number) ?? 0);
+      spaces.push((node.attrs.stretch || node.attrs.fraction) && dom instanceof HTMLElement ? pt(dom.getBoundingClientRect().height) : (node.attrs.size as number) ?? 0);
       return false;
     }
     if (node.type.name === 'hfill') {

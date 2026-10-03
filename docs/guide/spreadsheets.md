@@ -68,7 +68,9 @@ function), `#REF!` (deleted or unknown reference), `#N/A`, `#ERROR!`
   `#REF!`.
 - **Σ** inserts a `SUM` of the numbers above the selected cell.
 - The format list applies a number format (decimals, thousands separator,
-  percent, dates, currency) to the selection.
+  percent, dates, currency) to the selection; **Other format…** takes any
+  format code (`0.000`, `# ##0 "kg"`, `dd/mm/yyyy hh:mm`…). A cell whose
+  format is not in the list (from a file or a template) shows its code there.
 
 ## Formatting cells
 

@@ -132,20 +132,28 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'div.include[data-include]', getAttrs: (d: HTMLElement) => ({ src: d.dataset.include }) }],
       toDOM: (n) => ['div', { class: 'include', 'data-include': n.attrs.src as string }, `📄 ${n.attrs.src as string}`],
     },
-    /** DOC-042: a vertical spring (`stretch`) or a fixed space (`size`, points). */
+    /** DOC-042: a vertical spring (`stretch`) or a fixed space (`size`, points; or `fraction` of the page height). */
     space: {
       group: 'block',
       atom: true,
       selectable: true,
       draggable: true,
-      attrs: { stretch: { default: null }, size: { default: null } },
+      attrs: { stretch: { default: null }, size: { default: null }, fraction: { default: null } },
       parseDOM: [
         {
           tag: 'div.space',
-          getAttrs: (d: HTMLElement) => ({ stretch: Number(d.dataset.stretch) || null, size: d.dataset.size !== undefined ? Number(d.dataset.size) : null }),
+          getAttrs: (d: HTMLElement) => ({ stretch: Number(d.dataset.stretch) || null, size: d.dataset.size !== undefined ? Number(d.dataset.size) : null, fraction: Number(d.dataset.fraction) || null }),
         },
       ],
-      toDOM: (n) => ['div', { class: n.attrs.stretch ? 'space spring' : 'space', ...(n.attrs.stretch ? { 'data-stretch': String(n.attrs.stretch) } : {}), ...(n.attrs.size !== null ? { 'data-size': String(n.attrs.size) } : {}) }],
+      toDOM: (n) => [
+        'div',
+        {
+          class: n.attrs.stretch ? 'space spring' : 'space',
+          ...(n.attrs.stretch ? { 'data-stretch': String(n.attrs.stretch) } : {}),
+          ...(n.attrs.size !== null ? { 'data-size': String(n.attrs.size) } : {}),
+          ...(n.attrs.fraction ? { 'data-fraction': String(n.attrs.fraction) } : {}),
+        },
+      ],
     },
     /** The list of cited references (DOC-027). */
     bibliography: {

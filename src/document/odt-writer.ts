@@ -1,5 +1,5 @@
 /** OpenDocument Text (.odt) writer (DOC-007). */
-import { FILL_STYLE, fillTabs, odfName, SPACE_STYLE, springStyleName } from './springs';
+import { FILL_STYLE, fillTabs, fractionStyleName, odfName, SPACE_STYLE, springStyleName } from './springs';
 import { escapeXml as esc, escapeXmlAttr as escAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
@@ -236,7 +236,7 @@ class OdtWriter {
         out += this.bibliography();
       } else if (group.type === 'space') {
         // DOC-042: a spring keeps the height it was last shown with; its style marks it.
-        const named = odfName(group.stretch ? springStyleName(group.stretch) : SPACE_STYLE);
+        const named = odfName(group.stretch ? springStyleName(group.stretch) : group.fraction ? fractionStyleName(group.fraction) : SPACE_STYLE);
         out += `<text:p text:style-name="${this.paraStyle(named, { spaceBefore: group.size ?? 0 })}"/>`;
       } else if (group.type === 'include') {
         // DOC-028: a linked section, as in LibreOffice master documents (paths are relative to the package).
@@ -588,13 +588,16 @@ const TEXT_WIDTH = (8.2681 - 2 * 0.7874) * 72;
 function springStyles(doc: RichDocument): string {
   const springs = new Set<number>([1]);
   const fills = new Set<number>([1]);
+  const fractions = new Set<number>();
   for (const b of doc.blocks) if (b.type === 'space' && b.stretch) springs.add(b.stretch);
+  for (const b of doc.blocks) if (b.type === 'space' && !b.stretch && b.fraction) fractions.add(b.fraction);
   for (const p of allParagraphs(doc.blocks)) for (const r of p.runs) if (isFillRun(r)) fills.add(r.hfill);
   const para = (name: string): string =>
     `<style:style style:name="${odfName(name)}" style:display-name="${name}" style:family="paragraph" style:parent-style-name="Standard"><style:paragraph-properties fo:margin-top="0pt" fo:margin-bottom="0pt" fo:line-height="1pt"/><style:text-properties fo:font-size="1pt"/></style:style>`;
   return (
     para(SPACE_STYLE) +
     [...springs].map((w) => para(springStyleName(w))).join('') +
+    [...fractions].map((f) => para(fractionStyleName(f))).join('') +
     [...fills].map((w) => { const name = w === 1 ? FILL_STYLE : `${FILL_STYLE} ${w}`; return `<style:style style:name="${odfName(name)}" style:display-name="${name}" style:family="text"/>`; }).join('')
   );
 }

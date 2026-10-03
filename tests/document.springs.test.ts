@@ -66,3 +66,27 @@ describe('DOC-042 springs and spaces', () => {
     expect(tex).toContain('\\vspace{\\stretch{3}}');
   });
 });
+
+describe('DOC-042 shares of the page and of the free space', () => {
+  it('reads and writes a space of a share of the page height in every format', async () => {
+    const { readMarkdown } = await import('../src/document/markdown-reader');
+    const { readDocument, writeDocument } = await import('../src/document/io');
+    const doc = readMarkdown('Top\n\n\\vspace{0.3\\textheight}\n\nBottom\n');
+    expect(doc.blocks[1]).toEqual({ type: 'space', fraction: 0.3 });
+    for (const format of ['md', 'odt', 'docx', 'tex'] as const) {
+      const back = await readDocument(format, writeDocument(doc, format));
+      expect(back.blocks.find((b) => b.type === 'space')).toMatchObject({ type: 'space', fraction: 0.3 });
+    }
+  });
+
+  it('turns a share of the free space into a weight, and back', async () => {
+    const { shareOf, weightFor } = await import('../src/document/space-dialog');
+    // Another spring of weight 1: 30 % for this one is a weight of 3/7.
+    expect(weightFor(30, 1)).toBeCloseTo(0.429, 3);
+    expect(shareOf(0.429, 1)).toBeCloseTo(30, 0);
+    expect(shareOf(2, 2)).toBe(50);
+    // Alone, a spring takes everything.
+    expect(shareOf(5, 0)).toBe(100);
+    expect(weightFor(30, 0)).toBeUndefined();
+  });
+});

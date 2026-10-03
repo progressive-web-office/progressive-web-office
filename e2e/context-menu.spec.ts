@@ -118,3 +118,36 @@ test('inserts fields that show their value, and freezes one into text (DOC-041)'
   await expect(text).toContainText('Title: My report, page 1');
   expect(errors).toEqual([]);
 });
+
+test('what templates use can be changed again: fields, table of contents, paragraph spacing (DOC-041, DOC-023, DOC-020)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'tpl.md', '[TOC]\n\n# One\n\n## Two\n\n### Three\n\nParis, {date}.\n');
+  const doc = page.getByRole('textbox', { name: 'Document' });
+  // The field shows something else.
+  await doc.locator('.pm-field').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: /Show instead: .*time/i }).click();
+  await expect(doc.locator('.pm-field')).toHaveAttribute('data-field', 'time');
+  // The table of contents goes one level deeper or shallower.
+  const toc = doc.locator('nav.toc');
+  await expect(toc.locator('li')).toHaveCount(3);
+  await toc.click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Headings of levels 1 to 2' }).click();
+  await expect(toc.locator('li')).toHaveCount(2);
+  // The spacing of a paragraph.
+  await doc.locator('p', { hasText: 'Paris' }).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Paragraph spacing…' }).click();
+  await expect(page.getByRole('dialog', { name: 'Paragraph' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('a number format not in the list is shown and can be changed (SHEET-014)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'm.csv', 'x\n1.5\n');
+  const format = page.getByLabel('Number format');
+  await page.locator('td[data-r="1"][data-c="0"]').click();
+  page.once('dialog', (d) => void d.accept('0.000'));
+  await format.selectOption({ label: 'Other format…' });
+  await expect(page.locator('td[data-r="1"][data-c="0"]')).toHaveText('1.500');
+  await expect(format.locator('option:checked')).toHaveText('0.000');
+  expect(errors).toEqual([]);
+});

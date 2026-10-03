@@ -39,7 +39,9 @@ files.
   resize it. Arrow keys move the selected shape (<kbd>Shift</kbd>: 10 px).
 - Double-click (or <kbd>Enter</kbd>) to edit its text; <kbd>Esc</kbd> to stop.
 - <kbd>Delete</kbd> removes the selected shape; ⬆ ⬇ change its stacking
-  order; the colour picker sets its fill colour.
+  order; the colour picker sets its fill colour, and the list next to it the
+  vertical alignment of its text (top, middle, bottom).
+- The last colour picker of the toolbar sets the **background of the slide**.
 - **B / I / U**, font size, text colour, alignment and bullets apply to the
   selected text while editing, or to the whole shape otherwise.
 - The font size field suggests the usual sizes, up to 300 pt, and takes

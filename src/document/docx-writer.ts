@@ -1,5 +1,5 @@
 /** DOCX writer producing a minimal, standards-conformant package (DOC-006). */
-import { FILL_STYLE, fillTabs, SPACE_STYLE, springStyleName } from './springs';
+import { FILL_STYLE, fillTabs, fractionStyleName, SPACE_STYLE, springStyleName } from './springs';
 import { escapeXml as esc, escapeXmlAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { imageSize } from '../core/image-size';
@@ -282,7 +282,7 @@ class DocxWriter {
         out += this.bibliography();
       } else if (group.type === 'space') {
         // DOC-042: a spring keeps the height it was last shown with; its style marks it.
-        const style = group.stretch ? springStyleId(group.stretch) : 'PWOSpace';
+        const style = group.stretch ? springStyleId(group.stretch) : group.fraction ? fractionStyleId(group.fraction) : 'PWOSpace';
         out += `<w:p><w:pPr><w:pStyle w:val="${style}"/><w:spacing w:before="${twips(group.size ?? 0)}" w:after="0" w:line="20" w:lineRule="exact"/></w:pPr></w:p>`;
       } else if (group.type === 'include') {
         // DOC-028: a sub-document of a master document, linked by path.
@@ -622,18 +622,22 @@ const twips = (pt: number): number => Math.round(pt * 20);
 const TEXT_WIDTH = (11906 - 2 * 1440) / 20;
 
 const springStyleId = (w: number): string => `PWOSpring${w === 1 ? '' : String(w).replace('.', '_')}`;
+const fractionStyleId = (f: number): string => `PWOSpace${String(Math.round(f * 1000) / 10).replace('.', '_')}pc`;
 const fillStyleId = (w: number): string => `PWOFill${w === 1 ? '' : String(w).replace('.', '_')}`;
 
 /** DOC-042: the styles marking springs and spaces, one per weight. */
 function springStyles(doc: RichDocument): string {
   const springs = new Set<number>([1]);
   const fills = new Set<number>([1]);
+  const fractions = new Set<number>();
   for (const b of doc.blocks) if (b.type === 'space' && b.stretch) springs.add(b.stretch);
+  for (const b of doc.blocks) if (b.type === 'space' && !b.stretch && b.fraction) fractions.add(b.fraction);
   for (const p of allParagraphs(doc.blocks)) for (const r of p.runs) if (isFillRun(r)) fills.add(r.hfill);
   const para = (id: string, name: string): string => `<w:style w:type="paragraph" w:customStyle="1" w:styleId="${id}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:before="0" w:after="0" w:line="20" w:lineRule="exact"/></w:pPr><w:rPr><w:sz w:val="2"/></w:rPr></w:style>`;
   return (
     para('PWOSpace', SPACE_STYLE) +
     [...springs].map((w) => para(springStyleId(w), springStyleName(w))).join('') +
+    [...fractions].map((f) => para(fractionStyleId(f), fractionStyleName(f))).join('') +
     [...fills].map((w) => `<w:style w:type="character" w:customStyle="1" w:styleId="${fillStyleId(w)}"><w:name w:val="${w === 1 ? FILL_STYLE : `${FILL_STYLE} ${w}`}"/></w:style>`).join('')
   );
 }

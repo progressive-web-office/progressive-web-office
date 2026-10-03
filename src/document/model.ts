@@ -357,7 +357,10 @@ export interface Include {
 export interface Space {
   type: 'space';
   stretch?: number;
+  /** Height in points: of a fixed space, or as last shown (springs, fractions). */
   size?: number;
+  /** DOC-042: a fixed share of the page's text height (0.3 = 30 %, LaTeX's `0.3\textheight`). */
+  fraction?: number;
 }
 
 export type Block = Paragraph | Table | Rule | Toc | Bibliography | Include | Space;

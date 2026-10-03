@@ -1,5 +1,5 @@
 /** OpenDocument Text (.odt) reader (DOC-002). */
-import { fillOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
+import { fillOfStyle, fractionOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
 import type { BibEntry } from './bibliography';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText, type ZipEntries } from '../core/zip';
@@ -380,6 +380,8 @@ class OdtReader {
     const size = chain.find((s) => s.layout?.spaceBefore !== undefined)?.layout?.spaceBefore;
     const stretch = chain.map((s) => stretchOfStyle(s.name)).find((w) => w !== undefined);
     if (stretch !== undefined) return { type: 'space', stretch, ...(size ? { size } : {}) };
+    const fraction = chain.map((s) => fractionOfStyle(s.name)).find((f) => f !== undefined);
+    if (fraction !== undefined) return { type: 'space', fraction, ...(size ? { size } : {}) };
     if (chain.some((s) => isSpaceStyle(s.name))) return { type: 'space', size: size ?? 0 };
     const para: Paragraph = { type: 'paragraph', style: kind === 'rule' ? 'normal' : kind, runs: [] };
     const align = chain.find((s) => s.align)?.align;

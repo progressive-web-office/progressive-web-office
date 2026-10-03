@@ -36,6 +36,16 @@ export class SlideEditor implements EditorView {
   private untrack: (() => void) | undefined;
   private readonly fillInput = h('input', { type: 'color', 'aria-label': t('slides.fill'), title: t('slides.fill') });
   private readonly textColor = h('input', { type: 'color', 'aria-label': t('slides.textColor'), title: t('slides.textColor'), value: '#000000' });
+  /** The slide's background colour (the race signs template uses it). */
+  private readonly backgroundInput = h('input', { type: 'color', 'aria-label': t('slides.background'), title: t('slides.background'), value: '#ffffff' });
+  /** Vertical alignment of the text of a box. */
+  private readonly anchorSelect = h(
+    'select',
+    { 'aria-label': t('slides.anchor'), title: t('slides.anchor') },
+    h('option', { value: 'top' }, `⤒ ${t('slides.anchorTop')}`),
+    h('option', { value: 'middle' }, `↕ ${t('slides.anchorMiddle')}`),
+    h('option', { value: 'bottom' }, `⤓ ${t('slides.anchorBottom')}`),
+  );
   private current = 0;
   private selected: number | null = null;
   private editing: { shape: Shape; content: HTMLElement } | null = null;
@@ -256,6 +266,7 @@ export class SlideEditor implements EditorView {
     this.renderList();
     this.renderStage();
     this.notes.value = this.slide().notes ?? '';
+    this.backgroundInput.value = /^#[0-9a-f]{6}$/i.test(this.slide().background ?? '') ? this.slide().background! : '#ffffff';
     this.ctx.statusChanged();
   }
 
@@ -307,6 +318,7 @@ export class SlideEditor implements EditorView {
     if (shape) {
       this.sizeSelect.set(shape.fontSize);
       this.fillInput.value = shape.fill ?? '#ffffff';
+      this.anchorSelect.value = shape.anchor ?? 'top';
     }
   }
 
@@ -643,6 +655,19 @@ export class SlideEditor implements EditorView {
       if (this.editing && !(e.relatedTarget instanceof Node && this.editing.content.contains(e.relatedTarget))) this.finishEditing();
     });
     this.fillInput.addEventListener('change', () => this.setFill(this.fillInput.value));
+    this.backgroundInput.addEventListener('change', () => {
+      this.snapshot();
+      this.slide().background = this.backgroundInput.value;
+      this.changed();
+    });
+    this.anchorSelect.addEventListener('change', () => {
+      const shape = this.slide().shapes.find((x) => x.id === this.selected);
+      if (!shape || shape.kind === 'image') return;
+      this.snapshot();
+      shape.anchor = this.anchorSelect.value as 'top' | 'middle' | 'bottom';
+      this.changed();
+      this.select(shape.id);
+    });
     this.textColor.addEventListener('change', () => this.setTextColor(this.textColor.value));
     return h(
       'div',
@@ -673,7 +698,9 @@ export class SlideEditor implements EditorView {
       b(t('common.alignRight'), '⇥', () => this.format('justifyRight')),
       b(t('common.bullets'), '•≡', () => this.format('insertUnorderedList')),
       h('span', { class: 'sep' }),
+      this.anchorSelect,
       this.fillInput,
+      this.backgroundInput,
       b(t('slides.forward'), '⬆', () => this.reorder(1)),
       b(t('slides.backward'), '⬇', () => this.reorder(-1)),
       b(t('slides.deleteShape'), '✕', () => this.deleteShape()),

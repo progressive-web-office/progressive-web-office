@@ -10,6 +10,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Springs and spaces open a dialog by a double click: a spring's **share of
+  the free space in percent** (worked out as a weight from the other springs
+  of its page or line), a space's height in cm, mm, pt or **% of the page
+  height** (`\vspace{0.3\textheight}`, kept in ODT and DOCX) (DOC-042).
+- What templates use can be changed again (DOC-045): what a field shows,
+  the depth of a table of contents, paragraph spacing from the context menu,
+  any number format code of a cell (*Other format…*, and the current one
+  shown), the background of a slide and the vertical alignment of a text box.
 - Pictures of a document can be retouched (IMG-001): crop, turn, mirror,
   brightness and contrast, size, and **blur a region** (a face, a name)
   before sharing; nothing changes until applied, and it can be undone.

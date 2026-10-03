@@ -25,6 +25,8 @@ export function spaceOf(name: string, arg?: string): Space | undefined {
   if (name !== 'vspace' || arg === undefined) return undefined;
   const stretch = stretchOf(arg);
   if (stretch) return { type: 'space', stretch };
+  const fraction = fractionOf(arg);
+  if (fraction) return { type: 'space', fraction };
   const size = lengthPt(arg);
   return size !== undefined ? { type: 'space', size } : undefined;
 }
@@ -37,9 +39,18 @@ export function stretchOf(arg: string): number | undefined {
   return m ? Number(m[1]) || 1 : undefined;
 }
 
+/** `0.3\textheight` (a share of the page's text height); undefined otherwise. */
+export function fractionOf(arg: string): number | undefined {
+  const m = /^\s*(\d*\.?\d+)?\s*\\(?:textheight|vsize)\s*$/.exec(arg);
+  if (!m) return undefined;
+  const f = m[1] === undefined ? 1 : Number(m[1]);
+  return f > 0 && f <= 1 ? f : undefined;
+}
+
 /** A space as a paragraph of Markdown, or a line of LaTeX. */
 export function spaceText(space: Space): string {
   if (space.stretch) return space.stretch === 1 ? '\\vfill' : `\\vspace{\\stretch{${space.stretch}}}`;
+  if (space.fraction) return `\\vspace{${Math.round(space.fraction * 1000) / 1000}\\textheight}`;
   return `\\vspace{${Math.round((space.size ?? 0) * 100) / 100}pt}`;
 }
 
@@ -107,5 +118,13 @@ export function fillOfStyle(name: string): number | undefined {
 
 export const isSpaceStyle = (name: string): boolean => /^PWO(?: |_20_)Space$/i.test(name);
 
+/** `PWO Space 30%`: a space of a share of the page height. */
+export const fractionStyleName = (fraction: number): string => `${SPACE_STYLE} ${Math.round(fraction * 1000) / 10}%`;
+
+export function fractionOfStyle(name: string): number | undefined {
+  const m = /^PWO(?: |_20_)Space(?: |_20_)(\d*\.?\d+)(?:%|_25_)$/i.exec(name);
+  return m ? Number(m[1]) / 100 : undefined;
+}
+
 /** The internal name of a style in OpenDocument (spaces as `_20_`). */
-export const odfName = (name: string): string => name.replace(/ /g, '_20_');
+export const odfName = (name: string): string => name.replace(/ /g, '_20_').replace(/%/g, '_25_');

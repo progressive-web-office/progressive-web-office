@@ -323,6 +323,19 @@ export class DocumentEditor implements EditorView {
           return true;
         },
         handleDrop: (_view, event) => this.onDrop(event as DragEvent),
+        // Springs, spaces and form fields are changed again by a double click (DOC-042, FORM-003).
+        handleDoubleClickOn: (_view, _pos, node, nodePos) => {
+          if (this.readOnly || this.mode !== 'visual') return false;
+          if (node.type === schema.nodes.space || node.type === schema.nodes.hfill) {
+            this.changeSpace(nodePos);
+            return true;
+          }
+          if (node.type === schema.nodes.form_input) {
+            void this.editInput(node.attrs.input as InputKind, nodePos);
+            return true;
+          }
+          return false;
+        },
         handleKeyDown: (_view, event) => {
           // CODE-001: ``` and a language, then Enter, starts a code cell.
           if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) return this.fenceToCell() || this.typedSpace();
@@ -861,7 +874,29 @@ export class DocumentEditor implements EditorView {
         'separator',
       );
     }
-    if (field !== undefined && editable) entries.push({ title: t('field.menu') }, { label: t('field.freeze'), icon: '📌', run: () => this.freezeField(field) }, 'separator');
+    if (field !== undefined && editable) {
+      // DOC-041: what the field shows can be changed, or frozen into text.
+      const kind = view.state.doc.nodeAt(field)?.attrs.kind as FieldKind;
+      entries.push(
+        { title: t('field.menu') },
+        ...FIELD_KINDS.filter((k) => k !== kind).map((k): MenuAction => ({ label: t('field.changeTo', { kind: t(`field.${k}`) }), icon: FIELD_ICONS[k], run: () => view.dispatch(view.state.tr.setNodeMarkup(field, undefined, { kind: k })) })),
+        { label: t('field.freeze'), icon: '📌', run: () => this.freezeField(field) },
+        'separator',
+      );
+    }
+    // DOC-023: a table of contents under the pointer: its depth.
+    const tocEl = target?.closest<HTMLElement>('nav.toc');
+    const tocPos = tocEl && this.view.dom.contains(tocEl) ? view.posAtDOM(tocEl, 0) : undefined;
+    const tocNode = tocPos !== undefined ? view.state.doc.nodeAt(tocPos) : null;
+    if (tocNode?.type === schema.nodes.toc && tocPos !== undefined && editable) {
+      const levels = tocNode.attrs.levels as number;
+      entries.push(
+        { title: t('toc.title') },
+        ...[1, 2, 3, 4, 5, 6].map((n): MenuAction => ({ label: t('toc.levels', { n }), icon: n === levels ? '✓' : '', run: () => view.dispatch(view.state.tr.setNodeMarkup(tocPos, undefined, { ...tocNode.attrs, levels: n })) })),
+        { label: t('ctx.delete'), icon: '🗑', run: () => view.dispatch(view.state.tr.delete(tocPos, tocPos + tocNode.nodeSize)) },
+        'separator',
+      );
+    }
     // IMG-001: a picture under the pointer.
     const imgEl = target?.closest<HTMLElement>('img');
     const imgPos = imgEl && this.view.dom.contains(imgEl) ? view.posAtDOM(imgEl, 0) : undefined;
@@ -891,6 +926,8 @@ export class DocumentEditor implements EditorView {
       ...(editable ? [{ label: t('ctx.cut'), icon: '✂', shortcut: 'Ctrl+X', disabled: empty, run: () => this.clipboard('cut') }] : []),
       { label: t('ctx.copy'), icon: '⧉', shortcut: 'Ctrl+C', disabled: empty, run: () => this.clipboard('copy') },
       ...(editable ? [{ label: t('ctx.paste'), icon: '📋', shortcut: 'Ctrl+V', run: () => void this.pasteFromClipboard() }] : []),
+      // DOC-020: the spacing and indents of the paragraph (letters, reports).
+      ...(editable ? [{ label: t('para.button'), icon: '¶', run: () => void this.editParagraph() }] : []),
     );
     if (editable) {
       const link = linkRange(state);
@@ -1899,26 +1936,62 @@ export class DocumentEditor implements EditorView {
     } else if (kind === 'spring') {
       this.command(insertOnOwnLine(schema.nodes.space!.create({ stretch: 1 })));
     } else {
-      const cm = Number((window.prompt(t('space.sizePrompt'), '1') ?? '').replace(',', '.'));
-      if (!(cm > 0)) return;
-      this.command(insertOnOwnLine(schema.nodes.space!.create({ size: Math.round((cm / 2.54) * 72 * 100) / 100 })));
+      void this.spaceChoice(false, { size: Math.round((72 / 2.54) * 100) / 100 }, this.springWeights(undefined), true).then((value) => {
+        if (value) this.command(insertOnOwnLine(schema.nodes.space!.create({ stretch: value.stretch ?? null, size: value.size ?? null, fraction: value.fraction ?? null })));
+        this.refocus();
+      });
+      return;
     }
     this.refocus();
   }
 
-  /** Change a spring's weight, or a space's height. */
+  private async spaceChoice(horizontal: boolean, current: import('./space-dialog').SpaceValue, others: number, isNew = false): Promise<import('./space-dialog').SpaceValue | null> {
+    const { spaceDialog } = await import('./space-dialog');
+    return spaceDialog(this.element, { horizontal, current, others, isNew });
+  }
+
+  /**
+   * The weight of the other vertical springs of the page of `pos` (pages are
+   * what lies between page breaks), or of the other horizontal springs of its
+   * line; for a new space, of the page of the cursor.
+   */
+  private springWeights(pos: number | undefined, horizontal = false): number {
+    const doc = this.view.state.doc;
+    if (horizontal && pos !== undefined) {
+      const $pos = doc.resolve(pos);
+      let sum = 0;
+      $pos.parent.forEach((child, offset) => {
+        if (child.type === schema.nodes.hfill && $pos.start() + offset !== pos) sum += child.attrs.weight as number;
+      });
+      return sum;
+    }
+    const at = pos ?? this.view.state.selection.from;
+    let page = 0;
+    let target = -1;
+    const weights = new Map<number, number>();
+    doc.forEach((node, offset) => {
+      if (offset <= at && at < offset + node.nodeSize) target = page;
+      if (node.type === schema.nodes.horizontal_rule && node.attrs.page) page++;
+      else if (node.type === schema.nodes.space && node.attrs.stretch && offset !== pos) weights.set(page, (weights.get(page) ?? 0) + (node.attrs.stretch as number));
+    });
+    return weights.get(target < 0 ? page : target) ?? 0;
+  }
+
+  /** Change a spring (its share, as a weight) or a space (its height), or turn one into the other (DOC-042). */
   private changeSpace(pos: number): void {
     const node = this.view.state.doc.nodeAt(pos);
     if (!node) return;
-    const stretch = (node.attrs.stretch ?? node.attrs.weight) as number | null;
-    if (stretch) {
-      const w = Number((window.prompt(t('space.weightPrompt'), String(stretch)) ?? '').replace(',', '.'));
-      if (w > 0) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, node.type === schema.nodes.hfill ? { weight: w } : { stretch: w, size: null }));
-    } else {
-      const cm = Number((window.prompt(t('space.sizePrompt'), String(Math.round((((node.attrs.size as number) ?? 0) / 72) * 2.54 * 100) / 100)) ?? '').replace(',', '.'));
-      if (cm > 0) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { stretch: null, size: Math.round((cm / 2.54) * 72 * 100) / 100 }));
-    }
-    this.refocus();
+    const horizontal = node.type === schema.nodes.hfill;
+    const a = node.attrs as { stretch?: number | null; weight?: number; size?: number | null; fraction?: number | null };
+    const current = horizontal ? { stretch: a.weight! } : { ...(a.stretch ? { stretch: a.stretch } : {}), ...(a.size ? { size: a.size } : {}), ...(a.fraction ? { fraction: a.fraction } : {}) };
+    void this.spaceChoice(horizontal, current, this.springWeights(pos, horizontal)).then((value) => {
+      const now = this.view.state.doc.nodeAt(pos);
+      if (value && now?.type === node.type) {
+        this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, horizontal ? { weight: value.stretch ?? 1 } : { stretch: value.stretch ?? null, size: value.size ?? null, fraction: value.fraction ?? null }));
+        this.springsSoon();
+      }
+      this.refocus();
+    });
   }
 
   private currentBlocks(): Block[] {

@@ -87,3 +87,19 @@ test('race signs in very large letters, turned to portrait and back (FILE-018, P
   await page.keyboard.press('Control+z');
   await expect(page.getByLabel('Orientation').first()).toHaveValue('landscape');
 });
+
+test('the background of a slide and the vertical alignment of a text box can be changed (PRES-005)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New presentation' }).first().click();
+  const bg = page.getByLabel('Slide background colour');
+  await bg.evaluate((el: HTMLInputElement) => {
+    el.value = '#ffd400';
+    el.dispatchEvent(new Event('change'));
+  });
+  await expect(page.locator('.stage .slide').first()).toHaveCSS('background-color', 'rgb(255, 212, 0)');
+  const box = page.locator('.stage .shape').first();
+  await box.click();
+  await page.getByLabel('Vertical alignment of the text').selectOption('bottom');
+  await expect(page.locator('.stage .shape').first()).toHaveAttribute('data-anchor', 'bottom');
+  expect(errors).toEqual([]);
+});

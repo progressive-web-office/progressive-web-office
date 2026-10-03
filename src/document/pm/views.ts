@@ -478,13 +478,17 @@ class SpaceView implements NodeView {
   }
 
   private render(): void {
-    const { stretch, size } = this.node.attrs as { stretch: number | null; size: number | null };
+    const { stretch, size, fraction } = this.node.attrs as { stretch: number | null; size: number | null; fraction: number | null };
     this.dom.className = stretch ? 'space spring' : 'space';
     this.dom.contentEditable = 'false';
     if (stretch) {
       this.dom.dataset.stretch = String(stretch);
       this.dom.dataset.label = stretch === 1 ? t('space.spring') : `${t('space.spring')} ×${stretch}`;
       this.dom.style.height ||= '0px';
+    } else if (fraction) {
+      // DOC-042: its height (a share of the printed page's) is set by the layout of the springs.
+      delete this.dom.dataset.stretch;
+      this.dom.dataset.label = t('space.fixed', { size: t('space.ofPage', { pct: Math.round(fraction * 1000) / 10 }) });
     } else {
       delete this.dom.dataset.stretch;
       this.dom.dataset.label = t('space.fixed', { size: `${Math.round(((size ?? 0) / 72) * 2.54 * 100) / 100} cm` });

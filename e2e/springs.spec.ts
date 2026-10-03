@@ -51,3 +51,40 @@ test('a vertical spring fills the page, a horizontal one the line, and they are 
   await expect(page.locator('.doc-page .hfill')).toHaveCount(2);
   expect(errors).toEqual([]);
 });
+
+test('gives a spring its share of the free space in percent, and a space a share of the page (DOC-042)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'shares.md', 'Top\n\n\\vfill\n\nMiddle\n\n\\vfill\n\nBottom\n');
+  const springs = page.locator('.doc-page .space.spring');
+  await expect(springs).toHaveCount(2);
+  await expect.poll(async () => (await springs.first().boundingBox())!.height).toBeGreaterThan(100);
+  // Double click: the share of the free space, here half of it.
+  await springs.first().dblclick();
+  const dialog = page.getByRole('dialog', { name: 'Springs and spaces' });
+  const share = dialog.getByLabel('Share of the free space');
+  await expect(share).toHaveValue('50');
+  await share.fill('30');
+  await expect(dialog.getByLabel('Weight')).toHaveValue('0.429');
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect
+    .poll(async () => {
+      const [a, b] = [(await springs.nth(0).boundingBox())!.height, (await springs.nth(1).boundingBox())!.height];
+      return Math.round((100 * a) / (a + b));
+    })
+    .toBe(30);
+
+  // The second becomes a fixed space of a quarter of the page.
+  await springs.nth(1).dblclick();
+  await dialog.getByLabel('Fixed height').check();
+  await dialog.getByLabel('Unit').selectOption({ label: '% of the page height' });
+  await dialog.getByLabel('Height', { exact: true }).fill('25');
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  const letter = await page.evaluate(() => /^en-(US|CA)$|^es-(MX|US)$/.test(navigator.language));
+  const pageHeight = (((letter ? 279.4 : 297) - 30) * 96) / 25.4;
+  const fixed = page.locator('.doc-page .space:not(.spring)');
+  await expect.poll(async () => Math.abs((await fixed.boundingBox())!.height - pageHeight / 4)).toBeLessThan(3);
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
+  expect(md).toContain('\\vspace{\\stretch{0.429}}');
+  expect(md).toContain('\\vspace{0.25\\textheight}');
+  expect(errors).toEqual([]);
+});

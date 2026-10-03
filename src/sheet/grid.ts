@@ -22,6 +22,7 @@ const OVERSCAN = 8;
 const MIN_RENDER_ROWS = 40;
 const MAX_UNDO = 100;
 
+const CUSTOM_FORMAT = '\u0000custom';
 const FORMATS = (): [string, string][] => [
   ['', t('sheet.fmt.general')],
   ['0', '0'],
@@ -86,7 +87,7 @@ export class SheetEditor implements EditorView {
   private readonly lookButtons = new Map<string, HTMLButtonElement>();
   private readonly textColor = h('input', { type: 'color', value: '#c00000', 'aria-label': t('sheet.textColor'), title: t('sheet.textColor') });
   private readonly fillColor = h('input', { type: 'color', value: '#ffff00', 'aria-label': t('sheet.fillColor'), title: t('sheet.fillColor') });
-  private readonly formatSelect = h('select', { 'aria-label': t('sheet.numberFormat'), title: t('sheet.numberFormat') }, ...FORMATS().map(([v, l]) => h('option', { value: v }, l)));
+  private readonly formatSelect = h('select', { 'aria-label': t('sheet.numberFormat'), title: t('sheet.numberFormat') }, ...FORMATS().map(([v, l]) => h('option', { value: v }, l)), h('option', { value: CUSTOM_FORMAT }, t('sheet.fmt.custom')));
   private readonly viewport = h('div', { class: 'grid-viewport', tabindex: '0', role: 'grid', 'aria-label': t('sheet.label') });
   private readonly table = h('table', { class: 'grid' });
   private readonly tabs = h('div', { class: 'sheet-tabs', role: 'tablist', 'aria-label': t('sheet.sheets') });
@@ -395,7 +396,11 @@ export class SheetEditor implements EditorView {
     this.nameBox.textContent = refName(this.focusCell.row, this.focusCell.col);
     const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
     if (document.activeElement !== this.formulaInput) this.formulaInput.value = cellInput(cell);
-    this.formatSelect.value = FORMATS().some(([v]) => v === (cell?.numFmt ?? '')) ? (cell?.numFmt ?? '') : '';
+    // A format not in the list (from a file or a template) is shown as it is, to be changed again.
+    const fmt = cell?.numFmt ?? '';
+    this.formatSelect.querySelector('option.current-format')?.remove();
+    if (!FORMATS().some(([v]) => v === fmt)) this.formatSelect.insertBefore(h('option', { value: fmt, class: 'current-format' }, fmt), this.formatSelect.lastElementChild);
+    this.formatSelect.value = fmt;
     // SHEET-014: the toolbar shows the formatting of the active cell.
     const look = cell?.style ?? {};
     for (const [key, b] of this.lookButtons) b.setAttribute('aria-pressed', String(key.startsWith('align:') ? look.align === key.slice(6) : !!look[key as 'bold']));
@@ -877,7 +882,14 @@ export class SheetEditor implements EditorView {
 
   private toolbar(): HTMLElement {
     const act = (label: string, text: string, fn: () => void) => button(label, fn, { text, title: label });
-    this.formatSelect.addEventListener('change', () => this.applyFormat(this.formatSelect.value));
+    this.formatSelect.addEventListener('change', () => {
+      if (this.formatSelect.value !== CUSTOM_FORMAT) return this.applyFormat(this.formatSelect.value);
+      // SHEET-014: any number format code (0.000, # ##0 "kg", dd/mm/yyyy hh:mm…).
+      const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
+      const code = window.prompt(t('sheet.fmt.customPrompt'), cell?.numFmt ?? '0.000');
+      if (code?.trim()) this.applyFormat(code.trim());
+      this.renderSelection();
+    });
     return h(
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('sheet.label') },

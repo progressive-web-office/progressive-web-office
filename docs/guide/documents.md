@@ -294,8 +294,19 @@ the Insert menu (or the [context menu](#the-context-menu)) inserts
 They can be typed as in LaTeX: `\hfill` then a space; `\vfill`,
 `\vspace{2cm}`, `\bigskip`… alone on a line, then <kbd>Enter</kbd>. A spring
 has a **weight**: one of weight 2 (`\vspace{\stretch{2}}`,
-`\hspace{\stretch{2}}`) takes twice the space of one of weight 1. Right-click
-a spring to change its weight, or a space its height.
+`\hspace{\stretch{2}}`) takes twice the space of one of weight 1.
+
+**Double-click** a spring or a space (or right-click it, *Change the spring
+or space…*) to open its dialog:
+
+- for a spring, its **share of the free space in percent** — with another
+  spring on the page, type 30 for 30 % above and 70 % below; the weight is
+  worked out from the other springs of the page (or of the line), and can be
+  typed too;
+- or a **fixed height**, in cm, mm, pt or **% of the page height**
+  (`\vspace{0.3\textheight}`: a third of the text height, whatever the
+  paper);
+- a spring can become a fixed space, and back.
 
 The editor shows the document as one long page: a "page" is what lies between
 page breaks, its free height that of the printed page (paper and margins of
@@ -305,6 +316,7 @@ the print settings), worked out again before printing.
 |---|---|---|
 | Vertical spring | `\vfill`, `\vspace{\stretch{2}}` | the space it was last shown with, in a paragraph of style *PWO Spring* |
 | Vertical space | `\vspace{2cm}` | the same space, style *PWO Space* |
+| Share of the page | `\vspace{0.3\textheight}` | the space it was last shown with, style *PWO Space 30%* |
 | Horizontal spring | `\hfill`, `\hspace{\stretch{2}}` | a tab (style *PWO Fill*) to a tab stop: the last spring of a line at its end (right tab), the others where the text after them was shown |
 
 LibreOffice and Word have no springs: there, the document looks as it did
