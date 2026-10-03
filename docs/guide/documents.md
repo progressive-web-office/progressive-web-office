@@ -122,6 +122,19 @@ When you insert a picture (🖼, paste or drag and drop), the app asks for:
 
 Double-click a picture to change its alternative text.
 
+**Retouching a picture.** Right-click a picture (long press on a phone),
+then **Edit the picture…**:
+
+- **⟲ ⟳** turn it a quarter, **⇋** mirror it;
+- drag on it to **crop** it, or choose **▒ Blur** and drag over a region to
+  blur it — a face, a name, a number plate — before sharing the document;
+- **Brightness**, **Contrast** and **Size (%)** (a smaller picture makes a
+  lighter document).
+
+Nothing changes until **Apply**; then the change can be undone like any
+other (<kbd>Ctrl</kbd>+<kbd>Z</kbd>). JPEG and WebP pictures stay in their
+format, the others become PNG.
+
 ### Accessibility check
 
 **♿ Check accessibility** lists what makes the document harder to read with

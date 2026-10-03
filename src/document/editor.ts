@@ -862,6 +862,18 @@ export class DocumentEditor implements EditorView {
       );
     }
     if (field !== undefined && editable) entries.push({ title: t('field.menu') }, { label: t('field.freeze'), icon: '📌', run: () => this.freezeField(field) }, 'separator');
+    // IMG-001: a picture under the pointer.
+    const imgEl = target?.closest<HTMLElement>('img');
+    const imgPos = imgEl && this.view.dom.contains(imgEl) ? view.posAtDOM(imgEl, 0) : undefined;
+    const imgNode = imgPos !== undefined ? view.state.doc.nodeAt(imgPos) : null;
+    if (imgNode?.type === schema.nodes.image && imgPos !== undefined && imgNode.attrs.image && editable) {
+      entries.push(
+        { title: t('ctx.picture') },
+        { label: t('photo.edit'), icon: '🎨', run: () => void this.editPhoto(imgPos) },
+        { label: t('picture.describe'), icon: '🏷', run: () => void this.describeImage(imgPos, imgNode) },
+        'separator',
+      );
+    }
     // FORM-003: a form field under the pointer.
     const inputEl = target?.closest<HTMLElement>('.form-input');
     const inputPos = inputEl ? view.posAtDOM(inputEl, 0) : undefined;
@@ -2203,6 +2215,23 @@ export class DocumentEditor implements EditorView {
   }
 
   /** The alternative text of a picture, and a caption when it is new (IMG-003). */
+  /** IMG-001: crop, turn, lighten, blur or resize a picture of the document. */
+  private async editPhoto(pos: number): Promise<void> {
+    const node = this.view.state.doc.nodeAt(pos);
+    const res = node?.type === schema.nodes.image ? this.doc.resources.get(node.attrs.image as string) : undefined;
+    if (!node || !res || this.readOnly) return;
+    const { editPhoto } = await import('../images/photo-editor');
+    const edited = await editPhoto(this.element, res.data, res.mediaType);
+    if (!edited) return this.refocus();
+    const current = this.view.state.doc.nodeAt(pos);
+    if (current?.type !== schema.nodes.image) return;
+    const key = addResource(this.doc, edited.bytes, edited.mediaType, res.name);
+    // The shown width is kept (no wider than the picture), the height follows the new proportions.
+    const width = Math.min((current.attrs.width as number | null) ?? edited.width, edited.width);
+    this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, image: key, width, height: Math.round((width * edited.height) / edited.width) }));
+    this.refocus();
+  }
+
   private async describeImage(pos: number, node: PmNode, isNew = false): Promise<void> {
     if (this.readOnly) return;
     const { editPicture } = await import('./picture-dialog');

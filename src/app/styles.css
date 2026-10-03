@@ -411,6 +411,15 @@ textarea.pdf-field { resize: none; }
 .signature-canvas { width: 100%; max-width: 600px; aspect-ratio: 3 / 1; border: 1px dashed var(--border); border-radius: 6px; background: #fff; touch-action: none; display: block; }
 .signature-saved { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px; border: 1px solid var(--border); border-radius: 6px; }
 .signature-saved-img { max-height: 48px; max-width: 200px; background: #fff; }
+/* IMG-001: picture editing. */
+.photo-dialog { max-width: min(96vw, 720px); }
+.photo-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.photo-tool-group { display: inline-flex; gap: 10px; padding: 0 8px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+.photo-stage { display: flex; justify-content: center; background: repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 0 0 / 16px 16px; border-radius: 6px; padding: 6px; }
+.photo-canvas { max-width: 100%; height: auto; touch-action: none; cursor: crosshair; }
+.photo-sliders { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; }
+.photo-slider { display: grid; gap: 2px; font-size: 0.85rem; }
+.photo-size { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); }
 
 /* Presentations */
 .slide-editor { display: flex; flex-direction: column; height: 100%; }
