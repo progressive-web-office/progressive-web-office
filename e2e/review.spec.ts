@@ -99,8 +99,13 @@ test('reviews a text document page by page and comments it (REVIEW-001..REVIEW-0
   await page.keyboard.press(']');
   await expect(pageInput).toHaveValue(String(total));
 
+  // The button leaving the mode is where the one entering it was.
+  const leave = (await bar.getByRole('button', { name: 'Edit', exact: true }).boundingBox())!;
   await bar.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
+  const enter = (await page.getByRole('toolbar', { name: 'Formatting' }).getByRole('button', { name: 'Review mode' }).boundingBox())!;
+  expect(Math.abs(enter.x - leave.x)).toBeLessThan(2);
+  expect(Math.abs(enter.y - leave.y)).toBeLessThan(2);
   await expect(editor).toHaveAttribute('contenteditable', 'true');
   await expect(bar).toBeHidden();
   expect(errors).toEqual([]);

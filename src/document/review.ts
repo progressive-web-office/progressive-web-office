@@ -71,6 +71,9 @@ export class DocReview {
     this.bar = h(
       'div',
       { class: 'toolbar review-bar', role: 'toolbar', 'aria-label': t('review.bar'), hidden: true },
+      // Where the button entering the review mode is: first.
+      button(t('review.leave'), leave, { text: `✎ ${t('review.leave')}`, title: t('review.leaveTitle'), className: 'review-toggle' }),
+      h('span', { class: 'sep' }),
       button(t('pdf.prev'), () => this.do('prev'), { text: '◀', title: `${t('pdf.prev')} (j)` }),
       this.pageInput,
       this.pageTotal,
@@ -91,7 +94,6 @@ export class DocReview {
       h('span', { class: 'sep' }),
       this.fullscreenButton,
       button(t('review.help'), () => this.do('help'), { text: '⌨', title: t('review.helpTitle'), className: 'icon' }),
-      button(t('review.leave'), leave, { text: `✎ ${t('review.leave')}`, title: t('review.leaveTitle') }),
     );
     this.renderFlowButton();
     host.root.addEventListener('keydown', (e) => {

@@ -283,6 +283,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- The button leaving the review mode is now where the one entering it is,
+  first in the bar.
+
 - The letter template wrote each address on a single line: every line of an
   address is now on its own line, and the letter is laid out as is usual in
   its language (in French: recipient, place and date and signature from
