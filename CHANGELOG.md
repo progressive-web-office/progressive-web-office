@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Markdown extras (MD-019): `==highlight==`, and callouts (`> [!NOTE] Title`)
+  drawn as coloured boxes and kept as written.
+
 - Note identifiers (FOLDER-024): new notes named and marked with the date and
   time, and `[[202410031530]]` links by identifier. The file explorer can
   offer several kinds of new files.

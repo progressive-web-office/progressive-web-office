@@ -46,6 +46,7 @@ import { loadTypography, saveTypography } from './typography';
 import { writingKey, writingPlugin } from './pm/writing-plugin';
 import { completionPlugin } from './pm/complete';
 import { noteTagsPlugin, refreshNoteTags } from './pm/note-tags';
+import { calloutPlugin } from './pm/callouts';
 import { readability } from './readability';
 import { addWritten, loadGoal, saveGoal } from './writing-stats';
 import { CommentPanel } from './comment-panel';
@@ -231,6 +232,8 @@ export class DocumentEditor implements EditorView {
             completionPlugin((kind) => this.ctx.completions?.(kind), (kind) => t(kind === 'link' ? 'complete.notes' : 'complete.tags')),
             // FOLDER-023: #tags of a note shown as tags, in their colour.
             noteTagsPlugin((tag) => (this.ctx.tagColour ? this.ctx.tagColour(tag) : null)),
+            // MD-019: callouts (`> [!NOTE]`) as coloured boxes.
+            calloutPlugin(),
             ...basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
           ],
         }),

@@ -107,8 +107,8 @@ group is not a commitment.
 
 - Document tabs and a split view: two documents side by side (a copy and
   its answer key, a source and its translation), pinned tabs
-- Markdown extras: highlight `==text==`, callouts (`> [!NOTE]`), attributes
-  (`{#id .class}`), unnumbered headings
+- ✅ Markdown extras: highlight `==text==`, callouts (`> [!NOTE]`) (MD-019);
+  next: attributes (`{#id .class}`), unnumbered headings
 
 ### Review and collaboration
 

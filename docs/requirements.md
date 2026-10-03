@@ -168,6 +168,7 @@ manifest (`schemas/mdz-manifest-1.schema.json`), to be proposed upstream.
 | MD-017 | M | 0.0.2 | When such a ZIP contains several Markdown files, the system shall ask the user to choose the entry document, pre-selecting `index.md`, else `README.md`, else the first file in alphabetical order; if the user cancels, then the system shall not open the archive. |
 | MD-015 | M | 0.0.2 | When an imported plain ZIP is saved, the system shall produce a conforming `.mdz` package (generated `manifest.json`, `index.md`, images moved to `assets/images/` with rewritten links). |
 | MD-018 | M | 0.1.0 | When a Markdown note opened from a folder or an archive links pictures (`![](path)`, `<img src>`, `![[name]]`, with encoded or plain names), the system shall display them, write them back as relative links when the note is saved into its folder, and include them when the note is exported (MDZ, DOCX, ODT, standalone Markdown); pictures that cannot be found shall be reported. |
+| MD-019 | S | 0.1.0 | The Markdown reader and writer shall support highlighted text (`==text==`) and callouts (a quote starting with `[!TYPE]`, optional title and `+`/`-`), which the editor shall draw as coloured boxes by type, keeping them unchanged on save. |
 | MD-013 | C | — | Upstream collaboration with wflixu/mdz: propose the JSON Schema, an optional uncompressed `mimetype` first entry for magic-byte detection, and path-safety rules. |
 
 ## 4c. Mathematical equations (MATH)

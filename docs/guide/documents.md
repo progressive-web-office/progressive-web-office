@@ -415,6 +415,17 @@ document and read back when it is opened again:
 ## Markdown specifics
 
 - CommonMark with GitHub-flavoured tables and strikethrough.
+- `==highlighted text==` is highlighted (in yellow); highlighted text of any
+  colour is written so.
+- **Callouts** (also called admonitions or alerts): a quote whose first line
+  is `[!NOTE]`, `[!TIP]`, `[!WARNING]`, `[!DANGER]`… with an optional title
+  and `+`/`-` (folding) is drawn as a coloured box, and written back as it
+  is:
+
+  ```md
+  > [!WARNING] Hot surface
+  > Do not touch the heater while it runs.
+  ```
 - Raw HTML in a Markdown file is displayed as text and never executed;
   only `<u>…</u>` and `<br>` are interpreted.
 - Pictures linked with a relative path (`![alt](img/photo.png)`,

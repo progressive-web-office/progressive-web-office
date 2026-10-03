@@ -124,3 +124,48 @@ describe('MD-002 Markdown writer', () => {
     expect(text).toMatch(/!\[pixel\]\(data:image\/png;base64,[A-Za-z0-9+/=]+\)/);
   });
 });
+
+describe('MD-019 Markdown extras: highlight and callouts', () => {
+  it('reads ==highlight== and writes highlighted text back so', () => {
+    const [p] = md('Some ==very **important**== text, a = b, x == y') as [import('../src/document/model').Paragraph];
+    expect(p.runs).toEqual([
+      { text: 'Some ' },
+      { text: 'very ', highlight: '#fff176' },
+      { text: 'important', highlight: '#fff176', bold: true },
+      { text: ' text, a = b, x == y' },
+    ]);
+    const out = writeMarkdown(readMarkdown('Some ==very **important**== text, a = b, x \\== y\n'));
+    expect(out).toContain('Some ==very **important**== text, a = b, x \\== y');
+  });
+
+  it('keeps callouts: the marker line, then the body', () => {
+    const blocks = md('> [!NOTE] Remember\n> the *body*\n\n> [!warning]-\n> Hot\n');
+    expect(blocks.map((b) => (b.type === 'paragraph' ? [b.style, b.runs.map((r) => ('text' in r ? r.text : '')).join('')] : b.type))).toEqual([
+      ['quote', '[!NOTE] Remember'],
+      ['quote', 'the body'],
+      ['quote', '[!warning]-'],
+      ['quote', 'Hot'],
+    ]);
+    const out = writeMarkdown(readMarkdown('> [!NOTE] Remember\n> the body\n'));
+    expect(out).toContain('> [!NOTE] Remember\n>\n> the body');
+    expect(writeMarkdown(readMarkdown(out))).toBe(out);
+  });
+});
+
+describe('MD-019 callouts in the editor', () => {
+  it('groups the quote paragraphs of each callout, by colour family', async () => {
+    const { calloutSpans, calloutFamily } = await import('../src/document/pm/callouts');
+    expect(calloutFamily('WARNING')).toBe('warning');
+    expect(calloutFamily('bug')).toBe('danger');
+    expect(calloutFamily('custom')).toBe('note');
+    const q = (text: string) => ({ quote: true, text });
+    expect(calloutSpans([q('[!TIP] Hint'), q('body'), q('[!danger]'), q('x'), { quote: false, text: 'p' }, q('plain quote')])).toEqual([
+      { family: 'tip', head: true },
+      { family: 'tip', head: false },
+      { family: 'danger', head: true },
+      { family: 'danger', head: false },
+      null,
+      null,
+    ]);
+  });
+});

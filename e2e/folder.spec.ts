@@ -363,3 +363,21 @@ test('creates notes with an identifier and follows links by identifier (FOLDER-0
   const files = () => page.evaluate(() => Object.fromEntries((window as unknown as { __folder: Map<string, string> }).__folder));
   expect((await files())['z/202410031530 Heat.md']).toBe('---\nid: 202410031530\n---\n# Heat\n');
 });
+
+test('shows ==highlights== and callouts of a note and keeps them on save (MD-019)', async ({ page }) => {
+  const note = '# N\n\nAn ==important== point.\n\n> [!WARNING] Hot\n>\n> Do not touch.\n\nAfter.\n';
+  await fakeFolder(page, { 'n.md': note });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'n.md' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await expect(editor.locator('blockquote.callout-warning')).toHaveCount(2);
+  await expect(editor.locator('blockquote.callout-head')).toHaveText('[!WARNING] Hot');
+  await expect(editor.getByText('important')).toHaveCSS('background-color', 'rgb(255, 241, 118)');
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/callouts.png' });
+  await editor.getByText('After.').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(' Done');
+  await page.keyboard.press('Control+s');
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('n.md'))).toBe(note.replace('After.', 'After. Done'));
+});

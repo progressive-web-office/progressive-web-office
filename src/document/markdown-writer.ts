@@ -1,5 +1,5 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
-import { isRelativeImage } from './markdown-reader';
+import { CALLOUT, isRelativeImage } from './markdown-reader';
 
 const safeDecode = (s: string): string => {
   try {
@@ -62,14 +62,15 @@ export function bytesToBase64(data: Uint8Array): string {
   return btoa(s);
 }
 
-type Mark = 'link' | 'bold' | 'italic' | 'strike' | 'underline';
-const MARK_ORDER: Mark[] = ['link', 'bold', 'italic', 'strike', 'underline'];
-const OPEN: Record<Exclude<Mark, 'link'>, string> = { bold: '**', italic: '*', strike: '~~', underline: '<u>' };
-const CLOSE: Record<Exclude<Mark, 'link'>, string> = { bold: '**', italic: '*', strike: '~~', underline: '</u>' };
+type Mark = 'link' | 'highlight' | 'bold' | 'italic' | 'strike' | 'underline';
+const MARK_ORDER: Mark[] = ['link', 'highlight', 'bold', 'italic', 'strike', 'underline'];
+// MD-019: highlighted text (any colour) as `==text==`.
+const OPEN: Record<Exclude<Mark, 'link'>, string> = { highlight: '==', bold: '**', italic: '*', strike: '~~', underline: '<u>' };
+const CLOSE: Record<Exclude<Mark, 'link'>, string> = { highlight: '==', bold: '**', italic: '*', strike: '~~', underline: '</u>' };
 
-/** Escape characters with Markdown meaning in inline text. */
+/** Escape characters with Markdown meaning in inline text (`==` too, which highlights). */
 export function escapeInline(text: string): string {
-  return text.replace(/[\\`*_[\]<>~|!$]/g, '\\$&');
+  return text.replace(/[\\`*_[\]<>~|!$]/g, '\\$&').replace(/=(?==)/g, '\\=');
 }
 
 /** Escape constructs that are only special at the start of a line. */
@@ -160,7 +161,12 @@ class MarkdownWriter {
         // \newpage is understood by Pandoc and most Markdown-to-PDF tools (DOC-021).
         parts.push(group.page ? '\\newpage' : '---');
       } else if (isQuote) {
-        quote.push(this.commented(group.runs, true));
+        // MD-019: a callout starts a quote of its own; its marker is written as is.
+        const first = group.runs[0];
+        const callout = first && isTextRun(first) && !first.link && CALLOUT.test(first.text) ? CALLOUT.exec(first.text)![0] : undefined;
+        if (callout) flushQuote();
+        const text = this.commented(group.runs, true);
+        quote.push(callout ? text.replace(escapeInline(callout), callout) : text);
       } else if (isCode) {
         code.push(group.runs.map((r) => (isTextRun(r) ? r.text : '')).join(''));
       } else {

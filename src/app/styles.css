@@ -1153,3 +1153,23 @@ body.distraction-free .ai-panel { display: none !important; }
   appearance: none;
 }
 .folder-tag-colour option { color: var(--text); background: var(--surface); font-size: 0.9rem; }
+
+/* MD-019: callouts, `> [!NOTE] Title` quotes. */
+.doc-page blockquote.callout {
+  --callout: #2f6fd6;
+  margin: 0;
+  padding: 2pt 12px;
+  border-left: 4px solid var(--callout);
+  background: color-mix(in srgb, var(--callout) 9%, transparent);
+  color: inherit;
+  font-style: normal;
+}
+.doc-page blockquote.callout-head { margin-top: 8pt; padding-top: 6pt; color: var(--callout); font-weight: 600; border-top-right-radius: 6px; }
+.doc-page blockquote.callout + blockquote.callout:not(.callout-head) { margin-top: 0; }
+.doc-page blockquote.callout:not(:has(+ blockquote.callout:not(.callout-head))) { margin-bottom: 8pt; padding-bottom: 6pt; border-bottom-right-radius: 6px; }
+.doc-page blockquote.callout-abstract { --callout: #1c9aa0; }
+.doc-page blockquote.callout-tip { --callout: #2e9e5b; }
+.doc-page blockquote.callout-question { --callout: #b8930b; }
+.doc-page blockquote.callout-warning { --callout: #d9822b; }
+.doc-page blockquote.callout-danger { --callout: #d1453b; }
+.doc-page blockquote.callout-example { --callout: #8a4fd6; }

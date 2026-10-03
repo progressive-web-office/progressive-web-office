@@ -119,11 +119,42 @@ function mathBlock(state: StateBlock, startLine: number, endLine: number, silent
   return true;
 }
 
+/** MD-019: the colour of `==highlighted==` text. */
+export const MARK_COLOUR = '#fff176';
+
+/** MD-019: `==text==`, highlighted (its content parsed as inline Markdown). */
+function highlightInline(state: StateInline, silent: boolean): boolean {
+  const start = state.pos;
+  const max = state.posMax;
+  const src = state.src;
+  if (src.charCodeAt(start) !== 0x3d || src.charCodeAt(start + 1) !== 0x3d || src.charCodeAt(start + 2) === 0x3d) return false;
+  // Not CriticMarkup's `{==text==}` (REV-004).
+  if (src[start - 1] === '{' || src[start + 2] === '}') return false;
+  const end = src.indexOf('==', start + 2);
+  if (end < 0 || end + 2 > max || src[end + 2] === '}') return false;
+  const inner = src.slice(start + 2, end);
+  if (!inner || /^\s|\s$/.test(inner)) return false;
+  if (!silent) {
+    state.pos = start + 2;
+    state.posMax = end;
+    state.push('mark_open', 'mark', 1);
+    state.md.inline.tokenize(state);
+    state.push('mark_close', 'mark', -1);
+    state.posMax = max;
+  }
+  state.pos = end + 2;
+  return true;
+}
+
+/** MD-019: a callout's first line, `[!NOTE] Title` (Obsidian, GitHub alerts). */
+export const CALLOUT = /^\[!([A-Za-z][\w-]*)\]([+-]?)/;
+
 let parser: MarkdownIt | undefined;
 function getParser(): MarkdownIt {
   if (!parser) {
     parser = new MarkdownItCallable('commonmark', { html: true }).enable(['table', 'strikethrough']).use(footnotePlugin);
     parser.inline.ruler.after('escape', 'math_inline', mathInline);
+    parser.inline.ruler.after('emphasis', 'mark', highlightInline);
     parser.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   }
   return parser;
@@ -352,7 +383,15 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
         quoteDepth--;
         break;
       case 'inline': {
-        const runs = normalizeRuns(inlineRuns(tok.children ?? [], doc, opts, noteRuns));
+        // MD-019: a callout's marker line is a paragraph of its own, before its body.
+        const kids = tok.children ?? [];
+        const brk = quoteDepth > 0 && !heading && kids[0]?.type === 'text' && CALLOUT.test(kids[0].content) ? kids.findIndex((k) => k.type === 'softbreak') : -1;
+        if (brk > 0) {
+          const head = newParagraph('normal');
+          head.runs = normalizeRuns(inlineRuns(kids.slice(0, brk), doc, opts, noteRuns));
+          push(head);
+        }
+        const runs = normalizeRuns(inlineRuns(brk > 0 ? kids.slice(brk + 1) : kids, doc, opts, noteRuns));
         // CODE-006: figures produced by the previous cell.
         const target = !heading && !row ? lastCell(blocks) : undefined;
         const figures = runs.filter((r) => !(isTextRun(r) && !r.text.trim()));
@@ -539,6 +578,12 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         break;
       case 's_close':
         delete fmt.strike;
+        break;
+      case 'mark_open':
+        fmt.highlight = MARK_COLOUR;
+        break;
+      case 'mark_close':
+        delete fmt.highlight;
         break;
       case 'code_inline':
         text(tok.content, { code: true });
