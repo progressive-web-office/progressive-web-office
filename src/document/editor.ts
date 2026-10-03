@@ -1091,6 +1091,57 @@ export class DocumentEditor implements EditorView {
     this.refocus();
   }
 
+  /** DOC-036: the document combined with the rows of a table (CSV, TSV, workbook). */
+  private async mailMerge(): Promise<void> {
+    const doc = { ...this.doc, blocks: this.currentBlocks() };
+    const merge = await import('./merge');
+    const fields = merge.mergeFields(doc);
+    if (!fields.length) return window.alert(t('merge.none'));
+    // The data: a table of the open folder, or a file of the device.
+    const inFolder = this.ctx.folderDataFiles?.() ?? [];
+    const device = t('merge.fromDevice');
+    const source = inFolder.length ? await this.ctx.choose(t('merge.title'), t('merge.pickData'), [...inFolder, device], inFolder[0]!) : device;
+    if (!source) return this.refocus();
+    let name = source;
+    let bytes: Uint8Array;
+    try {
+      if (source === device) {
+        const file = await pickDataFile();
+        if (!file) return this.refocus();
+        name = file.name;
+        bytes = new Uint8Array(await file.arrayBuffer());
+      } else bytes = await this.ctx.readFolderFile!(source);
+      const wb = /\.xlsx$/i.test(name) ? (await import('../sheet/xlsx-reader')).readXlsx(bytes) : /\.ods$/i.test(name) ? (await import('../sheet/ods-reader')).readOds(bytes) : (await import('../sheet/csv')).readCsv(bytes, name);
+      const table = merge.mergeTable(wb);
+      const { chooseMerge } = await import('./merge-dialog');
+      const format = 'odt';
+      const choice = await chooseMerge(this.element, fields, table, name.replace(/^.*\//, ''), !!this.ctx.folderWritable?.(), format);
+      if (!choice) return this.refocus();
+      const stem = (doc.meta.title || t('merge.stem')).replace(/[\\/:*?"<>|]+/g, '-').trim();
+      const { saveFile } = await import('../storage/file-io');
+      const plain = withoutSolutions(doc);
+      if (choice.output === 'single') {
+        const all = merge.mergeAll(plain, table.rows);
+        await saveFile(await writeDocumentAsync(all, choice.format), `${stem}-${t('merge.suffix')}.${choice.format}`, choice.format);
+      } else {
+        const names = merge.mergeNames(table.rows, choice.nameField, stem);
+        const files: { path: string; data: Uint8Array }[] = [];
+        for (const [i, row] of table.rows.entries()) files.push({ path: `${names[i]}.${choice.format}`, data: await writeDocumentAsync(merge.mergeOne(plain, row), choice.format) });
+        if (choice.output === 'folder') {
+          const dir = `${stem} – ${t('merge.suffix')}`;
+          for (const f of files) await this.ctx.writeFolderFile!(`${dir}/${f.path}`, f.data);
+          this.ctx.notify?.(t('merge.written', { n: files.length, dir }));
+        } else {
+          const { writeZip } = await import('../core/zip');
+          await saveFile(writeZip(files), `${stem}-${t('merge.suffix')}.zip`, 'texzip', { mimeType: 'application/zip', extension: 'zip' });
+        }
+      }
+    } catch (err) {
+      window.alert(t('merge.error', { message: (err as Error).message }));
+    }
+    this.refocus();
+  }
+
   private hasSolutions(): boolean {
     let found = false;
     this.view?.state.doc.descendants((node) => {
@@ -1391,6 +1442,7 @@ export class DocumentEditor implements EditorView {
       state(t('solution.button'), '✓', (s, d) => setParagraphAttrs({ solution: !paragraphAttr(s, 'solution') })(s, d), () => !!paragraphAttr(this.view.state, 'solution'), t('solution.title')),
       this.solutionsButton,
       act(t('variants.button'), '🎲', () => void this.generateVariants(), t('variants.buttonTitle')),
+      act(t('merge.button'), '✉', () => void this.mailMerge(), t('merge.buttonTitle')),
       act(t('note.button'), '¹', () => void this.editNote(), `${t('note.insert')} (Ctrl+Alt+F)`),
       act(t('xref.captionButton'), '🏷', () => void this.editCaption(), t('xref.captionButtonTitle')),
       act(t('xref.button'), '↪', () => void this.insertCrossReference(), t('xref.buttonTitle')),
@@ -1600,4 +1652,16 @@ export class DocumentEditor implements EditorView {
     })();
     return true;
   }
+}
+
+/** DOC-036: a table file of the device (CSV, TSV, workbook). */
+function pickDataFile(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv,.tsv,.txt,.xlsx,.ods';
+    input.addEventListener('change', () => resolve(input.files?.[0] ?? null), { once: true });
+    input.addEventListener('cancel', () => resolve(null), { once: true });
+    input.click();
+  });
 }

@@ -768,6 +768,28 @@ export class App {
       choose: (title, message, options, preselected) => this.choose(title, message, options, preselected),
       openLink: (href) => this.openLink(href),
       folderDocuments: () => this.folderDocuments(),
+      // DOC-036: tables of the open folder for a mail merge, and its results written there.
+      folderDataFiles: () => this.folderRelative((p) => /\.(csv|tsv|xlsx|ods)$/i.test(p)),
+      readFolderFile: async (path) => {
+        const { readBytes, resolve } = await import('../fs');
+        return readBytes(this.folder!.provider, resolve(this.current?.folderPath ?? '', path));
+      },
+      folderWritable: () => !!this.folder?.provider.capabilities.write,
+      writeFolderFile: async (path, bytes) => {
+        const folder = this.folder;
+        if (!folder?.provider.capabilities.write) throw new Error(t('folder.readOnly'));
+        const { dirname, resolve } = await import('../fs');
+        const target = resolve(this.current?.folderPath ?? '', path);
+        for (let d = dirname(target), dirs: string[] = []; ; d = dirname(d)) {
+          if (!d) {
+            for (const x of dirs.reverse()) await folder.provider.mkdir(x).catch(() => undefined);
+            break;
+          }
+          dirs.push(d);
+        }
+        await folder.provider.write(target, new Blob([bytes as BlobPart]));
+        await folder.refresh();
+      },
       tagColour: (tag) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.tagColour(tag) : null),
       completions: (kind) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.completions(kind, this.current?.folderPath) : undefined),
       headerChanged: () => this.renderHeader(),
@@ -1655,19 +1677,25 @@ export class App {
 
   /** The folder's documents, relative to the open document (to include them, DOC-028). */
   private folderDocuments(): Promise<string[]> | undefined {
+    const docs = this.folderRelative((p) => /\.(docx|odt|odm|md|markdown|mdz|tex)$/i.test(p) && p !== this.current?.folderPath);
+    return docs && Promise.resolve(docs);
+  }
+
+  /** Files of the folder kept by `keep`, relative to the open document. */
+  private folderRelative(keep: (path: string) => boolean): string[] | undefined {
     const folder = this.folder;
     if (!folder) return undefined;
     const from = (this.current?.folderPath ?? '').split('/').slice(0, -1);
-    return Promise.resolve(
+    return (
       folder
         .files()
-        .filter((p) => /\.(docx|odt|odm|md|markdown|mdz|tex)$/i.test(p) && p !== this.current?.folderPath)
+        .filter(keep)
         .map((p) => {
           const parts = p.split('/');
           let common = 0;
           while (common < from.length && common < parts.length - 1 && from[common] === parts[common]) common++;
           return [...Array(from.length - common).fill('..'), ...parts.slice(common)].join('/');
-        }),
+        })
     );
   }
 

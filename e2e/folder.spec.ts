@@ -381,3 +381,29 @@ test('shows ==highlights== and callouts of a note and keeps them on save (MD-019
   await page.keyboard.press('Control+s');
   await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('n.md'))).toBe(note.replace('After.', 'After. Done'));
 });
+
+test('makes one document per row of a table of the folder by mail merge (DOC-036)', async ({ page }) => {
+  await fakeFolder(page, {
+    'letters/letter.md': '# Letter\n\nDear {{First name}} {{Name}}, your mark is {{Mark}}.\n',
+    'letters/class.csv': 'Name,First name,Mark\nCurie,Marie,18\nNoether,Emmy,19\n',
+  });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'letters', exact: true }).click();
+  await panel.getByRole('button', { name: 'letter.md' }).click();
+  await page.getByRole('button', { name: 'Mail merge…' }).click();
+  const pick = page.getByRole('dialog', { name: 'Mail merge' }).first();
+  await pick.getByLabel('class.csv').check();
+  await pick.getByRole('button', { name: 'Open' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Mail merge' });
+  await expect(dialog).toContainText('2 rows in class.csv.');
+  await dialog.getByLabel('one file per row, in the open folder').check();
+  await dialog.getByLabel('Format').selectOption('md');
+  await dialog.getByLabel('Name the files after').selectOption('Name');
+  await dialog.getByRole('button', { name: 'Make the documents' }).click();
+  await expect(page.getByRole('alert')).toContainText('2 documents written');
+  const files = () => page.evaluate(() => Object.fromEntries((window as unknown as { __folder: Map<string, string> }).__folder));
+  await expect.poll(async () => (await files())['letters/Letter – merge/Curie.md']).toContain('Dear Marie Curie, your mark is 18.');
+  expect((await files())['letters/Letter – merge/Noether.md']).toContain('Dear Emmy Noether, your mark is 19.');
+  await expect(panel.getByRole('button', { name: 'Letter – merge', exact: true })).toBeVisible();
+});

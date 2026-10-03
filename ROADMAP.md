@@ -65,8 +65,8 @@ group is not a commitment.
 - Master documents, next steps: numbering and table of contents running
   across sub-documents while editing, cross-references to targets in other
   sub-documents
-- Mail merge: a document combined with a CSV file or a workbook gives N
-  documents or one PDF
+- ✅ Mail merge: a document combined with a CSV file or a workbook gives N
+  documents or one document to print (DOC-036)
 - Form fields (text, check box, list), exported as a fillable PDF
 - Grammar checking with LanguageTool (public or self-hosted instance)
 - Visual comparison of two versions of a document

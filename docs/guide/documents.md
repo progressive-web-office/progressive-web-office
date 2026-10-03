@@ -345,6 +345,28 @@ with one sheet per variant (without the solutions), its answer key (with
 them), and a CSV table of the values drawn for each variant.
 :::
 
+## Mail merge
+
+Write **fields** in a document as `{{Name}}`, named like the columns of a
+table — a CSV or TSV file, or the first sheet of a workbook (`.xlsx`,
+`.ods`) whose **first row names the columns**:
+
+```md
+Dear {{First name}} {{Name}}, your mark is {{Mark}}/20.
+```
+
+**✉ Mail merge…** asks for the table (one of the open folder, or a file of
+the device), shows how many rows it has and which fields it lacks (those are
+left as they are), then makes:
+
+- **one file per row, in a ZIP archive**;
+- **one file per row, in the open folder** (a `… – merge` folder next to the
+  document), when the folder can be written;
+- **one document, a page per row**, ready to print or save as PDF.
+
+Choose the format (`.odt`, `.docx`, `.md`) and the column naming the files
+(the row number otherwise). Answers of exercise sheets are left out.
+
 ## Tracking changes
 
 Click **±** (Track changes) to record your edits instead of applying them:

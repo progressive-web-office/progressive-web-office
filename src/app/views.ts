@@ -73,6 +73,14 @@ export interface ViewContext {
   completions?(kind: 'link' | 'tag'): Promise<string[]> | undefined;
   /** Colour of a tag of the open folder (FOLDER-023); null when the document is not a note of the folder. */
   tagColour?(tag: string): string | undefined | null;
+  /** DOC-036: data files of the open folder (CSV, TSV, workbooks), relative to this document. */
+  folderDataFiles?(): string[] | undefined;
+  /** DOC-036: read a file of the open folder, relative to this document. */
+  readFolderFile?(path: string): Promise<Uint8Array>;
+  /** DOC-036: write a file into the open folder, relative to this document; undefined when it cannot be written. */
+  writeFolderFile?(path: string, bytes: Uint8Array): Promise<void>;
+  /** DOC-036: a folder is open and can be written. */
+  folderWritable?(): boolean;
   /** What the view offers in the header changed (e.g. its save variants). */
   headerChanged?(): void;
   /** Show a short message to the user. */

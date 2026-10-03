@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Mail merge (DOC-036): `{{Field}}` placeholders filled from the rows of a
+  CSV, TSV or workbook, giving one file per row (ZIP or the open folder) or
+  one document with a page per row.
+
 - Markdown extras (MD-019): `==highlight==`, and callouts (`> [!NOTE] Title`)
   drawn as coloured boxes and kept as written.
 
