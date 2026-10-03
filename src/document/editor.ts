@@ -875,7 +875,7 @@ export class DocumentEditor implements EditorView {
     // CODE-011: completion loads jedi the first time, longer than a keystroke waits: it starts now.
     if (this.runner?.started) void this.runner.complete('import sys\nsys.', 1, 4, 120_000);
     // CODE-011: the interpreter of the document's cells completes with what it knows, once running.
-    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : lang ? { lang, code: '' } : undefined, (code, line, column) => this.runner?.complete(code, line, column) ?? Promise.resolve(null), !current);
+    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : lang ? { lang, code: '' } : undefined, (code, line, column, onLate) => this.runner?.complete(code, line, column, 2500, onLate) ?? Promise.resolve(null), !current);
     if (!value) return;
     // Changing the code makes the previous output stale.
     const unchanged = current && current.cell === value.code && current.lang === value.lang;

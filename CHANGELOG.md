@@ -329,6 +329,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Python completion in a code cell: when the interpreter was still loading
+  jedi, the first completions answered too late and the list never opened;
+  a late answer now opens it, if the cursor has not moved (CODE-011).
 - Names in the templates follow the usage: SURNAME First name in school and
   university documents (a team listed one member per line), First name
   SURNAME elsewhere (minutes, French letters).

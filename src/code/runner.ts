@@ -77,17 +77,21 @@ export class CodeRunner {
    * CODE-011: completions of the running Python interpreter (null when it is
    * not running: it is not started only for this, nor waited for long).
    */
-  complete(code: string, line: number, column: number, timeoutMs = 2500): Promise<import('./completion').SmartItem[] | null> {
+  complete(code: string, line: number, column: number, timeoutMs = 2500, onLate?: () => void): Promise<import('./completion').SmartItem[] | null> {
     if (!this.ready || !this.frame) return Promise.resolve(null);
     return new Promise((resolve) => {
       const id = ++this.nextId;
+      let late = false;
       const timer = setTimeout(() => {
-        this.completions.delete(id);
+        // The first completions wait for jedi to load: not answered in time, the
+        // request still runs, and its answer asks the editor to complete again.
+        late = true;
         resolve(null);
       }, timeoutMs);
       this.completions.set(id, (items) => {
         clearTimeout(timer);
-        resolve(items);
+        if (!late) resolve(items);
+        else if (items?.length) onLate?.();
       });
       this.post({ type: 'complete', id, code, line, column });
     });

@@ -5,7 +5,7 @@
  * names known by the running interpreter (jedi: variables of earlier cells,
  * modules, their functions with signature and documentation).
  */
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, type Completion, type CompletionContext, type CompletionResult, type CompletionSource } from '@codemirror/autocomplete';
+import { autocompletion, startCompletion, closeBrackets, closeBracketsKeymap, completionKeymap, type Completion, type CompletionContext, type CompletionResult, type CompletionSource } from '@codemirror/autocomplete';
 import type { Extension } from '@codemirror/state';
 import { keymap } from '@codemirror/view';
 
@@ -19,7 +19,8 @@ export interface SmartItem {
 }
 
 /** Ask the interpreter for the completions at a line (1-based) and column; null when it is not running. */
-export type SmartComplete = (code: string, line: number, column: number) => Promise<SmartItem[] | null>;
+/** `onLate`: called when the answer came too late, so that the editor asks again. */
+export type SmartComplete = (code: string, line: number, column: number, onLate?: () => void) => Promise<SmartItem[] | null>;
 
 /** The completion popup, closing brackets and quotes, and their keys. */
 export function completionSupport(override?: CompletionSource[]): Extension[] {
@@ -89,7 +90,14 @@ export async function pythonSources(smart?: SmartComplete): Promise<CompletionSo
       const afterDot = ctx.matchBefore(/\.\w*$/);
       if (!ctx.explicit && !afterDot && (!word || word.from === word.to)) return null;
       const line = ctx.state.doc.lineAt(ctx.pos);
-      const items = await smart(ctx.state.doc.toString(), line.number, ctx.pos - line.from).catch(() => null);
+      const view = ctx.view;
+      const doc = ctx.state.doc;
+      const pos = ctx.pos;
+      // A late answer (the interpreter was still loading jedi) opens the list, if nothing changed meanwhile.
+      const again = (): void => {
+        if (view && view.state.doc.eq(doc) && view.state.selection.main.head === pos && view.hasFocus) startCompletion(view);
+      };
+      const items = await smart(doc.toString(), line.number, pos - line.from, again).catch(() => null);
       if (ctx.aborted) return null;
       if (items?.length) return { from: word ? word.from : ctx.pos, options: smartOptions(items), validFor: /^\w*$/ };
       return afterDot ? null : fallback(ctx);

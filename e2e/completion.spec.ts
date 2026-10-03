@@ -59,9 +59,11 @@ test('completes with the names known by the running interpreter (CODE-011)', asy
   test.setTimeout(180_000);
   if (local) {
     const { readFileSync } = await import('node:fs');
-    await page.route('https://cdn.jsdelivr.net/pyodide/**', (route) => {
+    await page.route('https://cdn.jsdelivr.net/pyodide/**', async (route) => {
       const name = new URL(route.request().url()).pathname.split('/').pop()!;
-      route.fulfill({ body: readFileSync(`${local}/${name}`), headers: { 'Access-Control-Allow-Origin': '*' } });
+      // As on a slow network: jedi arrives after the first completion requests gave up.
+      if (/^jedi-/.test(name)) await new Promise((r) => setTimeout(r, 6000));
+      await route.fulfill({ body: readFileSync(`${local}/${name}`), headers: { 'Access-Control-Allow-Origin': '*' } });
     });
   }
   await openApp(page);
