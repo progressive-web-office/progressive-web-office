@@ -11,6 +11,12 @@ export interface Rect {
   h: number;
 }
 
+/** IMG-004: drawn on the picture: an arrow, a highlighted region, a text. */
+export type PhotoMark =
+  | { kind: 'arrow'; from: [number, number]; to: [number, number] }
+  | { kind: 'highlight'; rect: Rect }
+  | { kind: 'text'; at: [number, number]; text: string };
+
 export interface PhotoEdit {
   /** Quarter turns, clockwise. */
   rotate: 0 | 90 | 180 | 270;
@@ -19,14 +25,15 @@ export interface PhotoEdit {
   brightness: number;
   contrast: number;
   blurs: Rect[];
+  marks: PhotoMark[];
   crop?: Rect;
   /** Share of the cropped size kept, 1 = unchanged. */
   scale: number;
 }
 
-export const NO_EDIT: PhotoEdit = { rotate: 0, flip: false, brightness: 100, contrast: 100, blurs: [], scale: 1 };
+export const NO_EDIT: PhotoEdit = { rotate: 0, flip: false, brightness: 100, contrast: 100, blurs: [], marks: [], scale: 1 };
 
-export const isUnchanged = (e: PhotoEdit): boolean => e.rotate === 0 && !e.flip && e.brightness === 100 && e.contrast === 100 && !e.blurs.length && !e.crop && e.scale === 1;
+export const isUnchanged = (e: PhotoEdit): boolean => e.rotate === 0 && !e.flip && e.brightness === 100 && e.contrast === 100 && !e.blurs.length && !e.marks.length && !e.crop && e.scale === 1;
 
 /** The size of the turned picture. */
 export function turnedSize(w: number, h: number, rotate: PhotoEdit['rotate']): { w: number; h: number } {
@@ -61,6 +68,68 @@ export function flipRect(r: Rect, w: number): Rect {
   return { ...r, x: w - r.x - r.w };
 }
 
+/** A point of the turned picture after a new quarter turn; (w, h): the size before it. */
+export function turnPoint([x, y]: [number, number], w: number, h: number, by: 90 | 270): [number, number] {
+  return by === 90 ? [h - y, x] : [y, w - x];
+}
+
+export function turnMark(m: PhotoMark, w: number, h: number, by: 90 | 270): PhotoMark {
+  if (m.kind === 'arrow') return { ...m, from: turnPoint(m.from, w, h, by), to: turnPoint(m.to, w, h, by) };
+  if (m.kind === 'text') return { ...m, at: turnPoint(m.at, w, h, by) };
+  return { ...m, rect: turnRect(m.rect, w, h, by) };
+}
+
+export function flipMark(m: PhotoMark, w: number): PhotoMark {
+  if (m.kind === 'arrow') return { ...m, from: [w - m.from[0], m.from[1]], to: [w - m.to[0], m.to[1]] };
+  if (m.kind === 'text') return { ...m, at: [w - m.at[0], m.at[1]] };
+  return { ...m, rect: flipRect(m.rect, w) };
+}
+
+/** Marks are drawn red (arrows, text) and yellow (highlights), thick enough for the picture's size. */
+export function drawMarks(ctx: CanvasRenderingContext2D, marks: PhotoMark[], w: number, h: number): void {
+  const line = Math.max(3, Math.round(Math.min(w, h) / 120));
+  for (const m of marks) {
+    ctx.save();
+    if (m.kind === 'highlight') {
+      ctx.fillStyle = 'rgba(255, 221, 0, 0.4)';
+      ctx.fillRect(m.rect.x, m.rect.y, m.rect.w, m.rect.h);
+      ctx.strokeStyle = 'rgba(230, 180, 0, 0.9)';
+      ctx.lineWidth = Math.max(1, line / 2);
+      ctx.strokeRect(m.rect.x, m.rect.y, m.rect.w, m.rect.h);
+    } else if (m.kind === 'arrow') {
+      const [x1, y1] = m.from;
+      const [x2, y2] = m.to;
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const head = line * 4;
+      ctx.strokeStyle = ctx.fillStyle = '#e11d48';
+      ctx.lineWidth = line;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2 - Math.cos(angle) * head * 0.6, y2 - Math.sin(angle) * head * 0.6);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - head * Math.cos(angle - 0.45), y2 - head * Math.sin(angle - 0.45));
+      ctx.lineTo(x2 - head * Math.cos(angle + 0.45), y2 - head * Math.sin(angle + 0.45));
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      const size = Math.max(16, Math.round(Math.min(w, h) / 18));
+      ctx.font = `bold ${size}px system-ui, sans-serif`;
+      ctx.textBaseline = 'middle';
+      // White outline: readable on any background.
+      ctx.lineWidth = Math.max(3, size / 6);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.lineJoin = 'round';
+      ctx.strokeText(m.text, m.at[0], m.at[1]);
+      ctx.fillStyle = '#e11d48';
+      ctx.fillText(m.text, m.at[0], m.at[1]);
+    }
+    ctx.restore();
+  }
+}
+
 /** Draw the turned, mirrored, filtered and blurred picture, whole (before the crop). */
 export function drawTurned(source: CanvasImageSource, sw: number, sh: number, e: PhotoEdit, doc: Document = document): HTMLCanvasElement {
   const { w, h } = turnedSize(sw, sh, e.rotate);
@@ -89,6 +158,7 @@ export function drawTurned(source: CanvasImageSource, sw: number, sh: number, e:
     ctx.drawImage(canvas, 0, 0);
     ctx.restore();
   }
+  drawMarks(ctx, e.marks, w, h);
   return canvas;
 }
 

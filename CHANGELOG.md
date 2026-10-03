@@ -13,6 +13,7 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 - Pictures of a document can be retouched (IMG-001): crop, turn, mirror,
   brightness and contrast, size, and **blur a region** (a face, a name)
   before sharing; nothing changes until applied, and it can be undone.
+  Arrows, highlights and text can be drawn on it (IMG-004).
 - Editing modes (DOC-044): visual editing, the **source** of a Markdown or
   LaTeX file in colour beside a live preview, and **reading** (no toolbar,
   nothing changed by mistake); the mode is remembered per kind of document.

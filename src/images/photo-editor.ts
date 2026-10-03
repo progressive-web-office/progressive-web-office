@@ -5,7 +5,7 @@
  */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
-import { drawTurned, flipRect, isUnchanged, NO_EDIT, outputSize, rectBetween, renderPhoto, turnedSize, turnRect, type PhotoEdit, type Rect } from './photo';
+import { drawTurned, flipMark, flipRect, isUnchanged, NO_EDIT, outputSize, rectBetween, renderPhoto, turnedSize, turnMark, turnRect, type PhotoEdit, type Rect } from './photo';
 
 export interface EditedPhoto {
   bytes: Uint8Array;
@@ -14,6 +14,8 @@ export interface EditedPhoto {
   height: number;
 }
 
+type Tool = 'crop' | 'blur' | 'highlight' | 'arrow' | 'text';
+
 /** Largest side of the preview, in CSS pixels. */
 const PREVIEW = 640;
 
@@ -21,8 +23,8 @@ export async function editPhoto(host: HTMLElement, bytes: Uint8Array, mediaType:
   const bitmap = await createImageBitmap(new Blob([bytes as BlobPart], { type: mediaType }));
   const [sw, sh] = [bitmap.width, bitmap.height];
   return new Promise((resolve) => {
-    let edit: PhotoEdit = { ...NO_EDIT, blurs: [] };
-    let tool: 'crop' | 'blur' = 'crop';
+    let edit: PhotoEdit = { ...NO_EDIT, blurs: [], marks: [] };
+    let tool: Tool = 'crop';
     let drag: { from: [number, number]; to: [number, number] } | undefined;
     const canvas = h('canvas', { class: 'photo-canvas', role: 'img', 'aria-label': t('photo.preview') });
     const ctx = canvas.getContext('2d')!;
@@ -61,7 +63,17 @@ export async function editPhoto(host: HTMLElement, bytes: Uint8Array, mediaType:
         ctx.strokeRect(c.x + 0.5, c.y + 0.5, c.w - 1, c.h - 1);
         ctx.restore();
       }
-      if (tool === 'blur' && pending) {
+      if (drag && tool === 'arrow') {
+        ctx.save();
+        ctx.strokeStyle = '#e11d48';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(drag.from[0] * ratio, drag.from[1] * ratio);
+        ctx.lineTo(drag.to[0] * ratio, drag.to[1] * ratio);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if ((tool === 'blur' || tool === 'highlight') && pending) {
         const c = shown(pending);
         ctx.save();
         ctx.strokeStyle = '#f59e0b';
@@ -80,11 +92,11 @@ export async function editPhoto(host: HTMLElement, bytes: Uint8Array, mediaType:
     const turn = (by: 90 | 270): void => {
       const { w, h: hh } = turnedSize(sw, sh, edit.rotate);
       const rotate = ((edit.rotate + by) % 360) as PhotoEdit['rotate'];
-      update({ rotate, blurs: edit.blurs.map((r) => turnRect(r, w, hh, by)), ...(edit.crop ? { crop: turnRect(edit.crop, w, hh, by) } : {}) }, true);
+      update({ rotate, blurs: edit.blurs.map((r) => turnRect(r, w, hh, by)), marks: edit.marks.map((m) => turnMark(m, w, hh, by)), ...(edit.crop ? { crop: turnRect(edit.crop, w, hh, by) } : {}) }, true);
     };
     const flip = (): void => {
       const { w } = turnedSize(sw, sh, edit.rotate);
-      update({ flip: !edit.flip, blurs: edit.blurs.map((r) => flipRect(r, w)), ...(edit.crop ? { crop: flipRect(edit.crop, w) } : {}) }, true);
+      update({ flip: !edit.flip, blurs: edit.blurs.map((r) => flipRect(r, w)), marks: edit.marks.map((m) => flipMark(m, w)), ...(edit.crop ? { crop: flipRect(edit.crop, w) } : {}) }, true);
     };
 
     const point = (e: PointerEvent): [number, number] => {
@@ -103,8 +115,20 @@ export async function editPhoto(host: HTMLElement, bytes: Uint8Array, mediaType:
     });
     const release = (): void => {
       if (!drag) return;
-      const r = rectBetween(drag.from, drag.to, turned.width, turned.height);
+      const { from, to } = drag;
+      const r = rectBetween(from, to, turned.width, turned.height);
       drag = undefined;
+      if (tool === 'text') {
+        const text = window.prompt(t('photo.textPrompt'))?.trim();
+        if (text) update({ marks: [...edit.marks, { kind: 'text', at: from, text }] }, true);
+        else draw();
+        return;
+      }
+      if (tool === 'arrow') {
+        if (Math.hypot(to[0] - from[0], to[1] - from[1]) < 6) return draw();
+        update({ marks: [...edit.marks, { kind: 'arrow', from, to }] }, true);
+        return;
+      }
       if (r.w < 4 || r.h < 4) {
         // A click: no crop.
         if (tool === 'crop') update({ crop: undefined }, false);
@@ -112,12 +136,13 @@ export async function editPhoto(host: HTMLElement, bytes: Uint8Array, mediaType:
         return;
       }
       if (tool === 'crop') update({ crop: r }, false);
+      else if (tool === 'highlight') update({ marks: [...edit.marks, { kind: 'highlight', rect: r }] }, true);
       else update({ blurs: [...edit.blurs, r] }, true);
     };
     canvas.addEventListener('pointerup', release);
     canvas.addEventListener('pointercancel', release);
 
-    const toolRadio = (value: 'crop' | 'blur', label: string): HTMLLabelElement => {
+    const toolRadio = (value: Tool, label: string): HTMLLabelElement => {
       const input = h('input', { type: 'radio', name: 'photo-tool', value, checked: value === tool });
       input.addEventListener('change', () => {
         tool = value;
@@ -141,7 +166,7 @@ export async function editPhoto(host: HTMLElement, bytes: Uint8Array, mediaType:
       finish({ bytes: new Uint8Array(await blob.arrayBuffer()), mediaType: blob.type || type, width: out.width, height: out.height });
     };
     const reset = (): void => {
-      edit = { ...NO_EDIT, blurs: [] };
+      edit = { ...NO_EDIT, blurs: [], marks: [] };
       for (const input of dialog.querySelectorAll<HTMLInputElement>('input[type=range]')) input.value = '100';
       turned = drawTurned(bitmap, sw, sh, edit);
       draw();
@@ -154,8 +179,8 @@ export async function editPhoto(host: HTMLElement, bytes: Uint8Array, mediaType:
         button(t('photo.turnLeft'), () => turn(270), { text: '⟲', title: t('photo.turnLeft') }),
         button(t('photo.turnRight'), () => turn(90), { text: '⟳', title: t('photo.turnRight') }),
         button(t('photo.flip'), flip, { text: '⇋', title: t('photo.flip') }),
-        h('span', { class: 'photo-tool-group', role: 'radiogroup', 'aria-label': t('photo.dragTool') }, toolRadio('crop', `✂ ${t('photo.crop')}`), toolRadio('blur', `▒ ${t('photo.blur')}`)),
-        button(t('photo.unblur'), () => update({ blurs: [] }, true), { text: `▒✕ ${t('photo.unblur')}` }),
+        h('span', { class: 'photo-tool-group', role: 'radiogroup', 'aria-label': t('photo.dragTool') }, toolRadio('crop', `✂ ${t('photo.crop')}`), toolRadio('blur', `▒ ${t('photo.blur')}`), toolRadio('highlight', `🖍 ${t('photo.highlight')}`), toolRadio('arrow', `➚ ${t('photo.arrow')}`), toolRadio('text', `T ${t('photo.text')}`)),
+        button(t('photo.undoMark'), () => update(edit.marks.length ? { marks: edit.marks.slice(0, -1) } : { blurs: edit.blurs.slice(0, -1) }, true), { text: `↶ ${t('photo.undoMark')}` }),
       ),
       h('p', { class: 'hint' }, t('photo.hint')),
       h('div', { class: 'photo-stage' }, canvas),

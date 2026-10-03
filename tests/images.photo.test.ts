@@ -27,3 +27,14 @@ describe('IMG-001 picture editing', () => {
     expect(flipRect(r, 400)).toEqual({ x: 290, y: 20, w: 100, h: 50 });
   });
 });
+
+describe('IMG-004 marks on a picture', () => {
+  it('follow the picture when it is turned or mirrored', async () => {
+    const { turnPoint, turnMark, flipMark } = await import('../src/images/photo');
+    expect(turnPoint([10, 20], 400, 300, 90)).toEqual([280, 10]);
+    expect(turnPoint(turnPoint([10, 20], 400, 300, 90), 300, 400, 270)).toEqual([10, 20]);
+    expect(turnMark({ kind: 'arrow', from: [0, 0], to: [400, 300] }, 400, 300, 90)).toEqual({ kind: 'arrow', from: [300, 0], to: [0, 400] });
+    expect(flipMark({ kind: 'text', at: [10, 5], text: 'A' }, 400)).toEqual({ kind: 'text', at: [390, 5], text: 'A' });
+    expect(flipMark({ kind: 'highlight', rect: { x: 0, y: 0, w: 10, h: 10 } }, 400)).toEqual({ kind: 'highlight', rect: { x: 390, y: 0, w: 10, h: 10 } });
+  });
+});

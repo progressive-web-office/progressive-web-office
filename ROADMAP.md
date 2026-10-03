@@ -152,8 +152,8 @@ group is not a commitment.
 ### Images and drawing
 
 - ✅ Minimal photo editing: crop, turn, mirror, resize, brightness /
-  contrast, blur a region (IMG-001); next: annotations (arrows, text,
-  highlights), editing picture files and slide pictures
+  contrast, blur a region (IMG-001), arrows, text and highlights (IMG-004);
+  next: editing picture files and slide pictures
 - Minimal vector drawing: shapes, lines and arrows, text, freehand, layers;
   saved as SVG and kept editable in documents and slides
 - ✅ Caption images easily: a caption and alt text when inserting or pasting

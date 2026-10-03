@@ -495,7 +495,7 @@ integration is ever needed.
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
 | IMG-001 | C | 0.2.0 | The system shall offer minimal photo editing of a picture (crop, quarter turns, mirror, resize, brightness and contrast, blur a region), keeping the original until applied and the change undoable. |
-| IMG-004 | C | — | The system shall let the user draw arrows, text and highlights on a picture. |
+| IMG-004 | C | 0.2.0 | The system shall let the user draw arrows, text and highlights on a picture, following its turns and mirroring. |
 | IMG-002 | C | — | The system shall offer minimal vector drawing (shapes, lines and arrows, text, freehand), saved as SVG and editable again in documents and presentations. |
 | IMG-003 | S | 0.2.0 | When the user inserts or pastes a picture, the system shall offer to give it a caption (numbered as a figure) and an alternative text, and shall list the pictures without alternative text. |
 

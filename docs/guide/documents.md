@@ -128,6 +128,9 @@ then **Edit the picture…**:
 - **⟲ ⟳** turn it a quarter, **⇋** mirror it;
 - drag on it to **crop** it, or choose **▒ Blur** and drag over a region to
   blur it — a face, a name, a number plate — before sharing the document;
+- **🖍 Highlight** a region, draw a red **➚ Arrow**, or click with **T Text**
+  to write a label (red, outlined in white to be read on any background);
+  **↶** removes the last mark;
 - **Brightness**, **Contrast** and **Size (%)** (a smaller picture makes a
   lighter document).
 
