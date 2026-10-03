@@ -2024,6 +2024,8 @@ export class DocumentEditor implements EditorView {
     style.setProperty('--page-h', `${mmToPx(g.height)}px`);
     style.setProperty('--page-pad', [g.top, g.right, g.bottom, g.left].map((m) => `${mmToPx(m)}px`).join(' '));
     style.setProperty('--page-top', `${mmToPx(g.top)}px`);
+    style.setProperty('--page-left', `${mmToPx(g.left)}px`);
+    style.setProperty('--page-right', `${mmToPx(g.right)}px`);
     style.setProperty('--text-h', `${mmToPx(textHeight(g))}px`);
     this.page.dataset.paper = `${paperName(g) ?? `${g.width} × ${g.height} mm`}${isLandscape(g) ? ' ↔' : ''}`;
     this.springsSoon();

@@ -240,8 +240,11 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
   /* DOC-046: the paper of the document, its margins, a boundary at the end of each page's text. */
   box-sizing: border-box; width: var(--page-w, 816px); max-width: 100%; min-height: var(--page-h, 1056px); margin: 0 auto;
   padding: var(--page-pad, 72px 80px); color: #1c2430;
+  /* The end of each page's text is marked in the left and right margins only, never across the text. */
+  --page-mark: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--text-h, 960px) - 1px), var(--page-line, rgba(110, 125, 145, 0.7)) calc(var(--text-h, 960px) - 1px), var(--page-line, rgba(110, 125, 145, 0.7)) var(--text-h, 960px));
   background:
-    repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--text-h, 960px) - 1px), var(--page-line, rgba(110, 125, 145, 0.55)) calc(var(--text-h, 960px) - 1px), var(--page-line, rgba(110, 125, 145, 0.55)) var(--text-h, 960px)) 0 0 / 100% var(--text-h, 960px) repeat-y content-box content-box,
+    var(--page-mark) left calc(-1 * var(--page-left, 80px)) top 0 / calc(var(--page-left, 80px) - 10px) var(--text-h, 960px) repeat-y content-box padding-box,
+    var(--page-mark) right calc(-1 * var(--page-right, 80px)) top 0 / calc(var(--page-right, 80px) - 10px) var(--text-h, 960px) repeat-y content-box padding-box,
     #fff;
   position: relative;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.08);

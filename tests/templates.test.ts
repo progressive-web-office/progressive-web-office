@@ -183,3 +183,40 @@ describe('DOC-049 the newspaper template', () => {
     expect(d.page?.geometry).toMatchObject({ top: 15, left: 15 });
   });
 });
+
+describe('FILE-018 templates keep their LaTeX and line breaks', () => {
+  const documents = TEMPLATES.filter((x) => x.kind === 'document');
+  it.each(documents.flatMap((x) => (['en', 'fr'] as const).map((lang) => [x.id, lang] as const)))('%s (%s): no backslash lost in the source', (id, lang) => {
+    const built = byId(id).build(lang);
+    if (built.kind !== 'document') return;
+    for (const r of runs(built.doc)) {
+      // A lost backslash leaves a tab, a carriage return or a bell (\t, \r, \b…) in the text or the equations.
+      if ('text' in r) expect(r.text).not.toMatch(/[\t\r\b\f\v]/);
+      if ('math' in r) {
+        expect(r.math).not.toMatch(/[\t\r\b\f\v]/);
+        expect(r.math).not.toMatch(/(^|[^\\a-z])(infty|tau|left|right|label|frac|alpha|sum)\b/);
+      }
+    }
+  });
+
+  it('writes the equation of the article whole, with its number and label', () => {
+    const d = doc('article');
+    const maths = runs(d).filter(isMathRun).map((r) => r.math);
+    expect(maths).toContain('\\tau');
+    expect(maths.find((m) => m.includes('y(t)'))).toBe('y(t) = y_\\infty \\left(1 - e^{-t/\\tau}\\right)');
+    expect(runs(d).some(isSeqRun)).toBe(true);
+    // The affiliations and the corresponding author on two lines.
+    expect(allParagraphs(d.blocks).some((p) => p.runs.some((r) => 'text' in r && /Country\n$/.test(r.text)))).toBe(true);
+    // One list of references, under its own title.
+    expect(allParagraphs(d.blocks).filter((p) => /^h/.test(p.style) && p.runs.some((r) => 'text' in r && r.text === 'References'))).toHaveLength(0);
+  });
+});
+
+describe('BIB-011 the article refers to its equation by name', () => {
+  it.each(['en', 'fr'] as const)('keeps the word before the number (%s)', (lang) => {
+    const p = allParagraphs(doc('article', lang).blocks).find((x) => x.runs.some(isRefRun))!;
+    const at = p.runs.findIndex(isRefRun);
+    const before = p.runs[at - 1];
+    expect(before && 'text' in before ? before.text : '').toMatch(lang === 'en' ? /Equation $/ : /équation $/);
+  });
+});

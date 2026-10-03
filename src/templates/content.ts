@@ -193,7 +193,7 @@ references:
 
 **SURNAME1 First name1**¹ · **SURNAME2 First name2**²
 
-¹ Laboratory, University, City, Country · ² Laboratory, University, City, Country\
+¹ Laboratory, University, City, Country · ² Laboratory, University, City, Country\\
 *Corresponding author:* first.surname@example.org
 
 **Abstract.** In 150 to 250 words: the question, what was done, the main results and what they mean. The abstract is read alone: no citation, no abbreviation left unexplained.
@@ -206,19 +206,19 @@ Set the context and what is already known, citing the sources that matter [@knut
 
 ## Materials and methods
 
-Describe the data, the equipment and the steps precisely enough to be reproduced. The model is given by [Equation (1)](#eq-model):
+Describe the data, the equipment and the steps precisely enough to be reproduced. The model is given by Equation [(1)](#eq-model):
 
 $$
-y(t) = y_\infty \left(1 - e^{-t/\tau}\right) \tag{1}\label{eq-model}
+y(t) = y_\\infty \\left(1 - e^{-t/\\tau}\\right) \\tag{1}\\label{eq-model}
 $$
 
-where $\tau$ is the time constant and $y_\infty$ the final value.
+where $\\tau$ is the time constant and $y_\\infty$ the final value.
 
 ## Results
 
 [Table 1](#tab-results) gives the values measured for each sample.
 
-| Sample | $\tau$ (s) | $y_\infty$ | $R^2$ |
+| Sample | $\\tau$ (s) | $y_\\infty$ | $R^2$ |
 |---|---|---|---|
 | A | 1.20 | 4.98 | 0.998 |
 | B | 1.35 | 5.02 | 0.996 |
@@ -237,8 +237,6 @@ Answer the question of the introduction in a few sentences, and give the next st
 ## Acknowledgements
 
 Funding, help received, data or software used.
-
-## References
 
 <div id="refs"></div>
 `,
@@ -551,7 +549,7 @@ references:
 
 **NOM1 Prénom1**¹ · **NOM2 Prénom2**²
 
-¹ Laboratoire, Université, Ville, Pays · ² Laboratoire, Université, Ville, Pays\
+¹ Laboratoire, Université, Ville, Pays · ² Laboratoire, Université, Ville, Pays\\
 *Auteur correspondant :* prenom.nom@example.org
 
 **Résumé.** En 150 à 250 mots : la question, ce qui a été fait, les principaux résultats et leur portée. Le résumé se lit seul : ni citation, ni abréviation non expliquée.
@@ -564,19 +562,19 @@ Présentez le contexte et ce que l’on sait déjà, en citant les sources utile
 
 ## Matériels et méthodes
 
-Décrivez les données, le matériel et les étapes assez précisément pour qu’on puisse les reproduire. Le modèle est donné par l’[Équation (1)](#eq-model) :
+Décrivez les données, le matériel et les étapes assez précisément pour qu’on puisse les reproduire. Le modèle est donné par l’équation [(1)](#eq-model) :
 
 $$
-y(t) = y_\infty \left(1 - e^{-t/\tau}\right) \tag{1}\label{eq-model}
+y(t) = y_\\infty \\left(1 - e^{-t/\\tau}\\right) \\tag{1}\\label{eq-model}
 $$
 
-où $\tau$ est la constante de temps et $y_\infty$ la valeur finale.
+où $\\tau$ est la constante de temps et $y_\\infty$ la valeur finale.
 
 ## Résultats
 
 Le [Tableau 1](#tab-results) donne les valeurs mesurées pour chaque échantillon.
 
-| Échantillon | $\tau$ (s) | $y_\infty$ | $R^2$ |
+| Échantillon | $\\tau$ (s) | $y_\\infty$ | $R^2$ |
 |---|---|---|---|
 | A | 1,20 | 4,98 | 0,998 |
 | B | 1,35 | 5,02 | 0,996 |
@@ -595,8 +593,6 @@ Répondez en quelques phrases à la question de l’introduction, puis donnez le
 ## Remerciements
 
 Financements, aides reçues, données ou logiciels utilisés.
-
-## Références
 
 <div id="refs"></div>
 `,

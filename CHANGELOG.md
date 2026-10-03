@@ -403,6 +403,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- The scientific article template lost the backslashes of its LaTeX: its
+  equation showed `ytnfty left(…)`, `τ` and `y∞` were broken, and the
+  affiliations ran into the corresponding author; the references had two
+  titles. Every template is now checked for lost backslashes.
+- The end of each page's text is marked in the margins instead of a line
+  drawn across the text, which looked like struck-through words.
 - Git: choosing another repository (by its address or the list) no longer
   leaves the files of the previous one on screen when it fails to load —
   saving could then go to a repository other than the one shown.
