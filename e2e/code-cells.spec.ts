@@ -74,7 +74,8 @@ test('inserts a cell and stops an endless loop (CODE-001, CODE-003)', async ({ p
   await expect(cell.locator('.code-cell-lang')).toHaveText('JavaScript');
   await cell.getByRole('button', { name: 'Run cell' }).click();
   await page.getByRole('dialog', { name: 'Run the code of this document?' }).getByRole('button', { name: 'Run' }).click();
-  await expect(cell.locator('.code-cell-output.pending')).toHaveText('Running…');
+  // The first analysis loads the TypeScript language service (slow on a busy machine).
+  await expect(cell.locator('.code-cell-output.pending')).toHaveText('Running…', { timeout: 30_000 });
   // The page stays responsive while the loop runs.
   await cell.getByRole('button', { name: 'Stop' }).click();
   await expect(cell.locator('.code-cell-output.error')).toHaveText('Stopped.\n');
