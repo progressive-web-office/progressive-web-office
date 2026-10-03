@@ -542,11 +542,12 @@ test('shows the history of a document, what each commit changed, and restores an
   await history.locator('.history-list li').first().getByRole('button', { name: 'Compare with now' }).click();
   await expect(diff.locator('ins', { hasText: 'Really' })).toBeVisible();
   await diff.getByRole('button', { name: 'Close' }).click();
-  // The oldest version restored: a new commit puts it back.
-  page.once('dialog', (d) => void d.accept());
+  // The oldest version restored: a new commit puts it back (the restore, then the unsaved changes, confirmed).
+  const accept = (d: import('@playwright/test').Dialog) => void d.accept();
+  page.on('dialog', accept);
   await history.locator('.history-list li').nth(2).getByRole('button', { name: 'Restore…' }).click();
-  page.once('dialog', (d) => void d.accept());
   await expect(page.getByRole('alert')).toContainText('report.md restored as it was on');
+  page.off('dialog', accept);
   expect(puts).toHaveLength(1);
   expect(Buffer.from(puts[0]!.content!, 'base64').toString()).toBe('# Report\n');
   expect(puts[0]).toMatchObject({ message: 'docs: restore report.md as of c1', branch: 'main', sha: 'b3' });
