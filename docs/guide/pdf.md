@@ -72,6 +72,11 @@ PDF, from other readers too, are listed in the panel with their comments.
    use the arrow keys (<kbd>Shift</kbd> for larger steps). <kbd>Delete</kbd>
    or **×** removes it.
 
+To sign again without drawing, tick **Remember this signature on this
+device** before placing it: next time, **Use this signature** places it in
+one click. It is kept only in this browser (never sent, never in a
+document) and only if you tick the box; **Forget it** deletes it.
+
 **T+ Text** adds free text (today's date by default), for example a name or a
 date next to the signature.
 

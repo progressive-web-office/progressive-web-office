@@ -186,3 +186,35 @@ test('draws a handwritten signature, places it and saves it into the PDF (PDF-01
   const { PDFName } = await import('@pdfme/pdf-lib');
   expect(doc.getPage(0).node.Resources()?.lookup(PDFName.of('XObject'))).toBeDefined();
 });
+
+test('remembers the signature only when asked, and forgets it (PDF-014)', async ({ page }) => {
+  await openApp(page);
+  await openFile(page, 'sign.pdf', await samplePdf(), 'application/pdf');
+  const draw = async () => {
+    const box = (await page.getByLabel('Signature drawing area').boundingBox())!;
+    await page.mouse.move(box.x + 30, box.y + 60);
+    await page.mouse.down();
+    for (let i = 1; i <= 10; i++) await page.mouse.move(box.x + 30 + i * 20, box.y + 60 + Math.sin(i) * 20);
+    await page.mouse.up();
+  };
+  // Not remembered without consent.
+  await page.getByRole('button', { name: 'Add signature' }).click();
+  await draw();
+  await page.getByRole('button', { name: 'Place signature' }).click();
+  expect(await page.evaluate(() => localStorage.getItem('pwo.pdf.signature'))).toBeNull();
+  // Remembered when ticked.
+  await page.getByRole('button', { name: 'Add signature' }).click();
+  await expect(page.getByRole('button', { name: 'Use this signature' })).toHaveCount(0);
+  await draw();
+  await page.getByLabel(/Remember this signature/).check();
+  await page.getByRole('button', { name: 'Place signature' }).click();
+  // Used again in one click.
+  await page.getByRole('button', { name: 'Add signature' }).click();
+  await page.getByRole('button', { name: 'Use this signature' }).click();
+  await expect(page.locator('.pdf-stamp.image')).toHaveCount(3);
+  // Forgotten.
+  await page.getByRole('button', { name: 'Add signature' }).click();
+  await page.getByRole('button', { name: 'Forget it' }).click();
+  await expect(page.getByRole('button', { name: 'Use this signature' })).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('pwo.pdf.signature'))).toBeNull();
+});

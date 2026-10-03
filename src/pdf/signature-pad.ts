@@ -1,6 +1,7 @@
 /** Handwritten signature capture: draw with mouse/touch/stylus or import an image (PDF-011). */
 import { t } from '../i18n';
 import { button, h } from '../app/dom';
+import { forgetSignature, loadSignature, rememberSignature } from './saved-signature';
 
 /** Resolve with PNG bytes of the signature, or null if cancelled. */
 export function captureSignature(host: HTMLElement): Promise<{ png: Uint8Array; width: number; height: number } | null> {
@@ -59,6 +60,26 @@ export function captureSignature(host: HTMLElement): Promise<{ png: Uint8Array; 
     };
 
     const dialog = h('dialog', { class: 'dialog signature-dialog', 'aria-labelledby': 'sig-title' });
+    // PDF-014: remembered on this device only when the box is ticked.
+    const remember = h('input', { type: 'checkbox' });
+    const saved = loadSignature();
+    const done = (value: { png: Uint8Array; width: number; height: number } | null): void => {
+      dialog.close();
+      dialog.remove();
+      resolve(value);
+    };
+    const savedRow = saved
+      ? h(
+          'div',
+          { class: 'signature-saved' },
+          h('img', { src: URL.createObjectURL(new Blob([saved.png as BlobPart], { type: 'image/png' })), alt: t('sig.saved'), class: 'signature-saved-img' }),
+          button(t('sig.useSaved'), () => done(saved), { className: 'primary' }),
+          button(t('sig.forget'), () => {
+            forgetSignature();
+            savedRow?.remove();
+          }),
+        )
+      : undefined;
     const finish = async (ok: boolean): Promise<void> => {
       if (!ok || empty) {
         dialog.close();
@@ -68,14 +89,16 @@ export function captureSignature(host: HTMLElement): Promise<{ png: Uint8Array; 
       }
       const trimmed = trim(canvas);
       const blob = await new Promise<Blob | null>((res) => trimmed.toBlob(res, 'image/png'));
-      dialog.close();
-      dialog.remove();
-      resolve(blob ? { png: new Uint8Array(await blob.arrayBuffer()), width: trimmed.width, height: trimmed.height } : null);
+      const sig = blob ? { png: new Uint8Array(await blob.arrayBuffer()), width: trimmed.width, height: trimmed.height } : null;
+      if (sig && remember.checked) rememberSignature(sig);
+      done(sig);
     };
     dialog.append(
       h('h2', { id: 'sig-title' }, t('sig.title')),
+      ...(savedRow ? [savedRow] : []),
       h('p', {}, t('sig.help')),
       canvas,
+      h('label', { class: 'check' }, remember, ` ${t('sig.remember')}`),
       h(
         'div',
         { class: 'dialog-actions' },

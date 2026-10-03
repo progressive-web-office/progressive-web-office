@@ -1,5 +1,5 @@
 /**
- * YAML front matter of Markdown files (DOC-018). A deliberately small subset:
+ * YAML front matter of Markdown files (DOC-043). A deliberately small subset:
  * `key: value` scalars (plain or quoted), inline `[a, b]` lists and block
  * `- item` lists. Keys that are not document properties, or values in other
  * YAML forms, are kept verbatim and written back unchanged.

@@ -409,6 +409,8 @@ textarea.pdf-field { resize: none; }
 .stamp-resize { position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; background: var(--accent); cursor: nwse-resize; display: none; }
 .pdf-stamp:hover .stamp-remove, .pdf-stamp:focus-within .stamp-remove, .pdf-stamp:hover .stamp-resize, .pdf-stamp:focus-within .stamp-resize { display: block; }
 .signature-canvas { width: 100%; max-width: 600px; aspect-ratio: 3 / 1; border: 1px dashed var(--border); border-radius: 6px; background: #fff; touch-action: none; display: block; }
+.signature-saved { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px; border: 1px solid var(--border); border-radius: 6px; }
+.signature-saved-img { max-height: 48px; max-width: 200px; background: #fff; }
 
 /* Presentations */
 .slide-editor { display: flex; flex-direction: column; height: 100%; }

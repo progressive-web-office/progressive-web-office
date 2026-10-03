@@ -22,7 +22,7 @@ const META: DocumentMeta = {
 
 const docWith = (meta: DocumentMeta): RichDocument => ({ ...emptyDocument(), blocks: [paragraph('Rapport', { style: 'h1' }), paragraph('Texte.')], meta: { ...meta } });
 
-describe('DOC-018 YAML front matter', () => {
+describe('DOC-043 YAML front matter', () => {
   it('parses scalars, quoted strings, inline and block lists, and keeps unknown keys', () => {
     const text = `---
 title: "Mon titre: suite"
