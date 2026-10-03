@@ -60,8 +60,8 @@ group is not a commitment.
   reading (no toolbar, larger text)
 - ✅ Page numbering styles (DOC-029, 0.1.0)
 - ✅ Templates and examples, the user's own templates in the browser, the
-  template file formats (FILE-018 to FILE-020); next: templates kept in a
-  folder
+  template file formats (FILE-018 to FILE-020), templates kept in a folder
+  (FOLDER-020)
 - Master documents, next steps: numbering and table of contents running
   across sub-documents while editing, cross-references to targets in other
   sub-documents

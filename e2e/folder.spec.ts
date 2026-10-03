@@ -273,3 +273,25 @@ test('lists the tags of the notes, renames one everywhere and draws the graph of
   // FOLDER-019: beside the open note, the notes sharing its tags or linked with it.
   await expect(panel.locator('.folder-related li')).toHaveText(['a.md#next · linked']);
 });
+
+test('offers the templates of the folder and keeps new ones there (FOLDER-020)', async ({ page }) => {
+  await fakeFolder(page, { 'Templates/Lab note.md': '# Lab note\n\nDate:\n', 'a.md': '# A\n' });
+  await openLocalFolder(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  const gallery = page.getByRole('dialog', { name: 'New from a template' });
+  await gallery.getByRole('region', { name: 'Templates of thesis' }).getByRole('button', { name: 'Lab note' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await expect(editor.locator('h1')).toHaveText('Lab note');
+  // Saving as template offers the folder's templates folder.
+  await editor.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type(' today');
+  page.once('dialog', (d) => void d.accept('Daily'));
+  await page.getByLabel('Save as format').selectOption({ label: 'Save as template…' });
+  const where = page.getByRole('dialog', { name: 'Save as template…' });
+  await where.getByLabel('In the folder Templates').check();
+  await where.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Templates/Daily.md');
+  const files = () => page.evaluate(() => Object.fromEntries((window as unknown as { __folder: Map<string, string> }).__folder));
+  await expect.poll(async () => (await files())['Templates/Daily.md']).toContain('Date: today');
+});

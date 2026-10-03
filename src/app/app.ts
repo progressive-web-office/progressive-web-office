@@ -481,6 +481,23 @@ export class App {
     const name = window.prompt(t('tpl.namePrompt'), doc.name.replace(/\.[^.]+$/, ''))?.trim();
     if (!name) return;
     try {
+      // FOLDER-020: a writable open folder can keep it in its templates folder, shared with the folder.
+      const folder = this.folder?.provider;
+      if (folder?.capabilities.write) {
+        const { templatesDir } = await import('../folder/templates');
+        const dir = (await templatesDir(folder)) ?? 'Templates';
+        const there = t('tpl.inFolder', { path: dir });
+        const where = await this.choose(t('tpl.saveAs'), t('tpl.whereSave'), [there, t('tpl.inBrowser')], there, t('file.save'));
+        if (!where) return;
+        if (where === there) {
+          const path = `${dir}/${name.replace(/[\\/:*?"<>|]/g, '_')}.${fileExtension(doc.format)}`;
+          await folder.mkdir(dir);
+          await folder.write(path, new Blob([(await doc.view.save(doc.format)) as BlobPart]));
+          await this.folder?.refresh();
+          this.showNotice(t('tpl.savedInFolder', { path }));
+          return;
+        }
+      }
       const { saveTemplate } = await import('../storage/recent');
       await saveTemplate(name, doc.format, await doc.view.save(doc.format));
       this.showNotice(t('tpl.saved', { name }));
@@ -493,8 +510,22 @@ export class App {
   async newFromTemplate(): Promise<void> {
     const [{ chooseTemplate }, storage] = await Promise.all([import('../templates/ui'), import('../storage/recent')]);
     const mine = await storage.listTemplates().catch(() => []);
-    const template = await chooseTemplate(this.root, mine, (id) => storage.deleteTemplate(id));
+    const provider = this.folder?.provider;
+    const inFolder = provider ? await import('../folder/templates').then((m) => m.folderTemplates(provider)).catch(() => []) : [];
+    const template = await chooseTemplate(this.root, mine, (id) => storage.deleteTemplate(id), provider ? { label: provider.label, items: inFolder } : undefined);
     if (!template || !this.confirmDiscard()) return;
+    if ('path' in template) {
+      // A copy of the folder's template, a new document: saving asks where.
+      await this.withBusy(async () => {
+        try {
+          const bytes = new Uint8Array(await (await provider!.read(template.path)).arrayBuffer());
+          await this.openBytes(template.path.replace(/^.*\//, ''), bytes);
+        } catch (err) {
+          this.showError((err as Error).message);
+        }
+      });
+      return;
+    }
     if ('format' in template) {
       const bytes = await storage.loadTemplate(template.id);
       if (bytes) await this.withBusy(async () => void (await this.openBytes(`${template.name}.${fileExtension(template.format)}`, bytes)));

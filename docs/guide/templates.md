@@ -92,3 +92,15 @@ replaces it.
 These templates stay in this browser only (IndexedDB): they are not sent
 anywhere, and clearing the browser's data deletes them. To share a template,
 save the document as a file.
+
+## Templates of a folder
+
+When a [folder](./folders.md) is open, the documents of its `Templates`
+folder (also `_templates` or `Modèles`, sub-folders included) appear first in
+the gallery, under **Templates of** *the folder*. Choosing one opens a copy: a
+new document, the template itself staying as it is.
+
+In a folder you can write to, **Save as template…** asks where to keep the
+template: in the folder's `Templates` folder (created if needed), shared with
+everyone using the folder — a Git repository or a Nextcloud folder, for
+instance — or in this browser.

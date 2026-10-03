@@ -4,6 +4,12 @@ import { t, type MessageKey } from '../i18n';
 import type { UserTemplate } from '../storage/recent';
 import { TEMPLATES, type Template } from './catalog';
 
+/** A template kept in the open folder (FOLDER-020). */
+export interface FolderTemplateChoice {
+  name: string;
+  path: string;
+}
+
 const GROUPS: [MessageKey, (tpl: Template) => boolean][] = [
   ['tpl.documents', (tpl) => tpl.kind === 'document' && !tpl.example],
   ['tpl.spreadsheets', (tpl) => tpl.kind === 'spreadsheet' && !tpl.example],
@@ -13,12 +19,18 @@ const GROUPS: [MessageKey, (tpl: Template) => boolean][] = [
 
 /**
  * Resolves to the chosen template, built-in or of the user (FILE-019), or
- * null when cancelled. `remove` deletes a template of the user.
+ * null when cancelled. `remove` deletes a template of the user. The templates
+ * of the open folder (FOLDER-020), when given, come first.
  */
-export function chooseTemplate(host: HTMLElement, mine: UserTemplate[] = [], remove?: (id: string) => Promise<void>): Promise<Template | UserTemplate | null> {
+export function chooseTemplate(
+  host: HTMLElement,
+  mine: UserTemplate[] = [],
+  remove?: (id: string) => Promise<void>,
+  folder?: { label: string; items: FolderTemplateChoice[] },
+): Promise<Template | UserTemplate | FolderTemplateChoice | null> {
   return new Promise((resolve) => {
     const dialog = h('dialog', { class: 'dialog template-dialog', 'aria-labelledby': 'tpl-title' });
-    const finish = (tpl: Template | UserTemplate | null): void => {
+    const finish = (tpl: Template | UserTemplate | FolderTemplateChoice | null): void => {
       dialog.close();
       dialog.remove();
       resolve(tpl);
@@ -56,9 +68,15 @@ export function chooseTemplate(host: HTMLElement, mine: UserTemplate[] = [], rem
       h('h3', {}, t('tpl.mine')),
       mine.length ? h('ul', { class: 'template-list', role: 'list' }, ...mine.map(own)) : h('p', { class: 'hint' }, t('tpl.mineEmpty')),
     );
+    const inFolder = (tpl: FolderTemplateChoice): HTMLElement =>
+      h('li', {}, button(tpl.name, () => finish(tpl), { className: 'template-card', icon: '📁', title: tpl.path }), h('p', { class: 'hint' }, tpl.path));
+    const folderSection = folder?.items.length
+      ? [h('section', { class: 'template-group', 'aria-label': t('tpl.folder', { name: folder.label }) }, h('h3', {}, t('tpl.folder', { name: folder.label })), h('ul', { class: 'template-list', role: 'list' }, ...folder.items.map(inFolder)))]
+      : [];
     dialog.append(
       h('h2', { id: 'tpl-title' }, t('tpl.title')),
       h('p', { class: 'hint' }, t('tpl.intro')),
+      ...folderSection,
       ...(mine.length ? [mineSection] : []),
       ...GROUPS.flatMap(([label, keep]) => {
         const items = TEMPLATES.filter(keep);

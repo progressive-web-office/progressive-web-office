@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Templates kept in a folder (FOLDER-020): the documents of its `Templates`
+  folder are offered first in the template gallery, and *Save as template…*
+  can keep a new one there instead of in the browser.
+
 - Related notes beside the open note: sharing its tags or linked with it
   (FOLDER-019).
 

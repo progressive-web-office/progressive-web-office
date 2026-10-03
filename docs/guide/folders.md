@@ -128,6 +128,12 @@ in code, links, headings or colours like `#fff`). Click a tag, or search
 arrow), with the number of notes without links. Click a note, or its name
 in the list below the graph, to open it.
 
+### Templates of the folder
+
+The documents of a `Templates` folder at the root of the folder are offered
+in **Templates and examples**, and **Save as template…** can keep new ones
+there: see [Templates](./templates.md#templates-of-a-folder).
+
 ## Master documents
 
 A **master document** gathers **sub-documents** — the chapters of a thesis,
