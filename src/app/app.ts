@@ -384,8 +384,14 @@ export class App {
       location = chosen;
       version = await this.repoVersion(chosen);
     }
-    // GIT-008: a public repository opened without a token cannot be written to.
-    if (!location.account.token) return this.showError(t('git.needTokenToCommit'));
+    // GIT-008, GIT-012: a repository opened without a token: ask for one, remembered for next time.
+    if (!location.account.token) {
+      const { askToken } = await import('../git/ui');
+      const account = await askToken(this.root, location.account, location.repo.id);
+      if (!account) return;
+      location = { ...location, account };
+      if (doc.source) doc.source = { ...doc.source, account };
+    }
     const choice = await commitDialog(this.root, location.path, location.branch, version !== undefined);
     if (!choice) return;
     const client = clientFor(location.account);

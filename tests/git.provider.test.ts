@@ -96,3 +96,31 @@ describe('FOLDER-007 Git repositories in the file explorer', () => {
     await expect(p.write('b.md', new Blob(['B']))).rejects.toMatchObject({ code: 'Conflict' });
   });
 });
+
+describe('GIT-011 an empty repository as a folder', () => {
+  it('lists nothing and writes its first file', async () => {
+    const { GitError } = await import('../src/git/types');
+    const written: string[] = [];
+    let empty = true;
+    const client = {
+      provider: 'github',
+      async listTree(): Promise<GitTreeEntry[]> {
+        if (empty) throw new GitError('409 Git Repository is empty.', 409);
+        return written.map((p) => ({ path: p, type: 'file', sha: `sha-${p}` }));
+      },
+      async writeFile(_r: string, _b: string, path: string) {
+        written.push(path);
+        empty = false;
+        return { version: `sha-${path}` };
+      },
+      async commit() {
+        throw new Error('no head on an empty repository');
+      },
+    } as unknown as GitClient;
+    const provider = new GitRepoProvider(client, { id: 'me/empty', name: 'me/empty', defaultBranch: 'main' }, 'main');
+    expect(await provider.list('')).toEqual([]);
+    await provider.write('notes/first.md', new Blob(['# First']));
+    expect(written).toEqual(['notes/first.md']);
+    expect((await provider.list('')).map((e) => e.name)).toEqual(['notes']);
+  });
+});

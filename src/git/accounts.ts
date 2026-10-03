@@ -18,13 +18,20 @@ export function defaultApiUrl(provider: GitProvider): string {
   return provider === 'github' ? 'https://api.github.com' : 'https://gitlab.com/api/v4';
 }
 
-export function loadAccounts(): GitAccount[] {
+/** GIT-012: accounts whose token is not to be remembered: kept until the application is closed. */
+const sessionAccounts: GitAccount[] = [];
+
+function storedAccounts(): GitAccount[] {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
     return Array.isArray(raw) ? (raw as GitAccount[]).filter((a) => a && typeof a.token === 'string' && (a.provider === 'github' || a.provider === 'gitlab')) : [];
   } catch {
     return [];
   }
+}
+
+export function loadAccounts(): GitAccount[] {
+  return [...storedAccounts(), ...sessionAccounts];
 }
 
 function store(accounts: GitAccount[]): void {
@@ -36,14 +43,21 @@ function store(accounts: GitAccount[]): void {
   }
 }
 
-export function addAccount(input: Omit<GitAccount, 'id'>): GitAccount {
+/** Add an account; its token is remembered in this browser unless `remember` is false. */
+export function addAccount(input: Omit<GitAccount, 'id'>, opts: { remember?: boolean } = {}): GitAccount {
   const account: GitAccount = { ...input, apiUrl: input.apiUrl.trim().replace(/\/+$/, ''), id: `${input.provider}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}` };
-  store([...loadAccounts(), account]);
+  if (opts.remember === false) sessionAccounts.push(account);
+  else store([...storedAccounts(), account]);
   return account;
 }
 
+/** Whether the token of an account is remembered in this browser. */
+export const isRemembered = (id: string): boolean => storedAccounts().some((a) => a.id === id);
+
 export function forgetAccount(id: string): void {
-  store(loadAccounts().filter((a) => a.id !== id));
+  const i = sessionAccounts.findIndex((a) => a.id === id);
+  if (i >= 0) sessionAccounts.splice(i, 1);
+  store(storedAccounts().filter((a) => a.id !== id));
 }
 
 export function clientFor(account: Pick<GitAccount, 'provider' | 'apiUrl' | 'token'>, fetchFn?: FetchFn): GitClient {

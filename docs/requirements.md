@@ -390,6 +390,8 @@ Should to **Must**).
 | GIT-008 | S | 0.2.0 | When the user pastes the address of a repository (web address of the repository, a branch, a folder or a file, or an SSH clone address), the system shall deduce the service (GitHub or GitLab, public or self-hosted), the repository, the branch and the path, use the matching account or propose to add one pre-filled, and open that place. |
 | GIT-009 | S | 0.2.0 | Where an account is added, the system shall explain step by step how to create a personal access token with the least rights, linking to the token page of the chosen site. |
 | GIT-010 | S | 0.2.0 | When a document is saved to a repository, the system shall propose a text format Git can compare (Markdown, LaTeX, CSV) before binary formats (DOCX, ODT, XLSX…), explaining why, without forbidding the others. |
+| GIT-011 | S | 0.2.0 | The system shall open an empty repository (no commit, no branch yet) without error, saying it is empty, and save a first document into it, as a file or opened as a folder, on its default branch. |
+| GIT-012 | S | 0.2.0 | The system shall remember the token of an account in this browser unless the user chooses to keep it only until the application is closed; a repository opened without a token shall offer to add one, and saving into it shall ask for one, checked on the repository. |
 
 ## 9e. Device-to-device exchange with QRShare (SHARE)
 

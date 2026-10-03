@@ -393,6 +393,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Git: an empty repository, just created, opens without error and takes a
+  first document on its default branch (GIT-011); a token can be added — and
+  is remembered in this browser — from a repository opened without one, and
+  saving into it asks for the token instead of only refusing (GIT-012).
 - On a phone, the round ⌘ Commands button (and the busy and update notices)
   stay above the on-screen keyboard instead of being hidden behind it (UI-022).
 - Git: a pasted repository address is understood at once (no need to press

@@ -242,6 +242,7 @@ test('a pasted address is understood at once; a public repository opens without 
     if (p === '/repos/s-celles/test-pwo-public') return json({ full_name: 's-celles/test-pwo-public', default_branch: 'main', private: false });
     if (p === '/repos/s-celles/test-pwo-public/branches') return json([{ name: 'main' }]);
     if (p === '/repos/s-celles/test-pwo-public/contents') return json([{ name: 'README.md', path: 'README.md', type: 'file', size: 9 }]);
+    if (p === '/repos/s-celles/test-pwo-public/contents/README.md' && route.request().method() === 'PUT') return json({ content: { sha: 's2' } }, 200);
     if (p === '/repos/s-celles/test-pwo-public/contents/README.md') return json({ type: 'file', sha: 's1', content: b64('# Public\n'), encoding: 'base64' });
     return json({ message: 'Not Found' }, 404);
   });
@@ -254,14 +255,28 @@ test('a pasted address is understood at once; a public repository opens without 
   await expect(dialog.locator('.git-understood')).toHaveText('✓ GitHub (github.com) · owner s-celles · repository test-pwo-public');
   await expect(dialog.getByLabel('Other repository (owner/name)')).toHaveValue('s-celles/test-pwo-public');
   await expect(dialog.getByText('Public repository opened without a token')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '🔑 Add a token to save here' })).toBeVisible();
   await dialog.getByRole('button', { name: '📄 README.md' }).click();
   await expect(page.locator('.doc-page h1')).toHaveText('Public');
   expect(auth.every((a) => a === undefined)).toBe(true);
-  // Saving into it needs a token.
+  // Saving into it needs a token: asked then, checked on the repository and remembered (GIT-012).
   await page.locator('.doc-page h1').click();
   await page.keyboard.type('!');
   await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('opened without a token');
+  const ask = page.getByRole('dialog', { name: 'A token to save in the repository' });
+  await expect(ask.getByText('s-celles/test-pwo-public was opened without a token')).toBeVisible();
+  await expect(ask.getByRole('link', { name: 'https://github.com/settings/personal-access-tokens/new' })).toBeVisible();
+  await expect(ask.getByLabel('Remember the token in this browser')).toBeChecked();
+  await ask.getByLabel('Personal access token').fill('github_pat_test');
+  await ask.getByRole('button', { name: 'Connect' }).click();
+  await page.getByRole('dialog', { name: 'Commit to the repository' }).getByRole('button', { name: 'Commit' }).click();
+  await expect(page.getByRole('alert')).toContainText('Committed README.md to main.');
+  expect(auth.at(-1)).toBe('Bearer github_pat_test');
+  expect(await page.evaluate(() => localStorage.getItem('pwo.git.accounts'))).toContain('github_pat_test');
+  // Next time, the repository opens with the token remembered.
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Open from repository…' }).first().click();
+  await expect(page.getByRole('dialog', { name: 'Open from repository' }).getByLabel('Account')).toContainText('GitHub — github.com');
   expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
 });
 
@@ -383,4 +398,39 @@ test('starts a branch and proposes its changes from a document of a repository (
   await popup;
   expect(posts[1]).toMatchObject({ path: '/repos/me/notes/pulls', body: { head: 'draft', base: 'main', title: 'My changes' } });
   await expect(page.getByRole('alert')).toContainText('Request #7 opened');
+});
+
+test('saves the first document of an empty repository, just created (GIT-011)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.evaluate(() => localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_test', label: 'me' }])));
+  const puts: Record<string, string>[] = [];
+  await page.route(`${API}/**`, async (route: Route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (p === '/user/repos') return json([]);
+    if (p === '/repos/s-celles/empty') return json({ full_name: 's-celles/empty', default_branch: 'main', private: true });
+    if (p === '/repos/s-celles/empty/branches') return json([]);
+    if (p.startsWith('/repos/s-celles/empty/contents') && req.method() === 'PUT') {
+      const body = req.postDataJSON() as Record<string, string>;
+      puts.push(body);
+      // GitHub: no branch yet in an empty repository.
+      if (body.branch) return json({ message: 'Branch main not found' }, 404);
+      return json({ content: { sha: 'first' } }, 201);
+    }
+    return json({ message: 'This repository is empty.' }, 404);
+  });
+  await page.getByRole('button', { name: 'New document' }).first().click();
+  await page.locator('.doc-page').click();
+  await page.keyboard.type('First words');
+  await page.locator('.header-actions').getByRole('button', { name: 'Commit…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Save to repository' });
+  await dialog.getByLabel('Repository address').fill('https://github.com/s-celles/empty');
+  await expect(dialog.getByText('This repository is empty: your document will be its first file')).toBeVisible();
+  await expect(dialog.locator('.git-status')).not.toHaveClass(/error/);
+  await dialog.getByRole('button', { name: 'Save here' }).click();
+  await page.getByRole('dialog', { name: 'Commit to the repository' }).getByRole('button', { name: 'Commit' }).click();
+  await expect(page.getByRole('alert')).toContainText('to main.');
+  expect(puts.map((b) => b.branch)).toEqual(['main', undefined]);
+  expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
 });

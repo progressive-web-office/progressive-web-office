@@ -512,6 +512,8 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .doc-source { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
 button.doc-source { background: none; border: 0; padding: 0; font: inherit; font-size: 0.8rem; color: var(--muted); cursor: pointer; text-decoration: underline dotted; }
 .git-dialog { width: min(720px, calc(100vw - 32px)); }
+.git-token-dialog { width: min(560px, calc(100vw - 32px)); }
+.git-remember { display: block; margin: 4px 0; }
 .git-body { display: grid; gap: 8px; }
 .git-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .git-row select, .git-row input[type='text'] { min-width: 12rem; max-width: 100%; }

@@ -61,14 +61,24 @@ export class GitHubClient implements GitClient {
   }
 
   async writeFile(repo: string, branch: string, path: string, bytes: Uint8Array, message: string, version?: string): Promise<{ version: string }> {
-    const body: Record<string, string> = { message, content: toBase64(bytes), branch };
-    if (version) body.sha = version;
-    const res = await this.req<{ content: { sha: string } }>(
-      `/repos/${encodePath(repo)}/contents/${encodePath(path)}`,
-      { method: 'PUT', body: JSON.stringify(body) },
-      // 409: sha mismatch; 422 without sha: the file already exists.
-      (status) => status === 409 || (status === 422 && !version),
-    );
+    const put = (withBranch: boolean): Promise<{ content: { sha: string } }> => {
+      const body: Record<string, string> = { message, content: toBase64(bytes), ...(withBranch ? { branch } : {}) };
+      if (version) body.sha = version;
+      return this.req<{ content: { sha: string } }>(
+        `/repos/${encodePath(repo)}/contents/${encodePath(path)}`,
+        { method: 'PUT', body: JSON.stringify(body) },
+        // 409: sha mismatch; 422 without sha: the file already exists.
+        (status) => status === 409 || (status === 422 && !version),
+      );
+    };
+    let res;
+    try {
+      res = await put(true);
+    } catch (err) {
+      // GIT-011: an empty repository has no branch yet: the first file makes its default branch.
+      if (version || !(err instanceof GitError) || err.status !== 404) throw err;
+      res = await put(false);
+    }
     return { version: res.content.sha };
   }
 

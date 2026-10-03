@@ -30,7 +30,16 @@ export class GitRepoProvider implements StorageProvider {
 
   /** The tree of the branch, by path (folders included), loaded once until the next change. */
   private index(): Promise<Map<string, GitTreeEntry>> {
-    this.tree ??= this.client.listTree(this.repo.id, this.branch).then((entries) => {
+    this.tree ??= this.client.listTree(this.repo.id, this.branch).catch((err: unknown) => {
+      // GIT-011: an empty repository (no commit, so no branch yet) holds nothing.
+      const status = (err as { status?: number }).status;
+      if (status === 404 || status === 409) {
+        this.empty = true;
+        return [];
+      }
+      throw err;
+    }).then((entries) => {
+      if (entries.length) this.empty = false;
       const map = new Map<string, GitTreeEntry>();
       for (const e of entries) {
         map.set(e.path, e);
@@ -69,7 +78,20 @@ export class GitRepoProvider implements StorageProvider {
     return new Blob([file.bytes as BlobPart]);
   }
 
+  /** GIT-011: the repository has no commit yet. */
+  private empty = false;
+
   private async commit(message: string, changes: GitChange[]): Promise<void> {
+    if (this.empty) {
+      // No branch to commit on: the files API makes the first commit, one file at a time.
+      try {
+        for (const c of changes) if ('bytes' in c) await this.client.writeFile(this.repo.id, this.branch, c.path, c.bytes, message);
+        this.empty = false;
+      } finally {
+        this.invalidate();
+      }
+      return;
+    }
     try {
       await this.client.commit(this.repo.id, this.branch, message, changes);
     } catch (err) {

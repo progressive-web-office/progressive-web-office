@@ -2,7 +2,7 @@
 import { button, h } from '../app/dom';
 import { ACCEPTED_EXTENSIONS } from '../core/format';
 import { t } from '../i18n';
-import { addAccount, clientFor, commitMessage, defaultApiUrl, forgetAccount, loadAccounts, type GitAccount } from './accounts';
+import { addAccount, clientFor, commitMessage, defaultApiUrl, forgetAccount, isRemembered, loadAccounts, type GitAccount } from './accounts';
 import type { GitClient, GitEntry, GitProvider, GitRepo } from './types';
 import { apiUrlFor, hostOfApi, parseRepoAddress, tokenPage, type RepoAddress } from './url';
 import { isDiffable, orderForGit, preferDiffable, withExtension } from './diffable';
@@ -85,7 +85,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
 
     const renderAccounts = (): void => {
       const accounts = loadAccounts();
-      accountSelect.replaceChildren(...accounts.map((a) => h('option', { value: a.id, selected: a.id === account?.id }, `${a.provider === 'github' ? 'GitHub' : 'GitLab'} — ${a.label}`)));
+      accountSelect.replaceChildren(...accounts.map((a) => h('option', { value: a.id, selected: a.id === account?.id }, `${a.provider === 'github' ? 'GitHub' : 'GitLab'} — ${a.label}${isRemembered(a.id) ? '' : ` (${t('git.sessionOnly')})`}`)));
       accountSelect.disabled = !accounts.length;
       if (!accounts.length) {
         account = undefined;
@@ -124,6 +124,17 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       try {
         const branches = await client.listBranches(r.id);
         if (gen !== generation) return;
+        if (!branches.length) {
+          // GIT-011: an empty repository (just created): nothing to open, a first file to save.
+          branch = r.defaultBranch;
+          branchSelect.replaceChildren(h('option', { value: branch, selected: true }, branch));
+          folder = '';
+          renderCrumbs();
+          list.replaceChildren();
+          setStatus(t(mode === 'open' ? 'git.emptyRepoOpen' : 'git.emptyRepoSave'));
+          if (mode === 'save' && at?.isFile && at.inside) fileName.value = at.inside.slice(at.inside.lastIndexOf('/') + 1);
+          return;
+        }
         const wanted = at?.branch && branches.includes(at.branch) ? at.branch : r.defaultBranch;
         branch = branches.includes(wanted) ? wanted : (branches[0] ?? wanted);
         branchSelect.replaceChildren(...branches.map((b) => h('option', { value: b, selected: b === branch }, b)));
@@ -202,22 +213,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
     const apiUrl = h('input', { type: 'url', value: defaultApiUrl('github'), 'aria-label': t('git.apiUrl'), spellcheck: 'false' });
     const howTo = h('details', { class: 'git-token-help' });
     // GIT-009: how to make a token, for the service and the site chosen.
-    const renderHowTo = (): void => {
-      const kind = provider.value as GitProvider;
-      let site = 'github.com';
-      try {
-        site = hostOfApi(apiUrl.value.trim());
-      } catch {
-        site = kind === 'github' ? 'github.com' : 'gitlab.com';
-      }
-      const page = tokenPage(kind, site);
-      const steps = kind === 'github' ? (['git.howGithub1', 'git.howGithub2', 'git.howGithub3', 'git.howGithub4', 'git.howGithub5'] as const) : (['git.howGitlab1', 'git.howGitlab2', 'git.howGitlab3', 'git.howGitlab4'] as const);
-      howTo.replaceChildren(
-        h('summary', {}, t('git.howTitle')),
-        h('ol', {}, ...steps.map((k, i) => h('li', {}, ...(i === 0 ? [t(k), ' ', h('a', { href: page, target: '_blank', rel: 'noopener noreferrer' }, page)] : [t(k)])))),
-        h('p', { class: 'hint' }, t('git.howSafety')),
-      );
-    };
+    const renderHowTo = (): void => fillTokenHelp(howTo, provider.value as GitProvider, apiUrl.value);
     const showAddForm = (): void => {
       addForm.hidden = false;
       renderHowTo();
@@ -225,6 +221,8 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
     };
     {
       const token = h('input', { type: 'password', 'aria-label': t('git.token'), autocomplete: 'off', spellcheck: 'false' });
+      // GIT-012: the token kept in this browser (the default), or until the application is closed.
+      const remember = h('input', { type: 'checkbox', checked: true });
       provider.addEventListener('change', () => {
         apiUrl.value = defaultApiUrl(provider.value as GitProvider);
         renderHowTo();
@@ -235,6 +233,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
         h('label', {}, t('git.provider'), ' ', provider),
         h('label', {}, t('git.apiUrl'), ' ', apiUrl),
         h('label', {}, t('git.token'), ' ', token),
+        h('label', { class: 'git-remember' }, remember, ` ${t('git.remember')}`),
         h('p', { class: 'hint' }, t('git.tokenHelp')),
         howTo,
         h('div', { class: 'dialog-actions' }, connect),
@@ -250,7 +249,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
         void clientFor(input)
           .listRepos()
           .then(() => {
-            const created = addAccount({ ...input, label: new URL(input.apiUrl).host });
+            const created = addAccount({ ...input, label: new URL(input.apiUrl).host }, { remember: remember.checked });
             token.value = '';
             addForm.hidden = true;
             account = created;
@@ -258,6 +257,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
             accountSelect.value = created.id;
             const at = pending;
             pending = undefined;
+            setStatus(t(remember.checked ? 'git.tokenRemembered' : 'git.tokenSession'));
             void (at ? openAddress(at) : selectAccount(created.id));
           })
           .catch(fail);
@@ -303,7 +303,14 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
         const r = await client.getRepo(at.path);
         account = using;
         await selectRepo(r, at);
-        if (!found) setStatus(t('git.openedPublic'));
+        if (!found) {
+          setStatus(t('git.openedPublic'));
+          // GIT-012: a token for this site, to save here; the repository opens again with it.
+          status.append(' ', button(`🔑 ${t('git.addToken')}`, () => {
+            pending = at;
+            showAddForm();
+          }, { className: 'link' }));
+        }
       } catch (err) {
         const status = (err as { status?: number }).status;
         if (!found && (status === 404 || status === 401 || status === 403)) {
@@ -449,6 +456,84 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       void selectAccount(first.id);
     }
     address.focus();
+  });
+}
+
+/** GIT-009: how to make a token, for the service and the site of an API address. */
+function fillTokenHelp(howTo: HTMLElement, kind: GitProvider, api: string): void {
+  let site: string;
+  try {
+    site = hostOfApi(api.trim());
+  } catch {
+    site = kind === 'github' ? 'github.com' : 'gitlab.com';
+  }
+  const page = tokenPage(kind, site);
+  const steps = kind === 'github' ? (['git.howGithub1', 'git.howGithub2', 'git.howGithub3', 'git.howGithub4', 'git.howGithub5'] as const) : (['git.howGitlab1', 'git.howGitlab2', 'git.howGitlab3', 'git.howGitlab4'] as const);
+  howTo.replaceChildren(
+    h('summary', {}, t('git.howTitle')),
+    h('ol', {}, ...steps.map((k, i) => h('li', {}, ...(i === 0 ? [t(k), ' ', h('a', { href: page, target: '_blank', rel: 'noopener noreferrer' }, page)] : [t(k)])))),
+    h('p', { class: 'hint' }, t('git.howSafety')),
+  );
+}
+
+/**
+ * GIT-012: a token for the site of a repository opened without one, asked
+ * when saving there; it is checked on the repository, then remembered in this
+ * browser (or kept until the application is closed).
+ */
+export function askToken(host: HTMLElement, base: Pick<GitAccount, 'provider' | 'apiUrl'>, repo: string): Promise<GitAccount | null> {
+  return new Promise((resolve) => {
+    const site = (() => {
+      try {
+        return hostOfApi(base.apiUrl);
+      } catch {
+        return base.apiUrl;
+      }
+    })();
+    const { dialog, body, close } = modal(host, 'git-token-dialog', t('git.tokenTitle'));
+    const token = h('input', { type: 'password', 'aria-label': t('git.token'), autocomplete: 'off', spellcheck: 'false' });
+    const remember = h('input', { type: 'checkbox', checked: true });
+    const howTo = h('details', { class: 'git-token-help', open: true });
+    fillTokenHelp(howTo, base.provider, base.apiUrl);
+    const status = h('p', { class: 'git-status', role: 'status', 'aria-live': 'polite' });
+    const done = (value: GitAccount | null): void => {
+      close();
+      resolve(value);
+    };
+    const save = async (): Promise<void> => {
+      const value = token.value.trim();
+      if (!value) return void token.focus();
+      status.textContent = t('git.loading');
+      status.classList.remove('error');
+      try {
+        // The token must reach this repository.
+        await clientFor({ ...base, token: value }).getRepo(repo);
+      } catch (err) {
+        status.textContent = t('error.git', { message: (err as Error).message });
+        status.classList.add('error');
+        return;
+      }
+      done(addAccount({ ...base, token: value, label: site }, { remember: remember.checked }));
+    };
+    token.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        void save();
+      }
+    });
+    body.append(
+      h('p', {}, t('git.tokenWhy', { repo, site })),
+      h('label', { class: 'git-row' }, t('git.token'), ' ', token),
+      h('label', { class: 'git-remember' }, remember, ` ${t('git.remember')}`),
+      howTo,
+      status,
+      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => done(null)), button(t('git.connect'), () => void save(), { className: 'primary' })),
+    );
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      done(null);
+    });
+    token.focus();
   });
 }
 

@@ -48,7 +48,20 @@ the path when the address has them, and the repository opens:
      read and write** to propose changes from the folder panel)
      (Settings → Developer settings → Personal access tokens).
    - GitLab: a token with the **api** scope (Preferences → Access tokens).
-4. Click **Connect**.
+4. Keep **Remember the token in this browser** ticked to not type it again
+   (untick it to keep the token only until the application is closed; such
+   an account shows *until closed*), then click **Connect**.
+
+A public repository opened without a token offers **🔑 Add a token to save
+here**; saving into it without a token also asks for one, checked on the
+repository and remembered the same way.
+
+### An empty repository
+
+A repository just created on GitHub or GitLab has no file and no branch
+yet. It opens without error and says so; save a document in it (**Commit…**
+or *Save to repository*): it becomes its first file, on its default branch.
+Opened as a folder, its first file is created the same way.
 
 ### How to create a token
 

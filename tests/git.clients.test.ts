@@ -262,3 +262,27 @@ describe('FOLDER-022 pull and merge requests from a branch', () => {
     expect(m.calls[0]!.body).toEqual({ source_branch: 'pwo/draft', target_branch: 'master', title: 'Draft', description: '' });
   });
 });
+
+describe('GIT-011 an empty repository', () => {
+  const API = 'https://api.github.com';
+  it('writes the first file of an empty GitHub repository on its default branch', async () => {
+    let first = true;
+    const m = mockFetch({
+      [`PUT ${API}/repos/me/empty/contents/notes.md`]: (call) => {
+        if ((call.body as { branch?: string }).branch && first) {
+          first = false;
+          return { status: 404, json: { message: 'Branch main not found' } };
+        }
+        return { status: 201, json: { content: { sha: 'abc' } } };
+      },
+    });
+    const client = new GitHubClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.writeFile('me/empty', 'main', 'notes.md', new TextEncoder().encode('# Hi'), 'docs: add notes.md')).toEqual({ version: 'abc' });
+    expect(m.calls.map((c) => (c.body as { branch?: string }).branch)).toEqual(['main', undefined]);
+  });
+
+  it('tells an empty repository by its missing branches', async () => {
+    const m = mockFetch({ [`GET ${API}/repos/me/empty/branches`]: () => ({ json: [] }) });
+    expect(await new GitHubClient({ apiUrl: API, token: '' }, m.fetchFn).listBranches('me/empty')).toEqual([]);
+  });
+});
