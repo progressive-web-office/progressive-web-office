@@ -1158,6 +1158,8 @@ export const en = {
   'ruler.leftMargin': 'Left margin',
   'ruler.rightMargin': 'Right margin',
   'ruler.page': 'p. {n}',
+  'fmt.smallCaps': 'Small capitals',
+  'typo.hyphenate': 'Hyphenation',
   'mode.menu': 'Editing mode',
   'mode.visual': 'Visual editing',
   'mode.source': 'Source',

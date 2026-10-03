@@ -107,6 +107,22 @@ const REMOTE = 'pwo-remote';
 
 
 /** DOC-041: symbols of the fields in menus. */
+/** DOC-048: words cut at the end of lines, as in TeX (on by default). */
+function loadHyphenation(): boolean {
+  try {
+    return localStorage.getItem('pwo.doc.hyphenate') !== '0';
+  } catch {
+    return true;
+  }
+}
+function saveHyphenation(on: boolean): void {
+  try {
+    localStorage.setItem('pwo.doc.hyphenate', on ? '1' : '0');
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 /** DOC-047: rulers shown (by default on a large screen), and their unit. */
 function loadRulers(): boolean {
   try {
@@ -260,6 +276,7 @@ export class DocumentEditor implements EditorView {
     this.scroller = scroller;
     this.element = h('div', { class: 'doc-editor' });
     this.element.classList.toggle('show-rulers', loadRulers());
+    this.element.classList.toggle('hyphenate', loadHyphenation());
     // REVIEW-001: read and comment page by page.
     this.review = new DocReview(
       {
@@ -347,7 +364,8 @@ export class DocumentEditor implements EditorView {
           fieldContext: (pos) => this.fieldContext(pos),
         }),
         editable: () => !this.readOnly && !this.reviewing && this.mode === 'visual',
-        attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
+        // DOC-048: the document's language, for hyphenation and the spelling checker.
+        attributes: () => ({ role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page', lang: this.lang() }),
         dispatchTransaction: (tr) => this.dispatch(tr),
         handlePaste: (_view, event) => this.onPaste(event),
         // FOLDER-003: Ctrl+click follows a link (a relative one from the open folder).
@@ -1518,6 +1536,7 @@ export class DocumentEditor implements EditorView {
         h('option', { value: 'mode-visual' }, `${mark(this.mode === 'visual')}${t('mode.visual')}`),
         ...(this.sourceLang() ? [h('option', { value: 'mode-source' }, `${mark(this.mode === 'source')}${t('mode.source')}`)] : []),
         h('option', { value: 'mode-reading' }, `${mark(this.mode === 'reading')}${t('mode.reading')}`),
+        h('option', { value: 'hyphenate' }, `${mark(this.element.classList.contains('hyphenate'))}${t('typo.hyphenate')}`),
         h('option', { value: 'rulers' }, `${mark(this.element.classList.contains('show-rulers'))}${t('ruler.menu')}`),
         h('option', { value: 'readability' }, `${mark(this.writing.readability)}${t('wview.readability')}`),
         h('option', { value: 'focus' }, `${mark(this.writing.focus)}${t('wview.focus')}`),
@@ -1542,6 +1561,11 @@ export class DocumentEditor implements EditorView {
         return;
       }
       if (value === 'rulers') this.setRulers(!this.element.classList.contains('show-rulers'));
+      if (value === 'hyphenate') {
+        const on = !this.element.classList.contains('hyphenate');
+        this.element.classList.toggle('hyphenate', on);
+        saveHyphenation(on);
+      }
       if (value === 'goal') void this.editGoal();
       else if (value === 'hide-code' || value === 'show-code') this.setAllCodeHidden(value === 'hide-code');
       else if (value === 'dag') {
@@ -1909,7 +1933,8 @@ export class DocumentEditor implements EditorView {
 
   async printContent(_settings?: PrintSettings): Promise<HTMLElement> {
     await this.captureWidgets();
-    const root = h('div', { class: 'print-document' });
+    // DOC-048: printed in the document's language, hyphenated as on screen.
+    const root = h('div', { class: `print-document${this.element.classList.contains('hyphenate') ? ' hyphenate' : ''}`, lang: this.lang() });
     for (const node of Array.from(this.view.dom.childNodes)) root.append(node.cloneNode(true));
     for (const el of Array.from(root.querySelectorAll('[contenteditable]'))) el.removeAttribute('contenteditable');
     for (const el of Array.from(root.querySelectorAll('.code-cell-bar, .ProseMirror-trailingBreak, .ProseMirror-separator, .column-resize-handle'))) el.remove();
@@ -2205,6 +2230,7 @@ export class DocumentEditor implements EditorView {
       state(t('common.numbering'), '1≡', toggleList(true), () => inList(this.view.state, true), 'Ctrl+Shift+7'),
       toolGroup(t('group.format'), 'A', [
         mark('strike', t('common.strike'), 'S', 'Ctrl+Shift+X'),
+        mark('smallCaps', t('fmt.smallCaps'), 'Sᴄ', 'Ctrl+Shift+K'),
         mark('code', t('doc.inlineCode'), '</>', 'Ctrl+`'),
         this.fontSelect,
         this.sizeSelect.element,

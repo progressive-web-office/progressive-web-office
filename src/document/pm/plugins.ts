@@ -74,6 +74,7 @@ export function editorKeymap(actions: EditorActions): Plugin[] {
       'Mod-i': toggleMark(schema.marks.italic!),
       'Mod-u': toggleMark(schema.marks.underline!),
       'Mod-Shift-x': toggleMark(schema.marks.strike!),
+      'Mod-Shift-k': toggleMark(schema.marks.smallCaps!),
       'Mod-`': toggleMark(schema.marks.code!),
       'Mod-Shift-8': toggleList(false),
       'Mod-Shift-7': toggleList(true),

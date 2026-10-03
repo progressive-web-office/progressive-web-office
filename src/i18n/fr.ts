@@ -1160,6 +1160,8 @@ export const fr: Record<MessageKey, string> = {
   'ruler.leftMargin': 'Marge gauche',
   'ruler.rightMargin': 'Marge droite',
   'ruler.page': 'p. {n}',
+  'fmt.smallCaps': 'Petites capitales',
+  'typo.hyphenate': 'Césure',
   'mode.menu': 'Mode d’édition',
   'mode.visual': 'Édition visuelle',
   'mode.source': 'Source',

@@ -349,6 +349,7 @@ class LatexWriter {
       if (!text) continue;
       if (run.code) text = `\\texttt{${text}}`;
       if (run.strike) text = `\\sout{${text}}`;
+      if (run.smallCaps) text = `\\textsc{${text}}`;
       if (run.underline) text = `\\uline{${text}}`;
       if (run.italic) text = `\\textit{${text}}`;
       if (run.bold) text = `\\textbf{${text}}`;

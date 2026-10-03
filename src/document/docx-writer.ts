@@ -506,6 +506,7 @@ class DocxWriter {
     if (run.font && !run.code) rPr += `<w:rFonts w:ascii="${esc(run.font)}" w:hAnsi="${esc(run.font)}" w:eastAsia="${esc(run.font)}" w:cs="${esc(run.font)}"/>`;
     if (run.bold) rPr += '<w:b/><w:bCs/>';
     if (run.italic) rPr += '<w:i/><w:iCs/>';
+    if (run.smallCaps) rPr += '<w:smallCaps/>';
     if (run.strike) rPr += '<w:strike/>';
     if (run.color) rPr += `<w:color w:val="${run.color.slice(1).toUpperCase()}"/>`;
     if (run.size) rPr += `<w:sz w:val="${Math.round(run.size * 2)}"/><w:szCs w:val="${Math.round(run.size * 2)}"/>`;

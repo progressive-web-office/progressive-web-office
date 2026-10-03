@@ -12,6 +12,8 @@ export interface TextFormat {
   italic?: boolean;
   underline?: boolean;
   strike?: boolean;
+  /** DOC-048: small capitals (LaTeX's \\textsc). */
+  smallCaps?: boolean;
   code?: boolean;
   /** Hyperlink target (validated with `isSafeUrl` before rendering). */
   link?: string;
@@ -750,7 +752,7 @@ export function paragraph(text: string, opts: Partial<Omit<Paragraph, 'type' | '
   return { type: 'paragraph', style: opts.style ?? 'normal', ...opts, runs: text ? [{ text }] : [] };
 }
 
-const FORMAT_KEYS: (keyof TextFormat)[] = ['bold', 'italic', 'underline', 'strike', 'code', 'link', 'size', 'color', 'font', 'highlight'];
+const FORMAT_KEYS: (keyof TextFormat)[] = ['bold', 'italic', 'underline', 'strike', 'smallCaps', 'code', 'link', 'size', 'color', 'font', 'highlight'];
 
 const commentKey = (f: TextFormat): string => (f.comments?.length ? [...f.comments].sort().join(' ') : '');
 const revisionKey = (r: Revision | undefined): string => (r ? `${r.author ?? ''}\u0000${r.date ?? ''}` : '');

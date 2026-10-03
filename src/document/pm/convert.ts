@@ -10,6 +10,7 @@ function marksFor(f: TextFormat): Mark[] {
   if (f.italic) marks.push(schema.marks.italic!.create());
   if (f.underline) marks.push(schema.marks.underline!.create());
   if (f.strike) marks.push(schema.marks.strike!.create());
+  if (f.smallCaps) marks.push(schema.marks.smallCaps!.create());
   if (f.code) marks.push(schema.marks.code!.create());
   if (f.size) marks.push(schema.marks.size!.create({ pt: f.size }));
   if (f.color) marks.push(schema.marks.color!.create({ hex: f.color }));

@@ -264,6 +264,23 @@ centimetres (inches in the United States) from the edge of the paper:
 - the vertical ruler runs along the page, the top margin greyed, a red line
   where each page's text ends.
 
+### Typography
+
+The text is set with the care of TeX, on screen and on paper:
+
+- **paragraphs broken as a whole**, not line by line — no lonely word on a
+  last line when the paragraph can avoid it — and **balanced headings**;
+- **hyphenation** in the language of the document (*Properties › Language*,
+  or `lang:` in the front matter), as TeX does — *View › Hyphenation* turns
+  it off;
+- kerning and ligatures of the font; no widow or orphan line on paper
+  (a paragraph never leaves a single line at the foot or the top of a page);
+- **small capitals** (**Sᴄ**, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd>)
+  — for centuries (<span style="font-variant: small-caps">xix</span>e siècle),
+  authors' names, acronyms — kept everywhere: `\textsc{…}` in LaTeX,
+  `[…]{.smallcaps}` in Markdown (as Pandoc), and the small capitals of
+  OpenDocument and Word.
+
 ### Header and footer
 
 ▤ **Page setup** also sets the header and footer: each has a left, a centre and a right part.

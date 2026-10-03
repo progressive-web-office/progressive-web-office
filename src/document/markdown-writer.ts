@@ -69,11 +69,12 @@ export function bytesToBase64(data: Uint8Array): string {
   return btoa(s);
 }
 
-type Mark = 'link' | 'highlight' | 'bold' | 'italic' | 'strike' | 'underline';
-const MARK_ORDER: Mark[] = ['link', 'highlight', 'bold', 'italic', 'strike', 'underline'];
+type Mark = 'link' | 'smallCaps' | 'highlight' | 'bold' | 'italic' | 'strike' | 'underline';
+const MARK_ORDER: Mark[] = ['link', 'smallCaps', 'highlight', 'bold', 'italic', 'strike', 'underline'];
 // MD-019: highlighted text (any colour) as `==text==`.
-const OPEN: Record<Exclude<Mark, 'link'>, string> = { highlight: '==', bold: '**', italic: '*', strike: '~~', underline: '<u>' };
-const CLOSE: Record<Exclude<Mark, 'link'>, string> = { highlight: '==', bold: '**', italic: '*', strike: '~~', underline: '</u>' };
+// DOC-048: small capitals as Pandoc's bracketed span.
+const OPEN: Record<Exclude<Mark, 'link'>, string> = { smallCaps: '[', highlight: '==', bold: '**', italic: '*', strike: '~~', underline: '<u>' };
+const CLOSE: Record<Exclude<Mark, 'link'>, string> = { smallCaps: ']{.smallcaps}', highlight: '==', bold: '**', italic: '*', strike: '~~', underline: '</u>' };
 
 /** Escape characters with Markdown meaning in inline text (`==` too, which highlights). */
 export function escapeInline(text: string): string {

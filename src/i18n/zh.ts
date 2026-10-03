@@ -1160,6 +1160,8 @@ export const zh: Record<MessageKey, string> = {
   'ruler.leftMargin': '左页边距',
   'ruler.rightMargin': '右页边距',
   'ruler.page': '第 {n} 页',
+  'fmt.smallCaps': '小型大写字母',
+  'typo.hyphenate': '断字',
   'mode.menu': '编辑模式',
   'mode.visual': '可视化编辑',
   'mode.source': '源码',

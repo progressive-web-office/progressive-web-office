@@ -1019,6 +1019,15 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .doc-editor.focus-mode > .toolbar, .doc-editor.focus-mode .doc-side, .doc-editor.focus-mode .table-bar { display: none; }
 .doc-editor.focus-mode .doc-page > :not(.is-current) { opacity: 0.35; transition: opacity 0.2s; }
 .doc-editor.typewriter .doc-scroll { padding-bottom: 50vh; }
+/* DOC-048: typography after TeX — kerning and ligatures, paragraphs broken
+   as a whole (no lonely last word), balanced headings, hyphenation by the
+   document's language, no widow or orphan line on paper. */
+.doc-page, .source-preview, .print-document { font-kerning: normal; font-variant-ligatures: common-ligatures; text-rendering: optimizeLegibility; }
+.doc-page p, .print-document p { text-wrap: pretty; orphans: 2; widows: 2; }
+.doc-page :is(h1, h2, h3, h4, h5, h6), .print-document :is(h1, h2, h3, h4, h5, h6) { text-wrap: balance; break-after: avoid; }
+.doc-editor.hyphenate .doc-page p, .print-document.hyphenate p { hyphens: auto; -webkit-hyphens: auto; hyphenate-limit-chars: 6 3 3; }
+.smallcaps { font-variant-caps: small-caps; }
+
 /* DOC-047: rulers around the page. */
 .doc-sheet { width: var(--page-w, 816px); max-width: 100%; margin: 0 auto; }
 .doc-sheet .doc-page { width: 100%; margin: 0; }

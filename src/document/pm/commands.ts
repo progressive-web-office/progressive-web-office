@@ -301,7 +301,7 @@ export const changeIndent =
     });
   };
 
-const DIRECT_MARKS = ['bold', 'italic', 'underline', 'strike', 'size', 'color', 'font', 'highlight'];
+const DIRECT_MARKS = ['bold', 'italic', 'underline', 'strike', 'smallCaps', 'size', 'color', 'font', 'highlight'];
 
 /** Remove character formatting (links and inline code stay) and paragraph spacing. */
 export const clearFormatting: Command = (state, dispatch) => {

@@ -552,6 +552,7 @@ class Builder {
       case 'texttt':
         return void arg(0, { ...fmt, code: true });
       case 'textsc':
+        return void arg(0, { ...fmt, smallCaps: true });
       case 'textrm':
       case 'textsf':
       case 'textup':

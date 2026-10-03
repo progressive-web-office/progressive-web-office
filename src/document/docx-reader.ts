@@ -485,7 +485,7 @@ class DocxReader {
     const f: TextFormat = { ...parent };
     const rPr = child(r, 'rPr');
     if (!rPr) return f;
-    const set = (key: 'bold' | 'italic' | 'strike', el: Element | undefined): void => {
+    const set = (key: 'bold' | 'italic' | 'strike' | 'smallCaps', el: Element | undefined): void => {
       const v = onOff(el);
       if (v === true) f[key] = true;
       else if (v === false) delete f[key];
@@ -493,6 +493,7 @@ class DocxReader {
     set('bold', child(rPr, 'b'));
     set('italic', child(rPr, 'i'));
     set('strike', child(rPr, 'strike') ?? child(rPr, 'dstrike'));
+    set('smallCaps', child(rPr, 'smallCaps'));
     const u = child(rPr, 'u');
     if (u) {
       const val = attr(u, 'val');

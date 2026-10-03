@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Typography after TeX (DOC-048): paragraphs broken as a whole, balanced
+  headings, hyphenation in the document's language (*View › Hyphenation*),
+  kerning and ligatures, no widows or orphans on paper; **small capitals**
+  (Ctrl+Shift+K), kept as `\textsc`, `[…]{.smallcaps}` and in ODT/DOCX.
 - Graduated rulers around the page (DOC-047): the horizontal one, in cm
   (inches in the United States) from the paper's edge, with margins and
   paragraph indents to drag or move with the arrow keys; the vertical one

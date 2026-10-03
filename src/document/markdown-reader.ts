@@ -164,6 +164,26 @@ function fieldInline(state: StateInline, silent: boolean): boolean {
   return true;
 }
 
+/** DOC-048: small capitals, Pandoc's `[text]{.smallcaps}` (the text keeps its own formatting). */
+function smallCapsInline(state: StateInline, silent: boolean): boolean {
+  if (state.src[state.pos] !== '[') return false;
+  const end = state.md.helpers.parseLinkLabel(state, state.pos, true);
+  if (end < 0) return false;
+  const after = /^\{\.smallcaps\}/.exec(state.src.slice(end + 1, state.posMax));
+  if (!after) return false;
+  if (!silent) {
+    const [pos, max] = [state.pos, state.posMax];
+    state.push('smallcaps_open', 'span', 1);
+    state.pos = pos + 1;
+    state.posMax = end;
+    state.md.inline.tokenize(state);
+    state.push('smallcaps_close', 'span', -1);
+    state.posMax = max;
+  }
+  state.pos = end + 1 + after[0].length;
+  return true;
+}
+
 /** FORM-003: a form field, `[answer]{.input name="…"}`. */
 function inputInline(state: StateInline, silent: boolean): boolean {
   if (state.src[state.pos] !== '[') return false;
@@ -196,6 +216,7 @@ function getParser(): MarkdownIt {
     parser.inline.ruler.after('escape', 'pwo_field', fieldInline);
     parser.inline.ruler.before('escape', 'pwo_hfill', fillInline);
     parser.inline.ruler.before('link', 'pwo_input', inputInline);
+    parser.inline.ruler.before('link', 'pwo_smallcaps', smallCapsInline);
     parser.block.ruler.before('fence', 'math_block', mathBlock, { alt: ['paragraph', 'reference', 'blockquote', 'list'] });
   }
   return parser;
@@ -629,6 +650,12 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         break;
       case 's_open':
         fmt.strike = true;
+        break;
+      case 'smallcaps_open':
+        fmt.smallCaps = true;
+        break;
+      case 'smallcaps_close':
+        delete fmt.smallCaps;
         break;
       case 's_close':
         delete fmt.strike;

@@ -403,6 +403,12 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
     }
     if (run.code) wrap('code');
     if (run.strike) wrap('s');
+    if (run.smallCaps) {
+      const span = doc.createElement('span');
+      span.className = 'smallcaps';
+      span.append(node);
+      node = span;
+    }
     if (run.underline) wrap('u');
     if (run.italic) wrap('em');
     if (run.bold) wrap('strong');
@@ -850,6 +856,7 @@ function inlineFormat(el: HTMLElement, parent: TextFormat): TextFormat {
   if (tag === 'i' || tag === 'em' || tag === 'cite' || tag === 'var') f.italic = true;
   if (tag === 'u' || tag === 'ins') f.underline = true;
   if (tag === 's' || tag === 'strike' || tag === 'del') f.strike = true;
+  if (el.classList?.contains('smallcaps')) f.smallCaps = true;
   if (tag === 'code' || tag === 'kbd' || tag === 'samp' || tag === 'tt') f.code = true;
   if (tag === 'a') {
     const href = el.getAttribute('href');
@@ -865,6 +872,7 @@ function inlineFormat(el: HTMLElement, parent: TextFormat): TextFormat {
     const deco = `${style.textDecoration} ${style.textDecorationLine}`;
     if (deco.includes('underline')) f.underline = true;
     if (deco.includes('line-through')) f.strike = true;
+    if (style.fontVariant === 'small-caps' || style.fontVariantCaps === 'small-caps') f.smallCaps = true;
     const size = /^([\d.]+)(pt|px)$/.exec(style.fontSize ?? '');
     if (size) f.size = Math.round((size[2] === 'px' ? (Number(size[1]) * 72) / 96 : Number(size[1])) * 10) / 10;
     const color = cssColorToHex(style.color ?? '');

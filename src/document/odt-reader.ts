@@ -226,6 +226,7 @@ class OdtReader {
         if (u && u !== 'none') style.format.underline = true;
         const lt = attr(tp, 'text-line-through-style');
         if (lt && lt !== 'none') style.format.strike = true;
+        if (attr(tp, 'font-variant') === 'small-caps') style.format.smallCaps = true;
         const family = (attr(tp, 'font-family') ?? attr(tp, 'font-name') ?? '').replace(/^['"]|['"]$/g, '');
         if (MONO.test(family)) style.format.code = true;
         else if (family && style.automatic) style.format.font = family;

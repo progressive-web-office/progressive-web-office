@@ -156,9 +156,11 @@ group is not a commitment.
 - ✅ Graduated rulers, horizontal and vertical, in cm or inches: margins and
   indents shown and dragged, page boundaries (DOC-047); next: tab stops on
   the ruler
-- Typographic quality as in TeX: hyphenation by language, line breaking over
-  the whole paragraph (optimal fit), widows and orphans, ligatures, kerning,
-  small capitals, non-breaking spaces of the language
+- ✅ Typographic quality as in TeX: hyphenation by language, line breaking
+  over the whole paragraph, widows and orphans, ligatures, kerning, small
+  capitals (DOC-048), non-breaking spaces of the language (DOC-031); next:
+  microtypography (protrusion, font expansion), old-style figures, a
+  baseline grid
 - True pages in the editor (the text cut into sheets), footnotes at the foot
   of their page, floats (figures placed at the top or bottom of a page)
 

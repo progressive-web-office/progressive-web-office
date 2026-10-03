@@ -192,6 +192,7 @@ class OdtWriter {
       (run.italic ? ' fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic"' : '') +
       (run.underline ? ' style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color"' : '') +
       (run.strike ? ' style:text-line-through-style="solid" style:text-line-through-type="single"' : '') +
+      (run.smallCaps ? ' fo:font-variant="small-caps"' : '') +
       (run.font && !run.code ? ` fo:font-family="${escAttr(run.font)}" style:font-family-asian="${escAttr(run.font)}" style:font-family-complex="${escAttr(run.font)}"` : '') +
       (run.size ? ` fo:font-size="${run.size}pt" style:font-size-asian="${run.size}pt" style:font-size-complex="${run.size}pt"` : '') +
       (run.color ? ` fo:color="${run.color}"` : '') +

@@ -299,6 +299,8 @@ export const schema = new Schema({
     bold: { parseDOM: [{ tag: 'strong' }, { tag: 'b' }, { style: 'font-weight=bold' }, { style: 'font-weight=700' }], toDOM: () => ['strong', 0] },
     italic: { parseDOM: [{ tag: 'em' }, { tag: 'i' }, { style: 'font-style=italic' }], toDOM: () => ['em', 0] },
     underline: { parseDOM: [{ tag: 'u' }, { style: 'text-decoration=underline' }], toDOM: () => ['u', 0] },
+    /** DOC-048: small capitals. */
+    smallCaps: { parseDOM: [{ tag: 'span.smallcaps' }, { style: 'font-variant=small-caps' }, { style: 'font-variant-caps=small-caps' }], toDOM: () => ['span', { class: 'smallcaps' }, 0] },
     strike: { parseDOM: [{ tag: 's' }, { tag: 'del' }, { tag: 'strike' }, { style: 'text-decoration=line-through' }], toDOM: () => ['s', 0] },
     code: { parseDOM: [{ tag: 'code' }], toDOM: () => ['code', 0] },
     size: {
