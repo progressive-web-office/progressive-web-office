@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- File explorer: context menu (right click, Menu key, Shift+F10) with every
+  action on the selection (FOLDER-013); copy, cut and paste with Ctrl+C/X/V
+  and duplicate (FOLDER-012); download a file, or folders and several
+  entries as a ZIP archive, and copy their paths (FOLDER-014).
+
 - Example *Instrument panel* (CODE-016, FILE-018): the anywidget instruments
   installed from their published wheels, knobs and a switch driving a tank, a
   gauge, a thermometer, a LED and a display.

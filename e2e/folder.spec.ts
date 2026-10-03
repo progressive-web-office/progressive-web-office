@@ -213,3 +213,32 @@ test('follows links between Markdown notes, shows backlinks and keeps links on r
   await expect(page.locator('.doc-page h1')).toHaveText('Missing note');
   await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.has('Missing note.md'))).toBe(true);
 });
+
+test('copies, pastes, duplicates and downloads from the context menu and the keyboard (FOLDER-012..014)', async ({ page }) => {
+  await fakeFolder(page, { 'notes/a.md': '# A\n', 'notes/b.md': '# B\n', 'z.md': '# Z\n' });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  const files = () => page.evaluate(() => [...(window as unknown as { __folder: Map<string, string> }).__folder.keys()].sort());
+  // Duplicate from the context menu.
+  await panel.getByRole('button', { name: 'z.md' }).click({ button: 'right' });
+  const menu = page.getByRole('menu', { name: 'Actions on the files' });
+  await expect(menu.getByRole('menuitem')).toContainText(['Open', 'Rename (F2)', 'Duplicate', 'Copy (Ctrl+C)', 'Cut (Ctrl+X)', 'Download', 'Copy the path', 'Delete (Del)']);
+  await menu.getByRole('menuitem', { name: 'Duplicate' }).click();
+  await expect.poll(files).toEqual(['notes/a.md', 'notes/b.md', 'z 2.md', 'z.md']);
+  // Copy with the keyboard, paste into the folder.
+  await panel.getByRole('button', { name: 'z.md', exact: true }).focus();
+  await page.keyboard.press('ControlOrMeta+c');
+  await panel.getByRole('button', { name: 'notes' }).click();
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(files).toEqual(['notes/a.md', 'notes/b.md', 'notes/z.md', 'z 2.md', 'z.md']);
+  // Download the folder as an archive.
+  await panel.getByRole('button', { name: 'notes' }).click({ button: 'right' });
+  const download = page.waitForEvent('download');
+  await menu.getByRole('menuitem', { name: 'Download' }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('notes.zip');
+  const { readFileSync } = await import('node:fs');
+  const zip = readFileSync((await file.path())!);
+  expect(zip.subarray(0, 2).toString()).toBe('PK');
+  expect(zip.toString('latin1')).toContain('notes/z.md');
+});

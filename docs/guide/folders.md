@@ -39,6 +39,20 @@ it is renamed or moved.
 (onto a folder, or onto a file to import next to it), or use 📥. A name
 already taken gets a number (`notes 2.md`).
 
+**Context menu**: a right click on an entry (or the <kbd>Menu</kbd> key, or
+<kbd>Shift</kbd>+<kbd>F10</kbd>) lists what can be done with it: open,
+rename, duplicate, copy, cut, paste, download, copy the path, delete; on the
+empty space below the tree, new document, new folder, import and paste.
+
+**Copy, cut and paste**: <kbd>Ctrl</kbd>+<kbd>C</kbd>,
+<kbd>Ctrl</kbd>+<kbd>X</kbd> then <kbd>Ctrl</kbd>+<kbd>V</kbd> in the tree
+(or the context menu) copy or move the selected files and folders into the
+selected folder; a name already taken gets a number. *Duplicate* makes a copy
+next to the original (`plan 2.md`).
+
+**Download**: a file is downloaded as it is; a folder, or several entries,
+as a ZIP archive.
+
 **Several at once**: <kbd>Ctrl</kbd>+click (<kbd>⌘</kbd>+click on macOS)
 adds or removes an entry, <kbd>Shift</kbd>+click selects a range,
 <kbd>Ctrl</kbd>+<kbd>A</kbd> selects every entry shown. Deleting or dragging

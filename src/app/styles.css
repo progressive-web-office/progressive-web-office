@@ -863,7 +863,7 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .folder-results { flex: 1; min-height: 0; overflow: auto; }
 .folder-results[hidden], .folder-panel .fs-explorer[hidden] { display: none; }
 .folder-results ul { list-style: none; margin: 0; padding: 0; }
-.folder-panel { --fs-accent: var(--accent); --fs-hover: var(--sel); --fs-muted: var(--muted); }
+.folder-panel, .fs-menu { --fs-accent: var(--accent); --fs-hover: var(--sel); --fs-muted: var(--muted); --fs-bg: var(--surface); --fs-border: var(--border); }
 .folder-file { display: block; width: 100%; text-align: left; border: none; background: transparent; padding: 3px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .folder-file[data-icon]::before { content: attr(data-icon) ' ' / ''; }
 .folder-file:hover { background: var(--sel); }

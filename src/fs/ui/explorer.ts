@@ -7,7 +7,7 @@
  * icons are given by the host.
  */
 import { basename, byKindThenName, checkName, dirname, extname, isInside, join } from '../path';
-import { freeName, walk } from '../walk';
+import { copy, freeName, walk } from '../walk';
 import { FsError, type Entry, type StorageProvider } from '../types';
 
 export interface ExplorerStrings {
@@ -30,6 +30,14 @@ export interface ExplorerStrings {
   importFiles: string;
   sortBy: string;
   sortNames: Record<SortKey, string>;
+  open: string;
+  duplicate: string;
+  copy: string;
+  cut: string;
+  paste: string;
+  download: string;
+  copyPath: string;
+  menu: string;
   error: (message: string) => string;
 }
 
@@ -54,6 +62,14 @@ const DEFAULT_STRINGS: ExplorerStrings = {
   importFiles: 'Import files of this device',
   sortBy: 'Sort by',
   sortNames: { name: 'Name', date: 'Date', size: 'Size', type: 'Type' },
+  open: 'Open',
+  duplicate: 'Duplicate',
+  copy: 'Copy',
+  cut: 'Cut',
+  paste: 'Paste',
+  download: 'Download',
+  copyPath: 'Copy the path',
+  menu: 'Actions',
   error: (m) => m,
 };
 
@@ -94,6 +110,10 @@ export interface ExplorerOptions {
   onSort?(key: SortKey): void;
   /** Language of dates (default: the document's). */
   locale?: string;
+  /** Download entries (a folder as an archive, for example); no download action without it. */
+  download?(entries: Entry[]): void | Promise<void>;
+  /** Put text on the clipboard (default: the browser's clipboard). */
+  copyText?(text: string): void | Promise<void>;
 }
 
 /** Entries in the given order, folders first (newest, largest first for dates and sizes). */
@@ -159,6 +179,9 @@ export class Explorer {
   /** A focus moved by the keyboard keeping the selection. */
   private keep = false;
   private readonly picker: HTMLInputElement;
+  /** Entries copied or cut, to paste (FOLDER-012). */
+  private clip: { cut: boolean; entries: Entry[] } | undefined;
+  private menu: HTMLElement | undefined;
 
   constructor(private readonly opts: ExplorerOptions) {
     this.strings = { ...DEFAULT_STRINGS, ...opts.strings };
@@ -207,6 +230,17 @@ export class Explorer {
     this.tree = el('nav', { className: 'fs-tree' });
     this.tree.setAttribute('aria-label', this.strings.tree);
     this.tree.addEventListener('keydown', (e) => this.onKey(e));
+    this.tree.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const row = (e.target as HTMLElement).closest<HTMLElement>('.fs-entry');
+      if (row && !this.chosen.has(row.dataset.path!)) this.select(this.entryOf(row));
+      if (!row) {
+        this.chosen.clear();
+        this.selected = undefined;
+        this.paint();
+      }
+      this.openMenu(e.clientX, e.clientY, row ?? this.tree);
+    });
     if (writable) this.dropZone();
     this.element = el('div', { className: 'fs-explorer' }, this.toolbar, this.undoBar, this.tree);
   }
@@ -433,6 +467,19 @@ export class Explorer {
     } else if (ctrl && e.key.toLowerCase() === 'z' && this.removed) {
       e.preventDefault();
       void this.undoRemove();
+    } else if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') {
+      e.preventDefault();
+      const r = (row ?? this.tree).getBoundingClientRect();
+      this.openMenu(r.left + 16, r.bottom, row ?? this.tree);
+    } else if (ctrl && e.key.toLowerCase() === 'c' && this.chosen.size) {
+      e.preventDefault();
+      this.copySelection();
+    } else if (writable && ctrl && e.key.toLowerCase() === 'x' && this.chosen.size) {
+      e.preventDefault();
+      this.cutSelection();
+    } else if (writable && ctrl && e.key.toLowerCase() === 'v' && this.clip) {
+      e.preventDefault();
+      void this.paste();
     } else if (writable && e.key === 'F2') {
       e.preventDefault();
       void this.renameSelected();
@@ -732,6 +779,165 @@ export class Explorer {
       this.fail(err);
     }
     if (changes.length) await this.changed(...changes);
+  }
+
+  /** The selected entries, without those inside another selected folder. */
+  private targets(): Entry[] {
+    const paths = this.selection().length ? this.selection() : this.selected ? [this.selected.path] : [];
+    return topmost(paths).map((p) => this.chosen.get(p) ?? this.selected!);
+  }
+
+  copySelection(): void {
+    const entries = this.targets();
+    if (entries.length) this.clip = { cut: false, entries };
+  }
+
+  cutSelection(): void {
+    const entries = this.targets();
+    if (entries.length && this.provider.capabilities.write) this.clip = { cut: true, entries };
+  }
+
+  /** Paste what was copied or cut into `dir` (default: the selected folder); taken names get a number. */
+  async paste(dir = this.targetDir()): Promise<void> {
+    const clip = this.clip;
+    if (!clip) return;
+    const changes: ExplorerChange[] = [];
+    try {
+      for (const e of clip.entries) {
+        if (clip.cut && dirname(e.path) === dir) continue;
+        if (isInside(dir, e.path)) throw new FsError('Invalid', dir, `Cannot put ${e.path} into itself`);
+        const to = join(dir, await freeName(this.provider, dir, e.name));
+        if (clip.cut) {
+          await this.provider.move(e.path, to);
+          this.rebaseExpanded(e.path, to);
+          changes.push({ type: 'move', path: e.path, to, kind: e.kind });
+        } else {
+          await copy(this.provider, e.path, this.provider, to);
+          changes.push({ type: 'create', path: to, kind: e.kind });
+        }
+      }
+    } catch (err) {
+      this.fail(err);
+    }
+    // What was cut is pasted once; a copy can be pasted again.
+    if (clip.cut) this.clip = undefined;
+    if (dir) this.expanded.add(dir);
+    if (changes.length) await this.changed(...changes);
+  }
+
+  /** A copy of each selected entry next to it (`name 2.ext`). */
+  async duplicateSelection(): Promise<void> {
+    const changes: ExplorerChange[] = [];
+    try {
+      for (const e of this.targets()) {
+        const dir = dirname(e.path);
+        const to = join(dir, await freeName(this.provider, dir, e.name));
+        await copy(this.provider, e.path, this.provider, to);
+        changes.push({ type: 'create', path: to, kind: e.kind });
+      }
+    } catch (err) {
+      this.fail(err);
+    }
+    if (changes.length) await this.changed(...changes);
+  }
+
+  async downloadSelection(): Promise<void> {
+    const entries = this.targets();
+    if (!entries.length || !this.opts.download) return;
+    try {
+      await this.opts.download(entries);
+    } catch (err) {
+      this.fail(err);
+    }
+  }
+
+  private async copyPath(): Promise<void> {
+    const text = this.targets().map((e) => e.path).join('\n');
+    try {
+      if (this.opts.copyText) await this.opts.copyText(text);
+      else await navigator.clipboard.writeText(text);
+    } catch (err) {
+      this.fail(err);
+    }
+  }
+
+  /** The actions for the selection (or for the folder, on empty space), as a menu at (x, y) (FOLDER-013). */
+  private openMenu(x: number, y: number, origin: HTMLElement): void {
+    this.closeMenu();
+    const doc = this.element.ownerDocument;
+    const writable = this.provider.capabilities.write;
+    const entries = this.targets();
+    const one = entries.length === 1 ? entries[0] : undefined;
+    const items: [string, () => unknown][] = [];
+    if (one) items.push([this.strings.open, () => (one.kind === 'file' ? this.opts.onOpen(one) : this.row(one.path) && this.toggle(one, this.row(one.path)!, true))]);
+    if (writable && (!entries.length || one?.kind === 'directory')) {
+      items.push([this.strings.newFile, () => this.createFile()], [this.strings.newFolder, () => this.createFolder()], [this.strings.importFiles, () => this.picker.click()]);
+    }
+    if (entries.length) {
+      if (writable && one) items.push([this.strings.rename, () => this.renameSelected()]);
+      if (writable) items.push([this.strings.duplicate, () => this.duplicateSelection()]);
+      items.push([this.strings.copy, () => this.copySelection()]);
+      if (writable) items.push([this.strings.cut, () => this.cutSelection()]);
+    }
+    if (writable && this.clip) items.push([this.strings.paste, () => this.paste()]);
+    if (entries.length) {
+      if (this.opts.download) items.push([this.strings.download, () => this.downloadSelection()]);
+      items.push([this.strings.copyPath, () => this.copyPath()]);
+      if (writable) items.push([this.strings.remove, () => this.removeSelected()]);
+    }
+    const menu = el('div', { className: 'fs-menu' });
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', this.strings.menu);
+    const buttons = items.map(([label, run]) => {
+      const b = el('button', { type: 'button', className: 'fs-menu-item', textContent: label });
+      b.setAttribute('role', 'menuitem');
+      b.addEventListener('click', () => {
+        this.closeMenu(origin);
+        void run();
+      });
+      return b;
+    });
+    menu.append(...buttons);
+    menu.addEventListener('keydown', (e) => {
+      const at = buttons.indexOf(doc.activeElement as HTMLButtonElement);
+      const go = (i: number): void => {
+        e.preventDefault();
+        buttons[(i + buttons.length) % buttons.length]?.focus();
+      };
+      if (e.key === 'ArrowDown') go(at + 1);
+      else if (e.key === 'ArrowUp') go(at - 1);
+      else if (e.key === 'Home') go(0);
+      else if (e.key === 'End') go(buttons.length - 1);
+      else if (e.key === 'Escape' || e.key === 'Tab') {
+        e.preventDefault();
+        this.closeMenu(origin);
+      }
+    });
+    menu.style.left = `${Math.max(0, x)}px`;
+    menu.style.top = `${Math.max(0, y)}px`;
+    doc.body.append(menu);
+    this.menu = menu;
+    // Kept inside the window.
+    const r = menu.getBoundingClientRect();
+    const view = doc.defaultView;
+    if (view && r.right > view.innerWidth) menu.style.left = `${Math.max(0, view.innerWidth - r.width - 4)}px`;
+    if (view && r.bottom > view.innerHeight) menu.style.top = `${Math.max(0, view.innerHeight - r.height - 4)}px`;
+    const away = (e: Event): void => {
+      if (!menu.contains(e.target as Node)) this.closeMenu();
+    };
+    setTimeout(() => doc.addEventListener('mousedown', away, { capture: true }), 0);
+    this.menuAway = () => doc.removeEventListener('mousedown', away, { capture: true });
+    buttons[0]?.focus();
+  }
+
+  private menuAway: (() => void) | undefined;
+
+  private closeMenu(focus?: HTMLElement): void {
+    this.menuAway?.();
+    this.menuAway = undefined;
+    this.menu?.remove();
+    this.menu = undefined;
+    if (focus?.isConnected) focus.focus();
   }
 
   private rebaseExpanded(from: string, to: string): void {

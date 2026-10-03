@@ -4,7 +4,7 @@
  */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
-import { basename, Explorer, listFiles, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
+import { basename, dirname, Explorer, listFiles, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault } from './vault';
@@ -87,6 +87,14 @@ export class FolderPanel {
         importFiles: t('folder.import'),
         sortBy: t('folder.sortBy'),
         sortNames: { name: t('folder.sortName'), date: t('folder.sortDate'), size: t('folder.sortSize'), type: t('folder.sortType') },
+        open: t('folder.openEntry'),
+        duplicate: t('folder.duplicate'),
+        copy: t('folder.copy'),
+        cut: t('folder.cut'),
+        paste: t('folder.paste'),
+        download: t('folder.download'),
+        copyPath: t('folder.copyPath'),
+        menu: t('folder.menu'),
         error: (message) => t('folder.error', { message }),
       },
       // Every file is listed: documents, text and source files, pictures, archives; others can be downloaded (FILE-021).
@@ -103,6 +111,8 @@ export class FolderPanel {
       onError: hooks.error,
       // FOLDER-008: the order chosen is kept for the next folders.
       ...(savedSort() ? { sort: savedSort() } : {}),
+      // FOLDER-014: a file as it is, folders or several entries as a ZIP archive.
+      download: (entries) => this.download(entries),
       onSort: (key) => {
         try {
           localStorage.setItem(SORT_KEY, key);
@@ -127,6 +137,29 @@ export class FolderPanel {
       this.explorer.element,
       this.backlinks,
     );
+  }
+
+  private async download(entries: Entry[]): Promise<void> {
+    const save = (blob: Blob, name: string): void => {
+      const a = h('a', { href: URL.createObjectURL(blob), download: name });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+    };
+    const [only] = entries;
+    if (entries.length === 1 && only!.kind === 'file') return save(await this.provider.read(only!.path), only!.name);
+    const { writeZip } = await import('../core/zip');
+    const files: { path: string; data: Uint8Array }[] = [];
+    for (const e of entries) {
+      // Paths in the archive start at the folder holding the entry.
+      const base = dirname(e.path);
+      const rel = (path: string): string => (base ? path.slice(base.length + 1) : path);
+      if (e.kind === 'file') files.push({ path: rel(e.path), data: new Uint8Array(await (await this.provider.read(e.path)).arrayBuffer()) });
+      else for await (const f of walk(this.provider, e.path, { skip: () => false })) files.push({ path: rel(f.path), data: new Uint8Array(await (await this.provider.read(f.path)).arrayBuffer()) });
+    }
+    const name = entries.length === 1 ? only!.name : this.provider.label;
+    save(new Blob([writeZip(files) as BlobPart], { type: 'application/zip' }), `${name}.zip`);
   }
 
   private async reindex(): Promise<void> {

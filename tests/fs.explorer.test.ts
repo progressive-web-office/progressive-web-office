@@ -119,3 +119,77 @@ describe('FOLDER-011 file explorer: several entries at once, undoing a deletion'
     expect(await listFiles(provider)).toEqual(['dir/a.md', 'dir/b.md', 'dir/keep.md']);
   });
 });
+
+describe('FOLDER-012 file explorer: copy, cut, paste and duplicate', () => {
+  it('copies and pastes into another folder, giving a free name when taken', async () => {
+    const { provider, row, key } = await explorer({ 'a.md': 'A', 'docs/a.md': 'old', 'docs/b.md': 'B' });
+    row('a.md').click();
+    key(row('a.md'), 'c', { ctrlKey: true });
+    row('docs').click();
+    await settle();
+    key(row('docs'), 'v', { ctrlKey: true });
+    await settle();
+    expect(await listFiles(provider)).toEqual(['docs/a 2.md', 'docs/a.md', 'docs/b.md', 'a.md']);
+    expect(await (await provider.read('docs/a 2.md')).text()).toBe('A');
+  });
+
+  it('cuts and pastes (a move), folders with their contents', async () => {
+    const { provider, x, row } = await explorer({ 'src/one.md': '1', 'src/sub/two.md': '2', 'dst/keep.md': '' });
+    row('src').click();
+    x.cutSelection();
+    row('dst').click();
+    await settle();
+    await x.paste();
+    expect(await listFiles(provider)).toEqual(['dst/src/sub/two.md', 'dst/src/one.md', 'dst/keep.md']);
+  });
+
+  it('duplicates next to the original', async () => {
+    const { provider, x, row } = await explorer({ 'notes/plan.md': 'P' });
+    row('notes').click();
+    await settle();
+    row('notes/plan.md').click();
+    await x.duplicateSelection();
+    expect(await listFiles(provider)).toEqual(['notes/plan 2.md', 'notes/plan.md']);
+  });
+});
+
+describe('FOLDER-013 file explorer: context menu', () => {
+  it('opens on a right click with the actions for the entry, and runs them', async () => {
+    const { provider, x, row } = await explorer({ 'a.md': 'A' }, { download: () => undefined });
+    row('a.md').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }));
+    const menu = x.element.ownerDocument.querySelector<HTMLElement>('.fs-menu')!;
+    expect(menu.getAttribute('role')).toBe('menu');
+    const items = [...menu.querySelectorAll<HTMLElement>('[role=menuitem]')].map((b) => b.textContent);
+    expect(items).toEqual(expect.arrayContaining(['Open', 'Rename', 'Duplicate', 'Copy', 'Cut', 'Download', 'Copy the path', 'Delete']));
+    expect(document.activeElement).toBe(menu.querySelector('[role=menuitem]'));
+    [...menu.querySelectorAll<HTMLElement>('[role=menuitem]')].find((b) => b.textContent === 'Duplicate')!.click();
+    await settle();
+    expect(await listFiles(provider)).toEqual(['a 2.md', 'a.md']);
+    expect(x.element.ownerDocument.querySelector('.fs-menu')).toBeNull();
+  });
+
+  it('opens from the keyboard and closes with Escape', async () => {
+    const { x, row, key } = await explorer({ 'a.md': 'A' });
+    row('a.md').focus();
+    key(row('a.md'), 'F10', { shiftKey: true });
+    const menu = document.querySelector<HTMLElement>('.fs-menu')!;
+    expect(menu).not.toBeNull();
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(menu.querySelectorAll('[role=menuitem]')[1]);
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.querySelector('.fs-menu')).toBeNull();
+    expect(document.activeElement).toBe(row('a.md'));
+    expect(x).toBeTruthy();
+  });
+});
+
+describe('FOLDER-014 file explorer: downloads', () => {
+  it('gives the selected entries to the host to download', async () => {
+    const got: string[][] = [];
+    const { x, row } = await explorer({ 'a.md': 'A', 'dir/b.md': 'B' }, { download: (entries) => void got.push(entries.map((e) => e.path)) });
+    row('a.md').click();
+    row('dir').dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+    await x.downloadSelection();
+    expect(got).toEqual([['dir', 'a.md']]);
+  });
+});
