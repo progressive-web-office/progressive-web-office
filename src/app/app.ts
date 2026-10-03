@@ -1229,9 +1229,47 @@ export class App {
     return new GitRepoProvider(client, repo, branch);
   }
 
+  /**
+   * FOLDER-022: work on another branch of the repository, start a new one, or
+   * propose the changes of this branch to the default one (pull request on
+   * GitHub, merge request on GitLab).
+   */
+  private async gitFolderMenu(folder: import('../git/provider').GitRepoProvider): Promise<void> {
+    const { GitRepoProvider } = await import('../git/provider');
+    const { client, repo, branch } = folder;
+    const newBranch = t('git.workOnNewBranch');
+    const other = t('git.switchBranch');
+    const propose = t(client.provider === 'gitlab' ? 'git.proposeMerge' : 'git.proposePull', { base: repo.defaultBranch });
+    const options = [newBranch, other, ...(branch !== repo.defaultBranch ? [propose] : [])];
+    const choice = await this.choose(t('git.branchMenu'), t('git.branchMenuMessage', { repo: repo.name, branch }), options, branch !== repo.defaultBranch ? propose : newBranch, t('common.continue'));
+    if (!choice || !this.confirmDiscard()) return;
+    try {
+      if (choice === newBranch) {
+        const name = window.prompt(t('git.newBranchPrompt', { from: branch }), `pwo/${new Date().toISOString().slice(0, 10)}`)?.trim();
+        if (!name) return;
+        await this.withBusy(() => client.createBranch(repo.id, branch, name));
+        await this.setFolder(new GitRepoProvider(client, repo, name));
+        this.showNotice(t('git.onBranch', { branch: name }));
+      } else if (choice === other) {
+        const branches = (await this.withBusy(() => client.listBranches(repo.id))).filter((b) => b !== branch);
+        if (!branches.length) return this.showNotice(t('git.noOtherBranch'));
+        const to = await this.choose(t('git.switchBranch'), t('folder.pickBranch', { repo: repo.name }), branches, branches.includes(repo.defaultBranch) ? repo.defaultBranch : branches[0]!);
+        if (to) await this.setFolder(new GitRepoProvider(client, repo, to));
+      } else {
+        const title = window.prompt(t('git.pullTitle'), t('git.pullDefaultTitle', { branch }))?.trim();
+        if (!title) return;
+        const pr = await this.withBusy(() => client.createPullRequest(repo.id, branch, repo.defaultBranch, title, ''));
+        this.showNotice(t('git.pullOpened', { n: pr.number, url: pr.url }));
+        window.open(pr.url, '_blank', 'noopener');
+      }
+    } catch (err) {
+      this.showError(t('folder.error', { message: (err as Error).message }));
+    }
+  }
+
   private async setFolder(folder: import('../fs').StorageProvider): Promise<boolean> {
     if (!this.confirmArchiveClose()) return false;
-    const [{ FolderPanel }, { FolderIndex }, { rememberFolder }, { DirectoryHandleProvider }, { ArchiveProvider }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent'), import('../fs'), import('../archive/provider')]);
+    const [{ FolderPanel }, { FolderIndex }, { rememberFolder }, { DirectoryHandleProvider }, { ArchiveProvider }, { GitRepoProvider }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent'), import('../fs'), import('../archive/provider'), import('../git/provider')]);
     this.folder?.element.remove();
     if (this.current) delete this.current.folderPath;
     const index = new FolderIndex(folder, async (name, bytes) => {
@@ -1258,6 +1296,8 @@ export class App {
       confirm: async (message) => window.confirm(message),
       // FILE-021: an archive is written back as a whole, by download.
       ...(folder instanceof ArchiveProvider ? { actions: [button(t('zip.download'), () => void this.downloadArchive(folder), { text: '⬇', className: 'icon' })] } : {}),
+      // FOLDER-022: branches and pull requests of a repository opened as a folder.
+      ...(folder instanceof GitRepoProvider ? { actions: [button(t('git.branchMenu'), () => void this.gitFolderMenu(folder), { text: '⎇', className: 'icon' })] } : {}),
     });
     this.root.append(this.folder.element);
     this.root.classList.add('with-folder');

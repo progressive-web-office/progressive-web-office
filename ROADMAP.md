@@ -167,7 +167,8 @@ group is not a commitment.
   downloads (folders as ZIP), several recent folders;
   designed to be extracted as a library shared with QRShare
 - ✅ Git repositories (GitHub, GitLab) as folders of the file explorer, each
-  change being a commit (FOLDER-007); next: pull requests from a branch
+  change being a commit (FOLDER-007); new branches and pull / merge requests
+  from a branch (FOLDER-022)
 - ✅ Read-only opening: open any document read-only (viewing without
   accidental edits, files from a read-only folder or link), with a visible
   banner and "Edit a copy"

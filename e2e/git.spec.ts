@@ -157,3 +157,75 @@ test('opens a repository as a folder, each change being a commit (FOLDER-007)', 
   expect(commits.at(-1)).toBe('docs: rename docs/plan.md to docs/roadmap.md');
   expect(errors).toEqual([]);
 });
+
+test('starts a branch of a repository opened as a folder and proposes its changes (FOLDER-022)', async ({ page }) => {
+  const files = new Map<string, string>([['README.md', '# Notes\n']]);
+  const branches = new Map<string, string>([['main', 'c0']]);
+  const pulls: Record<string, unknown>[] = [];
+  await page.addInitScript(() => {
+    localStorage.setItem('pwo.git.accounts', JSON.stringify([{ id: 'gh1', provider: 'github', apiUrl: 'https://api.github.com', token: 'ghp_x', label: 'me' }]));
+  });
+  await page.route(`${API}/**`, async (route: Route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    const body = () => JSON.parse(req.postData() ?? '{}') as Record<string, string>;
+    if (p === '/user/repos') return json([{ full_name: 'me/notes', default_branch: 'main' }]);
+    if (p === '/repos/me/notes/branches') return json([...branches.keys()].map((name) => ({ name })));
+    if (p.startsWith('/repos/me/notes/git/trees/')) return json({ tree: [...files].map(([path, text]) => ({ path, type: 'blob', sha: `s${text.length}`, size: text.length })), truncated: false });
+    if (p.startsWith('/repos/me/notes/git/ref/heads/')) return json({ object: { sha: branches.get(decodeURIComponent(p.slice('/repos/me/notes/git/ref/heads/'.length))) } });
+    if (p === '/repos/me/notes/git/refs' && req.method() === 'POST') {
+      branches.set(body().ref!.replace('refs/heads/', ''), body().sha!);
+      return json({}, 201);
+    }
+    if (p === '/repos/me/notes/pulls' && req.method() === 'POST') {
+      pulls.push(body());
+      return json({ number: 7, html_url: 'https://github.com/me/notes/pull/7' }, 201);
+    }
+    return json({ message: 'Not Found' }, 404);
+  });
+  await page.context().route('https://github.com/**', (route) => route.fulfill({ body: 'PR' }));
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  const where = page.getByRole('dialog', { name: 'Open a folder' });
+  await where.getByLabel('⎇ me (GitHub)').check();
+  await where.getByRole('button', { name: 'Open' }).click();
+  const pick = page.getByRole('dialog', { name: 'Open a repository' });
+  await pick.getByLabel('me/notes').check();
+  await pick.getByRole('button', { name: 'Open' }).click();
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await expect(panel.getByRole('heading', { name: '📁 me/notes (main)' })).toBeVisible();
+
+  // A new branch, started from main; the folder is now that branch.
+  await panel.getByRole('button', { name: 'Branches and pull requests' }).click();
+  const menu = page.getByRole('dialog', { name: 'Branches and pull requests' });
+  await expect(menu.getByLabel(/Propose the changes/)).toHaveCount(0);
+  await menu.getByLabel('Work on a new branch…').check();
+  page.once('dialog', (d) => void d.accept('draft'));
+  await menu.getByRole('button', { name: 'Continue' }).click();
+  await expect(panel.getByRole('heading', { name: '📁 me/notes (draft)' })).toBeVisible();
+  expect(branches.get('draft')).toBe('c0');
+
+  // Propose its changes to main.
+  await panel.getByRole('button', { name: 'Branches and pull requests' }).click();
+  await menu.getByLabel('Propose the changes to main (pull request)…').check();
+  const popup = page.waitForEvent('popup');
+  page.once('dialog', (d) => void d.accept('Plan of the thesis'));
+  await menu.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('alert')).toContainText('Request #7 opened');
+  expect(pulls).toEqual([{ head: 'draft', base: 'main', title: 'Plan of the thesis', body: '' }]);
+  const opened = await popup;
+  await opened.waitForLoadState();
+  expect(opened.url()).toBe('https://github.com/me/notes/pull/7');
+  await opened.close();
+
+  // Back to main.
+  await panel.getByRole('button', { name: 'Branches and pull requests' }).click();
+  await menu.getByLabel('Open another branch').check();
+  await menu.getByRole('button', { name: 'Continue' }).click();
+  const choose = page.getByRole('dialog', { name: 'Open another branch' });
+  await choose.getByLabel('main').check();
+  await choose.getByRole('button', { name: 'Open' }).click();
+  await expect(panel.getByRole('heading', { name: '📁 me/notes (main)' })).toBeVisible();
+  expect(errors).toEqual([]);
+});

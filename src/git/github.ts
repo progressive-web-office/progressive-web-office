@@ -107,4 +107,9 @@ export class GitHubClient implements GitClient {
     const ref = await this.req<{ object: { sha: string } }>(`/repos/${encodePath(repo)}/git/ref/heads/${encodePath(from)}`);
     await this.req(`/repos/${encodePath(repo)}/git/refs`, { method: 'POST', body: JSON.stringify({ ref: `refs/heads/${name}`, sha: ref.object.sha }) });
   }
+
+  async createPullRequest(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; url: string }> {
+    const pr = await this.req<{ number: number; html_url: string }>(`/repos/${encodePath(repo)}/pulls`, { method: 'POST', body: JSON.stringify({ head, base, title, body }) });
+    return { number: pr.number, url: pr.html_url };
+  }
 }

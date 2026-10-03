@@ -19,7 +19,8 @@ of our own.
    - self-hosted GitLab: `https://gitlab.example.com/api/v4`
 3. Paste a **personal access token**:
    - GitHub: a *fine-grained* token limited to the repositories you need,
-     with the permission **Contents: read and write**
+     with the permission **Contents: read and write** (and **Pull requests:
+     read and write** to propose changes from the folder panel)
      (Settings → Developer settings → Personal access tokens).
    - GitLab: a token with the **api** scope (Preferences → Access tokens).
 4. Click **Connect**.
@@ -72,6 +73,22 @@ The whole tree is read in one request, so large repositories open quickly.
 If a file changed in the repository since you opened it, saving it is
 refused instead of overwriting the other change: reload the folder (↻) and
 open it again.
+
+### Branches and pull requests
+
+**⎇** next to the folder's name works with the branches of the repository:
+
+- **Work on a new branch…** starts a branch from the one open (named
+  `pwo/<date>` unless you choose another name) and opens it: your changes
+  are committed there, the default branch staying as it is;
+- **Open another branch** switches the folder to another branch;
+- **Propose the changes to main…** (on a branch other than the default one)
+  opens a **pull request** on GitHub, or a **merge request** on GitLab, from
+  this branch to the default one, under the title you give, and opens it in
+  a new tab to describe it, ask for reviews and merge it.
+
+The token needs the right to create pull requests (GitHub fine-grained
+token: *Pull requests: read and write*; GitLab: the `api` scope).
 
 ## Conflicts
 

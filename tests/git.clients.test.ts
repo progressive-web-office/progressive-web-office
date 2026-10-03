@@ -244,3 +244,21 @@ describe('FOLDER-007 whole trees and commits of several changes', () => {
     });
   });
 });
+
+describe('FOLDER-022 pull and merge requests from a branch', () => {
+  it('GitHub: opens a pull request and gives its address', async () => {
+    const API = 'https://api.github.com';
+    const m = mockFetch({ [`POST ${API}/repos/me/notes/pulls`]: () => ({ status: 201, json: { number: 4, html_url: 'https://github.com/me/notes/pull/4' } }) });
+    const client = new GitHubClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.createPullRequest('me/notes', 'pwo/draft', 'main', 'Draft', 'Text')).toEqual({ number: 4, url: 'https://github.com/me/notes/pull/4' });
+    expect(m.calls[0]!.body).toEqual({ head: 'pwo/draft', base: 'main', title: 'Draft', body: 'Text' });
+  });
+
+  it('GitLab: opens a merge request and gives its address', async () => {
+    const API = 'https://gitlab.com/api/v4';
+    const m = mockFetch({ [`POST ${API}/projects/42/merge_requests`]: () => ({ status: 201, json: { iid: 9, web_url: 'https://gitlab.com/g/p/-/merge_requests/9' } }) });
+    const client = new GitLabClient({ apiUrl: API, token: 't' }, m.fetchFn);
+    expect(await client.createPullRequest('42', 'pwo/draft', 'master', 'Draft', '')).toEqual({ number: 9, url: 'https://gitlab.com/g/p/-/merge_requests/9' });
+    expect(m.calls[0]!.body).toEqual({ source_branch: 'pwo/draft', target_branch: 'master', title: 'Draft', description: '' });
+  });
+});

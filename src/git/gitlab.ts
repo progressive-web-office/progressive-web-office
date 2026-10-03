@@ -90,4 +90,12 @@ export class GitLabClient implements GitClient {
   async createBranch(repo: string, from: string, name: string): Promise<void> {
     await this.req(`/projects/${q(repo)}/repository/branches?branch=${q(name)}&ref=${q(from)}`, { method: 'POST' });
   }
+
+  async createPullRequest(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; url: string }> {
+    const mr = await this.req<{ iid: number; web_url: string }>(`/projects/${q(repo)}/merge_requests`, {
+      method: 'POST',
+      body: JSON.stringify({ source_branch: head, target_branch: base, title, description: body }),
+    });
+    return { number: mr.iid, url: mr.web_url };
+  }
 }

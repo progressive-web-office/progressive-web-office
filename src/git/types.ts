@@ -54,6 +54,8 @@ export interface GitClient {
   listTree(repo: string, ref: string): Promise<GitTreeEntry[]>;
   /** Several changes as one commit on `branch`; a branch that moved meanwhile is a conflict. */
   commit(repo: string, branch: string, message: string, changes: GitChange[]): Promise<void>;
+  /** Propose the changes of `head` for `base`: a pull request (GitHub) or merge request (GitLab) (FOLDER-022). */
+  createPullRequest(repo: string, head: string, base: string, title: string, body: string): Promise<{ number: number; url: string }>;
 }
 
 export interface ClientConfig {

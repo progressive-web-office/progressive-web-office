@@ -20,7 +20,7 @@ export class GitRepoProvider implements StorageProvider {
   private readonly known = new Map<string, string>();
 
   constructor(
-    private readonly client: GitClient,
+    readonly client: GitClient,
     readonly repo: GitRepo,
     readonly branch: string,
   ) {
