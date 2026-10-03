@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryProvider } from '../src/fs';
-import { noteTags, renameTag } from '../src/folder/tags';
+import { inlineTags, loadTagColours, noteTags, renameTag, setTagColour } from '../src/folder/tags';
 import { NoteVault } from '../src/folder/vault';
 
 describe('FOLDER-017 tags of notes', () => {
@@ -95,5 +95,28 @@ describe('FOLDER-019 related notes', () => {
       { path: 'b.md', tags: [], linked: true },
       { path: 'd.md', tags: ['physics'], linked: false },
     ]);
+  });
+});
+
+describe('FOLDER-023 tags shown in the text, with colours', () => {
+  it('finds the #tags of a line with their place', () => {
+    expect(inlineTags('Done #todo, see #physics/optics and #fff (#2024a)')).toEqual([
+      { tag: 'todo', index: 5, length: 5 },
+      { tag: 'physics/optics', index: 16, length: 15 },
+      { tag: '2024a', index: 42, length: 6 },
+    ]);
+    expect(inlineTags('issue#12 and C#')).toEqual([]);
+  });
+
+  it('keeps the colours of the tags of each folder', () => {
+    localStorage.clear();
+    setTagColour('fsa:1', 'Todo', 'red');
+    setTagColour('fsa:1', 'physics', 'blue');
+    setTagColour('fsa:2', 'todo', 'green');
+    expect(loadTagColours('fsa:1')).toEqual({ todo: 'red', physics: 'blue' });
+    setTagColour('fsa:1', 'todo', undefined);
+    expect(loadTagColours('fsa:1')).toEqual({ physics: 'blue' });
+    expect(loadTagColours('fsa:2')).toEqual({ todo: 'green' });
+    expect(loadTagColours('other')).toEqual({});
   });
 });

@@ -125,6 +125,11 @@ and `#tags` written in the text (`#todo`, nested `#course/semester-1`; not
 in code, links, headings or colours like `#fff`). Click a tag, or search
 `#tag`, to list its notes. **✎** renames a tag in every note of the folder.
 
+In the notes of the folder, `#tags` are shown as tags. The round button next
+to a tag gives it a colour (red, orange, yellow, green, teal, blue, purple,
+grey), used in the list and in the notes; colours are kept in this browser,
+for each folder.
+
 ### Graph of the notes
 
 **🕸** next to the folder's name draws the notes and the links between them

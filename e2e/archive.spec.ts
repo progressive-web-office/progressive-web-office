@@ -112,7 +112,7 @@ test('shows the pictures of a note of a folder and keeps them on export; Save as
   const zip = zipSync({ 'notes/report.md': strToU8(note), 'notes/img/photo été.png': new Uint8Array(PNG), 'notes/img/diagram.png': new Uint8Array(PNG), 'logo.png': new Uint8Array(PNG), 'syllabus.docx': strToU8('x') });
   await openFile(page, 'course.zip', Buffer.from(zip), 'application/zip');
   const panel = page.getByRole('complementary', { name: 'Folder' });
-  await panel.getByRole('button', { name: 'notes' }).click();
+  await panel.getByRole('button', { name: 'notes', exact: true }).click();
   await panel.getByRole('button', { name: 'report.md' }).click();
   const editor = page.getByRole('textbox', { name: 'Document' });
   const pictures = editor.locator('img[data-resource]');

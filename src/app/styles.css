@@ -1125,3 +1125,31 @@ body.distraction-free .ai-panel { display: none !important; }
 }
 .completion-list li { padding: 4px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .completion-list li[aria-selected='true'] { background: var(--accent); color: var(--accent-contrast, #fff); }
+
+/* FOLDER-023: #tags in a note, and their colours. */
+.note-tag {
+  --tag-colour: var(--accent);
+  color: var(--tag-colour);
+  background: color-mix(in srgb, var(--tag-colour) 14%, transparent);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+.folder-tag .link { color: var(--tag-colour); }
+.folder-tag-colour {
+  flex: none;
+  box-sizing: border-box;
+  width: 1rem;
+  height: 1rem;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 2px;
+  padding: 0;
+  font-size: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--tag-colour, transparent);
+  color: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+.folder-tag-colour option { color: var(--text); background: var(--surface); font-size: 0.9rem; }

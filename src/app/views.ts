@@ -46,6 +46,8 @@ export interface EditorView {
   commands?(): import('./palette').PaletteCommand[];
   /** The document with its sub-documents as `include` blocks, to assemble (DOC-028). */
   masterDocument?(): import('../document/model').RichDocument | undefined;
+  /** The colours of the folder's tags changed (FOLDER-023). */
+  tagsChanged?(): void;
   destroy(): void;
 }
 
@@ -69,6 +71,8 @@ export interface ViewContext {
   folderDocuments?(): Promise<string[]> | undefined;
   /** Notes to link to or tags of the open folder, for completion in a note (FOLDER-021). */
   completions?(kind: 'link' | 'tag'): Promise<string[]> | undefined;
+  /** Colour of a tag of the open folder (FOLDER-023); null when the document is not a note of the folder. */
+  tagColour?(tag: string): string | undefined | null;
   /** What the view offers in the header changed (e.g. its save variants). */
   headerChanged?(): void;
   /** Show a short message to the user. */

@@ -768,6 +768,7 @@ export class App {
       choose: (title, message, options, preselected) => this.choose(title, message, options, preselected),
       openLink: (href) => this.openLink(href),
       folderDocuments: () => this.folderDocuments(),
+      tagColour: (tag) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.tagColour(tag) : null),
       completions: (kind) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.completions(kind, this.current?.folderPath) : undefined),
       headerChanged: () => this.renderHeader(),
       notify: (message) => this.showNotice(message),
@@ -1291,6 +1292,7 @@ export class App {
           await this.openFromFolder(path);
         }
       },
+      tagsChanged: () => this.current?.view.tagsChanged?.(),
       error: (message) => this.showError(message),
       prompt: async (message, value) => window.prompt(message, value),
       confirm: async (message) => window.confirm(message),
@@ -1533,6 +1535,8 @@ export class App {
       const images = /\.(md|markdown)$/i.test(path) ? await this.noteImages(path, new TextDecoder().decode(bytes), (p) => readBytes(folder.provider, p)) : undefined;
       if (!(await this.openBytes(basename(path), bytes, undefined, images && ((src) => images.get(src)), true))) return;
       if (this.current && !this.current.fromTemplate) this.current.folderPath = path;
+      // FOLDER-023: now a note of the folder, its #tags are shown.
+      this.current?.view.tagsChanged?.();
       if (this.current && !folder.provider.capabilities.write) this.setReadOnly(true, true);
       folder.setCurrent(path);
       void folder.showBacklinks(path);

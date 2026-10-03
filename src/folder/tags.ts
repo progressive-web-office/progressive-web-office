@@ -46,6 +46,46 @@ export function noteTags(text: string): string[] {
   return out;
 }
 
+/** The `#tags` of a line of text, with their place (to show them in the editor, FOLDER-023). */
+export function inlineTags(text: string): { tag: string; index: number; length: number }[] {
+  const out: { tag: string; index: number; length: number }[] = [];
+  for (const m of text.matchAll(INLINE)) {
+    if (isColour(m[2]!)) continue;
+    out.push({ tag: m[2]!, index: m.index! + m[1]!.length, length: m[2]!.length + 1 });
+  }
+  return out;
+}
+
+/** Colours offered for tags (FOLDER-023), readable on light and dark pages. */
+export const TAG_COLOURS = { red: '#d1453b', orange: '#d9822b', yellow: '#b8930b', green: '#2e9e5b', teal: '#1c9aa0', blue: '#2f6fd6', purple: '#8a4fd6', grey: '#7a8494' } as const;
+export type TagColour = keyof typeof TAG_COLOURS;
+
+const COLOURS_KEY = 'pwo.folder.tagColours';
+
+/** The colours of the tags of a folder (by tag in lower case), kept in this browser. */
+export function loadTagColours(folder: string): Record<string, TagColour> {
+  try {
+    const all = JSON.parse(localStorage.getItem(COLOURS_KEY) ?? '{}') as Record<string, Record<string, TagColour>>;
+    return Object.fromEntries(Object.entries(all[folder] ?? {}).filter(([, c]) => c in TAG_COLOURS));
+  } catch {
+    return {};
+  }
+}
+
+/** Give a tag a colour, or none. */
+export function setTagColour(folder: string, tag: string, colour: TagColour | undefined): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(COLOURS_KEY) ?? '{}') as Record<string, Record<string, TagColour>>;
+    const mine = { ...(all[folder] ?? {}) };
+    if (colour) mine[tag.toLowerCase()] = colour;
+    else delete mine[tag.toLowerCase()];
+    all[folder] = mine;
+    localStorage.setItem(COLOURS_KEY, JSON.stringify(all));
+  } catch {
+    /* not kept */
+  }
+}
+
 const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
 /** Rename the tag `from` to `to` in a note (front matter lists and `#tags`), ignoring case. */

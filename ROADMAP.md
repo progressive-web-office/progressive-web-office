@@ -97,7 +97,8 @@ group is not a commitment.
 ### Notes and knowledge
 
 - ✅ Tags (`#tag` and front matter keywords): a tag panel with counts,
-  renaming across the folder, search by tag (FOLDER-017); next: colours
+  renaming across the folder, search by tag (FOLDER-017), colours
+  (FOLDER-023)
 - ✅ Related notes (shared tags and links) beside the open note (FOLDER-019)
 - ✅ A graph of the links between the notes of a folder (FOLDER-018)
 - Note identifiers (timestamps) and links by identifier

@@ -40,7 +40,7 @@ test('opens documents of a read-only folder read-only, editable as a copy (FILE-
   await dialog.getByRole('button', { name: 'Open' }).click();
   await (await chooser).setFiles(dir);
   const panel = page.getByRole('complementary', { name: 'Folder' });
-  await panel.getByRole('button', { name: 'notes' }).click();
+  await panel.getByRole('button', { name: 'notes', exact: true }).click();
   await panel.getByRole('button', { name: 'plan.md' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'comes from a place that cannot be written' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);

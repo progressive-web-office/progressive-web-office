@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Tags shown as tags in the notes of a folder, with colours chosen in the
+  folder panel (FOLDER-023).
+
 - Branches and pull requests for a Git repository opened as a folder
   (FOLDER-022): work on a new branch, open another one, and propose the
   changes of a branch as a GitHub pull request or a GitLab merge request.

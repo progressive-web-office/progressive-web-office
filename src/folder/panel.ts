@@ -3,11 +3,12 @@
  * explorer of `src/fs` over the open folder, and a search across its documents.
  */
 import { button, h } from '../app/dom';
-import { t } from '../i18n';
+import { t, type MessageKey } from '../i18n';
 import { basename, dirname, Explorer, listFiles, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault, noteName } from './vault';
+import { loadTagColours, setTagColour, TAG_COLOURS, type TagColour } from './tags';
 
 /** Files the app opens, by extension. */
 export const OPENABLE = /\.(docx|odt|odm|md|markdown|mdz|tex|xlsx|ods|csv|tsv|pptx|odp|pdf|ott|ots|otp|dotx|xltx|potx)$/i;
@@ -21,6 +22,8 @@ export interface FolderPanelHooks {
   confirm(message: string): Promise<boolean>;
   /** Buttons added next to the folder's name (e.g. download an archive, FILE-021). */
   actions?: HTMLElement[];
+  /** The colours of the tags changed (FOLDER-023). */
+  tagsChanged?(): void;
   /** Notes rewritten by the panel (a tag renamed): the open one may need reloading. */
   notesChanged?(paths: string[]): void | Promise<void>;
 }
@@ -183,6 +186,32 @@ export class FolderPanel {
     return notes.flatMap((n, i) => (n === from ? [] : [names.indexOf(names[i]!) === names.lastIndexOf(names[i]!) ? names[i]! : n.replace(/\.(md|markdown)$/i, '')]));
   }
 
+  /** FOLDER-023: the colour of a tag (CSS), if it has one. */
+  tagColour(tag: string): string | undefined {
+    const c = loadTagColours(this.provider.id)[tag.toLowerCase()];
+    return c ? TAG_COLOURS[c] : undefined;
+  }
+
+  private colourPicker(tag: string): HTMLSelectElement {
+    const current = loadTagColours(this.provider.id)[tag.toLowerCase()] ?? '';
+    const select = h(
+      'select',
+      { class: 'folder-tag-colour', 'aria-label': t('folder.tagColour', { tag }), title: t('folder.tagColour', { tag }) },
+      h('option', { value: '' }, t('folder.colourNone')),
+      ...(Object.keys(TAG_COLOURS) as TagColour[]).map((c) => h('option', { value: c, style: `color: ${TAG_COLOURS[c]}` }, `● ${t(`colour.${c}` as MessageKey)}`)),
+    ) as HTMLSelectElement;
+    select.value = current;
+    const paint = (): void => select.style.setProperty('--tag-colour', select.value ? TAG_COLOURS[select.value as TagColour] : 'transparent');
+    paint();
+    select.addEventListener('change', () => {
+      setTagColour(this.provider.id, tag, (select.value || undefined) as TagColour | undefined);
+      paint();
+      void this.renderTags();
+      this.hooks.tagsChanged?.();
+    });
+    return select;
+  }
+
   private notes(): string[] {
     return this.paths.filter(isNote);
   }
@@ -195,12 +224,13 @@ export class FolderPanel {
         ? [...tags].map(([tag, notes]) =>
             h(
               'span',
-              { class: 'folder-tag' },
+              { class: 'folder-tag', style: `--tag-colour: ${this.tagColour(tag) ?? 'currentColor'}` },
               button(`#${tag}`, () => {
                 this.search.value = `#${tag}`;
                 void this.runSearch();
               }, { className: 'link', title: t('folder.tagNotes', { n: notes.length }) }),
               h('span', { class: 'folder-tag-count' }, String(notes.length)),
+              this.colourPicker(tag),
               this.provider.capabilities.write ? button(t('folder.renameTag', { tag }), () => void this.renameTag(tag), { text: '✎', className: 'icon folder-tag-rename' }) : '',
             ),
           )

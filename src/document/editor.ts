@@ -45,6 +45,7 @@ import { TRANSFORMS, transformText, typographyRules, type TransformId } from './
 import { loadTypography, saveTypography } from './typography';
 import { writingKey, writingPlugin } from './pm/writing-plugin';
 import { completionPlugin } from './pm/complete';
+import { noteTagsPlugin, refreshNoteTags } from './pm/note-tags';
 import { readability } from './readability';
 import { addWritten, loadGoal, saveGoal } from './writing-stats';
 import { CommentPanel } from './comment-panel';
@@ -228,6 +229,8 @@ export class DocumentEditor implements EditorView {
             cellStatePlugin(() => t('code.stale')),
             // FOLDER-021: `[[` and `#` complete with the notes and tags of the folder (before Enter's keymap).
             completionPlugin((kind) => this.ctx.completions?.(kind), (kind) => t(kind === 'link' ? 'complete.notes' : 'complete.tags')),
+            // FOLDER-023: #tags of a note shown as tags, in their colour.
+            noteTagsPlugin((tag) => (this.ctx.tagColour ? this.ctx.tagColour(tag) : null)),
             ...basePlugins({ footnote: () => void this.editNote(), find: (replace) => this.findBar.open(replace), link: () => this.insertLink(), math: () => void this.editMath(), diagram: () => void this.editDiagram() }),
           ],
         }),
@@ -1131,6 +1134,11 @@ export class DocumentEditor implements EditorView {
       ? { label: t('review.leaveTitle'), where: t('review.bar'), keys: ['Ctrl+Alt+R'], run: () => this.review.toggle(false) }
       : { label: t('review.mode'), where: t('doc.formatting'), keys: ['Ctrl+Alt+R'], keywords: REVIEW_KEYWORDS, run: () => this.review.toggle(true) };
     return [toggle, ...this.review.commands()];
+  }
+
+  /** FOLDER-023: the colours of the tags changed. */
+  tagsChanged(): void {
+    this.view.dispatch(refreshNoteTags(this.view.state.tr));
   }
 
   /** FOLDER-002: show the first match of a search from the folder panel. */

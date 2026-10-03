@@ -326,3 +326,22 @@ test('completes links to notes after [[ and tags after # while typing (FOLDER-02
   await page.keyboard.press('Control+s');
   await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('index.md'))).toContain('Start. See [[Project plan]] about #physics and');
 });
+
+test('shows the #tags of a note as tags, in the colours given to them (FOLDER-023)', async ({ page }) => {
+  await fakeFolder(page, { 'a.md': '# A\n\nTo do: #todo and `#code`, see #physics.\n', 'b.md': '# B #todo\n' });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'a.md' }).click();
+  const editor = page.getByRole('textbox', { name: 'Document' });
+  await expect(editor.locator('.note-tag')).toHaveText(['#todo', '#physics']);
+  await panel.getByText('Tags', { exact: true }).click();
+  await panel.getByLabel('Colour of the tag todo').selectOption('red');
+  await expect(editor.locator('.note-tag').first()).toHaveAttribute('style', /--tag-colour: #d1453b/);
+  await expect(editor.locator('.note-tag').nth(1)).not.toHaveAttribute('style', /.+/);
+  if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/tags.png' });
+  // Kept for the folder: reopening the page shows it again.
+  await page.reload();
+  await openLocalFolder(page);
+  await panel.getByText('Tags', { exact: true }).click();
+  await expect(panel.getByLabel('Colour of the tag todo')).toHaveValue('red');
+});
