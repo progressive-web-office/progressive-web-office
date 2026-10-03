@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Editing modes (DOC-044): visual editing, the **source** of a Markdown or
+  LaTeX file in colour beside a live preview, and **reading** (no toolbar,
+  nothing changed by mistake); the mode is remembered per kind of document.
 - Spreadsheets: about 90 more functions — `IFS`, `SWITCH`, `COUNTIFS`,
   `SUMIFS`, `AVERAGEIFS`, `MAXIFS`, `INDEX`, `MATCH`, `XLOOKUP`, `TEXTJOIN`,
   `SUBSTITUTE`, `FIND`, `LARGE`, `RANK`, `PERCENTILE`, `EDATE`, `DATEDIF`,

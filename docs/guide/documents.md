@@ -381,6 +381,25 @@ At the start of a line, type:
 back into a normal paragraph. In a table, <kbd>Tab</kbd> and
 <kbd>Shift</kbd>+<kbd>Tab</kbd> move between cells.
 
+## Editing modes
+
+The **View** menu of the toolbar (or the command palette, *Editing mode*)
+switches how the document is edited:
+
+- **Visual editing** — the page as it will look (the usual mode);
+- **Source** — for a Markdown (`.md`) or LaTeX (`.tex`) file: its text, in
+  colour, on the left, and a **live preview** on the right (one above the
+  other on a phone). Everything Markdown or LaTeX can say can be typed;
+  going back to visual editing, or saving, takes the source into the
+  document;
+- **Reading** — the toolbar is hidden and the text cannot be changed by
+  mistake.
+
+The bar at the top shows the mode and goes back to visual editing in one
+click. The mode is remembered for each kind of document (Markdown, LaTeX,
+the others): a Markdown writer who prefers the source finds it again with
+the next note.
+
 ## Comments
 
 Select some text (or put the cursor in a word) and click **💬** or press

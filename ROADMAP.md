@@ -72,9 +72,6 @@ group is not a commitment.
 ### Word processor
 
 - Named paragraph and character styles beyond headings
-- Editing modes, switchable per document: visual (WYSIWYG), source
-  (Markdown or LaTeX text with highlighting, side-by-side preview) and
-  reading (no toolbar, larger text)
 - ✅ Page numbering styles (DOC-029, 0.1.0)
 - ✅ Templates and examples, the user's own templates in the browser, the
   template file formats (FILE-018 to FILE-020), templates kept in a folder

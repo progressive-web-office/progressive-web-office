@@ -1000,6 +1000,17 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .doc-editor.focus-mode > .toolbar, .doc-editor.focus-mode .doc-side, .doc-editor.focus-mode .table-bar { display: none; }
 .doc-editor.focus-mode .doc-page > :not(.is-current) { opacity: 0.35; transition: opacity 0.2s; }
 .doc-editor.typewriter .doc-scroll { padding-bottom: 50vh; }
+/* DOC-044: editing modes. */
+.doc-mode-bar:not([hidden]) { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 3; }
+.doc-mode-bar > span { font-weight: 600; margin-right: auto; }
+.doc-editor.source-mode > .toolbar, .doc-editor.source-mode > .table-bar, .doc-editor.source-mode > .doc-body, .doc-editor.reading-mode > .toolbar, .doc-editor.reading-mode > .table-bar { display: none !important; }
+.source-pane { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
+.source-text { min-width: 0; border-right: 1px solid var(--border); }
+.source-text .cm-editor { height: 100%; font-size: 0.95rem; }
+.source-text .cm-scroller { font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace; }
+.source-preview-scroll { min-width: 0; overflow: auto; padding: 16px; background: var(--bg); }
+.source-preview.doc-page { margin: 0 auto; }
+@media (max-width: 760px) { .source-pane { grid-template-columns: 1fr; grid-template-rows: minmax(50vh, auto) auto; } .source-text { border-right: 0; border-bottom: 1px solid var(--border); } }
 .goal-days { list-style: none; padding: 0; margin: 0; }
 .goal-days li { display: grid; grid-template-columns: 6em 1fr 4em; align-items: center; gap: 8px; font-size: 0.85rem; }
 .goal-bar { display: block; height: 10px; min-width: 1px; background: var(--accent); border-radius: 3px; }

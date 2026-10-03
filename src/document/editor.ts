@@ -20,10 +20,13 @@ import { button, h } from '../app/dom';
 import { onContextMenu, openContextMenu, tableSizePicker, type MenuAction, type MenuEntry } from '../app/context-menu';
 import { sizeInput, type SizeInput } from '../app/size-input';
 import type { EditorView, SaveVariant, SyncableDocument, ViewContext } from '../app/views';
-import { domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
+import { blocksToDom, domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
 import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
-import { bytesToBase64 } from './markdown-writer';
+import { bytesToBase64, writeMarkdown } from './markdown-writer';
+import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
+import { writeLatex } from './latex-writer';
+import { readLatex } from './latex-reader';
 import { addResource, allParagraphs, isFillRun, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
@@ -103,6 +106,27 @@ const REMOTE = 'pwo-remote';
 
 
 /** DOC-041: symbols of the fields in menus. */
+/** DOC-044: how a document is edited; the last choice is kept per kind of document. */
+type EditMode = 'visual' | 'source' | 'reading';
+const MODE_KEY = 'pwo.doc.mode';
+function loadEditMode(kind: string): EditMode | undefined {
+  try {
+    const all = JSON.parse(localStorage.getItem(MODE_KEY) ?? '{}') as Record<string, unknown>;
+    const m = all[kind];
+    return m === 'visual' || m === 'source' || m === 'reading' ? m : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function saveEditMode(kind: string, mode: EditMode): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(MODE_KEY) ?? '{}') as Record<string, unknown>;
+    localStorage.setItem(MODE_KEY, JSON.stringify({ ...all, [kind]: mode }));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 /** FORM-003: the form fields of text documents. */
 const INPUT_ICONS: Record<InputKind, string> = { text: '▭', checkbox: '☑', dropdown: '▾' };
 const kindLabelOf = (kind: InputKind): string => t(`form.kind.${kind}`);
@@ -155,6 +179,10 @@ export class DocumentEditor implements EditorView {
   /** TEACH-001: solutions shown (answer key) or hidden (exercise sheet). */
   private readonly solutionsButton = button(t('solution.hide'), () => this.toggleSolutions(), { text: '👁', title: t('solution.hideTitle') });
   private hadSolutions = false;
+  /** DOC-044: visual editing, the source beside a preview, or reading only. */
+  private mode: EditMode = 'visual';
+  private sourcePane: SourcePane | undefined;
+  private readonly modeBar = h('div', { class: 'doc-mode-bar', role: 'status', hidden: true });
 
   constructor(
     private readonly doc: RichDocument,
@@ -216,6 +244,7 @@ export class DocumentEditor implements EditorView {
     );
     this.element.append(
       this.toolbar(),
+      this.modeBar,
       this.review.bar,
       this.buildTableBar(),
       this.findBar.element,
@@ -280,7 +309,7 @@ export class DocumentEditor implements EditorView {
           editImage: (pos, node) => void this.describeImage(pos, node),
           fieldContext: (pos) => this.fieldContext(pos),
         }),
-        editable: () => !this.readOnly && !this.reviewing,
+        editable: () => !this.readOnly && !this.reviewing && this.mode === 'visual',
         attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': t('doc.label'), spellcheck: 'true', class: 'doc-page' },
         dispatchTransaction: (tr) => this.dispatch(tr),
         handlePaste: (_view, event) => this.onPaste(event),
@@ -332,6 +361,92 @@ export class DocumentEditor implements EditorView {
     });
     this.element.style.setProperty('--solution-label', JSON.stringify(t('solution.label')));
     for (const toc of this.tocViews) toc.refresh();
+  }
+
+  /** DOC-044: Markdown and LaTeX files have a source the editor reads back. */
+  private sourceLang(): SourceLang | undefined {
+    return sourceLangOf(this.ctx.fileName?.());
+  }
+
+  private modeKind(): string {
+    return this.sourceLang() ?? 'rich';
+  }
+
+  /** The source text of the document as it is now. */
+  private sourceText(lang: SourceLang): string {
+    const doc = { ...this.doc, blocks: this.currentBlocks() };
+    if (lang === 'latex') return writeLatex(doc).tex;
+    return writeMarkdown(doc, { imageUrl: (key) => this.sourceImageName(key) });
+  }
+
+  /** Pictures of the source are named after their resource. */
+  private sourceImageName(key: string): string {
+    const res = this.doc.resources.get(key);
+    return res?.name ? res.name.replace(/[()\s]/g, '_') : `${key}.${(res?.mediaType ?? 'image/png').split('/')[1]}`;
+  }
+
+  private readSource(text: string, lang: SourceLang): RichDocument {
+    if (lang === 'latex') return readLatex(text);
+    const byName = new Map([...this.doc.resources].map(([key, res]) => [this.sourceImageName(key), res]));
+    return readMarkdown(text, {
+      resolveImage: (src) => {
+        const res = byName.get(src);
+        return res ? { data: res.data, mediaType: res.mediaType, ...(res.name ? { name: res.name } : {}) } : undefined;
+      },
+    });
+  }
+
+  /** Take back the source being edited into the document (DOC-044). */
+  private syncSource(): void {
+    const pane = this.sourcePane;
+    const lang = this.sourceLang();
+    if (!pane || !lang) return;
+    const parsed = this.readSource(pane.text(), lang);
+    for (const [key, res] of parsed.resources) if (!this.doc.resources.has(key)) this.doc.resources.set(key, res);
+    this.doc.meta = { ...parsed.meta };
+    this.replaceBlocks(parsed.blocks.length ? parsed.blocks : [{ type: 'paragraph', style: 'normal', runs: [] }], false);
+  }
+
+  /** DOC-044: switch between visual editing, the source with its preview, and reading. */
+  setMode(mode: EditMode): void {
+    const lang = this.sourceLang();
+    if (mode === 'source' && !lang) return;
+    if (mode === this.mode) return;
+    if (this.mode === 'source') {
+      this.syncSource();
+      this.sourcePane?.destroy();
+      this.sourcePane = undefined;
+    }
+    this.mode = mode;
+    this.element.classList.toggle('source-mode', mode === 'source');
+    this.element.classList.toggle('reading-mode', mode === 'reading');
+    if (mode === 'source' && lang) {
+      this.sourcePane = new SourcePane({
+        text: this.sourceText(lang),
+        lang,
+        label: t(lang === 'latex' ? 'mode.sourceLatex' : 'mode.sourceMarkdown'),
+        previewLabel: t('mode.preview'),
+        render: (text) => blocksToDom(this.readSource(text, lang).blocks, document, (key) => this.resolve(key)),
+        changed: () => this.changed(),
+      });
+      this.modeBar.after(this.sourcePane.element);
+    }
+    this.modeBar.hidden = mode === 'visual';
+    this.modeBar.replaceChildren(
+      ...(mode === 'visual'
+        ? []
+        : [
+            h('span', {}, mode === 'source' ? `</> ${t(lang === 'latex' ? 'mode.sourceLatex' : 'mode.sourceMarkdown')}` : `📖 ${t('mode.reading')}`),
+            ...(mode === 'reading' && lang ? [button(t('mode.source'), () => this.setMode('source'), { text: `</> ${t('mode.source')}` })] : []),
+            ...(mode === 'source' ? [button(t('mode.reading'), () => this.setMode('reading'), { text: `📖 ${t('mode.reading')}` })] : []),
+            button(t('mode.visual'), () => this.setMode('visual'), { text: `✎ ${t('mode.visual')}`, className: 'primary' }),
+          ]),
+    );
+    this.view.setProps({});
+    saveEditMode(this.modeKind(), mode);
+    if (mode === 'source') this.sourcePane?.focus();
+    else if (mode === 'visual') this.view.focus();
+    this.ctx.statusChanged();
   }
 
   /** Header and footer shown above and below the page, fields as examples. */
@@ -1197,6 +1312,10 @@ export class DocumentEditor implements EditorView {
   // --- EditorView ---------------------------------------------------------------
 
   mounted(): void {
+    // DOC-044: the mode last chosen for this kind of document (the file's name is known now).
+    const saved = loadEditMode(this.modeKind());
+    if (saved === 'reading' || (saved === 'source' && this.sourceLang())) this.setMode(saved);
+    this.viewMenu.dispatchEvent(new Event('refill'));
     // SET-002: documents with text may open in review mode.
     if (loadReading().review && this.view.state.doc.textContent.trim()) this.review.toggle(true, false);
   }
@@ -1307,6 +1426,10 @@ export class DocumentEditor implements EditorView {
     const fill = (): void => {
       select.replaceChildren(
         h('option', { value: '' }, t('wview.menu')),
+        // DOC-044: editing modes.
+        h('option', { value: 'mode-visual' }, `${mark(this.mode === 'visual')}${t('mode.visual')}`),
+        ...(this.sourceLang() ? [h('option', { value: 'mode-source' }, `${mark(this.mode === 'source')}${t('mode.source')}`)] : []),
+        h('option', { value: 'mode-reading' }, `${mark(this.mode === 'reading')}${t('mode.reading')}`),
         h('option', { value: 'readability' }, `${mark(this.writing.readability)}${t('wview.readability')}`),
         h('option', { value: 'focus' }, `${mark(this.writing.focus)}${t('wview.focus')}`),
         h('option', { value: 'typewriter' }, `${mark(this.writing.typewriter)}${t('wview.typewriter')}`),
@@ -1318,9 +1441,17 @@ export class DocumentEditor implements EditorView {
     };
     fill();
     select.addEventListener('refill', fill);
+    // The file's name (and so its source) may be known only once the document is shown.
+    select.addEventListener('pointerdown', fill);
+    select.addEventListener('focus', fill);
     select.addEventListener('change', () => {
       const value = select.value;
       select.value = '';
+      if (value.startsWith('mode-')) {
+        this.setMode(value.slice(5) as EditMode);
+        fill();
+        return;
+      }
       if (value === 'goal') void this.editGoal();
       else if (value === 'hide-code' || value === 'show-code') this.setAllCodeHidden(value === 'hide-code');
       else if (value === 'dag') {
@@ -1562,6 +1693,7 @@ export class DocumentEditor implements EditorView {
     // UI-022: what the context menu offers, by category.
     const where = t('doc.formatting');
     const fields = FIELD_KINDS.map((kind) => ({ label: t(`field.${kind}`), category: t('field.menu'), where, run: () => this.insertField(kind) }));
+    const modes = (['visual', ...(this.sourceLang() ? ['source' as const] : []), 'reading'] as EditMode[]).filter((m) => m !== this.mode).map((m) => ({ label: t(`mode.${m}`), category: t('mode.menu'), where, run: () => this.setMode(m) }));
     const formInputs = INPUT_KINDS.map((kind) => ({ label: kindLabelOf(kind), category: t('form.inDoc'), where, run: () => void this.editInput(kind) }));
     const springs = (['spring', 'fixed', 'hfill'] as const).map((kind) => ({ label: t(kind === 'spring' ? 'space.insertSpring' : kind === 'fixed' ? 'space.insertFixed' : 'space.insertHfill'), category: t('space.menu'), where, run: () => this.insertSpace(kind) }));
     const state = this.view.state;
@@ -1581,7 +1713,7 @@ export class DocumentEditor implements EditorView {
         ].filter((_c, i) => [addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, mergeCells, splitCell, toggleHeaderRow, deleteTable][i]!(state))
       : [];
     const menu = { label: t('ctx.menu'), category: t('ctx.edit'), where, run: () => this.showContextMenuAtCursor() };
-    return [toggle, ...this.review.commands(), ...fields, ...formInputs, ...springs, ...table, menu];
+    return [toggle, ...modes, ...this.review.commands(), ...fields, ...formInputs, ...springs, ...table, menu];
   }
 
   /** FOLDER-023: the colours of the tags changed. */
@@ -1778,6 +1910,7 @@ export class DocumentEditor implements EditorView {
   }
 
   private currentBlocks(): Block[] {
+    if (this.mode === 'source') this.syncSource();
     const blocks = pmToBlocks(this.view.state.doc);
     // DOC-042: springs as shown, for the formats without springs.
     const { spaces, fills } = measureSprings(this.view);
