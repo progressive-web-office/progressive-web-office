@@ -1,5 +1,5 @@
 ---
-description: Run Python (Pyodide, numpy, matplotlib…) and JavaScript code cells in text documents, safely sandboxed; how cells and outputs are stored.
+description: Run Python (Pyodide, numpy, matplotlib…) and JavaScript code cells in text documents, safely sandboxed; reactive cells and their dependency graph; interactive widgets (anywidget); how cells and outputs are stored.
 ---
 
 # Code cells
@@ -7,7 +7,10 @@ description: Run Python (Pyodide, numpy, matplotlib…) and JavaScript code cell
 Text documents can contain **code cells**, in Python or JavaScript, that you
 run on demand — like a notebook, inside a normal document. Useful for a
 practical session, a lab report or a small calculation whose result should
-stay next to the explanation.
+stay next to the explanation. Cells are **reactive** (a cell knows the cells
+it depends on) and can show **interactive widgets** (knobs, sliders,
+gauges…). The examples *Lab report with Python plots*, *Interactive widgets*
+and *Instrument panel* (Templates and examples) show them at work.
 
 ## Inserting and running
 
@@ -247,6 +250,11 @@ A document can come from anyone, so its code is treated as untrusted:
   and it has **no network access**. It cannot open windows or dialogs either.
 - It runs in the background: the application stays responsive and **■**
   stops it at any time.
+- Widgets run each in a frame of their own, isolated in the same way (no
+  access to the page, no network).
+- Code can download packages or widget modules (`pwo.install`,
+  `importWidget`) only from a site you allowed, when the code first asks
+  for it (**Download code for this document?**).
 
 The code can still compute wrong or misleading results — run code only from
 documents you trust.
@@ -264,7 +272,13 @@ pandas, scipy, sympy and the
 are detected from the `import` lines and downloaded from the Pyodide CDN
 (`cdn.jsdelivr.net`) the first time they are used, then kept for offline use.
 Each package is checked against the fingerprints shipped with the
-application. Installing arbitrary packages from PyPI is not supported.
+application.
+
+The widget packages (anywidget, ipywidgets, comm, psygnal) come with the
+application. Other pure-Python packages can be installed by a cell with
+`await pwo.install(...)`, from a wheel URL, a `wheel.txt` list or the Python
+package index, once you allowed the site (see [widgets](#packages-of-widgets)).
+Packages with compiled code are only those of Pyodide.
 
 ## Storage in each format
 
@@ -272,6 +286,11 @@ application. Installing arbitrary packages from PyPI is not supported.
 |--------|------|--------|
 | Markdown / MDZ | a fenced block with the `{run}` attribute: ```` ```python {run} ```` or ```` ```javascript {run} ```` | a following ```` ```text {output} ```` block (```` {output error} ```` for an error) and figures as images titled `output` (MDZ stores them as image assets) |
 | Word, OpenDocument, LaTeX | the code as a code block | the last output as a code block and the figures as pictures |
+
+Widgets are kept as their picture, taken when the document is saved or
+printed: in Markdown, an image titled `widget`; in other formats, a picture
+after the output. Out-of-date marks are not saved: a reopened document
+starts with no run.
 
 In Markdown, other tools show the cells as ordinary code blocks with their
 results. Word, OpenDocument and LaTeX files keep the code and its last output

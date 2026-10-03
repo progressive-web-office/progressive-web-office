@@ -37,6 +37,21 @@ group is not a commitment.
 - Executable notebooks: code cells (Python/JavaScript) that read and write
   the cells of an open workbook
 
+### Code cells
+
+- ✅ Completion as you type, with the TypeScript language service for
+  JavaScript and TypeScript (CODE-011, CODE-012); hiding the code of cells
+  (CODE-013)
+- ✅ Reactive cells (CODE-014): dependencies between cells from the names
+  they define and use, out-of-date marks or automatic runs, no hidden state;
+  the dependency graph shown next to the document (CODE-015)
+- ✅ anywidget widgets (CODE-016) from Python and JavaScript cells, each in
+  an isolated frame, reactive with `pwo.ui`, packages installed from a URL,
+  a `wheel.txt` list or the package index; examples with the anywidget
+  instruments; next: the other ipywidgets controls, widgets alive again in
+  a reopened document after a run
+- Computer algebra in cells (Giac compiled to WebAssembly)
+
 ### Word processor
 
 - Named paragraph and character styles beyond headings
@@ -122,7 +137,7 @@ group is not a commitment.
 - ✅ Exercise sheets and answer keys from one document (TEACH-001)
 - ✅ Random variants (TEACH-002): parameterised values give each student a
   different version, with its computed answer key
-- Quiz export to Moodle XML and AMC (Auto Multiple Choice)
+- Quiz export to learning-platform XML formats and AMC (Auto Multiple Choice)
 - Hand out and collect work in class over QRShare / peer-to-peer
   collaboration, without a learning platform
 - Block diagrams and Bode / Nyquist plots from a transfer function

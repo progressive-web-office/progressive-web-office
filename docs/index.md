@@ -24,4 +24,8 @@ features:
     details: Install it as a Progressive Web App; it keeps working without a network connection.
   - title: Open formats first
     details: OpenDocument, Office Open XML, Markdown and MDZ packages, CSV and PDF.
+  - title: Live documents
+    details: Python and JavaScript cells that know their dependencies, and interactive widgets — knobs, gauges, sliders — next to the text.
+  - title: Read and review
+    details: PDF files and documents as pages, side by side or one at a time, with comments and single-key shortcuts.
 ---

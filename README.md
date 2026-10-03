@@ -53,11 +53,19 @@ supported.
 - Citations and bibliography from BibTeX, kept as native Word sources,
   OpenDocument marks, LaTeX `\cite` or pandoc citations.
 - Master documents that assemble chapters kept in separate files.
-- Equations (MathLive editor, LaTeX source), Mermaid diagrams, Python and
-  JavaScript code cells run in a sandbox without network access.
+- Equations (MathLive editor, LaTeX source), Mermaid diagrams.
+- Python and JavaScript code cells run in a sandbox without network access:
+  completion as you type, reactive cells (dependencies between cells, shown
+  as a graph), interactive widgets (anywidget, including the anywidget
+  instruments), code that can be hidden behind its output.
 - Find and replace, document properties, read-only mode, print preview.
 - Templates (letter, report, minutes, exercise sheet, budget, grade book,
-  invoice, talk), an example document, and your own templates.
+  invoice, talk), examples (a tour, a lab report with Python plots,
+  interactive widgets, an instrument panel, measurements and charts), and
+  your own templates.
+- Review mode for text documents and PDF files: pages side by side or one
+  page at a time, single-key shortcuts, comments, full screen without
+  distractions.
 
 **Spreadsheets**: formulas (44 functions), several sheets, number formats,
 charts (column, bar, line, pie, scatter) saved as native charts.
@@ -68,9 +76,10 @@ charts (column, bar, line, pie, scatter) saved as native charts.
 signature, not a cryptographic one).
 
 **Folders**: open a folder of the device, the browser's own storage, or a
-Nextcloud / WebDAV account; create, rename, move and delete files; search
-all documents at once; links between Markdown notes (`[[note]]`) with
-backlinks.
+Nextcloud / WebDAV account; create, rename, move and delete files (several
+at once, with undo), import files of the device, sort by name, date, size or
+type, move with the keyboard; search all documents at once (names first);
+links between Markdown notes (`[[note]]`) with backlinks.
 
 **Comments**: comment text in documents, reply and resolve; kept in Word,
 OpenDocument and Markdown (CriticMarkup) files.
@@ -94,8 +103,10 @@ more open in a code editor with syntax colouring, line numbers and search.
 
 **Other**: an optional AI assistant with your own key (Anthropic, OpenAI,
 Mistral, Albert, Ollama on your machine, or any OpenAI-compatible server)
-and WebMCP tools for browser agents; English, French and Simplified Chinese;
-light and dark themes; a layout for phones.
+and WebMCP tools for browser agents; a settings window and a command
+palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) listing the keyboard
+shortcuts; English, French and Simplified Chinese; light and dark themes; a
+layout for phones.
 
 ![A spreadsheet with a line chart](docs/public/screenshots/spreadsheet.png)
 
@@ -155,6 +166,7 @@ The application **goes online only when you use a feature that needs it**:
 | AI assistant | the provider you chose |
 | Git, Nextcloud / WebDAV, Grist | the servers of the accounts you added |
 | Python code cells | the jsDelivr CDN, once, for Python packages (checked against their hashes) |
+| Packages and widgets installed by a cell (`pwo.install`, `importWidget`) | the site the code names, once you allowed it (the Python package index for a project name) |
 | Real-time collaboration | public Nostr relays to introduce the browsers, STUN servers (Google, Cloudflare); documents travel browser to browser, encrypted |
 | Link to a file on a server | that server |
 | Send with QRShare, sync by QR | QRShare's page (its manifest is read to check the handoff) |
@@ -193,10 +205,11 @@ The code is TypeScript without a UI framework, built with Vite. See
 
 ## Roadmap
 
-- Offline synchronisation of spreadsheets.
-- Comments and track changes.
-- Spreadsheet cell formatting, sorting and filtering, more functions.
-- Document templates, page numbering styles, editing modes (visual, source).
+- Offline synchronisation of spreadsheets; comments and changes shared in
+  real-time sessions.
+- More spreadsheet functions, fill handle, conditional formatting.
+- Editing modes (visual, source), mail merge, form fields.
+- More ipywidgets controls, computer algebra in cells.
 - Minimal photo editing and vector drawing.
 
 The full list is in [ROADMAP.md](ROADMAP.md); changes are in

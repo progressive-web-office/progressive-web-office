@@ -21,7 +21,16 @@ src/
   pdf/        pdf.js viewer, form/signature saving (pdf-lib), signature pad
   math/       MathLive loader, equation dialog, MathML/OMML/LaTeX converters
   diagram/    Mermaid loader, SVG/PNG rendering, diagram dialog and templates
-  code/       code cells: sandbox document and worker, runner, dialogs
+  code/       code cells: sandbox document and worker, runner, dialogs,
+              completion and TypeScript language service, reactive cells
+              (dependency graph, its Mermaid view), widgets (widgets/:
+              anywidget host, view frames, Python bridge, packages)
+  review/     review mode shared by PDF files and text documents
+  settings/   settings window
+  fs/         storage-independent file system and file explorer
+  folder/     folder panel, search, linked notes
+  collab/     real-time collaboration (Yjs, WebRTC, Nostr relays)
+  share/      QRShare hand-off and received-file checks
 schemas/      JSON Schemas (MDZ manifest)
 e2e/          Playwright end-to-end tests
 ```
@@ -166,3 +175,45 @@ Python cells share one interpreter per open document; matplotlib uses the
 Agg backend and open figures are returned as PNG files after each run. Code
 never runs when a document is opened: the first run in a document asks for
 confirmation.
+
+### Reactive cells
+
+`src/code/reactive.ts` builds the dependency graph of the cells from the
+names each one defines and uses: Python cells are read by Python's own
+`symtable` in the sandbox, JavaScript cells by the TypeScript language
+service (top-level declarations, and names the checker cannot resolve). It
+reports names defined in several cells and cycles, orders the cells to run
+(their out-of-date ancestors, then the cells asked for, then — in automatic
+mode — what depends on them) and the cells to mark out of date. JavaScript
+cells share their top-level names through a scope object of the worker: each
+cell is rewritten to read the names it uses from it and to publish the ones
+it defines. Out-of-date marks are positions kept by a ProseMirror plugin
+(`src/document/pm/cell-state.ts`), mapped through the edits and not saved.
+`src/code/dag.ts` turns the graph into a Mermaid flowchart for the panel of
+`src/code/dag-panel.ts`.
+
+### Widgets
+
+`src/code/widgets/` makes the application an anywidget (AFM) host:
+
+- **Python**: the bundled wheels of `public/python/` (anywidget, ipywidgets,
+  comm, psygnal; checked against `wheels.json`) are unpacked in Pyodide when
+  a cell mentions widgets; `pwo_widgets.py` replaces `comm.create_comm` so
+  that every widget channel is sent to the application, gives `display`, and
+  the `pwo` module (`ui`, `install`);
+- **JavaScript**: the worker provides `widget`, `display`, `ui` and
+  `importWidget`, with the same channel messages;
+- **`host.ts`** keeps the models' state between the sandbox and the views and
+  relays changes both ways; a frame may only change the models it was given;
+- **views**: each widget is drawn in an `<iframe sandbox="allow-scripts">` of
+  its own (opaque origin) whose policy forbids the network; its only script
+  is `view-runtime.js`, allowed by hash in its policy and in the
+  application's (`vite.config.ts`). It implements the AFM lifecycle
+  (initialize once, render per view, abort signals, composition through
+  `anywidget:` / `IPY_MODEL_` references), the ipywidgets boxes, grid,
+  layout, label and HTML, sizes the frame and draws the PNG picture of the
+  view kept with the document;
+- **downloads** (`packages.ts`): wheels and modules from a URL, a
+  `wheel.txt` list or the Python package index are fetched by the
+  application, after the user allowed the site, and kept in the Cache
+  Storage for offline use.

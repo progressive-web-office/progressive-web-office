@@ -39,6 +39,10 @@ For example, to read two whole pages side by side, page by page: 2 pages,
 
 - **Typography as you type**: curly quotes, dashes, ellipsis and French
   no-break spaces (for the documents opened next).
+- **When a code cell runs**: what happens to the cells using it —
+  marked as out of date (the default), run too, or nothing (the classic
+  notebook, cells run in the order of the document). See
+  [reactive cells](./code#reactive-cells).
 
 ## Collaboration
 
