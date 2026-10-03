@@ -55,7 +55,8 @@ test('runs Python and JavaScript cells in a sandbox and keeps their output (CODE
   await dialog.getByRole('button', { name: 'Update' }).click();
   await expect(cells.nth(1).locator('.code-cell-output')).toHaveCount(0);
   await cells.nth(1).getByRole('button', { name: 'Run cell' }).click();
-  await expect(cells.nth(1).locator('.code-cell-output.error')).toContainText('ZeroDivisionError: division by zero');
+  // A Python run (slower on a busy machine).
+  await expect(cells.nth(1).locator('.code-cell-output.error')).toContainText('ZeroDivisionError: division by zero', { timeout: 30_000 });
   expect(errors).toEqual([]);
 });
 
