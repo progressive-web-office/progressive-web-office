@@ -1,0 +1,24 @@
+/* Colours of code tokens (FILE-022, CODE-011), in both themes. */
+:root {
+  --tok-comment: light-dark(#5a6577, #9aa5b5);
+  --tok-string: light-dark(#0a6e2e, #8fd99e);
+  --tok-number: light-dark(#8a4600, #f0b071);
+  --tok-keyword: light-dark(#7334b0, #cfa8ff);
+  --tok-type: light-dark(#005f80, #6fd3f0);
+  --tok-function: light-dark(#1f4fa0, #8fb8ff);
+  --tok-tag: light-dark(#1f5fbf, #7fb0ff);
+  --tok-property: light-dark(#7a4a00, #e8c27a);
+  --tok-inserted: light-dark(#0a6e2e, #8fd99e);
+  --tok-deleted: light-dark(#b3261e, #ff8a80);
+}
+.tok-comment { color: var(--tok-comment); font-style: italic; }
+.tok-string { color: var(--tok-string); }
+.tok-number { color: var(--tok-number); }
+.tok-keyword { color: var(--tok-keyword); }
+.tok-type { color: var(--tok-type); }
+.tok-function { color: var(--tok-function); }
+.tok-tag { color: var(--tok-tag); }
+.tok-property { color: var(--tok-property); }
+.tok-strong { font-weight: bold; }
+.tok-inserted { color: var(--tok-inserted); }
+.tok-deleted { color: var(--tok-deleted); }

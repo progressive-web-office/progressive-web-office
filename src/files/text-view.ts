@@ -8,7 +8,7 @@ import { bracketMatching, foldGutter, foldKeymap, indentOnInput, LanguageSupport
 import { gotoLine, highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorSelection, EditorState, RangeSetBuilder, type Extension } from '@codemirror/state';
 import { Decoration, drawSelection, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import { highlightCode, tagHighlighter, tags } from '@lezer/highlight';
+import { highlightCode } from '@lezer/highlight';
 import { button, h } from '../app/dom';
 import type { EditorView as PwoView, ViewContext } from '../app/views';
 import { t } from '../i18n';
@@ -42,6 +42,9 @@ const reviewLines = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 import './files.css';
+import { highlighter } from '../code/highlight';
+
+export { highlighter };
 
 export interface DecodedText {
   text: string;
@@ -75,20 +78,6 @@ export function encodeText(text: string, from: Pick<DecodedText, 'bom' | 'crlf'>
   return out;
 }
 
-/** Token classes, coloured by `files.css` in both themes (also in print). */
-export const highlighter = tagHighlighter([
-  { tag: [tags.comment, tags.lineComment, tags.blockComment, tags.docComment], class: 'tok-comment' },
-  { tag: [tags.string, tags.special(tags.string), tags.character, tags.regexp], class: 'tok-string' },
-  { tag: [tags.number, tags.bool, tags.null, tags.atom], class: 'tok-number' },
-  { tag: [tags.keyword, tags.controlKeyword, tags.definitionKeyword, tags.moduleKeyword, tags.operatorKeyword, tags.modifier, tags.self], class: 'tok-keyword' },
-  { tag: [tags.typeName, tags.className, tags.namespace, tags.standard(tags.typeName)], class: 'tok-type' },
-  { tag: [tags.function(tags.variableName), tags.function(tags.propertyName), tags.macroName], class: 'tok-function' },
-  { tag: [tags.tagName, tags.angleBracket, tags.processingInstruction, tags.meta], class: 'tok-tag' },
-  { tag: [tags.attributeName, tags.propertyName], class: 'tok-property' },
-  { tag: [tags.heading, tags.strong], class: 'tok-strong' },
-  { tag: [tags.inserted], class: 'tok-inserted' },
-  { tag: [tags.deleted, tags.invalid], class: 'tok-deleted' },
-]);
 
 const theme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'var(--surface)', color: 'var(--text)' },
@@ -192,7 +181,8 @@ export class TextView implements PwoView {
       .then(async (lang) => {
         this.parserLanguage = lang instanceof LanguageSupport ? lang.language : (lang as StreamLanguage<unknown>);
         // CODE-011, CODE-012: completion; for JavaScript and TypeScript, the TypeScript language service.
-        this.view.dispatch({ effects: this.language.reconfigure([lang, (await import('../code/completion')).completionSupport()]) });
+        const words = this.lang && this.lang !== 'python' && this.lang !== 'javascript' ? (await import('../code/lang-words')).wordCompletion(this.lang) : [];
+        this.view.dispatch({ effects: this.language.reconfigure([lang, (await import('../code/completion')).completionSupport(), words]) });
         if (/JavaScript|TypeScript/.test(entry.name)) {
           const { scriptIntelligence } = await import('../code/ts-language');
           this.view.dispatch({ effects: this.language.reconfigure([lang, ...(await scriptIntelligence(fileName))]) });

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { openApp, openFile, saveAs } from './helpers';
 
 const NOTEBOOK = [
@@ -277,4 +277,26 @@ test('opens a marimo notebook as a document, runs its cells and saves it back un
   // Outputs are not part of a marimo file: it comes back as it was.
   expect(saved.data.toString()).toBe(MARIMO_NB);
   expect(errors.filter((e) => !e.includes('ERR_TUNNEL_CONNECTION_FAILED'))).toEqual([]);
+});
+
+test('colours the code of cells, shown and edited, and completes every language (CODE-011, CODE-018)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Languages' }).click();
+  const cells = page.locator('.doc-page .code-cell');
+  // Shown in the document: coloured, in every language.
+  for (const i of [0, 1, 2, 3, 5, 8]) await expect(cells.nth(i).locator('.code-cell-source [class^="tok-"]').first()).toBeVisible();
+  const colour = (l: ReturnType<Page['locator']>) => l.evaluate((el) => getComputedStyle(el).color);
+  const text = await colour(page.locator('.doc-page p').first());
+  expect(await colour(cells.nth(0).locator('.code-cell-source .tok-keyword').first())).not.toBe(text);
+  // Edited: coloured too, with completion of the language's words (Lua here).
+  await cells.nth(2).getByRole('button', { name: 'Edit code' }).click();
+  const editor = page.locator('dialog[open] .cm-content');
+  await expect(editor.locator('.tok-keyword').first()).toBeVisible();
+  expect(await colour(editor.locator('.tok-keyword').first())).not.toBe(text);
+  await editor.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('\nipa');
+  await expect(page.locator('.cm-tooltip-autocomplete')).toContainText('ipairs');
+  expect(errors).toEqual([]);
 });

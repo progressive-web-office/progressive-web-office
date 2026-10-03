@@ -1,14 +1,15 @@
 /**
  * The code editor of a cell (CODE-011): highlighting, indentation, closing
- * brackets and completion, Python (with the interpreter's names when it is
- * running) or JavaScript.
+ * brackets and completion: Python (with the interpreter's names when it is
+ * running), JavaScript (the TypeScript language service), and the keywords,
+ * usual functions and words of the code for Lua, R, C/C++ and SQL.
  */
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { bracketMatching, indentOnInput, indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { Compartment, EditorState, type Extension } from '@codemirror/state';
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from '@codemirror/view';
 import type { CodeLang } from '../document/model';
-import { highlighter } from '../files/text-view';
+import { cellLanguage, highlighter } from './highlight';
 import { completionSupport, pythonSources, type SmartComplete } from './completion';
 
 const theme = EditorView.theme({
@@ -70,20 +71,11 @@ export function createCellEditor(parent: HTMLElement, opts: { doc: string; lang:
 }
 
 async function loadLanguage(lang: CodeLang, complete?: SmartComplete): Promise<Extension> {
-  if (lang === 'julia') {
-    const [{ StreamLanguage }, { julia }] = await Promise.all([import('@codemirror/language'), import('@codemirror/legacy-modes/mode/julia')]);
-    return StreamLanguage.define(julia);
+  if (lang === 'julia') return cellLanguage(lang);
+  if (lang === 'lua' || lang === 'r' || lang === 'sql' || lang === 'cpp') {
+    const [language, words] = await Promise.all([lang === 'sql' ? import('@codemirror/lang-sql').then((m) => m.sql()) : lang === 'cpp' ? import('@codemirror/lang-cpp').then((m) => m.cpp()) : cellLanguage(lang), import('./lang-words')]);
+    return [language, completionSupport(), words.wordCompletion(lang)];
   }
-  if (lang === 'lua') {
-    const [{ StreamLanguage }, { lua }] = await Promise.all([import('@codemirror/language'), import('@codemirror/legacy-modes/mode/lua')]);
-    return StreamLanguage.define(lua);
-  }
-  if (lang === 'r') {
-    const [{ StreamLanguage }, { r }] = await Promise.all([import('@codemirror/language'), import('@codemirror/legacy-modes/mode/r')]);
-    return StreamLanguage.define(r);
-  }
-  if (lang === 'sql') return (await import('@codemirror/lang-sql')).sql();
-  if (lang === 'cpp') return (await import('@codemirror/lang-cpp')).cpp();
   if (lang === 'python') {
     const [{ python }, sources] = await Promise.all([import('@codemirror/lang-python'), pythonSources(complete)]);
     return [python(), completionSupport(sources)];

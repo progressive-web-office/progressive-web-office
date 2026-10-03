@@ -260,6 +260,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Code in colours again in the editor of a cell (the token colours were
+  defined for the code viewer only), and now also in the cells shown in the
+  document; completion of keywords, usual functions and words of the code
+  for Lua, R, C/C++ and SQL, in cells and in the code viewer.
+
 - A name changed in the settings during a collaboration was not shown to
   the others; the name is now asked in a window of the page instead of the
   browser's prompt, which froze the page and could drop the connection.

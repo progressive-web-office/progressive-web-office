@@ -36,6 +36,9 @@ export function decorateCells(root: HTMLElement): void {
         action('edit', '✎', t('code.edit')),
       ),
     );
+    // The code in colours, once its grammar is loaded.
+    const source = cell.querySelector<HTMLElement>(':scope > .code-cell-source');
+    if (source?.textContent) void import('./highlight').then(({ highlightInto }) => highlightInto(source, source.textContent ?? '', lang));
   }
 }
 
