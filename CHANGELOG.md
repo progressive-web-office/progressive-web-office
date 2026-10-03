@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Documentation of Git accounts rewritten: what needs a token, creating a
+  personal access token forge by forge (GitHub fine-grained and classic,
+  organisations and SSO, GitHub Enterprise, gitlab.com scopes and roles,
+  project access tokens, self-managed GitLab), and what to do when something
+  goes wrong; the token help in the application links to it.
 - Git repositories (GIT-013): their visibility (🌐 public, 🔒 private, 🏢
   internal) and what it means, your role and whether you can save there,
   and the collaborators with their roles; a file opened from a repository

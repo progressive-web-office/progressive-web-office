@@ -34,68 +34,164 @@ the path when the address has them, and the repository opens:
 - a private repository (or one that does not exist) asks for an account:
   the form is filled in for that site, only the token is left to paste.
 
-## Connect an account
+## Accounts and tokens
 
-1. Click **Open from repository…** on the start screen (or **⎇** in the
-   toolbar), then **Add account** (or paste a repository address, see above).
-2. Choose the provider. The API URL is filled in for the public services;
-   change it for your own instance:
-   - GitHub Enterprise: `https://github.example.com/api/v3`
-   - self-hosted GitLab: `https://gitlab.example.com/api/v4`
-3. Paste a **personal access token**:
-   - GitHub: a *fine-grained* token limited to the repositories you need,
-     with the permission **Contents: read and write** (and **Pull requests:
-     read and write** to propose changes from the folder panel)
-     (Settings → Developer settings → Personal access tokens).
-   - GitLab: a token with the **api** scope (Preferences → Access tokens).
-4. Keep **Remember the token in this browser** ticked to not type it again
-   (untick it to keep the token only until the application is closed; such
-   an account shows *until closed*), then click **Connect**.
+Reading a **public** repository needs nothing. Everything else needs an
+**account**: the site (GitHub or GitLab, public or your own) and a
+**personal access token** (PAT) — a password made for applications, that
+you create on the site, limited to the repositories and rights you choose,
+and that you can revoke at any time without changing your password.
 
-A public repository opened without a token offers **🔑 Add a token to save
-here**; saving into it without a token also asks for one, checked on the
-repository and remembered the same way.
+| What you do | Without a token | With a token |
+|-------------|:---:|:---:|
+| Open a file of a public repository, browse it as a folder | ✅ | ✅ |
+| Open a private repository | ❌ | ✅ (token allowed to read it) |
+| Save (commit), create, rename, delete files | ❌ | ✅ (token and role allowed to write) |
+| Create a branch, propose a pull / merge request | ❌ | ✅ (pull-request right) |
+| See your role and the collaborators | ❌ | ✅ (collaborators: if your role may write) |
 
-### An empty repository
+### Adding an account
 
-A repository just created on GitHub or GitLab has no file and no branch
-yet. It opens without error and says so; save a document in it (**Commit…**
-or *Save to repository*): it becomes its first file, on its default branch.
-Opened as a folder, its first file is created the same way.
+There are three ways, all ending in the same form:
 
-### How to create a token
+- paste the address of a **private** repository: the form opens, filled in
+  for its site — only the token is left to paste;
+- after opening a public repository without a token, **🔑 Add a token to
+  save here**; or simply **Save**: the token is asked then, and checked on
+  the repository before anything is written;
+- **Add account** in the window, for any site.
 
-**How to create a token?** under the token field gives these steps, with a
-link to the token page of the site chosen.
+In the form:
 
-**GitHub** (fine-grained token):
+1. **Provider**: GitHub or GitLab.
+2. **API URL** — filled in for the public services; for your own site:
 
-1. Open [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
-   (on GitHub Enterprise: `https://<your site>/settings/personal-access-tokens/new`).
-2. Give it a name (`PWO`) and an expiration date.
-3. **Repository access**: *Only select repositories*, then pick the
-   repositories you want to edit.
-4. **Permissions → Repository permissions**: *Contents: Read and write*
-   (and *Pull requests: Read and write* to propose changes).
-5. **Generate token**, copy it — it is shown only once — and paste it.
+   | Forge | API URL |
+   |-------|---------|
+   | github.com | `https://api.github.com` |
+   | GitHub Enterprise Server | `https://github.example.com/api/v3` |
+   | gitlab.com | `https://gitlab.com/api/v4` |
+   | Self-managed GitLab | `https://gitlab.example.com/api/v4` |
 
-**GitLab**:
+3. **Personal access token** — see below how to create it on each forge.
+4. **Remember the token in this browser** — ticked by default, so that you
+   do not type it again. Untick it on a shared computer: the token is then
+   kept only until the application is closed (the account shows *until
+   closed*).
+5. **Connect**: the token is tried before the account is added.
 
-1. Open [gitlab.com/-/user_settings/personal_access_tokens](https://gitlab.com/-/user_settings/personal_access_tokens)
-   (self-hosted: `https://<your site>/-/user_settings/personal_access_tokens`).
-2. **Add new token**, give it a name and an expiration date.
-3. Select the scope **api**.
-4. **Create personal access token**, copy it — shown only once — and paste it.
+**Forget** removes the account and its token from this device.
 
-A token works as a password for these repositories: give it only the
-repositories and rights you need and a near expiration date, and revoke it
-on the same page if it leaks.
+## Creating a personal access token (PAT), forge by forge
+
+**How to create a token?**, under the token field, repeats the steps for the
+site chosen, with a link to its token page. Whatever the forge:
+
+- give the token **only the repositories and rights you need**;
+- choose a **near expiration date** (30 to 90 days) and make a new one when
+  it expires;
+- copy it as soon as it is shown — **it is shown only once** — and paste it
+  in Progressive Web Office; do not keep it elsewhere, never paste it in a
+  document, a message, a chat or a commit;
+- if it may have leaked, **revoke it** on the same page and make another.
+
+### GitHub (github.com) — fine-grained token (recommended)
+
+1. Signed in to GitHub, open
+   [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new)
+   — or *your picture › Settings › Developer settings › Personal access
+   tokens › Fine-grained tokens › Generate new token*.
+2. **Token name**: `PWO` (and a description if you like).
+3. **Resource owner**: your account — or the **organisation** that owns the
+   repositories (see below).
+4. **Expiration**: 30, 60 or 90 days, or a date.
+5. **Repository access**: **Only select repositories**, then pick them.
+   *All repositories* also works, but gives more than needed; *Public
+   repositories* is read only.
+6. **Permissions › Repository permissions**:
+
+   | Permission | Access | Needed for |
+   |------------|--------|------------|
+   | **Contents** | Read and write | opening and saving files, branches (essential) |
+   | **Metadata** | Read-only | added by GitHub automatically |
+   | **Pull requests** | Read and write | *Propose the changes…* (optional) |
+
+   Nothing else is needed (no account permission, no administration).
+7. **Generate token**, then copy it (`github_pat_…`).
+
+**Repositories of an organisation**: choose the organisation as *Resource
+owner*. Depending on its policy, the token may wait for an **approval** by an
+owner of the organisation (it is then *pending*: until it is approved,
+the repositories answer *not found*), or fine-grained tokens may be refused;
+ask an owner, or use a classic token if the organisation allows only those.
+
+### GitHub — classic token (when fine-grained ones are not possible)
+
+1. Open [github.com/settings/tokens/new](https://github.com/settings/tokens/new)
+   (*Personal access tokens › Tokens (classic) › Generate new token
+   (classic)*).
+2. A note (`PWO`) and an expiration date.
+3. Scope **`repo`** (private and public repositories) — or only
+   **`public_repo`** for public repositories.
+4. **Generate token**, copy it (`ghp_…`).
+
+A classic token reaches **every** repository you can reach: prefer a
+fine-grained one. In an organisation with **single sign-on (SAML)**, click
+*Configure SSO* next to the token, then *Authorize* for the organisation.
+
+### GitHub Enterprise Server
+
+The same steps on your own site:
+`https://<your site>/settings/personal-access-tokens/new` (fine-grained) or
+`https://<your site>/settings/tokens/new` (classic). API URL:
+`https://<your site>/api/v3`.
+
+### GitLab (gitlab.com)
+
+1. Signed in to GitLab, open
+   [gitlab.com/-/user_settings/personal_access_tokens](https://gitlab.com/-/user_settings/personal_access_tokens)
+   — or *your avatar › Edit profile › Access tokens* (older versions:
+   *Preferences › Access Tokens*).
+2. **Add new token**: a name (`PWO`) and an **expiration date** (GitLab
+   requires one, at most a year).
+3. **Scopes**:
+
+   | Scope | Gives |
+   |-------|-------|
+   | **`api`** | reading, saving, branches, merge requests, members — **needed to save** |
+   | `read_api` | reading only (open files and folders, see members) |
+
+   `read_repository` and `write_repository` are **not enough**: they are for
+   `git clone` / `git push`, not for the web API Progressive Web Office uses.
+4. **Create personal access token**, copy it (`glpat-…`).
+
+The token never gives more than **your role** in the project: saving needs
+the role **Developer** or above — and **Maintainer** on a protected branch
+(usually `main`); a *Reporter* or *Guest* can only read.
+
+Instead of a personal token, a project (or group) owner can create a
+**project access token** (*project › Settings › Access tokens*, role
+*Developer*, scope `api`): it reaches that project only.
+
+### Self-managed GitLab
+
+The same steps on your own site:
+`https://<your site>/-/user_settings/personal_access_tokens` (before GitLab
+16: `https://<your site>/-/profile/personal_access_tokens`). API URL:
+`https://<your site>/api/v4`. The site must accept requests from a web page
+(CORS), as gitlab.com does; ask its administrator if every request fails
+with a network error.
+
+### Other forges
+
+Gitea, Forgejo (Codeberg), Bitbucket and others are not supported yet.
 
 ::: warning Token storage
-The token is stored **only in this browser** (local storage) and is sent
-**only** to the API URL of its account. It is never written into documents,
-drafts, exported files or logs. Use **Forget** to delete it from this device.
-Prefer short-lived tokens limited to the repositories you need.
+The token is stored **only in this browser** (local storage) — or only in
+memory when *Remember the token* is unticked — and is sent **only** to the
+API URL of its account. It is never written into documents, drafts,
+exported files, backups or logs. Use **Forget** to delete it from this
+device, and revoke it on the forge if the device is lost.
 :::
 
 ## Who can see a repository, and who works on it
@@ -119,12 +215,15 @@ opened from it.
 
 ## Open a file
 
-Pick a repository (or type `owner/name` for any repository you can read),
-a branch, then browse the folders and click a file. Every supported format
+Paste its address, or pick a repository (or type `owner/name` for any
+repository you can read) and a branch, then browse the folders and click a
+file. Every supported format
 can be opened: documents, spreadsheets, presentations, PDF, Markdown,
 MDZ, LaTeX…
 
-The header shows where the document comes from (`owner/name · branch`).
+The header shows where the document comes from (`🔒 owner/name · branch`,
+the icon telling its visibility). Choosing another repository clears the
+one shown first: what is listed is always the repository you save to.
 
 ## Commit changes
 
@@ -151,6 +250,13 @@ binary formats stay available: choose one when you need its exact layout
 (a CSV keeps one sheet, without formatting).
 :::
 
+### An empty repository
+
+A repository just created on GitHub or GitLab has no file and no branch
+yet. It opens without error and says so; save a document in it (**Commit…**
+or *Save to repository*): it becomes its first file, on its default branch.
+Opened as a folder, its first file is created the same way.
+
 **Save as…** still downloads a local copy in any format.
 
 ### Branches and pull requests from a document
@@ -171,7 +277,6 @@ button:
 Opening a file from a repository also shows the repository in the folder
 panel, with its whole tree, the file selected; **📁 Open the repository as a
 folder** in the window opens it without a file.
-
 
 **Open a folder** also lists your Git accounts (⎇): choose one, then a
 repository and a branch — or choose **⎇ GitHub / GitLab repository…** and
@@ -217,3 +322,16 @@ committed), Progressive Web Office **never overwrites** it. You can instead:
   request;
 - **Save as a copy next to it** — your version is committed under a new name
   (`report-copy-<date>.docx`).
+
+## When something goes wrong
+
+| Message | Likely cause | What to do |
+|---------|--------------|------------|
+| *401* / *Bad credentials* | token mistyped, expired or revoked | **Forget** the account, create a new token, add it again |
+| *403* | the token lacks a right (*Contents: Read and write*, scope `api`), the organisation has not approved it, or SSO is not authorised | check the token's rights on the forge; ask an organisation owner |
+| *… is private, or does not exist* / *404* | wrong address, or the repository is not among those chosen for the token | check the address; edit the token to add the repository |
+| *You can read, not save here* | your role is read only (GitHub *Read*/*Triage*, GitLab *Reporter*/*Guest*) | ask an owner for the *Write* / *Developer* role |
+| saving refused on `main` (GitLab) | protected branch | save on a new branch and propose a merge request |
+| *Network error* | offline, or a self-managed site refusing requests from web pages (CORS) | check the connection; ask the site's administrator |
+| *The file changed in the repository* | someone committed meanwhile | see [Conflicts](#conflicts) |
+

@@ -506,6 +506,8 @@ function fillTokenHelp(howTo: HTMLElement, kind: GitProvider, api: string): void
     h('summary', {}, t('git.howTitle')),
     h('ol', {}, ...steps.map((k, i) => h('li', {}, ...(i === 0 ? [t(k), ' ', h('a', { href: page, target: '_blank', rel: 'noopener noreferrer' }, page)] : [t(k)])))),
     h('p', { class: 'hint' }, t('git.howSafety')),
+    // The full guide: classic tokens, organisations, self-managed sites, what goes wrong.
+    h('p', {}, h('a', { href: new URL('docs/guide/git.html#creating-a-personal-access-token-pat-forge-by-forge', document.baseURI).href, target: '_blank', rel: 'noopener' }, t('git.howMore'))),
   );
 }
 
