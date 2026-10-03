@@ -194,6 +194,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- Documentation site: a visual identity matching the application (its icon
+  as logo and favicon, its blue and the colours of documents, spreadsheets
+  and presentations, light and dark), a home page with feature icons and
+  up-to-date screenshots.
+
 - The lab template keeps each name in one cell (CODE-014).
 
 - The review mode is one switch for every file, also in the settings.

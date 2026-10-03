@@ -9,7 +9,18 @@ export default defineConfig({
   base: process.env.DOCS_BASE ?? '/',
   cleanUrls: true,
   lastUpdated: false,
+  // Visual identity: the application's icon and colours (theme/style.css).
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${process.env.DOCS_BASE ?? '/'}logo.svg` }],
+    ['meta', { name: 'theme-color', content: '#1f5fbf' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:title', content: 'Progressive Web Office' }],
+    ['meta', { property: 'og:description', content: 'A simple, private office suite that runs entirely in your browser.' }],
+    ['meta', { property: 'og:image', content: `${APP_URL}docs/screenshots/document.png` }],
+  ],
   themeConfig: {
+    logo: '/logo.svg',
+    siteTitle: 'PWO',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Formats', link: '/formats/' },

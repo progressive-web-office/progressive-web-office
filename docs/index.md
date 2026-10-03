@@ -6,6 +6,9 @@ hero:
   name: Progressive Web Office
   text: Your office suite, in the browser
   tagline: Documents, spreadsheets, presentations and PDF — nothing leaves your device.
+  image:
+    src: /logo.svg
+    alt: Progressive Web Office
   actions:
     - theme: brand
       text: Open the app
@@ -18,14 +21,39 @@ hero:
       text: Supported formats
       link: /formats/
 features:
-  - title: Private by design
+  - icon: 🔒
+    title: Private by design
     details: Files are opened, edited and saved locally. No upload, no account, no tracking.
-  - title: Works offline
+  - icon: 📶
+    title: Works offline
     details: Install it as a Progressive Web App; it keeps working without a network connection.
-  - title: Open formats first
+  - icon: 📄
+    title: Open formats first
     details: OpenDocument, Office Open XML, Markdown and MDZ packages, CSV and PDF.
-  - title: Live documents
+  - icon: 🧪
+    title: Live documents
     details: Python and JavaScript cells that know their dependencies, and interactive widgets — knobs, gauges, sliders — next to the text.
-  - title: Read and review
+  - icon: 📁
+    title: Your folders, wherever they are
+    details: A file explorer for a folder of the device, Nextcloud, or a GitHub or GitLab repository — with linked notes, tags and templates.
+  - icon: 📖
+    title: Read and review
     details: PDF files and documents as pages, side by side or one at a time, with comments and single-key shortcuts.
 ---
+
+<script setup>
+import { withBase } from 'vitepress';
+</script>
+
+<div class="pwo-band">
+
+<h2>See it at work</h2>
+<p class="lead">One application for the files of every day, on a computer or a phone.</p>
+
+<div class="pwo-shots">
+  <figure><img :src="withBase('/screenshots/document.png')" alt="A lab report with an equation and a table in the word processor"><figcaption>Text documents: Word, OpenDocument, Markdown</figcaption></figure>
+  <figure><img :src="withBase('/screenshots/spreadsheet.png')" alt="A spreadsheet with formulas"><figcaption>Spreadsheets with formulas and charts</figcaption></figure>
+  <figure><img :src="withBase('/screenshots/start.png')" alt="The start screen of the application"><figcaption>Start from a file, a folder or a template</figcaption></figure>
+</div>
+
+</div>

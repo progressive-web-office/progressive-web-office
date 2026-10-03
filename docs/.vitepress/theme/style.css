@@ -1,0 +1,108 @@
+/* Visual identity of the documentation: the application's palette. */
+:root {
+  --pwo-blue: #1f5fbf;
+  --pwo-doc: #1f5fbf;
+  --pwo-sheet: #2e8b4e;
+  --pwo-pres: #c8641a;
+  --pwo-pdf: #b3261e;
+
+  --vp-c-brand-1: #1f5fbf;
+  --vp-c-brand-2: #2a6fd6;
+  --vp-c-brand-3: #1f5fbf;
+  --vp-c-brand-soft: rgba(31, 95, 191, 0.12);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, var(--pwo-doc) 15%, var(--pwo-sheet) 55%, var(--pwo-pres) 90%);
+  --vp-home-hero-image-background-image: linear-gradient(135deg, rgba(31, 95, 191, 0.45) 0%, rgba(46, 139, 78, 0.35) 50%, rgba(200, 100, 26, 0.35) 100%);
+  --vp-home-hero-image-filter: blur(56px);
+
+  --vp-button-brand-bg: var(--pwo-blue);
+  --vp-button-brand-hover-bg: #2a6fd6;
+  --vp-button-brand-active-bg: #194f9f;
+}
+
+.dark {
+  --pwo-doc: #6ea2f5;
+  --pwo-sheet: #5cc285;
+  --pwo-pres: #f0a05a;
+  --pwo-pdf: #f2867e;
+
+  --vp-c-brand-1: #6ea2f5;
+  --vp-c-brand-2: #8ab4f8;
+  --vp-c-brand-3: #2a6fd6;
+  --vp-c-brand-soft: rgba(110, 162, 245, 0.16);
+  --vp-home-hero-image-background-image: linear-gradient(135deg, rgba(110, 162, 245, 0.35) 0%, rgba(92, 194, 133, 0.25) 50%, rgba(240, 160, 90, 0.25) 100%);
+}
+
+/* The logo next to the title in the navigation bar. */
+.VPNavBarTitle .logo {
+  height: 28px;
+  border-radius: 6px;
+}
+
+/* The hero picture: the application, framed like a window. */
+.VPHero .image-src {
+  max-width: 300px;
+  max-height: 300px;
+  filter: drop-shadow(0 18px 30px rgba(31, 95, 191, 0.25));
+}
+
+/* Feature cards: a coloured edge and icon, document blue, spreadsheet green, presentation orange. */
+.VPHomeFeatures .item:nth-child(3n + 1) .VPFeature { --pwo-edge: var(--pwo-doc); }
+.VPHomeFeatures .item:nth-child(3n + 2) .VPFeature { --pwo-edge: var(--pwo-sheet); }
+.VPHomeFeatures .item:nth-child(3n + 3) .VPFeature { --pwo-edge: var(--pwo-pres); }
+.VPHomeFeatures .item .VPFeature {
+  border-top: 3px solid var(--pwo-edge);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.VPHomeFeatures .item .VPFeature:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 30, 60, 0.08);
+}
+.VPHomeFeatures .item .VPFeature .icon {
+  background-color: color-mix(in srgb, var(--pwo-edge) 14%, transparent);
+}
+
+/* Screenshots of the home page. */
+.pwo-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin: 16px 0 8px;
+}
+.pwo-shots figure {
+  margin: 0;
+}
+.pwo-shots img {
+  width: 100%;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(15, 30, 60, 0.1);
+}
+.pwo-shots figcaption {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--vp-c-text-2);
+  text-align: center;
+}
+.pwo-band {
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 24px 24px 64px;
+}
+@media (min-width: 640px) {
+  .pwo-band { padding: 24px 48px 64px; }
+}
+@media (min-width: 960px) {
+  .pwo-band { padding: 24px 64px 80px; }
+}
+.pwo-band h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 24px 0 4px;
+  border: none;
+}
+.pwo-band p.lead {
+  color: var(--vp-c-text-2);
+  margin: 0 0 8px;
+}
