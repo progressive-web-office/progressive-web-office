@@ -1051,6 +1051,9 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .template-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .template-list li { display: flex; flex-direction: column; gap: 2px; }
 .template-card { justify-content: flex-start; font-weight: 600; text-align: left; padding: 10px 12px; }
+/* The emoji of each template and of each tab: decorative, the name stays the label. */
+.template-card[data-icon]::before { content: attr(data-icon); content: attr(data-icon) / ''; font-size: 1.5em; line-height: 1; font-weight: 400; margin-right: 8px; }
+.template-tab[data-icon]::before { content: attr(data-icon) ' '; content: attr(data-icon) ' ' / ''; }
 .template-list .hint { margin: 0 4px; font-size: 0.85em; }
 
 /* IMG-003, DOC-030: picture description and accessibility check. */

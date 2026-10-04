@@ -14,6 +14,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   source is at <https://github.com/progressive-web-office/progressive-web-office>
   and the application at
   <https://progressive-web-office.github.io/progressive-web-office/>.
+- **Templates and examples**: every template shows its emoji (they were
+  declared but not drawn), a template kept as a file shows the one of its
+  type (📄 text, 📊 spreadsheet, 📽️ presentation, 📝 Markdown…), and every
+  tab has its own (📄 Text documents, 📊 Spreadsheets, 📽️ Presentations,
+  🎨 Drawings, 💡 Examples, ⭐ My templates, 🗃️ a repository, ☁️ a cloud
+  folder).
 
 ### Fixed
 

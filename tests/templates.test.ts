@@ -226,3 +226,15 @@ describe('BIB-011 the article refers to its equation by name', () => {
     expect(before && 'text' in before ? before.text : '').toMatch(lang === 'en' ? /Equation $/ : /équation $/);
   });
 });
+
+describe('FILE-018 an emoji for each template', () => {
+  it('gives every built-in template its own emoji', () => {
+    expect(TEMPLATES.every((tpl) => tpl.icon.length > 0)).toBe(true);
+    expect(new Set(TEMPLATES.map((tpl) => tpl.icon)).size).toBe(TEMPLATES.length);
+  });
+
+  it('shows what a template kept as a file makes', async () => {
+    const { fileIcon } = await import('../src/templates/ui');
+    expect(['Letter.ott', 'a/Report.docx', 'Budget.xlsx', 'Data.csv', 'Talk.odp', 'Notes.md', 'Paper.tex', 'Plan.svg', 'Logo.PNG', '.ods'].map(fileIcon)).toEqual(['📄', '📄', '📊', '📊', '📽️', '📝', '📐', '🎨', '🖼️', '📊']);
+  });
+});
