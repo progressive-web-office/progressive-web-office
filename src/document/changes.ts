@@ -6,7 +6,7 @@
 import type { Mark, Node as PmNode, Slice } from 'prosemirror-model';
 import { TextSelection, type EditorState, type Transaction } from 'prosemirror-state';
 import { ReplaceStep, type MapResult, type Mappable } from 'prosemirror-transform';
-import { allParagraphs, isTextRun, normalizeRuns, type Revision, type RichDocument } from './model';
+import { allParagraphs, isTextRun, normalizeRuns, type Block, type Revision, type RichDocument } from './model';
 import { schema } from './pm/schema';
 
 /** Transactions that must not be tracked (accepting, rejecting, remote edits). */
@@ -136,12 +136,25 @@ export function changesOf(doc: PmNode): Change[] {
   return out;
 }
 
+/**
+ * Remove the text of a change; a paragraph left with nothing (the change was
+ * all of it, as a paragraph deleted whole) goes too, unless it is the only
+ * one where it stands.
+ */
+function removeText(tr: Transaction, from: number, to: number): void {
+  const $from = tr.doc.resolve(from);
+  const parent = $from.parent;
+  const whole = parent.type === schema.nodes.paragraph && from === $from.start() && to === $from.end() && parent.content.size === to - from;
+  if (whole && $from.depth > 0 && $from.node($from.depth - 1).childCount > 1) tr.delete($from.before(), $from.after());
+  else tr.delete(from, to);
+}
+
 /** Accept or reject a change. */
 export function decide(state: EditorState, change: Change, accept: boolean): Transaction {
   const tr = state.tr.setMeta(UNTRACKED, true);
   const type = change.kind === 'insert' ? schema.marks.insertion! : schema.marks.deletion!;
   if ((change.kind === 'insert') === accept) tr.removeMark(change.from, change.to, type);
-  else tr.delete(change.from, change.to);
+  else removeText(tr, change.from, change.to);
   return tr;
 }
 
@@ -151,14 +164,21 @@ export function decideAll(state: EditorState, accept: boolean): Transaction {
   for (const change of changesOf(state.doc).reverse()) {
     const type = change.kind === 'insert' ? schema.marks.insertion! : schema.marks.deletion!;
     if ((change.kind === 'insert') === accept) tr.removeMark(change.from, change.to, type);
-    else tr.delete(change.from, change.to);
+    else removeText(tr, change.from, change.to);
   }
   return tr;
 }
 
 /** The document with every change accepted, for formats without tracked changes. */
 export function acceptAll(doc: RichDocument): RichDocument {
-  const copy: RichDocument = { ...doc, blocks: structuredClone(doc.blocks) };
+  // A paragraph all of whose text is deleted goes with it.
+  const allDeleted = (b: Block): boolean => b.type === 'paragraph' && b.runs.length > 0 && b.runs.every((r) => isTextRun(r) && r.deleted);
+  const keep = <T extends Block>(blocks: T[]): T[] => {
+    const kept = blocks.filter((b) => !allDeleted(b));
+    return kept.length ? kept : blocks.slice(0, 1);
+  };
+  const copy: RichDocument = { ...doc, blocks: keep(structuredClone(doc.blocks)) };
+  for (const b of copy.blocks) if (b.type === 'table') for (const row of b.rows) for (const cell of row) cell.blocks = keep(cell.blocks);
   for (const p of allParagraphs(copy.blocks)) {
     if (!p.runs.some((r) => isTextRun(r) && (r.inserted || r.deleted))) continue;
     p.runs = normalizeRuns(

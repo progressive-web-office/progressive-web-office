@@ -648,7 +648,27 @@ changes and joined paragraphs are not tracked.
 The **Changes** panel beside the page lists every change: click one to
 select it, **Accept** or **Reject** it, or **Accept all** / **Reject all**.
 Accepting an insertion keeps its text; accepting a deletion removes its
-text; rejecting does the opposite.
+text; rejecting does the opposite. A paragraph whose text is all deleted
+goes with it once accepted (or once rejected, when it was all inserted).
+
+### Comparing two versions
+
+**⇆ Compare with another version…** (Review group, or the command palette)
+takes another file of the same document — an older copy, a version sent
+back by a colleague without tracked changes — in any format the application
+reads (OpenDocument, Word, Markdown, LaTeX…). Say which one is the newer:
+the document becomes the newer version, with what changed since the older
+one as **tracked changes**, signed with the newer one's name:
+
+- the paragraphs are matched first, then the words of each paragraph that
+  changed: the words removed are struck out, the words added underlined;
+- whole paragraphs added or removed are marked whole;
+- other blocks that differ (tables, rules…) are shown as in the newer
+  version, without marks — the summary counts them.
+
+Read the differences in the **Changes** panel, then accept or reject them;
+**Reject all** gives back the older version, **Accept all** the newer one.
+<kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the comparison.
 
 Changes are kept in Word (`.docx`, as Word shows them), OpenDocument
 (`.odt`, as LibreOffice shows them) and Markdown (CriticMarkup

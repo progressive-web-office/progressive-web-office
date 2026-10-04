@@ -101,6 +101,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Comparing two versions of a document (DOC-052): **⇆ Compare with another
+  version…** turns the differences with another file (older or newer, any
+  text format) into tracked changes, word by word, to accept or reject.
+  Accepting a deleted paragraph now removes the paragraph too.
+
 - Revoking one device only (DEVSYNC-010): **⛔ Revoke** next to a device makes
   a new key and gives it, encrypted for each, to the other devices online
   that accept; the revoked device no longer synchronises.

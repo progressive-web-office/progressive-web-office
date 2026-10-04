@@ -632,3 +632,38 @@ test('inserts a line break and special characters from the Insert group (DOC-051
   await page.keyboard.type('Next line');
   await expect(editor.locator('p br')).toHaveCount(1);
 });
+
+test('compares with another version: the differences become tracked changes (DOC-052)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New document' }).click();
+  const editor = page.locator('.ProseMirror');
+  await editor.click();
+  await page.keyboard.type('The meeting is on Monday.');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Bring the old report.');
+  const older = await saveAs(page, 'OpenDocument text (.odt)');
+  // The newer version, typed over.
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('The meeting is on Tuesday.');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Bring the new report and a pen.');
+
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Compare with another version…' }).click();
+  await (await chooser).setFiles({ name: 'monday.odt', mimeType: 'application/vnd.oasis.opendocument.text', buffer: older.data });
+  const ask = page.getByRole('dialog', { name: 'Compare two versions' });
+  await ask.getByLabel('monday.odt is the older version').check();
+  let summary = '';
+  page.once('dialog', (d) => {
+    summary = d.message();
+    void d.accept();
+  });
+  await ask.getByRole('button', { name: 'Open' }).click();
+  await expect.poll(() => summary).toContain('Compared: 5 words inserted and 2 deleted, in 2 paragraphs.');
+  await expect(editor.locator('del')).toHaveText(['Monday', 'old']);
+  await expect(editor.locator('ins')).toHaveText(['Tuesday', 'new', 'and a pen']);
+  // Rejecting every change brings the older text back.
+  await page.getByRole('button', { name: 'Reject all' }).click();
+  await expect(editor).toHaveText('The meeting is on Monday.Bring the old report.');
+  expect(errors).toEqual([]);
+});

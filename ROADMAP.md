@@ -82,7 +82,7 @@ group is not a commitment.
 - ✅ Mail merge: a document combined with a CSV file or a workbook gives N
   documents or one document to print (DOC-036)
 - Grammar checking with LanguageTool (public or self-hosted instance)
-- Visual comparison of two versions of a document
+- ✅ Comparison of two versions of a document, as tracked changes (DOC-052)
 - ✅ Review mode: text documents shown as pages like PDF files, page by page
   or scrolled, the same shortcuts (k/j…), comments, full screen without
   distractions (REVIEW-001 to REVIEW-004); next: clickable outline, read

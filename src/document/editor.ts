@@ -1873,6 +1873,49 @@ export class DocumentEditor implements EditorView {
     this.ctx.statusChanged();
   }
 
+  /**
+   * DOC-052: compare with another version of the document, chosen as a file:
+   * the differences become tracked changes of the newer version.
+   */
+  private compareWith(): void {
+    if (this.readOnly) return;
+    const input = h('input', { type: 'file', accept: '.odt,.docx,.md,.mdz,.tex,.jl,.py,.zip' });
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (file) void this.compareWithFile(file);
+    });
+    input.click();
+  }
+
+  private async compareWithFile(file: File): Promise<void> {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { detectFormat } = await import('../core/format');
+    const format = detectFormat(file.name, bytes);
+    if (!format || !['docx', 'odt', 'md', 'mdz', 'tex', 'texzip', 'jl', 'marimo'].includes(format)) return void window.alert(t('compare.notDocument', { name: file.name }));
+    const thisName = this.ctx.fileName?.() ?? t('compare.thisDocument');
+    const newer = t('compare.otherNewer', { name: file.name });
+    const older = t('compare.otherOlder', { name: file.name });
+    const which = await this.ctx.choose(t('compare.title'), t('compare.which', { name: file.name, current: thisName }), [newer, older], newer);
+    if (!which) return;
+    const run = async (): Promise<void> => {
+      const { readDocument } = await import('./io');
+      const { compareDocuments } = await import('./compare');
+      const other = await readDocument(format as TextFormat, bytes);
+      const current: RichDocument = { ...this.doc, blocks: this.currentBlocks() };
+      const otherIsNewer = which === newer;
+      const result = compareDocuments(otherIsNewer ? current : other, otherIsNewer ? other : current, { author: otherIsNewer ? file.name : thisName, date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z') });
+      // Pictures of the other version, for its new paragraphs.
+      if (otherIsNewer) for (const [key, res] of other.resources) if (!this.doc.resources.has(key)) this.doc.resources.set(key, res);
+      this.replaceBlocks(result.doc.blocks, false, true);
+      this.changesPanel.refresh();
+      this.ctx.changed();
+      window.alert(
+        [t('compare.done', { inserted: result.inserted, deleted: result.deleted, paragraphs: result.paragraphs }), result.otherBlocks ? t('compare.otherBlocks', { n: result.otherBlocks }) : '', t('compare.howTo')].filter(Boolean).join('\n\n'),
+      );
+    };
+    await (this.ctx.busy ? this.ctx.busy(run) : run());
+  }
+
   /** Comment the selection or the word at the cursor (REV-001). */
   private addComment(): void {
     if (this.readOnly) return;
@@ -1920,11 +1963,12 @@ export class DocumentEditor implements EditorView {
         ].filter((_c, i) => [addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, mergeCells, splitCell, toggleHeaderRow, deleteTable][i]!(state))
       : [];
     const menu = { label: t('ctx.menu'), category: t('ctx.edit'), where, run: () => this.showContextMenuAtCursor() };
+    const compare = { label: t('compare.button'), category: t('group.review'), where, keywords: 'diff compare versions comparer', run: () => this.compareWith() };
     const columns = [
       { label: t(columnsAt(state) ? 'cols.change' : 'cols.button'), category: t('cols.title'), where, keywords: COLUMNS_KEYWORDS, run: () => void this.editColumns() },
       { label: t('doc.columnBreak'), category: t('cols.title'), where, keys: ['Ctrl+Shift+Enter'], run: () => this.command(insertRule(false, true)) },
     ];
-    return [toggle, ...modes, ...this.review.commands(), ...fields, ...formInputs, ...springs, ...table, ...columns, menu];
+    return [toggle, ...modes, ...this.review.commands(), ...fields, ...formInputs, ...springs, ...table, ...columns, menu, compare];
   }
 
   /** FOLDER-023: the colours of the tags changed. */
@@ -1965,7 +2009,7 @@ export class DocumentEditor implements EditorView {
    * Replace the content with `blocks`, touching only the blocks that differ so
    * that the cursor and the undo history of untouched parts are kept.
    */
-  private replaceBlocks(blocks: Block[], remote: boolean): void {
+  private replaceBlocks(blocks: Block[], remote: boolean, untracked = false): void {
     const next = blocksToPm(blocks);
     const cur = this.view.state.doc;
     let start = 0;
@@ -1986,6 +2030,8 @@ export class DocumentEditor implements EditorView {
     for (let i = start; i < endNext; i++) nodes.push(next.child(i));
     const tr = this.view.state.tr.replaceWith(posOf(cur, start), posOf(cur, endCur), Fragment.from(nodes));
     if (remote) tr.setMeta(REMOTE, true).setMeta('addToHistory', false);
+    // DOC-052: changes already marked, not recorded again while tracking.
+    if (untracked) tr.setMeta(UNTRACKED, true);
     this.view.dispatch(tr);
   }
 
@@ -2379,7 +2425,7 @@ export class DocumentEditor implements EditorView {
       // UI-021: the context menu at the cursor, for touch screens (also a long press) and the keyboard.
       act(t('ctx.button'), '⋮', () => this.showContextMenuAtCursor(), t('ctx.buttonTitle')),
       ...(compact ? [] : [this.textToolsMenu(), this.viewToolsMenu()]),
-      toolGroup(t('group.review'), '💬', [act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`), this.trackButton, act(t('a11y.button'), '♿', () => void this.checkAccessibility(), t('a11y.buttonTitle'))]),
+      toolGroup(t('group.review'), '💬', [act(t('comment.add'), '💬', () => this.addComment(), `${t('comment.add')} (Ctrl+Alt+M)`), this.trackButton, act(t('compare.button'), '⇆', () => this.compareWith(), t('compare.buttonTitle')), act(t('a11y.button'), '♿', () => void this.checkAccessibility(), t('a11y.buttonTitle'))]),
       toolGroup(t('group.teach'), '🎓', [
         state(t('solution.button'), '✓', (s, d) => setParagraphAttrs({ solution: !paragraphAttr(s, 'solution') })(s, d), () => !!paragraphAttr(this.view.state, 'solution'), t('solution.title')),
         this.solutionsButton,
