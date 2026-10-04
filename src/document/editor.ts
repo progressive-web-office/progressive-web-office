@@ -760,6 +760,21 @@ export class DocumentEditor implements EditorView {
     return cmd(this.view.state, (tr) => this.view.dispatch(tr), this.view);
   }
 
+  /** A line break in the paragraph (Shift+Enter), from a button or the command palette. */
+  private insertLineBreak(): void {
+    const { state } = this.view;
+    this.view.dispatch(state.tr.replaceSelectionWith(schema.nodes.hard_break!.create()).scrollIntoView());
+    this.view.focus();
+  }
+
+  /** A special character — superscripts, degrees, signs, Greek letters, arrows… — typed at the cursor. */
+  private async insertSymbol(): Promise<void> {
+    const { chooseSymbol } = await import('./symbols');
+    const ch = await chooseSymbol(this.element);
+    if (ch) this.view.dispatch(this.view.state.tr.insertText(ch).scrollIntoView());
+    this.view.focus();
+  }
+
   // --- code cells (CODE-001..CODE-005) ----------------------------------------
 
   // --- context menu (UI-021) ----------------------------------------------------
@@ -2355,6 +2370,8 @@ export class DocumentEditor implements EditorView {
         act(t('doc.pageBreak'), '⤓', () => this.command(insertRule(true)), `${t('doc.pageBreak')} (Ctrl+Enter)`),
         act(t('cols.button'), '▥', () => void this.editColumns(), t('cols.buttonTitle')),
         act(t('doc.columnBreak'), '⫼', () => this.command(insertRule(false, true)), `${t('doc.columnBreak')} (Ctrl+Shift+Enter)`),
+        act(t('doc.lineBreak'), '↵', () => this.insertLineBreak(), `${t('doc.lineBreak')} (Shift+Enter)`),
+        act(t('doc.symbol'), 'Ω', () => void this.insertSymbol(), t('doc.symbolTitle')),
         act(t('snippet.title'), '✂', () => void this.openSnippets(), t('snippet.menu')),
       ]),
       h('span', { class: 'sep' }),

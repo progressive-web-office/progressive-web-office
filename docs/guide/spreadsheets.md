@@ -129,8 +129,8 @@ application: other spreadsheets show `#NAME?` for them.
 
 ## Sheets, rows and columns
 
-- **+** adds a sheet; double-click a tab to rename it; 🗑 deletes the current
-  sheet. References to a renamed sheet are updated.
+- **+** adds a sheet; double-click a tab, or **✎ Rename the sheet…**, to
+  rename it; 🗑 deletes the current sheet. References to a renamed sheet are updated.
 - **+Row / −Row / +Col / −Col** insert or delete rows and columns; formulas
   referring to moved cells are updated, references to deleted cells become
   `#REF!`.

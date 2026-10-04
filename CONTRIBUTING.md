@@ -47,7 +47,13 @@ More details: [docs/development.md](docs/development.md) and
 5. User-visible text goes in `src/i18n/en.ts`, with its French and Chinese
    translations in `fr.ts` and `zh.ts` (the type check fails when a key is
    missing). A machine translation marked in the pull request is fine.
-6. Run everything before committing:
+6. **A template or an example must be one a user could make with the
+   application itself.** Everything it uses — a field, a column break, a
+   chart, a column width, a bend in a line, a gradient, a layer — needs a
+   command in the interface (a toolbar button, a menu, the command palette),
+   not only in the code that builds the template. Add the command with the
+   template, and say in the pull request where it is.
+7. Run everything before committing:
 
    ```sh
    just check   # type check, unit tests, build, documentation

@@ -18,6 +18,7 @@ Presentation** (`.odp`) files.
 | Button | Action |
 |--------|--------|
 | **+ Slide** | add a slide (title + bullet list) after the current one |
+| **+ Title** | add a title slide (a title and a subtitle, centred) after the current one |
 | ⧉ | duplicate the current slide |
 | ↑ ↓ | move the current slide |
 | 🗑 | delete the current slide |

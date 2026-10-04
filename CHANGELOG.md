@@ -101,6 +101,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Every built-in template can now be made from the interface: a button to
+  rename a sheet (✎), a **+ Title** button for title slides, and in the
+  document Insert group a line break (↵) and a grid of special characters
+  (Ω, searched by name) (DOC-051). CONTRIBUTING asks that a new template
+  only use what the interface can make.
+
 - **Lines of drawings**: arrows at either end and right angles changed on
   a line already drawn, and **bends** — a double click on the line adds one,
   drag it to move it, a double click removes it — for the loops of a GRAFCET

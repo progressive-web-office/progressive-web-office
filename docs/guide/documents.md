@@ -64,7 +64,8 @@ menu, <kbd>Enter</kbd> chooses, <kbd>Esc</kbd> closes it.
 | Paragraph spacing | ¶: left and first-line indents (cm, negative for a hanging indent), space before and after (pt), line spacing | |
 | Bulleted / numbered list | •≡ 1≡ | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>8</kbd> / <kbd>7</kbd>; <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> to indent / outdent |
 | Alignment | ⇤ ↔ ⇥ ☰ | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>E</kbd> / <kbd>R</kbd> / <kbd>J</kbd> |
-| Line break in the same paragraph | | <kbd>Shift</kbd>+<kbd>Enter</kbd> |
+| Line break in the same paragraph | ↵ | <kbd>Shift</kbd>+<kbd>Enter</kbd> |
+| Special character (², °, ±, →, α, €, …) | Ω: a grid by group, searched by name | |
 | Link | 🔗 | <kbd>Ctrl</kbd>+<kbd>K</kbd> |
 | Image | 🖼 (or paste / drop an image) | |
 | Table | ▦ (3×3), then the table bar (below) | <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> to move between cells |

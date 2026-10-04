@@ -426,7 +426,9 @@ export class SheetEditor implements EditorView {
       return tab;
     });
     const remove = this.wb.sheets.length > 1 ? button(t('sheet.deleteSheet'), () => this.deleteSheetConfirm(), { text: '🗑', className: 'sheet-del', title: t('sheet.deleteSheetTitle') }) : null;
-    this.tabs.replaceChildren(...tabs, button(t('sheet.addSheet'), () => this.addSheet(), { text: '+', className: 'sheet-add' }), ...(remove ? [remove] : []));
+    // A sheet renamed without a double click (keyboard, command palette).
+    const rename = button(t('sheet.renameSheet'), () => this.renameSheetPrompt(this.si), { text: '✎', className: 'sheet-rename', title: t('sheet.renameSheet') });
+    this.tabs.replaceChildren(...tabs, button(t('sheet.addSheet'), () => this.addSheet(), { text: '+', className: 'sheet-add' }), rename, ...(remove ? [remove] : []));
   }
 
   // --- changes & history -----------------------------------------------------------

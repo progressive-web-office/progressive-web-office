@@ -619,3 +619,16 @@ test('inserts snippets with ;; and their fields, and keeps the user snippets (DO
   await expect(editor).toContainText('Lab of B12');
   expect(await page.evaluate(() => localStorage.getItem('pwo.snippets'))).toContain('"name":"lab"');
 });
+
+test('inserts a line break and special characters from the Insert group (DOC-051)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Area: 12 m');
+  await page.getByRole('button', { name: 'Special character…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Special character…' });
+  await dialog.getByPlaceholder(/Search a character/).fill('square');
+  await dialog.getByRole('button', { name: /² — superscript/ }).click();
+  await expect(editor).toContainText('Area: 12 m²');
+  await page.getByRole('button', { name: 'Line break' }).click();
+  await page.keyboard.type('Next line');
+  await expect(editor.locator('p br')).toHaveCount(1);
+});

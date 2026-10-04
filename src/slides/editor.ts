@@ -11,7 +11,7 @@ import { bytesToBase64 } from '../document/markdown-writer';
 import { addResource, type Paragraph } from '../document/model';
 import { imageSize } from '../core/image-size';
 import { writePresentation, type SlidesFormat } from './io';
-import { contentSlide, newShapeId, resizePresentation, SLIDE_SIZES, slideOrientation, slideSizeFor, slideSizeId, slideText, textShape, type Orientation, type Presentation, type Shape, type Slide, type SlideSizeId } from './model';
+import { contentSlide, titleSlide, newShapeId, resizePresentation, SLIDE_SIZES, slideOrientation, slideSizeFor, slideSizeId, slideText, textShape, type Orientation, type Presentation, type Shape, type Slide, type SlideSizeId } from './model';
 
 interface UndoState {
   slides: Slide[];
@@ -496,9 +496,10 @@ export class SlideEditor implements EditorView {
 
   // --- commands ----------------------------------------------------------------------
 
-  private addSlide(): void {
+  /** A content slide, or a title slide (a section, a title in the middle of a talk). */
+  private addSlide(layout: 'content' | 'title' = 'content'): void {
     this.snapshot();
-    this.pres.slides.splice(this.current + 1, 0, contentSlide(this.pres.width, this.pres.height));
+    this.pres.slides.splice(this.current + 1, 0, (layout === 'title' ? titleSlide : contentSlide)(this.pres.width, this.pres.height));
     this.current++;
     this.selected = null;
     this.changed();
@@ -718,6 +719,7 @@ export class SlideEditor implements EditorView {
       b(t('slides.present'), t('slides.presentText'), () => this.startShow()),
       h('span', { class: 'sep' }),
       b(t('slides.newSlide'), t('slides.newSlideText'), () => this.addSlide()),
+      b(t('slides.newTitleSlide'), t('slides.newTitleSlideText'), () => this.addSlide('title')),
       b(t('slides.duplicate'), '⧉', () => this.duplicateSlide()),
       b(t('slides.moveUp'), '↑', () => this.moveSlide(-1)),
       b(t('slides.moveDown'), '↓', () => this.moveSlide(1)),

@@ -1585,3 +1585,11 @@ th.colhead { position: relative; }
 
 .devsync-recent { list-style: none; padding: 0; max-height: 50vh; overflow: auto; }
 .devsync-recent li { margin: 4px 0; }
+
+/* DOC-047: special characters. */
+.symbol-dialog { max-width: 32rem; }
+.symbol-dialog input[type=search] { width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+.symbol-groups { max-height: 60vh; overflow: auto; }
+.symbol-groups h3 { font-size: 0.9rem; margin: 8px 0 4px; }
+.symbol-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.symbol-cell { min-width: 2.2em; font-size: 1.1rem; padding: 2px 6px; }
