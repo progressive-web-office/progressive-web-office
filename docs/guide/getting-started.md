@@ -57,7 +57,7 @@ background in every theme, as on paper.
 ## Recent files and recovered drafts
 
 Files you open are added to **Recent files** on the start screen (up to 12,
-files under 25 MB), with their format, size and the date and time they were
+files under 100 MB), with their format, size and the date and time they were
 last opened. The copies are stored only in this browser (IndexedDB);
 **×** removes an entry and deletes its stored copy, **Clear recent files**
 removes them all.
@@ -136,7 +136,7 @@ browser information and the component versions to paste into the report.
 
 ## Limits
 
-Files larger than 50 MB are refused to keep the browser responsive.
+Files larger than 200 MB (ZIP archives: 1 GB, read one file at a time) are refused to keep the browser responsive.
 
 ## On a phone
 

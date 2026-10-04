@@ -1082,7 +1082,7 @@ export const zh: Record<MessageKey, string> = {
   'remote.error.address': '此链接无效：{message}',
   'remote.error.network': '无法从 {host} 下载文档：服务器无法访问，或不允许其他网站读取（CORS）。',
   'remote.error.status': '{host} 未提供文档（{message}）。',
-  'remote.error.tooLarge': '{host} 上的文档超过 50 MB。',
+  'remote.error.tooLarge': '{host} 上的文档超过 200 MB。',
   'remote.error.changed': '{host} 上的文档自链接创建以来已更改：不予显示。',
   'sync.open': '扫码同步',
   'sync.openTitle': '通过二维码与另一台设备合并本文档的修改，无需网络',

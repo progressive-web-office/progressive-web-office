@@ -445,6 +445,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- The version shows the date of the build as Semantic Versioning build
+  metadata: `v0.1.0+20261004 (1a2b3c4)` — the date tells how recent a build
+  is and is ignored when versions are compared.
+- Larger files: up to **200 MB** (was 50 MB; ZIP archives still 1 GB), and
+  recent files keep a copy up to 100 MB (was 25 MB).
+
 - The start screen offers **Templates and examples** first, on a card twice
   as wide.
 - Compact toolbars (UI-020): the word processor and the header keep the

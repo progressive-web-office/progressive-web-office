@@ -46,7 +46,7 @@ describe('FILE-004 / FILE-012 rejected files', () => {
   it('refuses files over the size limit', async () => {
     const app = new App(root);
     const big = new File(['x'], 'big.csv');
-    Object.defineProperty(big, 'size', { value: 60 * 1024 * 1024 });
+    Object.defineProperty(big, 'size', { value: 250 * 1024 * 1024 });
     await app.openFile(big);
     expect(root.querySelector('[role="alert"]')?.textContent).toMatch(/too large/i);
   });

@@ -31,6 +31,6 @@ describe('SHARE-011 links to a document on a server', () => {
     await expect(fetchRemote({ url: FILE, sha256: '0'.repeat(64) }, ok as typeof fetch)).rejects.toMatchObject({ kind: 'changed' });
     await expect(fetchRemote({ url: FILE }, (async () => new Response('', { status: 404 })) as typeof fetch)).rejects.toMatchObject({ kind: 'status' });
     await expect(fetchRemote({ url: FILE }, (async () => { throw new TypeError('Failed to fetch'); }) as typeof fetch)).rejects.toMatchObject({ kind: 'network' });
-    await expect(fetchRemote({ url: FILE }, (async () => new Response('x', { headers: { 'Content-Length': String(60 * 1024 * 1024) } })) as typeof fetch)).rejects.toMatchObject({ kind: 'tooLarge' });
+    await expect(fetchRemote({ url: FILE }, (async () => new Response('x', { headers: { 'Content-Length': String(250 * 1024 * 1024) } })) as typeof fetch)).rejects.toMatchObject({ kind: 'tooLarge' });
   });
 });

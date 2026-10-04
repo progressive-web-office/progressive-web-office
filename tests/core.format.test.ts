@@ -65,6 +65,6 @@ describe('FILE-003 format detection', () => {
   });
 
   it('FILE-012 defines a 50 MB limit', () => {
-    expect(MAX_FILE_SIZE).toBe(50 * 1024 * 1024);
+    expect(MAX_FILE_SIZE).toBe(200 * 1024 * 1024);
   });
 });

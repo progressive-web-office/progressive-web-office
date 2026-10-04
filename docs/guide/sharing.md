@@ -84,7 +84,7 @@ downloaded and gives a link and its QR code.
   send to the server of Progressive Web Office.
 - The server must let other sites read the file (CORS). GitHub Pages and raw
   GitHub files do; for Nextcloud or your own server, allow it for the file.
-  Only `https://` addresses are accepted, and files up to 50 MB.
+  Only `https://` addresses are accepted, and files up to 200 MB.
 
 ## Receive on this device
 

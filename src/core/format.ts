@@ -11,7 +11,7 @@ export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 
 export type DocumentKind = 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'file';
 
 /** Maximum accepted file size (FILE-012). */
-export const MAX_FILE_SIZE = 50 * 1024 * 1024;
+export const MAX_FILE_SIZE = 200 * 1024 * 1024;
 /** Maximum size of a ZIP archive opened as a folder (FILE-021); its files are read one at a time. */
 export const MAX_ARCHIVE_SIZE = 1024 * 1024 * 1024;
 

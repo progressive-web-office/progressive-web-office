@@ -2,7 +2,7 @@
 import { t } from '../i18n';
 import { button, h } from './dom';
 import { zoomableQr } from './qr';
-import { BUILD, shortCommit } from './build-info';
+import { BUILD, fullVersion, shortCommit } from './build-info';
 
 export { BUILD };
 
@@ -24,7 +24,7 @@ const offlineReady = (): boolean => !!navigator.serviceWorker?.controller;
 /** Plain-text details to paste into a bug report. */
 export function debugReport(): string {
   return [
-    `${t('app.name')} ${BUILD.version} (${shortCommit()}, ${BUILD.date.slice(0, 10)})`,
+    `${t('app.name')} ${fullVersion()} (${shortCommit()}, ${BUILD.date.slice(0, 10)})`,
     `${location.origin}${location.pathname}`,
     navigator.userAgent,
     `${t('about.language')}: ${document.documentElement.lang || navigator.language}`,
@@ -68,7 +68,7 @@ export function aboutContent(appUrl: string): HTMLElement {
   commit.classList.add('mono');
   const rows: [string, Node | string][] = [
     [t('about.author'), link(AUTHOR_URL, AUTHOR)],
-    [t('about.version'), link(`${SOURCE_URL}/blob/main/CHANGELOG.md`, BUILD.version)],
+    [t('about.version'), link(`${SOURCE_URL}/blob/main/CHANGELOG.md`, fullVersion())],
     [t('about.commit'), commit],
     [t('about.built'), Number.isNaN(date.getTime()) ? BUILD.date : date.toLocaleString()],
     [t('about.license'), link(LICENSE_URL, 'GNU AGPL-3.0-or-later')],

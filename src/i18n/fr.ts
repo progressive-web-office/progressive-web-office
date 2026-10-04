@@ -1082,7 +1082,7 @@ export const fr: Record<MessageKey, string> = {
   'remote.error.address': 'Ce lien n’est pas valide : {message}',
   'remote.error.network': 'Le document n’a pas pu être téléchargé depuis {host} : le serveur est injoignable ou n’autorise pas les autres sites à le lire (CORS).',
   'remote.error.status': '{host} n’a pas fourni le document ({message}).',
-  'remote.error.tooLarge': 'Le document de {host} dépasse 50 Mo.',
+  'remote.error.tooLarge': 'Le document de {host} dépasse 200 Mo.',
   'remote.error.changed': 'Le document sur {host} a changé depuis la création du lien : il n’est pas affiché.',
   'sync.open': 'Synchroniser par QR',
   'sync.openTitle': 'Fusionner les modifications de ce document avec un autre appareil par codes QR, sans réseau',

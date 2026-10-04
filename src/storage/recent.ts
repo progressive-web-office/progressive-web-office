@@ -10,7 +10,7 @@ const DB_VERSION = 4;
 export const MAX_VERSIONS = 30;
 export const MAX_RECENT = 12;
 /** Larger files are not kept in the recent list (storage quota). */
-export const MAX_RECENT_SIZE = 25 * 1024 * 1024;
+export const MAX_RECENT_SIZE = 100 * 1024 * 1024;
 
 export interface RecentEntry {
   id: string;

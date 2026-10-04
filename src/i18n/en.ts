@@ -1080,7 +1080,7 @@ export const en = {
   'remote.error.address': 'This link is not valid: {message}',
   'remote.error.network': 'The document could not be downloaded from {host}: the server is unreachable or does not let other sites read it (CORS).',
   'remote.error.status': '{host} did not give the document ({message}).',
-  'remote.error.tooLarge': 'The document of {host} is larger than 50 MB.',
+  'remote.error.tooLarge': 'The document of {host} is larger than 200 MB.',
   'remote.error.changed': 'The document on {host} has changed since the link was made: it is not shown.',
   'sync.open': 'Sync by QR',
   'sync.openTitle': 'Merge changes to this document with another device through QR codes, without a network',
