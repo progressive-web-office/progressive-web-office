@@ -19,6 +19,7 @@ Presentation** (`.odp`) files.
 |--------|--------|
 | **+ Slide** | add a slide (title + bullet list) after the current one |
 | **+ Title** | add a title slide (a title and a subtitle, centred) after the current one |
+| **+ Layout ▾** | add a slide with a layout: title slide, title and content, section header, two contents, comparison (two headings over two lists), title only, blank |
 | ⧉ | duplicate the current slide |
 | ↑ ↓ | move the current slide |
 | 🗑 | delete the current slide |
@@ -39,6 +40,9 @@ files.
 - **T** text box, **▭** rectangle, **◯** ellipse, **🖼** image.
 - Click a shape to select it; drag to move it, drag the corner handle to
   resize it. Arrow keys move the selected shape (<kbd>Shift</kbd>: 10 px).
+- While you drag, the shape **snaps** to the edges and centres of the other
+  shapes and of the slide, and a pink line shows what it is aligned with;
+  hold <kbd>Alt</kbd> to place it freely.
 - Double-click (or <kbd>Enter</kbd>) to edit its text; <kbd>Esc</kbd> to stop.
 - <kbd>Delete</kbd> removes the selected shape; ⬆ ⬇ change its stacking
   order; the colour picker sets its fill colour, and the list next to it the

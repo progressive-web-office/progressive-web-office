@@ -136,3 +136,35 @@ test('presenter view: notes, next slide and timer in a second window, driving th
   await expect(show).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('new slides with a layout, and shapes snapped to alignment guides (PRES-015, PRES-016)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New presentation' }).click();
+  await page.getByRole('button', { name: 'Add a slide with a layout' }).click();
+  await page.getByRole('menuitem', { name: 'Two contents' }).click();
+  await expect(page.locator('.slide-thumb')).toHaveCount(2);
+  await expect(page.locator('.stage .shape.text')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Add a slide with a layout' }).click();
+  await page.getByRole('menuitem', { name: 'Blank' }).click();
+  await expect(page.locator('.stage .shape')).toHaveCount(0);
+
+  // Two rectangles: the second dragged near the left edge of the first snaps to it.
+  await page.getByRole('button', { name: 'Add rectangle' }).click();
+  await page.getByRole('button', { name: 'Add rectangle' }).click();
+  const rects = page.locator('.stage .shape.rect');
+  await expect(rects).toHaveCount(2);
+  const second = rects.nth(1);
+  const a = (await rects.nth(0).boundingBox())!;
+  const b = (await second.boundingBox())!;
+  // Move the second well below the first, 3 pixels off its left edge.
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  const targetX = b.x + b.width / 2 + (a.x - b.x) + 3;
+  await page.mouse.move(targetX, b.y + b.height / 2 + 150, { steps: 6 });
+  await expect(page.locator('.stage .guide-x')).not.toHaveCount(0);
+  await page.mouse.up();
+  await expect(page.locator('.stage .guide')).toHaveCount(0);
+  const after = (await second.boundingBox())!;
+  expect(Math.abs(after.x - a.x)).toBeLessThan(1);
+  expect(errors).toEqual([]);
+});

@@ -101,6 +101,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Slide layouts and alignment guides (PRES-015, PRES-016): **+ Layout ▾**
+  adds a section header, two contents, comparison, title only or blank
+  slide; dragged shapes snap to the edges and centres of the other shapes
+  and of the slide, with guide lines (Alt to place freely).
+
 - Presenter view (PRES-014): **🎤** starts the slideshow with a console in a
   second window — current and next slide, speaker notes, timer and clock —
   moving with the slideshow; alone in the window to rehearse when pop-ups

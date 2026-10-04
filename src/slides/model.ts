@@ -93,6 +93,42 @@ export function contentSlide(width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.h
   };
 }
 
+/** PRES-016: the layouts a new slide can have. */
+export type SlideLayout = 'title' | 'content' | 'section' | 'twoContent' | 'comparison' | 'titleOnly' | 'blank';
+export const SLIDE_LAYOUTS: SlideLayout[] = ['title', 'content', 'section', 'twoContent', 'comparison', 'titleOnly', 'blank'];
+
+/** A new slide with a layout: its placeholders, sized for the slide. */
+export function layoutSlide(layout: SlideLayout, width = DEFAULT_SIZE.width, height = DEFAULT_SIZE.height): Slide {
+  const title = (): Shape => textShape(t('slides.slideTitle'), { placeholder: 'title', x: r(width * 0.06), y: r(height * 0.05), width: r(width * 0.88), height: r(height * 0.15), fontSize: 36, anchor: 'middle' });
+  const body = (x: number, y: number, w: number, h: number, fontSize = 24): Shape =>
+    textShape('', { placeholder: 'body', x: r(x), y: r(y), width: r(w), height: r(h), fontSize, paragraphs: [{ type: 'paragraph', style: 'normal', list: { ordered: false, level: 0 }, runs: [{ text: t('slides.firstPoint') }] }] });
+  const heading = (x: number, y: number, w: number): Shape => textShape(t('slides.columnHeading'), { placeholder: 'body', x: r(x), y: r(y), width: r(w), height: r(height * 0.09), fontSize: 26, anchor: 'middle', paragraphs: [{ type: 'paragraph', style: 'normal', runs: [{ text: t('slides.columnHeading'), bold: true }] }] });
+  const half = width * 0.43;
+  switch (layout) {
+    case 'title':
+      return titleSlide(width, height);
+    case 'content':
+      return contentSlide(width, height);
+    case 'section':
+      return {
+        shapes: [
+          textShape(t('slides.sectionTitle'), { placeholder: 'title', x: r(width * 0.08), y: r(height * 0.4), width: r(width * 0.84), height: r(height * 0.2), fontSize: 44, anchor: 'bottom' }),
+          textShape(t('slides.sectionText'), { placeholder: 'body', x: r(width * 0.08), y: r(height * 0.62), width: r(width * 0.84), height: r(height * 0.12), fontSize: 22 }),
+        ],
+      };
+    case 'twoContent':
+      return { shapes: [title(), body(width * 0.06, height * 0.24, half, height * 0.66), body(width * 0.51, height * 0.24, half, height * 0.66)] };
+    case 'comparison':
+      return {
+        shapes: [title(), heading(width * 0.06, height * 0.23, half), heading(width * 0.51, height * 0.23, half), body(width * 0.06, height * 0.34, half, height * 0.56, 22), body(width * 0.51, height * 0.34, half, height * 0.56, 22)],
+      };
+    case 'titleOnly':
+      return { shapes: [title()] };
+    case 'blank':
+      return { shapes: [] };
+  }
+}
+
 export function emptyPresentation(): Presentation {
   return { ...DEFAULT_SIZE, slides: [titleSlide()], resources: new Map(), meta: {} };
 }

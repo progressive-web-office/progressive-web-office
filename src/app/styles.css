@@ -579,6 +579,10 @@ textarea.pdf-field { resize: none; }
 .slideshow { position: fixed; inset: 0; z-index: 1000; background: #000; display: grid; place-items: center; outline: none; cursor: pointer; }
 .show-frame { position: relative; overflow: hidden; }
 .show-frame .slide { transform-origin: 0 0; position: absolute; top: 0; left: 0; }
+/* PRES-015: alignment guides while moving or resizing a shape. */
+.stage-slide .guide { position: absolute; z-index: 5; pointer-events: none; background: #e0218a; }
+.stage-slide .guide-x { width: 1px; margin-left: -0.5px; }
+.stage-slide .guide-y { height: 1px; margin-top: -0.5px; }
 /* PRES-014: the presenter's console. */
 .presenter { position: fixed; inset: 0; z-index: 1001; display: flex; flex-direction: column; gap: 10px; padding: 12px; box-sizing: border-box; background: #1b1b1f; color: #f2f2f2; font-family: system-ui, sans-serif; outline: none; }
 .presenter button { background: #2c2c33; color: #f2f2f2; border: 1px solid #4a4a55; border-radius: 6px; padding: 4px 10px; font-size: 1rem; cursor: pointer; }

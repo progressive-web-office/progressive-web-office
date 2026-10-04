@@ -1,9 +1,11 @@
 /** Presentation editor view (PRES-004..PRES-010). */
+import { snapMove, snapResize, type Guide } from './guides';
+import { openContextMenu } from '../app/context-menu';
 import { openPresenter, type PresenterConsole } from './presenter';
 import { colorMoreButton } from '../color/more';
 import { beforeMutation, slideTools, type AgentTool } from '../ai/tools';
 import { contentHeightPx, contentWidthPx, mmToPx, type PrintSettings } from '../print/settings';
-import { t } from '../i18n';
+import { t, type MessageKey } from '../i18n';
 import { button, h } from '../app/dom';
 import { sizeInput } from '../app/size-input';
 import type { EditorView, ViewContext } from '../app/views';
@@ -12,7 +14,10 @@ import { bytesToBase64 } from '../document/markdown-writer';
 import { addResource, type Paragraph } from '../document/model';
 import { imageSize } from '../core/image-size';
 import { writePresentation, type SlidesFormat } from './io';
-import { contentSlide, titleSlide, newShapeId, resizePresentation, SLIDE_SIZES, slideOrientation, slideSizeFor, slideSizeId, slideText, textShape, type Orientation, type Presentation, type Shape, type Slide, type SlideSizeId } from './model';
+import { layoutSlide, SLIDE_LAYOUTS, newShapeId, resizePresentation, SLIDE_SIZES, slideOrientation, slideSizeFor, slideSizeId, slideText, textShape, type Orientation, type Presentation, type Shape, type Slide, type SlideLayout, type SlideSizeId } from './model';
+
+/** PRES-016: a sign for each layout in the menu. */
+const LAYOUT_ICONS: Record<SlideLayout, string> = { title: '🅃', content: '☰', section: '§', twoContent: '◫', comparison: '⚖', titleOnly: '▔', blank: '▢' };
 
 interface UndoState {
   slides: Slide[];
@@ -357,19 +362,31 @@ export class SlideEditor implements EditorView {
       if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 2) return;
       if (!drag.moved) this.snapshot();
       drag.moved = true;
+      // PRES-015: snapped to the edges and centres of the other shapes and of the slide (not with Alt).
+      const others = e.altKey ? [] : this.slide().shapes.filter((s) => s !== shape);
+      const threshold = e.altKey ? -1 : 6 / this.scale;
+      const size = { width: this.pres.width, height: this.pres.height };
+      let guides: Guide[] = [];
       if (drag.mode === 'move') {
-        shape.x = Math.round(drag.sx + dx);
-        shape.y = Math.round(drag.sy + dy);
+        const snapped = snapMove({ x: drag.sx + dx, y: drag.sy + dy, width: shape.width, height: shape.height }, others, size, threshold);
+        shape.x = Math.round(snapped.x);
+        shape.y = Math.round(snapped.y);
+        guides = snapped.guides;
       } else {
-        shape.width = Math.max(10, Math.round(drag.sw + dx));
-        shape.height = Math.max(10, Math.round(shape.kind === 'image' && e.shiftKey ? (drag.sh * shape.width) / drag.sw : drag.sh + dy));
+        const keepRatio = shape.kind === 'image' && e.shiftKey;
+        const snapped = snapResize({ x: shape.x, y: shape.y, width: drag.sw + dx, height: keepRatio ? drag.sh : drag.sh + dy }, others, size, keepRatio ? -1 : threshold);
+        shape.width = Math.max(10, Math.round(snapped.width));
+        shape.height = Math.max(10, Math.round(keepRatio ? (drag.sh * shape.width) / drag.sw : snapped.height));
+        guides = keepRatio ? [] : snapped.guides;
       }
+      this.showGuides(guides);
       el.style.left = `${shape.x}px`;
       el.style.top = `${shape.y}px`;
       el.style.width = `${shape.width}px`;
       el.style.height = `${shape.height}px`;
     });
     const end = (): void => {
+      this.showGuides([]);
       if (drag?.moved) {
         this.ctx.changed();
         this.renderList();
@@ -383,6 +400,29 @@ export class SlideEditor implements EditorView {
       // DRAW-007: a drawing (an SVG picture) opens again in the drawing editor.
       else if (!this.readOnly && this.pres.resources.get(shape.image ?? '')?.mediaType === 'image/svg+xml') void this.editDrawing(shape);
     });
+  }
+
+  /** PRES-015: the alignment guides shown while a shape is moved or resized. */
+  private showGuides(guides: Guide[]): void {
+    const holder = this.stage.querySelector<HTMLElement>('.stage-slide');
+    if (!holder) return;
+    for (const g of Array.from(holder.querySelectorAll('.guide'))) g.remove();
+    for (const g of guides) {
+      const s = this.scale;
+      const style = g.axis === 'x' ? `left: ${g.at * s}px; top: ${g.from * s}px; height: ${(g.to - g.from) * s}px` : `top: ${g.at * s}px; left: ${g.from * s}px; width: ${(g.to - g.from) * s}px`;
+      holder.append(h('div', { class: `guide guide-${g.axis}`, 'aria-hidden': 'true', style }));
+    }
+  }
+
+  /** PRES-016: choose the layout of a new slide. */
+  private chooseLayout(anchor: HTMLElement): void {
+    const box = anchor.getBoundingClientRect();
+    openContextMenu(
+      box.left,
+      box.bottom,
+      SLIDE_LAYOUTS.map((layout) => ({ label: t(`slides.layout.${layout}` as MessageKey), icon: LAYOUT_ICONS[layout], run: () => this.addSlide(layout) })),
+      { label: t('slides.newSlideLayout'), returnFocus: anchor },
+    );
   }
 
   /** FILE-017: no edits while read-only. */
@@ -498,9 +538,10 @@ export class SlideEditor implements EditorView {
   // --- commands ----------------------------------------------------------------------
 
   /** A content slide, or a title slide (a section, a title in the middle of a talk). */
-  private addSlide(layout: 'content' | 'title' = 'content'): void {
+  private addSlide(layout: SlideLayout = 'content'): void {
+    this.finishEditing();
     this.snapshot();
-    this.pres.slides.splice(this.current + 1, 0, (layout === 'title' ? titleSlide : contentSlide)(this.pres.width, this.pres.height));
+    this.pres.slides.splice(this.current + 1, 0, layoutSlide(layout, this.pres.width, this.pres.height));
     this.current++;
     this.selected = null;
     this.changed();
@@ -714,6 +755,8 @@ export class SlideEditor implements EditorView {
       this.select(shape.id);
     });
     this.textColor.addEventListener('change', () => this.setTextColor(this.textColor.value));
+    const layoutButton: HTMLButtonElement = b(t('slides.newSlideLayout'), t('slides.newSlideLayoutText'), () => this.chooseLayout(layoutButton));
+    layoutButton.setAttribute('aria-haspopup', 'menu');
     return h(
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('slides.label') },
@@ -722,6 +765,7 @@ export class SlideEditor implements EditorView {
       h('span', { class: 'sep' }),
       b(t('slides.newSlide'), t('slides.newSlideText'), () => this.addSlide()),
       b(t('slides.newTitleSlide'), t('slides.newTitleSlideText'), () => this.addSlide('title')),
+      layoutButton,
       b(t('slides.duplicate'), '⧉', () => this.duplicateSlide()),
       b(t('slides.moveUp'), '↑', () => this.moveSlide(-1)),
       b(t('slides.moveDown'), '↓', () => this.moveSlide(1)),
