@@ -615,6 +615,28 @@ with one sheet per variant (without the solutions), its answer key (with
 them), and a CSV table of the values drawn for each variant.
 :::
 
+### Bode and Nyquist plots
+
+**📈 Bode / Nyquist plots…** (🎓 Teaching) draws the frequency response of a
+transfer function, written as on the board:
+
+| H(s) | |
+|------|---|
+| `10/((s+1)(s+10))` | products side by side, brackets |
+| `K*(1+tau s)/(s(1+2s)^2)` with **Values** `K = 2, tau = 0.5` | named values |
+| `2p/(1+0,5p)^2` | `p` for the Laplace variable, decimal commas |
+
+- **Bode diagram**: gain in dB and phase in degrees against ω on a log
+  scale; the phase stays continuous below −180°.
+- **Nyquist diagram**: H(jω) in the complex plane, ω > 0 solid with an
+  arrow, ω < 0 dashed, the point −1 marked.
+- The frequencies shown follow the poles and zeros (two decades around
+  them); set **From** / **To** as powers of ten to choose them.
+- **The gain and phase margins** are worked out, said under the formula and
+  marked on the Bode diagram.
+
+The plots go in as SVG pictures, with a description for screen readers.
+
 ### Quizzes for Moodle and AMC
 
 Write the questions as on any sheet, with **form fields** (☑ Form field):

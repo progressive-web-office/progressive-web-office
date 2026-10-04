@@ -704,3 +704,21 @@ test('exports the questions of a document for Moodle and AMC (TEACH-003)', async
   expect(amc.text).toContain('\\correctchoice{Paris}');
   expect(errors).toEqual([]);
 });
+
+test('inserts Bode and Nyquist plots of a transfer function (TEACH-004)', async ({ page }) => {
+  await newDocument(page);
+  await page.getByRole('button', { name: 'Bode / Nyquist plots…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Bode and Nyquist plots' });
+  await expect(dialog.locator('.control-preview svg')).toHaveCount(1);
+  await dialog.getByLabel('Transfer function H(s)').fill('K/(s(s+1)^2)');
+  await expect(dialog.getByRole('alert')).toContainText('unknown value K');
+  await dialog.getByLabel('Values').fill('K = 0.5');
+  await expect(dialog.getByText(/gain margin 12\.0 dB at ω = 1\.00 rad\/s/)).toBeVisible();
+  await dialog.getByLabel('Plot').selectOption('both');
+  await expect(dialog.locator('.control-preview svg')).toHaveCount(2);
+  await dialog.getByRole('button', { name: 'Insert' }).click();
+  const images = page.locator('.ProseMirror').getByRole('img', { name: /diagram/ });
+  await expect(images).toHaveCount(2);
+  await expect(images.first()).toHaveAttribute('alt', /^Bode diagram .* of H\(s\) = K\/\(s\(s\+1\)\^2\)$/);
+  await expect(images.nth(1)).toHaveAttribute('alt', /^Nyquist diagram/);
+});

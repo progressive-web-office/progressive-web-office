@@ -1652,3 +1652,12 @@ th.colhead { position: relative; }
 .devsync-trash-list li.file .size { color: var(--muted); font-size: 0.85rem; }
 .devsync-trash-list li.empty { color: var(--muted); font-style: italic; }
 .devsync-peers .devsync-revoke-one { padding: 1px 8px; font-size: 0.85rem; }
+
+/* TEACH-004: Bode and Nyquist plots. */
+.control-dialog { max-width: min(760px, calc(100vw - 32px)); }
+.control-dialog .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.control-dialog .field input[type='text'] { font-family: ui-monospace, monospace; }
+.control-dialog .control-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: end; }
+.control-dialog .error { color: var(--danger); }
+.control-preview { display: grid; gap: 8px; max-height: 50vh; overflow: auto; background: #fff; border: 1px solid var(--border); border-radius: 4px; }
+.control-preview svg { width: 100%; height: auto; }

@@ -234,7 +234,8 @@ group is not a commitment.
 - ✅ Quiz export to Moodle XML, GIFT and AMC (Auto Multiple Choice) (TEACH-003)
 - Hand out and collect work in class over QRShare / peer-to-peer
   collaboration, without a learning platform
-- Block diagrams and Bode / Nyquist plots from a transfer function
+- ✅ Bode / Nyquist plots from a transfer function, with the margins
+  (TEACH-004); next: block diagrams
 - Kiosk / exam mode: a locked instance with no network, no AI and no
   external copy-paste
 

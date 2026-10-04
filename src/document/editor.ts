@@ -1767,6 +1767,19 @@ export class DocumentEditor implements EditorView {
   }
 
   /** N variants of the sheet and their answer keys, in a ZIP (TEACH-002). */
+  /** TEACH-004: Bode and Nyquist plots of a transfer function, inserted as pictures. */
+  private async insertControlPlots(): Promise<void> {
+    if (this.readOnly) return;
+    const { chooseControlPlots } = await import('../teach/control-dialog');
+    const plots = await chooseControlPlots(this.element);
+    if (!plots) return this.refocus();
+    for (const plot of plots) {
+      const key = addResource(this.doc, new TextEncoder().encode(plot.svg), 'image/svg+xml', 'plot.svg');
+      this.command(insertInline(schema.nodes.image!.create({ image: key, alt: plot.alt })));
+    }
+    this.refocus();
+  }
+
   /** TEACH-003: the questions of the document for a learning platform or AMC. */
   private async exportQuiz(): Promise<void> {
     const doc = { ...this.doc, blocks: this.currentBlocks() };
@@ -2450,6 +2463,7 @@ export class DocumentEditor implements EditorView {
         act(t('variants.button'), '🎲', () => void this.generateVariants(), t('variants.buttonTitle')),
         act(t('merge.button'), '✉', () => void this.mailMerge(), t('merge.buttonTitle')),
         act(t('quiz.button'), '📝', () => void this.exportQuiz(), t('quiz.buttonTitle')),
+        act(t('control.button'), '📈', () => void this.insertControlPlots(), t('control.buttonTitle')),
       ]),
       toolGroup(t('group.document'), '📄', [...(compact ? [this.textToolsMenu(), this.viewToolsMenu()] : []), act(t('meta.button'), 'ⓘ', () => void this.editProperties(), t('meta.buttonTitle')), act(t('hf.button'), '▤', () => void this.editPageSetup())]),
     );
