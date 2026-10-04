@@ -80,6 +80,7 @@ export function metaXml(meta: DocumentMeta): string {
     `<meta:creation-date>${isoTimestamp(m.date, false) ?? now}</meta:creation-date><dc:date>${now}</dc:date>` +
     (m.license ? `<meta:user-defined meta:name="License">${esc(m.license)}</meta:user-defined>` : '') +
     (m.identifier ? `<meta:user-defined meta:name="Identifier">${esc(m.identifier)}</meta:user-defined>` : '') +
+    (m.source ? `<meta:user-defined meta:name="Source">${esc(m.source)}</meta:user-defined>` : '') +
     '</office:meta></office:document-meta>'
   );
 }
@@ -105,6 +106,7 @@ export function readOdfMeta(zip: ZipEntries): DocumentMeta {
     language: get(ODF_NS.dc, 'language'),
     license,
     identifier: userDefined(/^identifier$/i),
+    source: userDefined(/^source$/i),
   });
 }
 

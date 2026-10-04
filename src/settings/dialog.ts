@@ -3,6 +3,7 @@
  * this browser as soon as they change. Each setting is stored where the
  * feature reads it, so the window only gathers them.
  */
+import { originsEnabled, placesEnabled, setOriginsEnabled, setPlacesEnabled } from '../storage/places';
 import { button, h } from '../app/dom';
 import { getLocale, LOCALES, setLocale, t, type Locale, type MessageKey } from '../i18n';
 import { applyTheme, loadTheme, saveTheme, THEMES, type ThemePreference } from '../app/theme';
@@ -73,6 +74,9 @@ function generalPanel(hooks: SettingsHooks): HTMLElement[] {
     // UI-020: tools in menus, or all in sight.
     field(t('settings.toolbars'), select([['compact', t('settings.toolbarCompact')], ['full', t('settings.toolbarFull')]], loadToolbarMode(), saveToolbarMode), t('settings.toolbarsHint')),
     field(t('formats.label'), select(FORMAT_FAMILIES.map((f) => [f, t(families[f])]), loadFormatFamily(), saveFormatFamily), t('formats.title')),
+    // FILE-028, FILE-029.
+    field(t('settings.rememberPlaces'), check(placesEnabled(), setPlacesEnabled), t('settings.rememberPlacesHint')),
+    field(t('settings.trackOrigin'), check(originsEnabled(), setOriginsEnabled), t('settings.trackOriginHint')),
   ];
 }
 

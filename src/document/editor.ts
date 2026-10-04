@@ -1467,6 +1467,16 @@ export class DocumentEditor implements EditorView {
     this.view.focus();
   }
 
+  /** FILE-029: where the document comes from. */
+  origin(): string | undefined {
+    return this.doc.meta.source;
+  }
+
+  setOrigin(url: string | undefined): void {
+    if (url) this.doc.meta.source = url;
+    else delete this.doc.meta.source;
+  }
+
   status(): string {
     const { words, characters } = wordCount({ ...this.doc, blocks: this.currentBlocks() });
     const extra: string[] = [];

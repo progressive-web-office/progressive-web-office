@@ -28,6 +28,8 @@ export interface MdzManifest {
   keywords?: string[] | string | null;
   language?: string | null;
   license?: string | null;
+  /** FILE-029: where the document comes from. */
+  source?: string | null;
   assets?: MdzAsset[];
   [extra: string]: unknown;
 }

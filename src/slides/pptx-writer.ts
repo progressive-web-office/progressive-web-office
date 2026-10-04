@@ -2,7 +2,7 @@
 import { escapeXml as esc } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
 import { extensionForType, isTextRun, type Paragraph } from '../document/model';
-import { APP_XML, coreXml, EMU_PER_PX, NS, REL } from '../document/ooxml';
+import { APP_XML, coreXml, CUSTOM_PROPS_OVERRIDE, CUSTOM_PROPS_REL, customXml, EMU_PER_PX, NS, REL } from '../document/ooxml';
 import type { Presentation, Shape, Slide } from './model';
 
 const emu = (px: number): number => Math.round(px * EMU_PER_PX);
@@ -205,6 +205,7 @@ export function writePptx(pres: Presentation): Uint8Array {
   const ct = (part: string, type: string) => `<Override PartName="/${part}" ContentType="application/vnd.openxmlformats-officedocument.${type}+xml"/>`;
   const exts = new Set([...media.values()].map((p) => p.slice(p.lastIndexOf('.') + 1)));
   const imageTypes: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', avif: 'image/avif', bin: 'application/octet-stream' };
+  const custom = customXml(pres.meta, esc);
   const contentTypes =
     HEADER +
     `<Types xmlns="${NS.ct}">` +
@@ -219,6 +220,7 @@ export function writePptx(pres: Presentation): Uint8Array {
     pres.slides.map((s, i) => (s.notes ? ct(`ppt/notesSlides/notesSlide${i + 1}.xml`, 'presentationml.notesSlide') : '')).join('') +
     '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
     '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+    (custom ? CUSTOM_PROPS_OVERRIDE : '') +
     '</Types>';
 
   return writeZip([
@@ -229,9 +231,11 @@ export function writePptx(pres: Presentation): Uint8Array {
         { id: 'rId1', type: REL.officeDocument, target: 'ppt/presentation.xml' },
         { id: 'rId2', type: REL.coreProps, target: 'docProps/core.xml' },
         { id: 'rId3', type: REL.extendedProps, target: 'docProps/app.xml' },
+        ...(custom ? [{ id: 'rId4', type: CUSTOM_PROPS_REL, target: 'docProps/custom.xml' }] : []),
       ]),
     },
     { path: 'docProps/core.xml', data: coreXml(pres.meta, esc) },
+    ...(custom ? [{ path: 'docProps/custom.xml', data: custom }] : []),
     { path: 'docProps/app.xml', data: APP_XML },
     { path: 'ppt/presentation.xml', data: presentation },
     { path: 'ppt/_rels/presentation.xml.rels', data: rels(presRels) },

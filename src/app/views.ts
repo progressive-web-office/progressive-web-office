@@ -48,6 +48,10 @@ export interface EditorView {
   commands?(): import('./palette').PaletteCommand[];
   /** The document with its sub-documents as `include` blocks, to assemble (DOC-028). */
   masterDocument?(): import('../document/model').RichDocument | undefined;
+  /** FILE-029: where the document comes from, kept in its metadata (text documents, presentations). */
+  origin?(): string | undefined;
+  /** FILE-029: set or clear where the document comes from (not a change of the content). */
+  setOrigin?(url: string | undefined): void;
   /** The colours of the folder's tags changed (FOLDER-023). */
   tagsChanged?(): void;
   destroy(): void;

@@ -51,7 +51,7 @@ import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { anchoredComments, CommentRanges } from './comments';
 import { solutionSegments } from './solutions';
-import { APP_XML, coreXml, DOCX_NUMBER_FORMAT, EMU_PER_PX, NS, REL } from './ooxml';
+import { APP_XML, coreXml, CUSTOM_PROPS_OVERRIDE, CUSTOM_PROPS_REL, customXml, DOCX_NUMBER_FORMAT, EMU_PER_PX, NS, REL } from './ooxml';
 import { citations, formatEntry, type Citations } from './bibliography';
 import { citationInstr, SOURCES_PROPS, sourcesXml } from './word-sources';
 
@@ -165,10 +165,12 @@ class DocxWriter {
       `<w:body>${body.replace(SECTION_MARK, (_, i: string) => `<w:p><w:pPr>${this.sectionXml(Number(i), refs, numbering)}</w:pPr></w:p>`)}` +
       `${this.sectionXml(Math.max(0, this.sections.length - 1), refs, numbering)}</w:body></w:document>`;
 
+    const custom = customXml(this.doc.meta, esc);
     const entries: ZipEntryInput[] = [
       { path: '[Content_Types].xml', data: this.contentTypes() },
-      { path: '_rels/.rels', data: ROOT_RELS },
+      { path: '_rels/.rels', data: rootRels(!!custom) },
       { path: 'docProps/core.xml', data: coreXml(this.doc.meta, esc) },
+      ...(custom ? [{ path: 'docProps/custom.xml', data: custom }] : []),
       { path: 'docProps/app.xml', data: APP_XML },
       { path: 'word/document.xml', data: documentXml },
       { path: 'word/styles.xml', data: STYLES_XML.replace('</w:styles>', `${springStyles(this.doc)}</w:styles>`) },
@@ -219,6 +221,7 @@ class DocxWriter {
       (this.doc.references?.entries.length ? '<Override PartName="/customXml/itemProps1.xml" ContentType="application/vnd.openxmlformats-officedocument.customXmlProperties+xml"/>' : '') +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
       '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+      (this.doc.meta.source?.trim() ? CUSTOM_PROPS_OVERRIDE : '') +
       '</Types>'
     );
   }
@@ -646,12 +649,13 @@ class DocxWriter {
 
 }
 
-const ROOT_RELS =
+const rootRels = (custom: boolean): string =>
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
   `<Relationships xmlns="${NS.rel}">` +
   `<Relationship Id="rId1" Type="${REL.officeDocument}" Target="word/document.xml"/>` +
   `<Relationship Id="rId2" Type="${REL.coreProps}" Target="docProps/core.xml"/>` +
   `<Relationship Id="rId3" Type="${REL.extendedProps}" Target="docProps/app.xml"/>` +
+  (custom ? `<Relationship Id="rId4" Type="${CUSTOM_PROPS_REL}" Target="docProps/custom.xml"/>` : '') +
   '</Relationships>';
 
 const twips = (pt: number): number => Math.round(pt * 20);

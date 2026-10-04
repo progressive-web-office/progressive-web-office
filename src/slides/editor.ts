@@ -104,6 +104,16 @@ export class SlideEditor implements EditorView {
     this.stageWrap.focus();
   }
 
+  /** FILE-029: where the document comes from. */
+  origin(): string | undefined {
+    return this.pres.meta.source;
+  }
+
+  setOrigin(url: string | undefined): void {
+    if (url) this.pres.meta.source = url;
+    else delete this.pres.meta.source;
+  }
+
   status(): string {
     return t('slides.position', { n: this.current + 1, total: this.pres.slides.length });
   }

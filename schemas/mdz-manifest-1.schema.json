@@ -67,6 +67,13 @@
         "null"
       ]
     },
+    "source": {
+      "description": "Where the document comes from: the address of its file in a repository or on a WebDAV server (Progressive Web Office extension).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "filename": {
       "description": "Original Markdown file name (v1.1.0+).",
       "type": [

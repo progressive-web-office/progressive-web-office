@@ -43,11 +43,11 @@ function modal(host: HTMLElement, className: string, title: string): { dialog: H
  * Browse repositories. In "open" mode resolves with the chosen file; in
  * "save" mode with the chosen location (folder + file name).
  */
-export function browseRepository(host: HTMLElement, mode: 'open', suggestedName?: string): Promise<RepoFile | RepoLocation | null>;
+export function browseRepository(host: HTMLElement, mode: 'open', suggestedName?: string, extensions?: string[], startAt?: string): Promise<RepoFile | RepoLocation | null>;
 export function browseRepository(host: HTMLElement, mode: 'save', suggestedName?: string, extensions?: string[]): Promise<RepoLocation | null>;
 /** FOLDER-007, GIT-008: a repository and a branch to open as a folder. */
 export function browseRepository(host: HTMLElement, mode: 'folder'): Promise<RepoLocation | null>;
-export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'folder', suggestedName = '', extensions: string[] = []): Promise<RepoFile | RepoLocation | null> {
+export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'folder', suggestedName = '', extensions: string[] = [], startAt = ''): Promise<RepoFile | RepoLocation | null> {
   return new Promise((resolve) => {
     const { dialog, body, close } = modal(host, 'git-dialog', mode === 'open' ? t('git.dialogOpen') : mode === 'folder' ? t('git.dialogFolder') : t('git.dialogSave'));
     let account: GitAccount | undefined;
@@ -483,7 +483,13 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
 
     renderAccounts();
     const first = loadAccounts()[0];
-    if (first) {
+    // FILE-028: a remembered repository opens at once, with the account of its site (or read only).
+    const remembered = startAt ? parseRepoAddress(startAt) : undefined;
+    if (remembered) {
+      address.value = startAt;
+      lastAddress = startAt;
+      void openAddress(remembered);
+    } else if (first) {
       account = first;
       accountSelect.value = first.id;
       void selectAccount(first.id);

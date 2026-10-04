@@ -15,6 +15,7 @@ const LABELS: Record<(typeof FIELDS)[number], MessageKey> = {
   keywords: 'meta.keywords',
   language: 'meta.language',
   license: 'meta.license',
+  source: 'meta.source',
 };
 
 const HINTS: Partial<Record<(typeof FIELDS)[number], MessageKey>> = {
@@ -22,6 +23,7 @@ const HINTS: Partial<Record<(typeof FIELDS)[number], MessageKey>> = {
   keywords: 'meta.keywordsHint',
   language: 'meta.languageHint',
   license: 'meta.licenseHint',
+  source: 'meta.sourceHint',
 };
 
 /** Resolves to the new properties, or null when cancelled. */
@@ -33,7 +35,7 @@ export function editProperties(host: HTMLElement, meta: DocumentMeta): Promise<D
     for (const field of FIELDS) {
       const value = field === 'keywords' ? (meta.keywords ?? []).join(', ') : (meta[field] ?? '');
       const id = `prop-${field}`;
-      const input = field === 'description' ? h('textarea', { id, rows: 3 }) : h('input', { id, type: 'text', spellcheck: field === 'title' || field === 'subject' ? 'true' : 'false' });
+      const input = field === 'description' ? h('textarea', { id, rows: 3 }) : h('input', { id, type: 'text', spellcheck: field === 'title' || field === 'subject' ? 'true' : 'false', ...(field === 'source' ? { type: 'url' } : {}) });
       input.value = value;
       inputs.set(field, input);
       const hint = HINTS[field];
@@ -56,6 +58,7 @@ export function editProperties(host: HTMLElement, meta: DocumentMeta): Promise<D
           keywords: get('keywords').split(','),
           language: get('language'),
           license: get('license'),
+          source: get('source'),
           identifier: meta.identifier,
         }),
       );

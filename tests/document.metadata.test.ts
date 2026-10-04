@@ -126,3 +126,41 @@ describe('COLLAB-008 document identifier', () => {
     });
   }
 });
+
+describe('FILE-029 the origin of a document kept in its metadata', () => {
+  const source = 'https://github.com/me/notes/blob/main/report.odt';
+  const doc = (): RichDocument => ({ ...emptyDocument(), blocks: [paragraph('Hi')], meta: { title: 'T', source } });
+
+  it.each(['docx', 'odt', 'md', 'mdz'] as const)('keeps the source in %s', async (format) => {
+    const back = await readDocument(format, writeDocument(doc(), format));
+    expect(back.meta.source).toBe(source);
+  });
+
+  it('writes it as a custom property in OOXML, only when there is one', () => {
+    const zip = unzipSync(writeDocument(doc(), 'docx'));
+    expect(strFromU8(zip['docProps/custom.xml']!)).toContain(`name="Source"><vt:lpwstr>${source}</vt:lpwstr>`);
+    expect(strFromU8(zip['_rels/.rels']!)).toContain('Target="docProps/custom.xml"');
+    expect(strFromU8(zip['[Content_Types].xml']!)).toContain('/docProps/custom.xml');
+    const plain = unzipSync(writeDocument({ ...doc(), meta: { title: 'T' } }, 'docx'));
+    expect(plain['docProps/custom.xml']).toBeUndefined();
+    expect(strFromU8(plain['_rels/.rels']!)).not.toContain('custom');
+  });
+
+  it.each(['pptx', 'odp'] as const)('keeps the source of a presentation in %s', async (format) => {
+    const { emptyPresentation } = await import('../src/slides/model');
+    const { readPresentation, writePresentation } = await import('../src/slides/io');
+    const pres = { ...emptyPresentation(), meta: { source } };
+    expect(readPresentation(format, writePresentation(pres, format)).meta.source).toBe(source);
+  });
+});
+
+describe('FILE-029 a Markdown file of a repository gets no front matter for its origin alone', () => {
+  it('writes the source only beside other properties', async () => {
+    const { writeMarkdown } = await import('../src/document/markdown-writer');
+    const source = 'https://github.com/me/notes/blob/main/README.md';
+    const heading = { ...paragraph('Notes'), style: 'h1' as const };
+    expect(writeMarkdown({ ...emptyDocument(), blocks: [heading], meta: { title: 'Notes', source } })).toBe('# Notes\n');
+    expect(writeMarkdown({ ...emptyDocument(), blocks: [paragraph('x')], meta: { source } })).toBe('x\n');
+    expect(writeMarkdown({ ...emptyDocument(), blocks: [paragraph('x')], meta: { author: 'Ada', source } })).toContain(`source: "${source}"`);
+  });
+});

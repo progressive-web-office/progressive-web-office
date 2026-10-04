@@ -126,6 +126,7 @@ function readNative(zip: ZipEntries): RichDocument {
     keywords,
     language: manifest.language ?? undefined,
     license: manifest.license ?? undefined,
+    source: manifest.source ?? undefined,
   });
   const fromFrontMatter = cleanMeta(doc.meta);
   if (fromFrontMatter.title && fromManifest.title === undefined) fromManifest.title = fromFrontMatter.title;

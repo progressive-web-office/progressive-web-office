@@ -1867,6 +1867,21 @@ export const en = {
   'draw.bom.quantity': 'Quantity',
   'draw.bom.references': 'References',
   'draw.bom.component': 'Component',
+  'meta.source': 'Source (where it comes from)',
+  'meta.sourceHint': 'The address of the repository or server it was opened from or saved to: Save writes it back there. Empty it to detach the document.',
+  'places.title': 'Repositories and servers used',
+  'places.openTitle': 'Open {label} again',
+  'places.forget': 'Forget {label}',
+  'places.forgetAll': 'Forget them all',
+  'places.forgetAllConfirm': 'Forget all the repositories and servers used? Accounts and files are not touched.',
+  'settings.rememberPlaces': 'Remember the repositories and servers used',
+  'settings.rememberPlacesHint': 'Listed on the start screen to open them again; turning this off forgets them.',
+  'settings.trackOrigin': 'Keep where documents come from',
+  'settings.trackOriginHint': 'A document opened from or saved to a repository or a server keeps its address (in its properties and its recent entry): opened again, Save writes it back there.',
+  'origin.restored': 'This document comes from {place}: Save writes it back there.',
+  'origin.detach': 'Detach',
+  'origin.detached': 'The document is no longer tied to {place}.',
+  'origin.noAccount': 'This document comes from {place}; add an account for it to save it back there.',
 } as const;
 
 export type MessageKey = keyof typeof en;

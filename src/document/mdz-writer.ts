@@ -59,7 +59,7 @@ export function writeMdz(doc: RichDocument): Uint8Array {
   if (author) manifest.author = author;
   // DOC-017: document properties live in the manifest, not in index.md.
   const meta = cleanMeta(doc.meta);
-  for (const key of ['subject', 'description', 'language', 'license'] as const) {
+  for (const key of ['subject', 'description', 'language', 'license', 'source'] as const) {
     if (meta[key]) manifest[key] = meta[key];
     else delete manifest[key];
   }

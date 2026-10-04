@@ -10,6 +10,17 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Repositories and servers used** (FILE-028): the repositories opened or
+  committed to and the WebDAV / Nextcloud folders used are listed on the
+  start screen, to open them again in one click (a repository even for
+  reading without an account) or forget them, one by one or all at once;
+  remembering can be turned off in the settings.
+- **Where a document comes from** (FILE-029): a document opened from or
+  saved to a repository or a server keeps its address — with its recent
+  entry, and in its properties (*Source*) for OpenDocument, Microsoft Office
+  and MDZ files — so that, opened again from the recent files or from a copy,
+  **Save** writes it back to the same place; **✕ Detach** unties it; a
+  setting turns it off.
 - **Netlist and bill of materials** of electrical schematics (DRAW-009): a
   SPICE netlist (nets joined at T junctions, earth as 0, named terminals,
   SPICE values and default models) and a CSV bill of materials grouped by
@@ -417,7 +428,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
-- The start screen offers **Templates and examples** first.
+- The start screen offers **Templates and examples** first, on a card twice
+  as wide.
 - Compact toolbars (UI-020): the word processor and the header keep the
   most used tools in sight and group the others in menus (Format,
   Paragraph, Insert, Review, Teaching, Document; File, Share); *Settings ›

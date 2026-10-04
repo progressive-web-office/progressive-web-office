@@ -101,7 +101,30 @@ export function readCoreProps(zip: ZipEntries): DocumentMeta {
     keywords: get('keywords')?.split(/[,;]/),
     language: get('language'),
     identifier: get('identifier'),
+    source: readCustomProp(zip, 'Source'),
   });
+}
+
+/** A text property of docProps/custom.xml (FILE-029). */
+function readCustomProp(zip: ZipEntries, name: string): string | undefined {
+  const text = readZipText(zip, 'docProps/custom.xml');
+  if (!text) return undefined;
+  const prop = Array.from(parseXml(text).getElementsByTagNameNS('*', 'property')).find((p) => p.getAttribute('name') === name);
+  return prop?.textContent?.trim() || undefined;
+}
+
+export const CUSTOM_PROPS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties';
+export const CUSTOM_PROPS_OVERRIDE = '<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>';
+
+/** FILE-029: docProps/custom.xml with the origin of the document (OOXML core properties have no `source`); undefined when there is none. */
+export function customXml(meta: DocumentMeta, esc: (s: string) => string): string | undefined {
+  if (!meta.source?.trim()) return undefined;
+  return (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
+    '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
+    `<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="Source"><vt:lpwstr>${esc(meta.source.trim())}</vt:lpwstr></property>` +
+    '</Properties>'
+  );
 }
 
 /** Document properties → docProps/core.xml (OOXML has no licence property). */

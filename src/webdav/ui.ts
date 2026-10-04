@@ -80,9 +80,9 @@ const parentOf = (path: string): string => path.split('/').slice(0, -1).join('/'
  * Browse the cloud. In "open" mode resolves with the chosen file; in "save"
  * mode with the chosen folder + file name.
  */
-export function browseCloud(host: HTMLElement, mode: 'open', suggestedName?: string): Promise<DavFile | null>;
+export function browseCloud(host: HTMLElement, mode: 'open', suggestedName?: string, startAt?: { accountId?: string; folder?: string }): Promise<DavFile | null>;
 export function browseCloud(host: HTMLElement, mode: 'save', suggestedName?: string): Promise<DavLocation | null>;
-export function browseCloud(host: HTMLElement, mode: 'open' | 'save', suggestedName = ''): Promise<DavFile | DavLocation | null> {
+export function browseCloud(host: HTMLElement, mode: 'open' | 'save', suggestedName = '', startAt?: { accountId?: string; folder?: string }): Promise<DavFile | DavLocation | null> {
   return new Promise((resolve) => {
     const dialog = h('dialog', { class: 'dialog dav-dialog', 'aria-labelledby': 'dav-title' });
     const status = h('p', { class: 'git-status', role: 'status', 'aria-live': 'polite' });
@@ -142,7 +142,7 @@ export function browseCloud(host: HTMLElement, mode: 'open' | 'save', suggestedN
       setTimeout(() => server.focus(), 0);
     };
 
-    const showBrowser = (account: DavAccount): void => {
+    const showBrowser = (account: DavAccount, startFolder = ''): void => {
       const client = davClient(account);
       const accounts = loadDavAccounts();
       const accountSelect = h('select', { 'aria-label': t('dav.account') }, ...accounts.map((a) => h('option', { value: a.id, selected: a.id === account.id }, davLabel(a))));
@@ -226,14 +226,34 @@ export function browseCloud(host: HTMLElement, mode: 'open' | 'save', suggestedN
         ...(mode === 'save' ? [h('label', { class: 'git-row' }, t('dav.fileName'), ' ', fileName)] : []),
         actions,
       );
-      void openFolder('');
+      void openFolder(startFolder);
     };
 
     host.append(dialog);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     const accounts = loadDavAccounts();
-    if (accounts.length) showBrowser(accounts[0]!);
+    // FILE-028: a remembered folder opens at once.
+    const remembered = startAt?.accountId ? accounts.find((a) => a.id === startAt.accountId) : undefined;
+    if (remembered) showBrowser(remembered, startAt?.folder ?? '');
+    else if (accounts.length) showBrowser(accounts[0]!);
     else showAddForm();
   });
+}
+
+/** FILE-029: the address of a file (or folder) of an account. */
+export function davFileUrl(account: DavAccount, path: string): string {
+  const root = account.url.endsWith('/') ? account.url : `${account.url}/`;
+  return new URL(path.split('/').filter(Boolean).map(encodeURIComponent).join('/'), root).href;
+}
+
+/** FILE-029: the account and the path of a file address, when one of the accounts holds it. */
+export function davLocationOf(url: string, accounts: DavAccount[] = loadDavAccounts()): { account: DavAccount; path: string } | undefined {
+  for (const account of accounts) {
+    const root = account.url.endsWith('/') ? account.url : `${account.url}/`;
+    if (!url.startsWith(root)) continue;
+    const path = url.slice(root.length).split('/').filter(Boolean).map(decodeURIComponent).join('/');
+    if (path) return { account, path };
+  }
+  return undefined;
 }

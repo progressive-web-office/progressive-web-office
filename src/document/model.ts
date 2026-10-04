@@ -454,10 +454,12 @@ export interface DocumentMeta {
   license?: string;
   /** Stable identifier (a UUID) of a document synchronised offline (COLLAB-008); not shown in the properties dialog. */
   identifier?: string;
+  /** FILE-029: where the document comes from — the address of its repository file or WebDAV file. */
+  source?: string;
 }
 
 /** Fields of DocumentMeta in display order. */
-export const META_FIELDS = ['title', 'author', 'date', 'subject', 'description', 'keywords', 'language', 'license', 'identifier'] as const;
+export const META_FIELDS = ['title', 'author', 'date', 'subject', 'description', 'keywords', 'language', 'license', 'identifier', 'source'] as const;
 
 /** Drop empty values (empty strings, empty keyword lists). */
 export function cleanMeta(meta: DocumentMeta): DocumentMeta {

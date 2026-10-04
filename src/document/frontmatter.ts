@@ -28,6 +28,7 @@ const KEYS: Record<string, keyof DocumentMeta> = {
   license: 'license',
   licence: 'license',
   identifier: 'identifier',
+  source: 'source',
 };
 
 function unquote(value: string): string | null {
@@ -130,6 +131,7 @@ export function writeFrontMatter(meta: DocumentMeta, extra = ''): string {
   put('lang', m.language);
   put('license', m.license);
   put('identifier', m.identifier);
+  put('source', m.source);
   if (extra.trim()) lines.push(extra.replace(/\s+$/, ''));
   return lines.length ? `---\n${lines.join('\n')}\n---\n\n` : '';
 }

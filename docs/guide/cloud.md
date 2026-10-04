@@ -41,6 +41,17 @@ you save a new file), it asks you to:
 - **save a copy next to it** (`name-copy-YYYYMMDD-HHMMSS.ext`, the default), or
 - **replace the file on the server**.
 
+## Folders used, and where documents come from
+
+The folders you open files from, or save to, are listed on the start screen
+under **Repositories and servers used**: a click opens the server at that
+folder again; **×** forgets one. A document opened from or saved to the
+server keeps its address (in the recent files, and in the properties of
+OpenDocument and Microsoft Office files): opened again, **Save** writes it
+back there — the server is asked before replacing a file that changed.
+**✕ Detach** unties it. Both can be turned off in the settings, as for
+[Git repositories](./git#repositories-used-and-where-documents-come-from).
+
 ## Server setup
 
 The browser talks to the server directly; nothing goes through another

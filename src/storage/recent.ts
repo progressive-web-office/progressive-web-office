@@ -18,6 +18,8 @@ export interface RecentEntry {
   format: DocumentFormat;
   size: number;
   lastOpened: number;
+  /** FILE-029: where the document comes from (a repository or WebDAV address). */
+  origin?: string;
 }
 
 interface RecentRecord extends RecentEntry {
@@ -76,7 +78,7 @@ export async function listRecent(): Promise<RecentEntry[]> {
     .sort((a, b) => b.lastOpened - a.lastOpened);
 }
 
-export async function addRecent(file: File, format: DocumentFormat): Promise<void> {
+export async function addRecent(file: File, format: DocumentFormat, origin?: string): Promise<void> {
   if (file.size > MAX_RECENT_SIZE) return;
   const record: RecentRecord = {
     id: `${file.name}:${format}`,
@@ -86,6 +88,7 @@ export async function addRecent(file: File, format: DocumentFormat): Promise<voi
     lastOpened: Date.now(),
     data: new Uint8Array(await file.arrayBuffer()),
     type: file.type,
+    ...(origin ? { origin } : {}),
   };
   await request((await store('recent', 'readwrite')).put(record));
   const list = await listRecent();

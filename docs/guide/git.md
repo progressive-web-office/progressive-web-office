@@ -366,6 +366,37 @@ committed), Progressive Web Office **never overwrites** it. You can instead:
 - **Save as a copy next to it** — your version is committed under a new name
   (`report-copy-<date>.docx`).
 
+## Repositories used, and where documents come from
+
+**Repositories used.** Every repository you open a file from, or commit to,
+is listed on the start screen under **Repositories and servers used** (with
+the WebDAV / Nextcloud folders). A click opens it again at once, in the
+folder of the last file, even for reading without an account. **×** forgets
+one, **Forget them all** forgets the list (accounts and files are not
+touched). To remember nothing, untick **Remember the repositories and
+servers used** in [Settings](./settings) → General.
+
+**Where a document comes from.** A document opened from a repository, or
+committed to one, keeps its address — for instance
+`https://github.com/me/notes/blob/main/report.odt`:
+
+- in the **recent files**, for every kind of document: reopened from there,
+  even after closing the browser, it is tied to its repository again, and
+  **Save** shows the commit dialog as usual;
+- in its own **properties** (Document properties → *Source*) for
+  OpenDocument and Microsoft Office text documents and presentations, and
+  MDZ: a copy downloaded and opened later, on this device or another one
+  with an account for the site, goes back to the same file. A Markdown file
+  gets no front matter just for this (a `README.md` stays as it is).
+
+A copy saved in another format (a `.md` of the repository saved as `.odt`)
+is another file: it is not tied to the repository. When the document is
+tied again, the file in the repository is read once more before the
+commit, and a change made there meanwhile is still detected the next
+times. **✕ Detach**, beside the repository name at the top, unties the
+document (its *Source* property is cleared too). To keep no origin at all,
+untick **Keep where documents come from** in the settings.
+
 ## When something goes wrong
 
 | Message | Likely cause | What to do |

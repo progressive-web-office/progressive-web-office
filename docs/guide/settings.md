@@ -19,6 +19,12 @@ once.
   applies to the next document opened.
 - **New files in**: OpenDocument (open standard) or Microsoft Office
   formats, for new documents and the format offered first when saving.
+- **Remember the repositories and servers used** (on by default): they are
+  listed on the start screen to open them again in one click. Turning it
+  off forgets them. See [Git repositories](./git#repositories-used-and-where-documents-come-from).
+- **Keep where documents come from** (on by default): a document opened from
+  or saved to a repository or a server keeps its address, so that **Save**
+  writes it back there when it is opened again.
 
 ## Reading and review
 

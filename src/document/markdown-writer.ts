@@ -433,6 +433,9 @@ export function writeMarkdown(doc: RichDocument, opts: MarkdownWriteOptions = {}
  */
 function markdownFrontMatter(doc: RichDocument): string {
   const meta = cleanMeta(doc.meta);
+  // FILE-029: where the file comes from is no reason on its own to add a front matter to it (a README of a repository).
+  const { source, ...others } = meta;
+  const onlySource = source !== undefined && Object.keys(others).length === 0;
   const kept = typeof doc.extras?.frontMatter === 'string' ? doc.extras.frontMatter : '';
   // DOC-024: header and footer zones as flat keys (header-left: …).
   const page = cleanPageSetup(doc.page);
@@ -458,7 +461,8 @@ function markdownFrontMatter(doc: RichDocument): string {
   const extra = [kept, ...furniture, ...bibliography].filter(Boolean).join('\n');
   const firstHeading = doc.blocks.find((b): b is Paragraph => b.type === 'paragraph' && b.style === 'h1');
   const onlyHeadingTitle = Object.keys(meta).length === 1 && meta.title !== undefined && firstHeading !== undefined && paragraphText(firstHeading) === meta.title;
-  if (!extra && (Object.keys(meta).length === 0 || onlyHeadingTitle)) return '';
+  const onlyHeadingAndSource = source !== undefined && Object.keys(others).length === 1 && others.title !== undefined && firstHeading !== undefined && paragraphText(firstHeading) === others.title;
+  if (!extra && (Object.keys(meta).length === 0 || onlyHeadingTitle || onlySource || onlyHeadingAndSource)) return '';
   return writeFrontMatter(meta, extra);
 }
 

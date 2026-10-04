@@ -18,6 +18,7 @@ import {
 import { isTemplate, isTemplateBase, TEMPLATE_FORMATS, templateExtension, templateMimeType, toTemplate, type TemplateBase } from '../core/template-format';
 import { defaultFormat, FORMAT_FAMILIES, loadFormatFamily, saveFormatFamily, type FormatFamily } from '../core/format-preference';
 import { pickFile, readFileBytes, replaceExtension, saveFile } from '../storage/file-io';
+import { forgetPlace, forgetPlaces, loadPlaces } from '../storage/places';
 import { toolGroup } from './tool-groups';
 import { captureDrop, droppedFolder, isFolderDrop } from '../fs/drop';
 import { renamedKeepingExtension, splitExtension } from '../core/filename';
@@ -59,6 +60,8 @@ interface OpenDocument {
   locked?: boolean;
   /** Made from a template file: a new document, not tied to where the template is (FILE-020). */
   fromTemplate?: boolean;
+  /** FILE-029: its repository or server was found again from its metadata (its version is read when saving). */
+  originRestored?: boolean;
 }
 
 interface CloudSource {
@@ -169,7 +172,7 @@ export class App {
     await this.openFile(file);
   }
 
-  async openFile(file: File): Promise<void> {
+  async openFile(file: File, origin?: string): Promise<void> {
     // FILE-021: an archive is opened as a folder, its files read one at a time.
     const limit = /\.zip$/i.test(file.name) ? MAX_ARCHIVE_SIZE : MAX_FILE_SIZE;
     if (file.size > limit) {
@@ -186,8 +189,110 @@ export class App {
       const images = note !== undefined ? await this.noteImages(file.name, note) : undefined;
       const format = await this.openBytes(file.name, bytes, undefined, images && ((src) => images.get(src)));
       if (format && note !== undefined) await this.missingPictures(note, images!);
-      if (format) this.onFileOpened?.(file, format);
+      if (!format) return;
+      // FILE-029: a document that comes from a repository or a server is saved back there.
+      const from = await this.restoreOrigin(origin);
+      this.onFileOpened?.(file, format, from);
     });
+  }
+
+  /** FILE-029: the address of where the open document comes from. */
+  private async originOf(doc: OpenDocument): Promise<string | undefined> {
+    if (doc.source) {
+      const { repoWebUrl } = await import('../git/url');
+      return repoWebUrl(doc.source.account.provider, doc.source.account.apiUrl, doc.source.repo.name, doc.source.branch, doc.source.path, true);
+    }
+    if (doc.dav) {
+      const { davFileUrl } = await import('../webdav/ui');
+      return davFileUrl(doc.dav.account, doc.dav.path);
+    }
+    return undefined;
+  }
+
+  /**
+   * FILE-028, FILE-029: the document is in a repository or on a server: its
+   * address goes into its metadata, its place into the places remembered.
+   * Returns the address, to keep with its recent entry.
+   */
+  private async noteOrigin(doc: OpenDocument): Promise<string | undefined> {
+    const url = await this.originOf(doc);
+    if (!url) return undefined;
+    const { originsEnabled, rememberPlace } = await import('../storage/places');
+    if (originsEnabled()) doc.view.setOrigin?.(url);
+    const dir = (path: string): string => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '');
+    if (doc.source) {
+      const { repoWebUrl } = await import('../git/url');
+      const { account, repo, branch, path } = doc.source;
+      rememberPlace({ kind: 'git', url: repoWebUrl(account.provider, account.apiUrl, repo.name, branch, dir(path) || undefined), label: `${repo.name}${dir(path) ? `/${dir(path)}` : ''} · ${branch}`, accountId: account.id });
+    } else if (doc.dav) {
+      const { davFileUrl, davLabel } = await import('../webdav/ui');
+      const folder = dir(doc.dav.path);
+      rememberPlace({ kind: 'dav', url: davFileUrl(doc.dav.account, folder), label: `${davLabel(doc.dav.account)}${folder ? `/${folder}` : ''}`, accountId: doc.dav.account.id, folder });
+    }
+    return originsEnabled() ? url : undefined;
+  }
+
+  /**
+   * FILE-029: the open document says where it comes from (its metadata, or
+   * its recent entry): Save writes it back there. Returns the address kept.
+   */
+  private async restoreOrigin(hint?: string): Promise<string | undefined> {
+    const doc = this.current;
+    const { originsEnabled } = await import('../storage/places');
+    if (!doc || !originsEnabled() || doc.source || doc.dav || doc.grist || doc.folderPath || doc.fromTemplate) return undefined;
+    const url = doc.view.origin?.() ?? hint;
+    if (!url) return undefined;
+    // Only a copy in the same format goes back there (a .md saved as .odt is another file).
+    const extOf = (path: string): string => (path.includes('.') ? path.slice(path.lastIndexOf('.') + 1).toLowerCase() : '');
+    const sameFormat = (path: string): boolean => extOf(path) === extOf(doc.name);
+    const [{ parseRepoAddress, hostOfApi }, { davLocationOf }] = await Promise.all([import('../git/url'), import('../webdav/ui')]);
+    const at = parseRepoAddress(url);
+    if (at?.isFile && at.branch && at.inside) {
+      if (!sameFormat(at.inside)) return undefined;
+      const { loadAccounts, clientFor } = await import('../git/accounts');
+      const found = loadAccounts().find((a) => a.provider === at.provider && (a.apiUrl.replace(/\/+$/, '') === at.apiUrl || hostOfApi(a.apiUrl) === at.host));
+      const account = found ?? { id: `public:${at.host}`, provider: at.provider, apiUrl: at.apiUrl, token: '', label: t('git.publicAccess', { site: at.host }) };
+      try {
+        const repo = await clientFor(account).getRepo(at.path);
+        if (this.current !== doc) return undefined;
+        // The version is read again when saving: the commit dialog comes first, conflicts are still found.
+        doc.source = { account, repo, branch: at.branch, path: at.inside, version: '' };
+        doc.originRestored = true;
+      } catch {
+        this.showNotice(t('origin.noAccount', { place: `${at.path} (${at.host})` }));
+        return url;
+      }
+      this.renderHeader();
+      this.showNotice(t('origin.restored', { place: `${at.path} · ${at.branch}` }));
+      return url;
+    }
+    const dav = davLocationOf(url);
+    if (dav) {
+      if (!sameFormat(dav.path)) return undefined;
+      doc.dav = { account: dav.account, path: dav.path };
+      doc.originRestored = true;
+      this.renderHeader();
+      this.showNotice(t('origin.restored', { place: `${new URL(dav.account.url).host}/${dav.path}` }));
+      return url;
+    }
+    if (/^https?:\/\//.test(url)) this.showNotice(t('origin.noAccount', { place: url }));
+    return url;
+  }
+
+  /** FILE-029: the document is no longer tied to where it comes from. */
+  private detachOrigin(): void {
+    const doc = this.current;
+    if (!doc) return;
+    const place = doc.source ? doc.source.repo.name : doc.dav ? new URL(doc.dav.account.url).host : '';
+    delete doc.source;
+    delete doc.dav;
+    delete doc.originRestored;
+    if (doc.view.origin?.()) {
+      doc.view.setOrigin?.(undefined);
+      this.markChanged();
+    }
+    this.renderHeader();
+    this.showNotice(t('origin.detached', { place }));
   }
 
   /** Detect the format and show the matching editor; returns the format on success. */
@@ -219,14 +324,18 @@ export class App {
   }
 
   /** Open a file from Nextcloud / WebDAV (DAV-002). */
-  async openFromCloud(): Promise<void> {
+  async openFromCloud(startAt?: { accountId?: string; folder?: string }): Promise<void> {
     if (!this.confirmDiscard()) return;
     const { browseCloud } = await import('../webdav/ui');
-    const file = await browseCloud(this.root, 'open');
+    const file = await browseCloud(this.root, 'open', '', startAt);
     if (!file) return;
     await this.withBusy(async () => {
-      if (!(await this.openBytes(basename(file.path), file.bytes))) return;
-      if (this.current && !this.current.fromTemplate) this.current.dav = { account: file.account, path: file.path, ...(file.etag ? { etag: file.etag } : {}) };
+      const format = await this.openBytes(basename(file.path), file.bytes);
+      if (!format) return;
+      if (this.current && !this.current.fromTemplate) {
+        this.current.dav = { account: file.account, path: file.path, ...(file.etag ? { etag: file.etag } : {}) };
+        this.onFileOpened?.(new File([file.bytes as BlobPart], basename(file.path)), format, await this.noteOrigin(this.current));
+      }
       this.renderHeader();
     });
   }
@@ -257,6 +366,9 @@ export class App {
     const location = target;
     await this.withBusy(async () => {
       const client = davClient(location.account);
+      // FILE-029: the file written there says where it is.
+      const [{ originsEnabled }, { davFileUrl }] = await Promise.all([import('../storage/places'), import('../webdav/ui')]);
+      if (originsEnabled()) doc.view.setOrigin?.(davFileUrl(location.account, location.path));
       const bytes = await doc.view.save!(format);
       let path = location.path;
       let result: { etag?: string };
@@ -284,9 +396,11 @@ export class App {
         return;
       }
       doc.dav = { account: location.account, path, ...(result.etag ? { etag: result.etag } : {}) };
+      delete doc.originRestored;
       doc.name = basename(path);
       doc.format = format;
       this.keepVersion(doc, bytes);
+      this.onFileSaved?.(new File([bytes as BlobPart], doc.name, { type: MIME_TYPES[format] }), format, await this.noteOrigin(doc));
       this.dirty = false;
       this.discardDraft();
       this.renderHeader();
@@ -349,10 +463,10 @@ export class App {
   }
 
   /** Open a file from a GitHub/GitLab repository (GIT-002). */
-  async openFromRepository(): Promise<void> {
+  async openFromRepository(startAt?: string): Promise<void> {
     if (!this.confirmDiscard()) return;
     const { browseRepository } = await import('../git/ui');
-    const file = await browseRepository(this.root, 'open');
+    const file = await browseRepository(this.root, 'open', '', [], startAt);
     if (!file) return;
     // GIT-013: the repository is shown as a folder, with its tree, beside the file opened.
     const [{ clientFor }, { GitRepoProvider }] = await Promise.all([import('../git/accounts'), import('../git/provider')]);
@@ -364,7 +478,9 @@ export class App {
     const { bytes, ...location } = file;
     await this.setFolder(folder);
     await this.withBusy(async () => {
-      await this.openBytes(basename(file.path), bytes, location);
+      const format = await this.openBytes(basename(file.path), bytes, location);
+      // FILE-028, FILE-029: the repository remembered, the document knowing where it comes from.
+      if (format && this.current) this.onFileOpened?.(new File([bytes as BlobPart], basename(file.path)), format, await this.noteOrigin(this.current));
     });
     this.folder?.setCurrent(file.path);
   }
@@ -379,6 +495,8 @@ export class App {
     let version: string | undefined;
     if (doc.source) {
       ({ version, ...location } = doc.source);
+      // FILE-029: found again from its metadata: the file there now, to replace (conflicts on a later change still found).
+      if (doc.originRestored) version = await this.repoVersion(location).catch(() => undefined);
     } else {
       const formats = saveFormatsFor(doc.kind, loadFormatFamily());
       const chosen = await browseRepository(this.root, 'save', doc.name, formats.map(fileExtension));
@@ -406,6 +524,9 @@ export class App {
     const client = clientFor(location.account);
     await this.withBusy(async () => {
       try {
+        // FILE-029: the file written there says where it is.
+        const [{ originsEnabled }, { repoWebUrl }] = await Promise.all([import('../storage/places'), import('../git/url')]);
+        if (originsEnabled()) doc.view.setOrigin?.(repoWebUrl(location.account.provider, location.account.apiUrl, location.repo.name, choice.branch, location.path, true));
         const bytes = await doc.view.save!(format);
         let { branch, path } = location;
         if (choice.createBranch) await client.createBranch(location.repo.id, branch, choice.branch);
@@ -436,9 +557,13 @@ export class App {
         }
         if (this.current !== doc) return;
         doc.source = { ...location, branch, path, version: result.version };
+        delete doc.originRestored;
         doc.name = basename(path);
         doc.format = format;
         this.keepVersion(doc, bytes);
+        // FILE-028, FILE-029: the repository remembered; the recent entry knows where the file is.
+        const origin = await this.noteOrigin(doc);
+        this.onFileSaved?.(new File([bytes as BlobPart], doc.name, { type: MIME_TYPES[format] }), format, origin);
         this.dirty = false;
         this.discardDraft();
         this.renderHeader();
@@ -505,9 +630,9 @@ export class App {
   }
 
   /** Hook used by the recent-files feature. */
-  onFileOpened?: (file: File, format: DocumentFormat) => void;
-  /** A file saved on its own: the recent files keep what was saved (FILE-008). */
-  onFileSaved?: (file: File, format: DocumentFormat) => void;
+  onFileOpened?: (file: File, format: DocumentFormat, origin?: string) => void;
+  /** A file saved on its own: the recent files keep what was saved (FILE-008), and where it comes from (FILE-029). */
+  onFileSaved?: (file: File, format: DocumentFormat, origin?: string) => void;
   /** A file renamed in the app (FILE-026). */
   onFileRenamed?: (oldName: string, newName: string) => Promise<void> | void;
 
@@ -1037,6 +1162,7 @@ export class App {
         ),
         h('p', { class: 'hint' }, t('start.tip')),
         h('div', { class: 'start-prefs' }, this.languagePicker(), this.formatPicker()),
+        this.placesList(),
         recent,
       ),
     );
@@ -1047,6 +1173,41 @@ export class App {
     void this.resumeDeviceSync();
     this.renderHeader();
     this.renderStatus();
+  }
+
+  /** FILE-028: the repositories and servers used, to open them again or forget them. */
+  private placesList(): HTMLElement {
+    const box = h('section', { class: 'places-list', 'aria-labelledby': 'places-title' });
+    const render = (): void => {
+      const places = loadPlaces();
+      box.hidden = !places.length;
+      if (!places.length) return void box.replaceChildren();
+      box.replaceChildren(
+        h('h2', { id: 'places-title' }, t('places.title')),
+        h(
+          'ul',
+          {},
+          ...places.map((p) =>
+            h(
+              'li',
+              {},
+              button(`${p.kind === 'git' ? '⎇' : '☁'} ${p.label}`, () => void (p.kind === 'git' ? this.openFromRepository(p.url) : this.openFromCloud({ ...(p.accountId ? { accountId: p.accountId } : {}), ...(p.folder ? { folder: p.folder } : {}) })), { className: 'place-open', title: t('places.openTitle', { label: p.url }) }),
+              button(t('places.forget', { label: p.label }), () => {
+                forgetPlace(p.id);
+                render();
+              }, { text: '×', className: 'icon', title: t('places.forget', { label: p.label }) }),
+            ),
+          ),
+        ),
+        button(t('places.forgetAll'), () => {
+          if (!window.confirm(t('places.forgetAllConfirm'))) return;
+          forgetPlaces();
+          render();
+        }, { className: 'link' }),
+      );
+    };
+    render();
+    return box;
   }
 
   // --- autosave (FILE-011) -------------------------------------------------------
@@ -1179,6 +1340,8 @@ export class App {
         doc.source ? button(`${doc.source.repo.visibility === 'internal' ? '🏢' : (doc.source.repo.visibility ?? (doc.source.repo.private ? 'private' : 'public')) === 'private' ? '🔒' : '🌐'} ${doc.source.repo.name} · ${doc.source.branch}`, () => void this.repoDocumentMenu(), { className: 'doc-source', title: t('git.branchMenu') }) : null,
         doc.grist ? h('span', { class: 'doc-source' }, `Grist · ${new URL(doc.grist.account.serverUrl).host}`) : null,
         doc.dav ? h('span', { class: 'doc-source', title: doc.dav.path }, `☁ ${new URL(doc.dav.account.url).host}`) : null,
+        // FILE-029: tied to a repository or a server: can be detached.
+        doc.source || doc.dav ? button(t('origin.detach'), () => this.detachOrigin(), { className: 'icon doc-detach', text: '✕', title: t('origin.detach') }) : null,
         this.dirty ? h('span', { class: 'modified', title: t('file.unsaved'), 'aria-label': t('file.unsaved') }, '●') : null,
       );
     }

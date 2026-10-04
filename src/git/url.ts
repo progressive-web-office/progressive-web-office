@@ -88,3 +88,15 @@ export function hostOfApi(apiUrl: string): string {
   const host = new URL(apiUrl).host;
   return host === 'api.github.com' ? 'github.com' : host;
 }
+
+/**
+ * FILE-028, FILE-029: the web address of a repository, or of a folder or a
+ * file in it — the address that `parseRepoAddress` reads back.
+ */
+export function repoWebUrl(provider: GitProvider, apiUrl: string, repo: string, branch?: string, inside?: string, isFile = false): string {
+  const base = `https://${hostOfApi(apiUrl)}/${repo}`;
+  if (!branch) return base;
+  const kind = isFile ? 'blob' : 'tree';
+  const tail = `${encodeURIComponent(branch)}${inside ? `/${inside.split('/').map(encodeURIComponent).join('/')}` : ''}`;
+  return provider === 'github' ? `${base}/${kind}/${tail}` : `${base}/-/${kind}/${tail}`;
+}

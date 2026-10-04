@@ -11,6 +11,17 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+/** FILE-029: where a recent file comes from, shortly: `☁ host` or `owner/name`. */
+export function originLabel(url: string): string {
+  try {
+    const u = new URL(url);
+    const repo = /^\/([^/]+\/[^/]+?)(?:\/(?:-\/)?(?:blob|tree)\/|$)/.exec(u.pathname);
+    return repo && !u.pathname.includes('/remote.php/') ? `⎇ ${decodeURIComponent(repo[1]!)}` : `☁ ${u.host}`;
+  } catch {
+    return url;
+  }
+}
+
 /** When a recent file was last opened: date and time, in the interface language. */
 export function formatOpenedAt(timestamp: number, locale: string = getLocale(), timeZone?: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short', ...(timeZone ? { timeZone } : {}) }).format(timestamp);
@@ -30,9 +41,9 @@ async function render(app: App, container: HTMLElement): Promise<void> {
   for (const e of entries) {
     const open = button(t('recent.open', { name: e.name }), async () => {
       const file = await getRecent(e.id);
-      if (file) await app.openFile(file);
+      if (file) await app.openFile(file, e.origin);
     }, { className: 'open-recent', text: '' });
-    open.append(h('span', { class: 'name' }, e.name), h('span', { class: 'meta' }, `${formatLabel(e.format)} · ${formatSize(e.size)} · ${t('recent.opened', { when: formatOpenedAt(e.lastOpened) })}`));
+    open.append(h('span', { class: 'name' }, e.name), h('span', { class: 'meta' }, `${formatLabel(e.format)} · ${formatSize(e.size)} · ${t('recent.opened', { when: formatOpenedAt(e.lastOpened) })}${e.origin ? ` · ${originLabel(e.origin)}` : ''}`));
     const remove = button(t('recent.remove', { name: e.name }), async () => {
       await removeRecent(e.id);
       await render(app, container);
@@ -55,8 +66,8 @@ async function render(app: App, container: HTMLElement): Promise<void> {
 }
 
 export function installRecent(app: App): void {
-  app.onFileOpened = (file, format) => void addRecent(file, format).catch(() => undefined);
-  app.onFileSaved = (file, format) => void addRecent(file, format).catch(() => undefined);
+  app.onFileOpened = (file, format, origin) => void addRecent(file, format, origin).catch(() => undefined);
+  app.onFileSaved = (file, format, origin) => void addRecent(file, format, origin).catch(() => undefined);
   app.onFileRenamed = (oldName, newName) => renameRecent(oldName, newName).then(() => undefined, () => undefined);
   app.renderStart = (container) => void render(app, container);
 }
