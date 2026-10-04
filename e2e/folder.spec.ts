@@ -71,7 +71,7 @@ test('creates, renames and deletes documents in the folder (FOLDER-004)', async 
   await expect.poll(files).toEqual(['notes/Outline.md', 'notes/a.md']);
   await expect(page.locator('.doc-name')).toHaveText('Outline.md');
   await expect(panel.locator('[aria-current=page]')).toHaveText('Outline.md');
-  await panel.getByRole('button', { name: 'a.md' }).click();
+  await panel.locator('.fs-explorer').getByRole('button', { name: 'a.md', exact: true }).click();
   page.once('dialog', (d) => void d.accept());
   await panel.getByRole('button', { name: 'Delete (Del)' }).click();
   await expect.poll(files).toEqual(['notes/Outline.md']);
@@ -140,8 +140,10 @@ test('follows links between Markdown notes, shows backlinks and keeps links on r
   const editor = page.getByRole('textbox', { name: 'Document' });
   await editor.getByRole('link', { name: 'Control' }).click({ modifiers: ['Control'] });
   await expect(page.locator('.doc-page h1')).toHaveText('Control');
-  await expect(panel.getByRole('heading', { name: 'Linked from (1)' })).toBeVisible();
-  await expect(panel.getByRole('button', { name: 'index.md' }).last()).toBeVisible();
+  // FOLDER-026: under the page, by default.
+  const backlinks = page.getByRole('region', { name: 'Notes linking here' });
+  await expect(backlinks.getByRole('heading', { name: /Linked from \(1\)/ })).toBeVisible();
+  await expect(page.locator('.doc-page-bottom .folder-backlink-list').getByRole('button', { name: 'index.md' })).toBeVisible();
   // Renaming the note updates the link in index.md.
   page.once('dialog', (d) => void d.accept('Regulation.md'));
   await panel.getByRole('button', { name: 'Rename (F2)' }).click();
@@ -152,6 +154,44 @@ test('follows links between Markdown notes, shows backlinks and keeps links on r
   await editor.getByRole('link', { name: 'Missing note' }).click({ modifiers: ['Control'] });
   await expect(page.locator('.doc-page h1')).toHaveText('Missing note');
   await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.has('Missing note.md'))).toBe(true);
+});
+
+test('shows the backlinks under the page or in the side panel, and links the unlinked mentions (FOLDER-026)', async ({ page }) => {
+  await fakeFolder(page, {
+    'Project Alpha.md': '---\naliases: [PA]\n---\n# Project Alpha\n\nThe plan.\n',
+    'a.md': '# A\n\nSee [[Project Alpha]] for the plan.\n',
+    'b.md': '# B\n\nAlso [[Project Alpha|the project]].\n',
+    'c.md': '# C\n\nWe talked about project alpha on Monday.\n',
+    'd.md': '# D\n\nThe alphabet, and PA again.\n',
+  });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await panel.getByRole('button', { name: 'Project Alpha.md' }).click();
+  const backlinks = page.getByRole('region', { name: 'Notes linking here' });
+  const bottom = page.locator('.doc-page-bottom');
+  await expect(bottom.getByRole('heading', { name: /Linked from \(2\)/ })).toBeVisible();
+  await expect(backlinks.locator('.folder-backlink-list').first().getByRole('button')).toHaveText(['a.md', 'b.md']);
+  await expect(backlinks.locator('.folder-snippet').first()).toContainText('See [[Project Alpha]] for the plan.');
+
+  // Unlinked mentions, when asked: the name or an alias written without a link.
+  await backlinks.getByRole('button', { name: 'Find unlinked mentions' }).click();
+  await expect(backlinks.getByRole('heading', { name: 'Unlinked mentions (2)' })).toBeVisible();
+  await backlinks.locator('.folder-unlinked-row', { hasText: 'c.md' }).getByRole('button', { name: 'Make this mention a link to Project Alpha' }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('c.md'))).toContain('We talked about [[Project Alpha|project alpha]] on Monday.');
+  await expect(bottom.getByRole('heading', { name: /Linked from \(3\)/ })).toBeVisible();
+  await expect(backlinks.getByRole('heading', { name: 'Unlinked mentions (1)' })).toBeVisible();
+  await page.screenshot({ path: 'test-results/backlinks-bottom.png' });
+
+  // The settings: without the words around, then in the side panel.
+  await backlinks.getByRole('button', { name: 'Settings of the backlinks' }).click();
+  await backlinks.getByLabel('Words around each link').uncheck();
+  await expect(backlinks.locator('.folder-snippet')).toHaveCount(0);
+  await backlinks.getByLabel('Shown').selectOption({ label: 'In the side panel' });
+  await expect(panel.getByRole('region', { name: 'Notes linking here' })).toBeVisible();
+  await expect(bottom).toBeHidden();
+  // Kept for the next note.
+  await panel.locator('.fs-explorer').getByRole('button', { name: 'a.md', exact: true }).click();
+  await expect(panel.getByRole('region', { name: 'Notes linking here' }).getByRole('heading', { name: /Linked from \(0\)/ })).toBeVisible();
 });
 
 test('copies, pastes, duplicates and downloads from the context menu and the keyboard (FOLDER-012..014)', async ({ page }) => {
@@ -214,7 +254,7 @@ test('lists the tags of the notes, renames one everywhere and draws the graph of
   await expect(graph).toBeHidden();
   await expect(page.locator('.doc-page h1')).toHaveText('B');
   // FOLDER-019: beside the open note, the notes sharing its tags or linked with it.
-  await expect(panel.locator('.folder-related li')).toHaveText(['a.md#next · linked']);
+  await expect(page.locator('.folder-related li')).toHaveText(['a.md#next · linked']);
 });
 
 test('offers the templates of the folder and keeps new ones there (FOLDER-020)', async ({ page }) => {
@@ -274,7 +314,7 @@ test('shows the #tags of a note as tags, in the colours given to them (FOLDER-02
   await fakeFolder(page, { 'a.md': '# A\n\nTo do: #todo and `#code`, see #physics.\n', 'b.md': '# B #todo\n' });
   await openLocalFolder(page);
   const panel = page.getByRole('complementary', { name: 'Folder' });
-  await panel.getByRole('button', { name: 'a.md' }).click();
+  await panel.locator('.fs-explorer').getByRole('button', { name: 'a.md', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Document' });
   await expect(editor.locator('.note-tag')).toHaveText(['#todo', '#physics']);
   await panel.getByText('Tags', { exact: true }).click();

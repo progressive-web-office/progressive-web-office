@@ -139,6 +139,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Backlinks at the bottom of the note's page (FOLDER-026), or in the side
+  panel: sorted by name or latest changed, with or without the words around
+  each link, folded; and the unlinked mentions of the note — its name or an
+  alias written without a link — each made a link in one click.
+
 - **Go to file…** (FILE-032, `Ctrl+Shift+O` or the command palette): a
   document kept in the browser, or of the folder open, opened by typing part
   of its name or of its folder; the latest first.

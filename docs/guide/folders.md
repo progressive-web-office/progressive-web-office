@@ -122,9 +122,17 @@ A folder of Markdown notes works as a set of linked notes:
   matter has that `id`.
 - `![[picture.png]]` shows a picture of the folder; `![[Note]]` is kept as a
   link to that note.
-- The panel lists the notes **linked from** the open note (backlinks), and
-  the **related notes**: those sharing its tags or linked with it either
-  way, the closest first, with the shared tags.
+- Under the page of the open note, **Linked from** lists the notes linking
+  to it (backlinks), each with the words around the link, then the
+  **related notes**: those sharing its tags or linked with it either way,
+  the closest first, with the shared tags (FOLDER-026).
+- **Find unlinked mentions** lists the notes writing its name — or one of
+  its aliases — without a link; **Link** makes the first such mention in
+  that note a link (`[[Note|as written]]`).
+- **⚙** sets where the backlinks are shown (*at the bottom of the page* or
+  *in the side panel*), their order (*by name* or *latest changed first*),
+  the words around each link, and the unlinked mentions; **▾ Linked from**
+  folds them. The settings are kept for the next notes.
 - Renaming a note in the panel updates the `[[links]]` to it in the other
   notes.
 - The YAML front matter of each note (tags, aliases, any key) is kept as it

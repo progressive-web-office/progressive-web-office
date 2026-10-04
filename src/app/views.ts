@@ -54,6 +54,8 @@ export interface EditorView {
   setOrigin?(url: string | undefined): void;
   /** The colours of the folder's tags changed (FOLDER-023). */
   tagsChanged?(): void;
+  /** FOLDER-026: show this under the page (the backlinks of a note); `null` removes it. */
+  pageBottom?(el: HTMLElement | null): void;
   destroy(): void;
 }
 

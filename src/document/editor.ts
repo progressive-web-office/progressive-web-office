@@ -271,7 +271,7 @@ export class DocumentEditor implements EditorView {
       loadLengthUnit(),
     );
     const sheet = h('div', { class: 'doc-sheet' }, this.rulers.horizontal, h('div', { class: 'doc-sheet-body' }, this.rulers.vertical, this.page));
-    const scroller = h('div', { class: 'doc-scroll' }, this.propertiesCard.element, this.headerStrip, sheet, this.footerStrip, this.notes);
+    const scroller = h('div', { class: 'doc-scroll' }, this.propertiesCard.element, this.headerStrip, sheet, this.footerStrip, this.bottom, this.notes);
     this.scroller = scroller;
     this.element = h('div', { class: 'doc-editor' });
     this.showRulers(loadRulerSides());
@@ -2001,6 +2001,14 @@ export class DocumentEditor implements EditorView {
   }
 
   // --- NOTE-001: the properties of a note -------------------------------------------
+
+  /** FOLDER-026: under the page, the backlinks of the note. */
+  private readonly bottom = h('div', { class: 'doc-page-bottom', hidden: true });
+
+  pageBottom(el: HTMLElement | null): void {
+    this.bottom.replaceChildren(...(el ? [el] : []));
+    this.bottom.hidden = !el;
+  }
 
   private readonly propertiesCard = new PropertiesCard({
     get: () => ({ meta: this.doc.meta, extra: typeof this.doc.extras?.frontMatter === 'string' ? this.doc.extras.frontMatter : '' }),

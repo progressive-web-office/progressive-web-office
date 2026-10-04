@@ -10,6 +10,7 @@ import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault, noteName } from './vault';
 import { newNoteId, newNoteText, noteId } from '../document/wiki-links';
 import { officeNewFiles } from './new-files';
+import { linkMention, loadBacklinkSettings, mentions, saveBacklinkSettings, type BacklinkSettings } from './backlinks';
 import { loadTagColours, setTagColour, TAG_COLOURS, type TagColour } from './tags';
 
 /** Files the app opens, by extension. */
@@ -28,6 +29,8 @@ export interface FolderPanelHooks {
   tagsChanged?(): void;
   /** Notes rewritten by the panel (a tag renamed): the open one may need reloading. */
   notesChanged?(paths: string[]): void | Promise<void>;
+  /** FOLDER-026: show this at the bottom of the open note's page (`null`: take it back); false when it cannot. */
+  pageBottom?(el: HTMLElement | null): boolean;
 }
 
 const ICONS: [RegExp, string][] = [
@@ -76,6 +79,7 @@ export class FolderPanel {
   ) {
     this.vault = new NoteVault(provider);
     this.backlinks = h('section', { class: 'folder-backlinks', 'aria-label': t('vault.backlinks'), hidden: true });
+    this.backlinksHome = document.createComment('backlinks');
     this.explorer = new Explorer({
       provider,
       strings: {
@@ -168,6 +172,7 @@ export class FolderPanel {
       this.explorer.element,
       this.indexStatus,
       this.tagSection,
+      this.backlinksHome,
       this.backlinks,
     );
   }
@@ -348,27 +353,99 @@ export class FolderPanel {
     if (!path) this.backlinks.hidden = true;
   }
 
-  /** The notes linking to the open note (FOLDER-005). */
+  /** Where the backlinks were in the panel, to put them back. */
+  private readonly backlinksHome: Comment;
+  private showingSettings = false;
+  /** The note whose unlinked mentions were asked for. */
+  private unlinkedFor: string | undefined;
+
+  /** FOLDER-026: at the bottom of the note's page, or in the side panel. */
+  private placeBacklinks(settings: BacklinkSettings): void {
+    this.backlinks.classList.toggle('at-bottom', false);
+    if (settings.position === 'bottom' && this.hooks.pageBottom?.(this.backlinks)) {
+      this.backlinks.classList.add('at-bottom');
+      return;
+    }
+    this.hooks.pageBottom?.(null);
+    if (this.backlinks.previousSibling !== this.backlinksHome) this.backlinksHome.after(this.backlinks);
+  }
+
+  private backlinkSettings(settings: BacklinkSettings, path: string): HTMLElement {
+    const set = (change: Partial<BacklinkSettings>): void => {
+      saveBacklinkSettings({ ...settings, ...change });
+      void this.showBacklinks(path);
+    };
+    const position = h('select', { 'aria-label': t('vault.bl.position') }, h('option', { value: 'bottom' }, t('vault.bl.bottom')), h('option', { value: 'side' }, t('vault.bl.side')));
+    position.value = settings.position;
+    position.addEventListener('change', () => set({ position: position.value as BacklinkSettings['position'] }));
+    const sort = h('select', { 'aria-label': t('vault.bl.sort') }, h('option', { value: 'name' }, t('vault.bl.byName')), h('option', { value: 'date' }, t('vault.bl.byDate')));
+    sort.value = settings.sort;
+    sort.addEventListener('change', () => set({ sort: sort.value as BacklinkSettings['sort'] }));
+    const check = (label: string, on: boolean, change: (on: boolean) => Partial<BacklinkSettings>): HTMLElement => {
+      const box = h('input', { type: 'checkbox', checked: on });
+      box.addEventListener('change', () => set(change(box.checked)));
+      return h('label', {}, box, ` ${label}`);
+    };
+    return h(
+      'div',
+      { class: 'folder-backlinks-settings', role: 'group', 'aria-label': t('vault.bl.settings') },
+      h('label', {}, `${t('vault.bl.position')} `, position),
+      h('label', {}, `${t('vault.bl.sort')} `, sort),
+      check(t('vault.bl.context'), settings.context, (on) => ({ context: on })),
+      check(t('vault.bl.unlinked'), settings.unlinked, (on) => ({ unlinked: on })),
+    );
+  }
+
+  /** The notes linking to the open note (FOLDER-005), where and how the settings say (FOLDER-026). */
   async showBacklinks(path: string): Promise<void> {
     if (!isNote(path)) {
       this.backlinks.hidden = true;
+      this.hooks.pageBottom?.(null);
       return;
     }
+    const settings = loadBacklinkSettings();
+    this.placeBacklinks(settings);
     this.backlinks.hidden = false;
     if (this.indexing) this.backlinks.replaceChildren(h('p', { class: 'hint' }, ...busyText(t('vault.indexing'))));
-    const from = await this.vault.backlinks(path);
+    const from = [...(await this.vault.backlinks(path))];
     if (this.current !== path) return;
+    const modified = new Map(this.entries.map((e) => [e.path, e.lastModified ?? 0]));
+    if (settings.sort === 'date') from.sort((a, b) => (modified.get(b.from) ?? 0) - (modified.get(a.from) ?? 0) || a.from.localeCompare(b.from));
+    else from.sort((a, b) => a.from.localeCompare(b.from));
+    const toggle = button(`${settings.collapsed ? '▸' : '▾'} ${t('vault.backlinksCount', { n: from.length })}`, () => {
+      saveBacklinkSettings({ ...settings, collapsed: !settings.collapsed });
+      void this.showBacklinks(path);
+    }, { className: 'folder-backlinks-toggle' });
+    toggle.setAttribute('aria-expanded', String(!settings.collapsed));
+    const gear = button(t('vault.bl.settings'), () => {
+      this.showingSettings = !this.showingSettings;
+      void this.showBacklinks(path);
+    }, { text: '⚙', className: 'icon', pressed: this.showingSettings });
     this.backlinks.replaceChildren(
-      h('h3', {}, t('vault.backlinksCount', { n: from.length })),
+      h('div', { class: 'folder-backlinks-head' }, h('h3', {}, toggle), gear),
+      this.showingSettings ? this.backlinkSettings(settings, path) : '',
+    );
+    if (settings.collapsed) return;
+    this.backlinks.append(
       from.length
         ? h(
             'ul',
             { role: 'list', class: 'folder-backlink-list' },
             // FOLDER-025: each with the words around the link.
-            ...from.map((b) => h('li', {}, button(b.from, () => this.hooks.open(b.from), { className: 'folder-file', icon: '↩' }), h('p', { class: 'folder-snippet' }, b.context))),
+            ...from.map((b) => h('li', {}, button(b.from, () => this.hooks.open(b.from), { className: 'folder-file', icon: '↩' }), settings.context ? h('p', { class: 'folder-snippet' }, b.context) : '')),
           )
         : h('p', { class: 'hint' }, t('vault.noBacklinks')),
     );
+    // Read from every note: only when asked, for this note.
+    if (settings.unlinked) {
+      if (this.unlinkedFor === path) await this.showUnlinked(path, new Set(from.map((b) => b.from)), settings);
+      else {
+        this.backlinks.append(button(t('vault.bl.find'), () => {
+          this.unlinkedFor = path;
+          void this.showBacklinks(path);
+        }, { className: 'folder-find-unlinked', icon: '🔎' }));
+      }
+    }
     // FOLDER-019: notes sharing its tags or linked with it.
     const related = await this.vault.related(path);
     if (!related.length || this.current !== path) return;
@@ -387,6 +464,66 @@ export class FolderPanel {
         ),
       ),
     );
+  }
+
+  /** FOLDER-026: the notes writing the name of this one (or an alias) without a link. */
+  private async showUnlinked(path: string, linking: Set<string>, settings: BacklinkSettings): Promise<void> {
+    const name = noteName(path);
+    const aliases = (await this.vault.indexed()).entry(path)?.aliases.filter((a) => !/^\d{8,14}$/.test(a)) ?? [];
+    const names = [name, ...aliases];
+    const notes = this.entries.filter((e) => e.kind === 'file' && isNote(e.path) && e.path !== path && !linking.has(e.path)).map((e) => e.path);
+    const found = new Map<string, string>();
+    const busy = h('p', { class: 'hint', role: 'status' }, ...busyText(t('vault.bl.searching')));
+    this.backlinks.append(busy);
+    try {
+      for (const n of names) {
+        for (const hit of await this.index.search(n, notes, 100)) {
+          const snippet = hit.snippets.find((s) => mentions(s, names));
+          if (snippet && !found.has(hit.path)) found.set(hit.path, snippet);
+        }
+      }
+    } finally {
+      busy.remove();
+    }
+    if (this.current !== path) return;
+    const rows = [...found].sort(([a], [b]) => a.localeCompare(b));
+    this.backlinks.append(
+      h('h3', {}, t('vault.bl.unlinkedCount', { n: rows.length })),
+      rows.length
+        ? h(
+            'ul',
+            { role: 'list', class: 'folder-backlink-list unlinked' },
+            ...rows.map(([from, snippet]) =>
+              h(
+                'li',
+                {},
+                h(
+                  'div',
+                  { class: 'folder-unlinked-row' },
+                  button(from, () => this.hooks.open(from), { className: 'folder-file', icon: '…' }),
+                  this.provider.capabilities.write ? button(t('vault.bl.linkTitle', { name }), () => void this.linkMentionIn(from, path, aliases), { text: t('vault.bl.link'), className: 'folder-link-mention' }) : '',
+                ),
+                settings.context ? h('p', { class: 'folder-snippet' }, snippet) : '',
+              ),
+            ),
+          )
+        : h('p', { class: 'hint' }, t('vault.bl.noUnlinked')),
+    );
+  }
+
+  /** The first plain mention of `path` in `from` made a link to it. */
+  private async linkMentionIn(from: string, path: string, aliases: string[]): Promise<void> {
+    try {
+      const text = await this.vault.text(from);
+      const linked = linkMention(text, noteName(path), aliases);
+      if (linked === undefined) return;
+      await this.provider.write(from, new Blob([linked]));
+      await this.vault.changed(from);
+      await this.hooks.notesChanged?.([from]);
+    } catch (err) {
+      this.hooks.error((err as Error).message);
+    }
+    await this.showBacklinks(path);
   }
 
   private async runSearch(): Promise<void> {

@@ -2094,6 +2094,13 @@ export class App {
         }
       },
       tagsChanged: () => this.current?.view.tagsChanged?.(),
+      // FOLDER-026: the backlinks under the page of the open note.
+      pageBottom: (el) => {
+        const view = this.current?.view;
+        if (!view?.pageBottom) return false;
+        view.pageBottom(el);
+        return true;
+      },
       error: (message) => this.showError(message),
       prompt: async (message, value) => window.prompt(message, value),
       confirm: async (message) => window.confirm(message),

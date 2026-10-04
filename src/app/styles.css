@@ -1120,6 +1120,20 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .folder-backlinks[hidden] { display: none; }
 .folder-backlinks h3 { margin: 0 0 4px; font-size: 0.85rem; color: var(--muted); }
 .folder-backlinks ul { list-style: none; margin: 0; padding: 0; }
+.folder-backlinks-head { display: flex; align-items: center; gap: 4px; }
+.folder-backlinks-head h3 { flex: 1; margin: 0; }
+.folder-backlinks-toggle { border: 0; background: none; padding: 2px 0; font: inherit; font-weight: 600; color: inherit; cursor: pointer; text-align: left; }
+.folder-backlinks-settings { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 4px 0 8px; font-size: 0.8rem; }
+.folder-backlinks-settings label { display: inline-flex; align-items: center; gap: 4px; }
+.folder-unlinked-row { display: flex; align-items: center; gap: 6px; }
+.folder-unlinked-row .folder-file { flex: 1; min-width: 0; }
+.folder-link-mention { font-size: 0.8rem; padding: 0 8px; }
+.folder-find-unlinked { margin-top: 6px; font-size: 0.8rem; }
+.doc-page-bottom { box-sizing: border-box; width: var(--page-w, 816px); max-width: 100%; margin: 16px auto 24px; }
+.doc-page-bottom[hidden] { display: none; }
+.folder-backlinks.at-bottom { max-height: none; overflow: visible; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); padding: 8px 12px; }
+.folder-backlinks.at-bottom h3 { font-size: 0.9rem; }
+@media print { .doc-page-bottom { display: none; } }
 
 /* FILE-018: template gallery. */
 .template-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; }
