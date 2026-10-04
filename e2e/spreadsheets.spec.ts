@@ -131,3 +131,35 @@ test('filters the rows of a table by the values of a column (SHEET-018)', async 
   await expect(page.locator('td[data-r="2"][data-c="0"]')).toHaveText('Bilal');
   expect(errors).toEqual([]);
 });
+
+test('changes the width of columns: dragged at the header, fitted, typed; kept in the file (SHEET-026)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New spreadsheet' }).click();
+  const grid = page.getByRole('grid', { name: 'Spreadsheet' });
+  await grid.click({ position: { x: 80, y: 40 } });
+  await page.keyboard.type('A rather long label in the first column');
+  await page.keyboard.press('Enter');
+  const colWidth = (i: number): Promise<number> => page.locator('colgroup col').nth(i + 1).evaluate((c) => parseFloat((c as HTMLElement).style.width));
+  expect(await colWidth(0)).toBe(96);
+  // Dragged at the right edge of the header of B.
+  const grip = page.getByRole('separator', { name: 'Width of the column B' });
+  const box = (await grip.boundingBox())!;
+  await page.mouse.move(box.x + 3, box.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 63, box.y + 5, { steps: 4 });
+  await page.mouse.up();
+  expect(await colWidth(1)).toBe(156);
+  // A double click fits A to its content.
+  await page.getByRole('separator', { name: 'Width of the column A' }).dblclick();
+  expect(await colWidth(0)).toBeGreaterThan(200);
+  // Typed for the selected column.
+  await page.locator('td[data-r="0"][data-c="2"]').click();
+  page.once('dialog', (d) => void d.accept('140'));
+  await page.getByRole('button', { name: 'Column width…' }).click();
+  expect(await colWidth(2)).toBe(140);
+  // Kept in the file.
+  const ods = await saveAs(page, 'OpenDocument spreadsheet (.ods)');
+  await openFile(page, 'widths.ods', ods.data);
+  expect(await colWidth(2)).toBe(140);
+  expect(errors).toEqual([]);
+});

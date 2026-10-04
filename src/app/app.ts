@@ -1357,7 +1357,15 @@ export class App {
   /** DEVSYNC-006: `invitation`, a link this application was opened with; `invite`, show an invitation at once. */
   async openDeviceSync(opts: { invitation?: string; invite?: boolean } = {}): Promise<void> {
     const { syncDialog } = await import('../devsync/ui');
-    await syncDialog(this.root, { openBackup: () => void this.openBackup(), scan: () => void this.receiveFromDevice(), ...opts });
+    await syncDialog(this.root, { openBackup: () => void this.openBackup(), scan: () => void this.receiveFromDevice(), openFolder: () => void this.openBrowserStorage(), ...opts });
+  }
+
+  /** The documents kept in this browser (and synchronised between one's devices), as the folder. */
+  private async openBrowserStorage(): Promise<void> {
+    const { privateStorage } = await import('../fs');
+    const folder = await privateStorage('Documents', t('folder.browserStorage')).catch(() => null);
+    if (folder) await this.setFolder(folder);
+    else this.showError(t('devsync.noStorage'));
   }
 
   /** DEVSYNC-002: "Sync my devices now" of the command palette; the window when this device is not paired yet. */

@@ -1576,3 +1576,8 @@ body.distraction-free .ai-panel { display: none !important; }
 .history-list { padding-left: 1.2rem; max-height: 60vh; overflow: auto; }
 .history-list li { margin: 6px 0; }
 .history-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+
+/* SHEET-026: the width of a column, dragged at the edge of its header. */
+th.colhead { position: relative; }
+.col-resizer { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 2; touch-action: none; }
+.col-resizer:hover, .col-resizer:active { background: color-mix(in srgb, var(--accent) 45%, transparent); }

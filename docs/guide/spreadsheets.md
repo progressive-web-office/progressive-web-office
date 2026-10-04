@@ -134,6 +134,10 @@ application: other spreadsheets show `#NAME?` for them.
 - **+Row / −Row / +Col / −Col** insert or delete rows and columns; formulas
   referring to moved cells are updated, references to deleted cells become
   `#REF!`.
+- **The width of a column**: drag the right edge of its header (the
+  columns selected all take it), double-click that edge to fit the content,
+  or **↔ Column width…** to type it in pixels (`auto`: fitted). The widths
+  are kept in XLSX and ODS files.
 - **Σ** inserts a `SUM` of the numbers above the selected cell.
 - The format list applies a number format (decimals, thousands separator,
   percent, dates, currency) to the selection; **Other format…** takes any

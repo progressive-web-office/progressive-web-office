@@ -59,6 +59,12 @@ the devices of the invitation; **Keep the current pairing** ignores it.
 
 ## Synchronising
 
+Only the documents **kept in the browser** are synchronised — *Open a
+folder › Browser storage*, its `Documents` folder; the window says how many,
+and **📁 Open these documents** opens them. The **recent files** of a device
+are files of its own disk (or of a cloud, a repository): they stay there. To
+find a document on your other devices, save it in the browser storage.
+
 **Sync now** merges this device with the paired devices online; with
 **Synchronise by itself while the application is open**, it happens when a
 device arrives and every few minutes. The window lists the devices, online

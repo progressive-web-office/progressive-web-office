@@ -299,7 +299,7 @@ export class SheetEditor implements EditorView {
     this.filterButton.setAttribute('aria-pressed', String(!!this.wb.sheets[this.si]!.filter));
     for (let c = 0; c < this.nCols; c++) {
       colgroup.append(h('col', { style: `width: ${this.width(c)}px` }));
-      const th = h('th', { class: 'colhead', 'data-col': String(c), scope: 'col' }, colName(c));
+      const th = h('th', { class: 'colhead', 'data-col': String(c), scope: 'col' }, colName(c), this.columnResizer(c));
       if (c < frozen.cols) this.freezeCell(th, -1, c, frozen);
       head.append(th);
     }
@@ -570,6 +570,82 @@ export class SheetEditor implements EditorView {
       }
     }
     return r;
+  }
+
+  /**
+   * SHEET-026: the width of a column dragged at the right edge of its header
+   * (a double click fits it to its content); the columns selected all take it.
+   */
+  private columnResizer(c: number): HTMLElement {
+    const grip = h('span', { class: 'col-resizer', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': t('sheet.colWidthOf', { col: colName(c) }), title: t('sheet.colWidthDrag') });
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      grip.setPointerCapture?.(e.pointerId);
+      const start = e.clientX;
+      const from = this.width(c);
+      const col = this.table.querySelectorAll('colgroup col')[c + 1] as HTMLElement | undefined;
+      let now = from;
+      const move = (ev: PointerEvent): void => {
+        now = Math.max(16, Math.min(1200, Math.round(from + ev.clientX - start)));
+        if (col) col.style.width = `${now}px`;
+      };
+      const up = (): void => {
+        grip.removeEventListener('pointermove', move);
+        grip.removeEventListener('pointerup', up);
+        if (now !== from) this.setColumnWidths(this.columnsOf(c), now);
+      };
+      grip.addEventListener('pointermove', move);
+      grip.addEventListener('pointerup', up);
+    });
+    grip.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      this.setColumnWidths(this.columnsOf(c), 'fit');
+    });
+    grip.addEventListener('click', (e) => e.stopPropagation());
+    return grip;
+  }
+
+  /** The column, or all the columns selected when it is one of them. */
+  private columnsOf(c: number): number[] {
+    const r = this.range();
+    return c >= r.c1 && c <= r.c2 ? Array.from({ length: r.c2 - r.c1 + 1 }, (_, i) => r.c1 + i) : [c];
+  }
+
+  /** SHEET-026: "Column width…": in pixels, or fitted to the content. */
+  private askColumnWidth(): void {
+    const r = this.range();
+    const cols = Array.from({ length: r.c2 - r.c1 + 1 }, (_, i) => r.c1 + i);
+    const answer = window.prompt(t('sheet.colWidthPrompt'), String(this.width(cols[0]!)))?.trim();
+    if (!answer) return;
+    if (/^(auto|fit|ajust|自动)/i.test(answer)) return this.setColumnWidths(cols, 'fit');
+    const px = Math.round(Number(answer.replace(',', '.')));
+    if (px >= 16 && px <= 1200) this.setColumnWidths(cols, px);
+  }
+
+  private setColumnWidths(cols: number[], width: number | 'fit'): void {
+    const sheet = this.wb.sheets[this.si]!;
+    this.commitEdit();
+    this.snapshot();
+    sheet.colWidths ??= new Map();
+    for (const c of cols) {
+      const w = width === 'fit' ? this.fitWidth(c) : width;
+      if (w === DEFAULT_W) sheet.colWidths.delete(c);
+      else sheet.colWidths.set(c, w);
+    }
+    this.changed(true);
+  }
+
+  /** The width that shows the longest value of the column (its rows shown). */
+  private fitWidth(c: number): number {
+    const probe = this.table.querySelector<HTMLElement>('tbody td') ?? this.table;
+    const font = getComputedStyle(probe).font || '13px sans-serif';
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx) return DEFAULT_W;
+    ctx.font = font;
+    let max = ctx.measureText(colName(c)).width;
+    for (const td of Array.from(this.table.querySelectorAll<HTMLElement>(`td[data-c="${c}"]`))) max = Math.max(max, ctx.measureText(td.textContent ?? '').width);
+    return Math.max(32, Math.min(1200, Math.ceil(max + 16)));
   }
 
   /** Freeze the rows above and the columns left of the active cell, or unfreeze (SHEET-017). */
@@ -908,6 +984,7 @@ export class SheetEditor implements EditorView {
         this.structural(() => deleteCells(this.wb, this.si, 'rows', r.r1, r.r2 - r.r1 + 1));
       }),
       act(t('sheet.insertCol'), `+${t('sheet.colShort')}`, () => this.structural(() => insertCells(this.wb, this.si, 'cols', this.range().c1, 1))),
+      act(t('sheet.colWidth'), '↔', () => this.askColumnWidth()),
       act(t('sheet.deleteCols'), `−${t('sheet.colShort')}`, () => {
         const r = this.range();
         this.structural(() => deleteCells(this.wb, this.si, 'cols', r.c1, r.c2 - r.c1 + 1));

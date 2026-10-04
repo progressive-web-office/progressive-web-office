@@ -45,6 +45,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- **Sync my devices** says what it synchronises — the documents kept in
+  the browser, not the recent files of the disk — how many, and opens them.
+- **The width of the columns of a spreadsheet** can be changed: dragged at
+  the edge of a column header (a double click fits the content), or typed
+  (**Column width…**) for the columns selected; an empty column keeps its
+  width in an ODS file (SHEET-026).
 - **Sync my devices**: on the paired device, the request of the new device
   (its name and four emojis) came below the invitation, out of sight; it now
   comes at the top of the window, scrolled into view, Accept focused (and a

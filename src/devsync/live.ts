@@ -14,6 +14,8 @@ export interface LiveSync {
   sync: DeviceSync;
   peers: { id: string; device: string; name: string }[];
   stop(): void;
+  /** The documents synchronised (Browser storage › Documents). */
+  files: StorageProvider;
   /** The relays reached, and whether the messages also go through them (to tell what goes wrong). */
   network(): { open: number; total: number; mode: 'direct' | 'relays' } | undefined;
 }
@@ -80,6 +82,7 @@ export async function startSync(files?: StorageProvider): Promise<LiveSync | und
   sync.announce();
   live = {
     sync,
+    files: provider,
     peers: [],
     network: () => {
       const r = transport.relays?.();

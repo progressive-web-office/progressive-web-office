@@ -21,6 +21,8 @@ export interface SyncDialogOptions {
   invitation?: string;
   /** Show an invitation at once (a paired device). */
   invite?: boolean;
+  /** Open the synchronised documents (Browser storage › Documents) as the folder. */
+  openFolder?(): void;
 }
 
 /** The address of the application, where an invitation link leads. */
@@ -290,10 +292,22 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         inviteOnOpen = false;
         void invite(inviteArea).catch((err: Error) => fail(err.message));
       }
+      // What is synchronised: the documents of the browser, not the files of the disk.
+      const what = h('p', { class: 'hint devsync-what' }, t('devsync.whatSynced'));
+      const count = h('span', {});
+      void (async () => {
+        const files = currentSync()?.files;
+        if (!files) return;
+        const { listFiles } = await import('../fs');
+        const n = (await listFiles(files).catch(() => [])).filter((p) => !p.split('/').some((s) => s.startsWith('.'))).length;
+        count.textContent = t('devsync.count', { n });
+      })();
+      const docs = h('div', { class: 'devsync-docs' }, h('p', {}, count, ' ', opts.openFolder ? button(t('devsync.openDocs'), () => (finish(), opts.openFolder?.()), { icon: '📁' }) : ''), what);
       const last = loadSyncState().lastSync;
       body.replaceChildren(
         switchTo,
         nameRow,
+        docs,
         h('h3', {}, t('devsync.devices')),
         peers,
         searching,

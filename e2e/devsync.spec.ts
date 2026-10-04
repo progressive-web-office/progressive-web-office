@@ -24,6 +24,9 @@ test('warns before synchronising devices, then pairs this one and shows invitati
   await dialog.getByLabel('Name of this device').fill('Test laptop');
   await dialog.getByRole('button', { name: 'Create a pairing' }).click();
   await expect(dialog.getByText('No other device yet.')).toBeVisible();
+  // What is synchronised is said, with the documents to open.
+  await expect(dialog.getByText(/^\d+ documents synchronised\./)).toBeVisible();
+  await expect(dialog.getByText(/The recent files of a device are files of its own disk/)).toBeVisible();
   await expect(dialog.locator('img.devsync-qr')).toHaveCount(0);
   // Turning while it looks for the other devices.
   await expect(dialog.getByText('Looking for your other devices…')).toBeVisible();

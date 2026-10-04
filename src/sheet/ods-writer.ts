@@ -215,6 +215,8 @@ export function writeOds(wb: Workbook): Uint8Array {
       rows = Math.max(rows, chart.anchor.row + 1);
       cols = Math.max(cols, chart.anchor.col + 1);
     }
+    // SHEET-026: an empty column keeps its width too.
+    for (const c of sheet.colWidths?.keys() ?? []) cols = Math.max(cols, c + 1);
     let columns = '';
     for (let c = 0; c < cols; c++) {
       const w = sheet.colWidths?.get(c);
