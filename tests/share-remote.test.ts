@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodeRemoteLink, encodeRemoteLink, fetchRemote, fileNameOf, sha256Hex } from '../src/share/remote';
 
-const BASE = 'https://progressive-web-office.github.io/progressive-web-office/';
+const BASE = 'https://progressive-web-office.github.io/';
 const FILE = 'https://example.org/docs/Rapport%20final.md';
 
 describe('SHARE-011 links to a document on a server', () => {

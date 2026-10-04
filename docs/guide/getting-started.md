@@ -11,7 +11,7 @@ to a server.
 ## Opening the app
 
 The app is published at
-**[progressive-web-office.github.io/progressive-web-office](https://progressive-web-office.github.io/progressive-web-office/)**
+**[progressive-web-office.github.io](https://progressive-web-office.github.io/)**
 (the **Open the app** link at the top of this documentation); its start
 screen links back here.
 

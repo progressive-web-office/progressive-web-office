@@ -6,7 +6,7 @@ import { BUILD, fullVersion, shortCommit } from './build-info';
 
 export { BUILD };
 
-export const SOURCE_URL = 'https://github.com/progressive-web-office/progressive-web-office';
+export const SOURCE_URL = 'https://github.com/progressive-web-office/progressive-web-office.github.io';
 const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 
 

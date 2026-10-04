@@ -1,7 +1,7 @@
 # Trademark policy
 
-**Progressive Web Office**, **PWO** and the fanned-sheets logo (the files of
-the [brand folder](https://github.com/progressive-web-office/progressive-web-office.github.io/tree/main/public/brand)) are the marks of the Progressive Web Office project, held by
+**Progressive Web Office**, **PWO** and the fanned-sheets logo (the files in
+this folder) are the marks of the Progressive Web Office project, held by
 Sébastien Celles. This policy says how they may be used.
 
 The source code is free software under the GNU Affero General Public
@@ -22,7 +22,7 @@ the marks is governed by this policy.
 - **Plugins and content packs** may say they are "for Progressive Web
   Office", without using the logo as their own icon.
 - Showing the logo **next to a link** to the project, at its original
-  colours and proportions (see the [brand guide](https://github.com/progressive-web-office/progressive-web-office.github.io/blob/main/public/brand/README.md)).
+  colours and proportions (see the [brand guide](README.md)).
 
 ## Needs written permission
 
@@ -49,6 +49,4 @@ Open an issue in
 or write to the maintainer. When in doubt, ask: permission is usually given
 for community uses.
 
-This policy may change; the version in the
-[brand folder](https://github.com/progressive-web-office/progressive-web-office.github.io/blob/main/public/brand/TRADEMARKS.md)
-of the organisation's site is the current one.
+This policy may change; the version in this repository is the current one.

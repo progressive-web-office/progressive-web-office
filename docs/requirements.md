@@ -11,7 +11,7 @@ description: EARS requirements with MoSCoW priorities and roadmap milestones.
 - Status: Draft v1 (2026-10-01, last updated 2026-10-03)
 - Notation: [EARS](https://alistairmavin.com/ears/) (Easy Approach to Requirements Syntax)
 - Prioritisation: MoSCoW — **M**ust / **S**hould / **C**ould / **W**on't (this time)
-- Milestones: see the [roadmap](https://github.com/progressive-web-office/progressive-web-office/blob/main/ROADMAP.md) (0.0.x = development phases; 0.1.0 = first minor release)
+- Milestones: see the [roadmap](https://github.com/progressive-web-office/progressive-web-office.github.io/blob/main/ROADMAP.md) (0.0.x = development phases; 0.1.0 = first minor release)
 
 EARS templates used:
 
@@ -559,7 +559,7 @@ integration is ever needed.
 | BACKUP-004 | S | 0.2.0 | The header shall always show how old the last backup is, marked when one is due; the user shall choose to be reminded every day, week or month, and the start screen shall remind when a backup is due and there is something to back up. |
 | BACKUP-005 | S | 0.2.0 | The backup window shall explain that synchronisation is not a backup (a deletion reaches every device; a backup keeps the documents as they were) and the 3-2-1 rule. |
 | BACKUP-006 | S | 0.2.0 | Where the user chose it, for a folder or a WebDAV target, the system shall make a backup by itself while the application is open whenever one is due (down to every hour), without asking, the password of an encrypted backup taken from the session only, and say it was made. |
-| BACKUP-006 | M | 0.1.0 | When the application runs at its former address (`s-celles.github.io/progressive-web-office`), the start screen shall announce the new address (`progressive-web-office.github.io/progressive-web-office`) and offer to back up the documents, since browser storage is kept per site. |
+| BACKUP-006 | M | 0.1.0 | When the application runs at its former address (`s-celles.github.io/progressive-web-office`), the start screen shall announce the new address (`progressive-web-office.github.io`) and offer to back up the documents, since browser storage is kept per site. |
 
 ## 9q. One's own devices (DEVSYNC)
 

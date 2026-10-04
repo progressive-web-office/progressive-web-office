@@ -12,7 +12,7 @@ hero:
   actions:
     - theme: brand
       text: Open the app
-      link: https://progressive-web-office.github.io/progressive-web-office/
+      link: https://progressive-web-office.github.io/
       target: _self
     - theme: alt
       text: Get started

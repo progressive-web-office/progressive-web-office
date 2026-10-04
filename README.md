@@ -9,11 +9,11 @@ devices or collaborate — and it can even exchange documents without a
 network.
 
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE.md)
-[![CI](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/ci.yml/badge.svg)](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/ci.yml)
-[![Deploy](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/pages.yml/badge.svg)](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/pages.yml)
+[![CI](https://github.com/progressive-web-office/progressive-web-office.github.io/actions/workflows/ci.yml/badge.svg)](https://github.com/progressive-web-office/progressive-web-office.github.io/actions/workflows/ci.yml)
+[![Deploy](https://github.com/progressive-web-office/progressive-web-office.github.io/actions/workflows/pages.yml/badge.svg)](https://github.com/progressive-web-office/progressive-web-office.github.io/actions/workflows/pages.yml)
 
-**Try it: <https://progressive-web-office.github.io/progressive-web-office/>**
-· Documentation: <https://progressive-web-office.github.io/progressive-web-office/docs/>
+**Try it: <https://progressive-web-office.github.io/>**
+· Documentation: <https://progressive-web-office.github.io/docs/>
 
 ![A lab report with an equation, a table and a footnote, edited in Progressive Web Office](docs/public/screenshots/document.png)
 
@@ -201,7 +201,7 @@ The application **goes online only when you use a feature that needs it**:
 
 ## Install and use
 
-- **Online**: open <https://progressive-web-office.github.io/progressive-web-office/>.
+- **Online**: open <https://progressive-web-office.github.io/>.
   After the first visit the application also works offline.
 - **Install**: Chrome and Edge on a computer show *Install* in the address
   bar; on Android, *Add to Home screen* or *Install app*; on iOS and iPadOS,

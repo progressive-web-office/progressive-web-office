@@ -99,7 +99,7 @@ export interface AppOptions {
 const basename = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
 
 /** AGPL-3.0 §13: offer the source code to every user. */
-const SOURCE_URL = 'https://github.com/progressive-web-office/progressive-web-office';
+const SOURCE_URL = 'https://github.com/progressive-web-office/progressive-web-office.github.io';
 
 const KIND_KEY = { document: 'kind.document', spreadsheet: 'kind.spreadsheet', presentation: 'kind.presentation', pdf: 'kind.pdf', file: 'kind.file' } as const;
 

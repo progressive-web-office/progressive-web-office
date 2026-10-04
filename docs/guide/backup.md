@@ -71,7 +71,7 @@ settings and accounts (tokens, passwords) are **not** included.
 ## Moving to the new address
 
 Progressive Web Office moves from `s-celles.github.io/progressive-web-office`
-to <https://progressive-web-office.github.io/progressive-web-office/>.
+to <https://progressive-web-office.github.io/>.
 The browser keeps documents **per site**, so the documents kept at the old
 address do not follow on their own:
 

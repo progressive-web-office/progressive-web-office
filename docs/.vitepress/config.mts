@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitepress';
 
 // The app is published one level above the documentation (see pages.yml).
-const APP_URL = process.env.DOCS_URL ? process.env.DOCS_URL.replace(/\/docs\/?$/, '/') : 'https://progressive-web-office.github.io/progressive-web-office/';
+const APP_URL = process.env.DOCS_URL ? process.env.DOCS_URL.replace(/\/docs\/?$/, '/') : 'https://progressive-web-office.github.io/';
 
 export default defineConfig({
   // The appearance in three positions (system, light, dark) in place of the default two.
@@ -88,7 +88,7 @@ export default defineConfig({
         ],
       },
     ],
-    socialLinks: [{ icon: 'github', link: 'https://github.com/progressive-web-office/progressive-web-office' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/progressive-web-office/progressive-web-office.github.io' }],
     search: { provider: 'local' },
   },
 });

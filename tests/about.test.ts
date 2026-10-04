@@ -17,10 +17,10 @@ describe('UI-012 About window', () => {
     expect(qr.getAttribute('alt')).toContain('https://example.org/pwo/');
     const links = Object.fromEntries(Array.from(root.querySelectorAll('a')).map((a) => [a.textContent, a.getAttribute('href')]));
     expect(links['Documentation']).toBe('https://example.org/pwo/docs/');
-    expect(links['Source code']).toBe('https://github.com/progressive-web-office/progressive-web-office');
-    expect(links['Report a problem']).toBe('https://github.com/progressive-web-office/progressive-web-office/issues/new');
+    expect(links['Source code']).toBe('https://github.com/progressive-web-office/progressive-web-office.github.io');
+    expect(links['Report a problem']).toBe('https://github.com/progressive-web-office/progressive-web-office.github.io/issues/new');
     expect(Object.values(links)).toContain('https://www.gnu.org/licenses/agpl-3.0.html');
-    if (BUILD.commit !== 'unknown') expect(Object.values(links)).toContain(`https://github.com/progressive-web-office/progressive-web-office/commit/${BUILD.commit}`);
+    if (BUILD.commit !== 'unknown') expect(Object.values(links)).toContain(`https://github.com/progressive-web-office/progressive-web-office.github.io/commit/${BUILD.commit}`);
   });
 
   it('builds a report to paste into a bug report', () => {

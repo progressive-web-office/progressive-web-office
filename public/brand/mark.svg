@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 80 320 360">
+  <g transform="rotate(-14 256 300)"><rect x="132" y="104" width="232" height="296" rx="28" fill="#f08a24"/></g><g transform="rotate(-5 256 300)"><rect x="140" y="104" width="232" height="296" rx="28" fill="#2f9e57"/></g><path d="M176 112h132l64 64v220a28 28 0 0 1-28 28H176a28 28 0 0 1-28-28V140a28 28 0 0 1 28-28z" fill="#fff"/><path d="M308 112v40a24 24 0 0 0 24 24h40z" fill="#bcd3ff"/><rect x="184" y="216" width="152" height="22" rx="11" fill="#1f5fbf"/><rect x="184" y="262" width="152" height="22" rx="11" fill="#1f5fbf" opacity=".55"/><rect x="184" y="308" width="104" height="22" rx="11" fill="#1f5fbf" opacity=".55"/>
+</svg>

@@ -310,7 +310,7 @@ This example shows what a text document can hold. Everything stays editable: cli
 
 ## Text and formatting
 
-Text can be **bold**, *italic*, ~~struck~~, \`code\`, or a [link](https://github.com/progressive-web-office/progressive-web-office). Footnotes are numbered automatically.[^1]
+Text can be **bold**, *italic*, ~~struck~~, \`code\`, or a [link](https://github.com/progressive-web-office/progressive-web-office.github.io). Footnotes are numbered automatically.[^1]
 
 - Bulleted lists
   - with levels
@@ -666,7 +666,7 @@ Cet exemple montre ce qu’un document texte peut contenir. Tout reste modifiabl
 
 ## Texte et mise en forme
 
-Le texte peut être en **gras**, en *italique*, ~~barré~~, en \`code\`, ou être un [lien](https://github.com/progressive-web-office/progressive-web-office). Les notes de bas de page sont numérotées automatiquement.[^1]
+Le texte peut être en **gras**, en *italique*, ~~barré~~, en \`code\`, ou être un [lien](https://github.com/progressive-web-office/progressive-web-office.github.io). Les notes de bas de page sont numérotées automatiquement.[^1]
 
 - Listes à puces
   - avec des niveaux

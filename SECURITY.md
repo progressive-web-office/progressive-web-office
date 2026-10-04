@@ -16,7 +16,7 @@ commit of the default branch receives security fixes.
 discussions or pull requests.**
 
 Report them privately using GitHub's
-[private vulnerability reporting](https://github.com/progressive-web-office/progressive-web-office/security/advisories/new)
+[private vulnerability reporting](https://github.com/progressive-web-office/progressive-web-office.github.io/security/advisories/new)
 (GitHub Security Advisories, "GHSA"). Please include:
 
 - the affected version or commit,

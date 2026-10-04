@@ -173,7 +173,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         // The Python runtime (~13 MB) and the TypeScript language service (~4 MB)
         // are cached on first use instead (CODE-002, CODE-008).
-        globIgnores: ['pyodide/**', 'python/**', 'assets/ts.worker-*.js', 'assets/lib.*.d-*.js'],
+        globIgnores: ['pyodide/**', 'python/**', 'brand/**', 'assets/ts.worker-*.js', 'assets/lib.*.d-*.js'],
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.includes('/pyodide/') && url.origin === self.location.origin,

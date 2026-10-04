@@ -1,7 +1,9 @@
 name: Deploy to GitHub Pages
 
-# Publishes the application at https://<owner>.github.io/<repo>/
-# and the documentation at https://<owner>.github.io/<repo>/docs/
+# Publishes the application at https://<owner>.github.io/<repo>/ and the
+# documentation at https://<owner>.github.io/<repo>/docs/ — at the root of
+# https://<owner>.github.io/ when the repository is named <owner>.github.io,
+# as GitHub serves an organisation's own site.
 on:
   push:
     branches: [main]
@@ -30,10 +32,17 @@ jobs:
       - run: npm test
       - name: Build application
         run: npm run build
+      - name: Path of the site
+        id: site
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          if [ "${REPO,,}" = "${OWNER,,}.github.io" ]; then echo "prefix=" >> "$GITHUB_OUTPUT"; else echo "prefix=/$REPO" >> "$GITHUB_OUTPUT"; fi
       - name: Build documentation (+ llms.txt)
         env:
-          DOCS_BASE: /${{ github.event.repository.name }}/docs/
-          DOCS_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/docs
+          DOCS_BASE: ${{ steps.site.outputs.prefix }}/docs/
+          DOCS_URL: https://${{ github.repository_owner }}.github.io${{ steps.site.outputs.prefix }}/docs
         run: npm run docs:build
       - name: Assemble site
         run: |

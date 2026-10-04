@@ -28,10 +28,10 @@ and this documentation.
 | [`social-preview.png`](https://progressive-web-office.github.io/brand/social-preview.png) (1280 × 640) | Social preview of a repository |
 
 The sources are in the
-[brand folder](https://github.com/progressive-web-office/progressive-web-office.github.io/tree/main/brand)
-of the organisation's site. In this repository, `public/icon.svg` and
-`public/icon-maskable.svg` are copies; `just icons` renders the PNG icons of
-the application from them.
+[brand folder](https://github.com/progressive-web-office/progressive-web-office.github.io/tree/main/public/brand)
+(`public/brand/`), published at <https://progressive-web-office.github.io/brand/>.
+`public/icon.svg` and `public/icon-maskable.svg` are copies; `just icons`
+renders the PNG icons of the application from them.
 
 ## Colours
 
@@ -64,7 +64,7 @@ name is **PWO**.
 
 The names **Progressive Web Office** and **PWO** and the logo are the
 project's marks; their use is governed by the
-[trademark policy](https://github.com/progressive-web-office/progressive-web-office/blob/main/TRADEMARKS.md).
+[trademark policy](https://github.com/progressive-web-office/progressive-web-office.github.io/blob/main/TRADEMARKS.md).
 The AGPL-3.0 licence of the code grants no right to them (its section 7(e)):
 you may say a document was made with Progressive Web Office, or host the
 unchanged application under its name, but a modified version must use

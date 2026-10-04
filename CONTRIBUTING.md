@@ -5,7 +5,7 @@ code are all welcome.
 
 ## Report a bug or ask for a feature
 
-Open an [issue](https://github.com/progressive-web-office/progressive-web-office/issues).
+Open an [issue](https://github.com/progressive-web-office/progressive-web-office.github.io/issues).
 For a bug, please give:
 
 - what you did, what you expected and what happened;
@@ -16,7 +16,7 @@ Security problems should not be reported in public issues: see
 [SECURITY.md](SECURITY.md).
 
 Issues labelled
-[good first issue](https://github.com/progressive-web-office/progressive-web-office/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+[good first issue](https://github.com/progressive-web-office/progressive-web-office.github.io/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 are a good place to start.
 
 ## Set up

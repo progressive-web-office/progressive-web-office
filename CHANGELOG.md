@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- The repository is now `progressive-web-office/progressive-web-office.github.io`
+  and the application is published at the root of
+  <https://progressive-web-office.github.io/>, its documentation at `/docs/`:
+  the About window, the links of the documentation, the README and the
+  policies point there. The brand files (logo, icons, banners, brand guide)
+  are in `public/brand/`, published at `/brand/`.
+
 - **A new logo and new application icons**: three fanned sheets — the
   document, the spreadsheet and the presentation — on a square navy icon,
   also in the header of the application, on its start screen and in the

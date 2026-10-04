@@ -6,9 +6,9 @@ describe('BACKUP-006 the application moves to a new address', () => {
   it('knows the old address and the new one', () => {
     expect(movedFrom('https://s-celles.github.io/progressive-web-office/')).toBe(true);
     expect(movedFrom('https://s-celles.github.io/progressive-web-office/?doc=1#x')).toBe(true);
-    expect(movedFrom('https://progressive-web-office.github.io/progressive-web-office/')).toBe(false);
+    expect(movedFrom('https://progressive-web-office.github.io/')).toBe(false);
     expect(movedFrom('http://localhost:5173/')).toBe(false);
-    expect(NEW_HOME).toBe('https://progressive-web-office.github.io/progressive-web-office/');
+    expect(NEW_HOME).toBe('https://progressive-web-office.github.io/');
   });
 
   let root: HTMLElement | undefined;

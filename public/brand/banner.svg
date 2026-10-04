@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1f5fbf"/><stop offset="1" stop-color="#0f2f63"/></linearGradient></defs>
+  <rect width="1280" height="320" fill="url(#g)"/>
+  <g transform="translate(40 20) scale(0.55)"><g transform="rotate(-14 256 300)"><rect x="132" y="104" width="232" height="296" rx="28" fill="#f08a24"/></g><g transform="rotate(-5 256 300)"><rect x="140" y="104" width="232" height="296" rx="28" fill="#2f9e57"/></g><path d="M176 112h132l64 64v220a28 28 0 0 1-28 28H176a28 28 0 0 1-28-28V140a28 28 0 0 1 28-28z" fill="#fff"/><path d="M308 112v40a24 24 0 0 0 24 24h40z" fill="#bcd3ff"/><rect x="184" y="216" width="152" height="22" rx="11" fill="#1f5fbf"/><rect x="184" y="262" width="152" height="22" rx="11" fill="#1f5fbf" opacity=".55"/><rect x="184" y="308" width="104" height="22" rx="11" fill="#1f5fbf" opacity=".55"/></g>
+  <g font-family="Inter, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" fill="#fff">
+    <text x="300" y="130" font-size="52" font-weight="700" letter-spacing="-1">Progressive Web Office</text>
+    <text x="300" y="175" font-size="22" fill="#cfe0ff">Documents, spreadsheets, presentations and PDF in your browser.</text>
+    <text x="300" y="208" font-size="22" fill="#cfe0ff">Open formats, works offline, nothing leaves your device.</text>
+  </g>
+</svg>
