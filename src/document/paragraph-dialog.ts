@@ -1,19 +1,22 @@
-/** Paragraph spacing dialog (DOC-020): indents in cm, spacing in points, line spacing. */
+/** Paragraph spacing dialog (DOC-020): indents in the unit of the page (DOC-054), spacing in points, line spacing. */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import type { ParagraphLayout } from './model';
+import { loadLengthUnit, MM_PER, UNIT_STEP } from './units';
 
-const CM = 72 / 2.54;
 const round = (n: number, d = 2): number => Math.round(n * 10 ** d) / 10 ** d;
 
 export const LINE_SPACINGS = [1, 1.15, 1.5, 2, 2.5, 3];
 
 export function editParagraphLayout(host: HTMLElement, initial: ParagraphLayout): Promise<ParagraphLayout | null> {
   return new Promise((resolve) => {
+    // Points in one unit of the page.
+    const unit = loadLengthUnit();
+    const CM = (MM_PER[unit] * 72) / 25.4;
     const num = (label: string, value: number | undefined, unit: string, step: string, min?: string): HTMLInputElement =>
       h('input', { type: 'number', step, ...(min !== undefined ? { min } : {}), value: value === undefined ? '' : String(value), 'aria-label': `${label} (${unit})`, placeholder: '—' });
-    const indent = num(t('para.indent'), initial.indent ? round(initial.indent / CM) : undefined, 'cm', '0.1', '0');
-    const firstLine = num(t('para.firstLine'), initial.firstLine ? round(initial.firstLine / CM) : undefined, 'cm', '0.1');
+    const indent = num(t('para.indent'), initial.indent ? round(initial.indent / CM) : undefined, unit, UNIT_STEP[unit], '0');
+    const firstLine = num(t('para.firstLine'), initial.firstLine ? round(initial.firstLine / CM) : undefined, unit, UNIT_STEP[unit]);
     const before = num(t('para.spaceBefore'), initial.spaceBefore, 'pt', '1', '0');
     const after = num(t('para.spaceAfter'), initial.spaceAfter, 'pt', '1', '0');
     const line = h(
@@ -44,7 +47,7 @@ export function editParagraphLayout(host: HTMLElement, initial: ParagraphLayout)
     const row = (label: string, input: HTMLElement, unit: string): HTMLElement => h('label', { class: 'para-row' }, h('span', {}, label), input, h('span', { class: 'hint' }, unit));
     dialog.append(
       h('h2', { id: 'para-title' }, t('para.title')),
-      h('fieldset', {}, h('legend', {}, t('para.indentation')), row(t('para.indent'), indent, 'cm'), row(t('para.firstLine'), firstLine, t('para.firstLineHint'))),
+      h('fieldset', {}, h('legend', {}, t('para.indentation')), row(t('para.indent'), indent, unit), row(t('para.firstLine'), firstLine, t('para.firstLineHint'))),
       h('fieldset', {}, h('legend', {}, t('para.spacing')), row(t('para.spaceBefore'), before, 'pt'), row(t('para.spaceAfter'), after, 'pt'), row(t('para.lineSpacing'), line, '×')),
       h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(false)), button(t('common.ok'), () => finish(true), { className: 'primary' })),
     );

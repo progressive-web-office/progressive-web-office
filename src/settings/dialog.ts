@@ -17,6 +17,7 @@ import { loadPrintSettings, PAPER_SIZES, savePrintSettings, type Paper } from '.
 import { loadCollabNetwork, parseRelays, saveCollabNetwork } from '../collab/network';
 import { loadReactivity, REACTIVITY, saveReactivity } from '../code/settings';
 import { loadToolbarMode, saveToolbarMode } from '../app/tool-groups';
+import { LENGTH_UNITS, loadLengthUnit, loadRulerSides, saveLengthUnit, saveRulerSides } from '../document/units';
 
 export type SettingsCategory = 'general' | 'reading' | 'writing' | 'printing' | 'collab';
 export const CATEGORIES: SettingsCategory[] = ['general', 'reading', 'writing', 'printing', 'collab'];
@@ -110,6 +111,10 @@ function writingPanel(): HTMLElement[] {
     field(t('text.typography'), check(loadTypography(), saveTypography), t('settings.typographyHint')),
     // CODE-014: how code cells react to each other.
     field(t('settings.reactivity'), select(REACTIVITY.map((m) => [m, t(modes[m])]), loadReactivity(), saveReactivity), t('settings.reactivityHint')),
+    // DOC-054: each ruler on its own, and the unit of the page.
+    field(t('ruler.horizontal'), check(loadRulerSides().horizontal, (horizontal) => saveRulerSides({ ...loadRulerSides(), horizontal }))),
+    field(t('ruler.vertical'), check(loadRulerSides().vertical, (vertical) => saveRulerSides({ ...loadRulerSides(), vertical }))),
+    field(t('unit.label'), select(LENGTH_UNITS.map((u) => [u, t(`unit.${u}`)]), loadLengthUnit(), saveLengthUnit), t('unit.hint')),
   ];
 }
 

@@ -110,6 +110,8 @@ test('finds and replaces text (DOC-019)', async ({ page }) => {
 });
 
 test('character formatting and paragraph spacing reach the file (DOC-020)', async ({ page }) => {
+  // Indents in centimetres (DOC-054: the unit of the page).
+  await page.addInitScript(() => localStorage.setItem('pwo.doc.unit', 'cm'));
   const editor = await newDocument(page);
   await page.keyboard.type('Titre rouge');
   await page.keyboard.press('Shift+Home');

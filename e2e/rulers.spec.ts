@@ -32,8 +32,27 @@ test('rulers in centimetres show the paper and its margins, and drag them and th
   await expect.poll(async () => page.getByRole('textbox', { name: 'Document' }).locator('p').first().evaluate((p) => getComputedStyle(p).textIndent)).toMatch(/^3[78]\.\d+px$/);
   const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
   expect(md).toMatch(/geometry: "top=20mm,right=20mm,bottom=20mm,left=(29\.\d|30|30\.\d)mm"/);
-  // Hidden from the View menu.
-  await page.getByLabel('View', { exact: true }).first().selectOption({ label: '✓ Rulers' });
+  // DOC-054: in another unit, from the View menu: 8 inches numbered on 210 mm.
+  const view = page.getByLabel('View', { exact: true }).first();
+  await view.selectOption({ label: 'Inches (in)' });
+  await expect(ruler.locator('text')).toHaveCount(8);
+  await expect(first).toHaveAttribute('aria-valuetext', / in$/);
+  // Each ruler hidden on its own.
+  const vertical = page.getByRole('group', { name: 'Vertical ruler' });
+  await view.selectOption({ label: '✓ Horizontal ruler' });
   await expect(ruler).toBeHidden();
+  await expect(vertical).toBeVisible();
+  await view.selectOption({ label: '✓ Vertical ruler' });
+  await expect(vertical).toBeHidden();
+  // The page setup is in the same unit, and changes it.
+  await page.getByRole('button', { name: 'Page setup' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Page setup' });
+  await expect(dialog.getByLabel('Unit of measure')).toHaveValue('in');
+  await expect(dialog.getByLabel('Width', { exact: true })).toHaveValue('8.268');
+  await dialog.getByLabel('Unit of measure').selectOption('mm');
+  await expect(dialog.getByLabel('Width', { exact: true })).toHaveValue('210');
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await view.selectOption({ label: 'Horizontal ruler' });
+  await expect(ruler.locator('text').first()).toHaveText('10');
   expect(errors).toEqual([]);
 });

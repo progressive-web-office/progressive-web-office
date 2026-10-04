@@ -251,7 +251,7 @@ the header.
 
 The page on screen is the page on paper: **▤ Page setup** sets the **paper**
 (A4, Letter, A5, A3, Legal or any size), its **orientation** and the four
-**margins** (in cm). The page is drawn with that width and those margins, and
+**margins**, in the **unit** chosen there. The page is drawn with that width and those margins, and
 a line marks the end of each page's text, where the printer will turn the
 page — a vertical spring stretches exactly down to it, and a page break
 sends what follows to the top of the next page.
@@ -270,8 +270,9 @@ geometry: "landscape,top=15mm,right=20mm,bottom=15mm,left=20mm"
 Printing uses it. A document without one gets A4 (Letter in North America)
 with 2 cm margins. On a phone, the text takes the width of the screen.
 
-**Rulers** (*View › Rulers*, shown on large screens) frame the page, in
-centimetres (inches in the United States) from the edge of the paper:
+**Rulers** (shown on large screens) frame the page, from the edge of the
+paper. Each one is shown or hidden on its own — *View › Horizontal ruler*,
+*View › Vertical ruler*, the command palette, or *Settings › Writing*:
 
 - the horizontal ruler stays at the top while scrolling; the margins are
   greyed, and the **left and right margins** can be dragged (by millimetres);
@@ -280,6 +281,13 @@ centimetres (inches in the United States) from the edge of the paper:
   them and use the arrow keys (1 mm per press);
 - the vertical ruler runs along the page, the top margin greyed, a red line
   where each page's text ends.
+
+**The unit of measure** — millimetres, centimetres, inches or points;
+centimetres by default, inches in the United States — is the one of the
+page size: chosen in *Page setup*, *View › Unit of measure* or *Settings ›
+Writing*, it is used by the page setup, the indents of *Paragraph spacing*
+and the graduations of the rulers alike. It is a preference of yours, not of
+the document: the lengths saved are the same whatever the unit.
 
 ### Typography
 

@@ -28,6 +28,7 @@ test('shows the page of the document, and a page break starts the next page (DOC
   const dialog = page.getByRole('dialog', { name: 'Page setup' });
   await dialog.getByLabel('Paper', { exact: true }).selectOption('A4');
   await dialog.getByLabel('Orientation', { exact: true }).selectOption('landscape');
+  await dialog.getByLabel('Unit of measure').selectOption('cm');
   for (const side of ['Top', 'Right', 'Bottom', 'Left']) await dialog.getByLabel(side, { exact: true }).fill('2');
   await dialog.getByRole('button', { name: 'OK' }).click();
   await expect.poll(async () => Math.round((await sheet.boundingBox())!.width)).toBe(Math.round(Math.min(px(297), (await page.locator('.doc-scroll').boundingBox())!.width)));

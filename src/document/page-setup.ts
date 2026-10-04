@@ -1,6 +1,7 @@
 /** Header and footer: dialog, on-screen preview and print CSS (DOC-024). */
 import { button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
+import { fromMm, LENGTH_UNITS, loadLengthUnit, saveLengthUnit, toMm, UNIT_STEP, type LengthUnit } from './units';
 import { cleanPageSetup, defaultGeometry, formatPageNumber, PAGE_FIELDS, PAGE_NUMBER_FORMATS, PAPERS, paperName, zoneParts, type PageField, type PageGeometry, type PageNumberFormat, type PageSetup, type PageZones } from './model';
 
 const ZONES = ['left', 'center', 'right'] as const;
@@ -104,8 +105,18 @@ export function editPageSetup(host: HTMLElement, initial: PageSetup | undefined)
     );
     // DOC-046: the paper, its orientation and the margins.
     const g0: PageGeometry = initial?.geometry ?? defaultGeometry();
-    const cm = (mm: number): string => String(Math.round(mm) / 10);
-    const num = (label: string, mm: number): HTMLInputElement => h('input', { type: 'number', min: '0', step: '0.05', value: cm(mm), 'aria-label': label, class: 'page-num' });
+    // DOC-054: in the unit chosen (the rulers' too), changed here.
+    let unit: LengthUnit = loadLengthUnit();
+    const show = (mm: number): string => String(fromMm(mm, unit));
+    const mmOf = (el: HTMLInputElement): number => toMm(Number(el.value), unit);
+    const num = (label: string, mm: number): HTMLInputElement => h('input', { type: 'number', min: '0', step: UNIT_STEP[unit], value: show(mm), 'aria-label': label, class: 'page-num' });
+    const unitSelect = h('select', { 'aria-label': t('unit.label') }, ...LENGTH_UNITS.map((u) => h('option', { value: u, selected: u === unit }, t(`unit.${u}`))));
+    const unitLabels: HTMLElement[] = [];
+    const unitLabel = (): HTMLElement => {
+      const span = h('span', { class: 'page-unit' }, ` ${unit}`);
+      unitLabels.push(span);
+      return span;
+    };
     const named = paperName(g0);
     const paper = h('select', { 'aria-label': t('page.paper') }, ...Object.keys(PAPERS).map((p) => h('option', { value: p, selected: p === named }, p)), h('option', { value: '', selected: !named }, t('page.custom')));
     const orientation = h('select', { 'aria-label': t('page.orientation') }, h('option', { value: 'portrait', selected: g0.width <= g0.height }, t('print.portrait')), h('option', { value: 'landscape', selected: g0.width > g0.height }, t('print.landscape')));
@@ -118,33 +129,43 @@ export function editPageSetup(host: HTMLElement, initial: PageSetup | undefined)
     };
     paper.addEventListener('change', () => {
       const size = PAPERS[paper.value];
-      if (size) [width.value, height.value] = [cm(size[0]), cm(size[1])];
+      if (size) [width.value, height.value] = [show(size[0]), show(size[1])];
       turn();
     });
     orientation.addEventListener('change', turn);
     const sizeChanged = (): void => {
-      const name = paperName({ width: Number(width.value) * 10, height: Number(height.value) * 10 });
+      const name = paperName({ width: mmOf(width), height: mmOf(height) });
       paper.value = name ?? '';
       orientation.value = Number(width.value) > Number(height.value) ? 'landscape' : 'portrait';
     };
     width.addEventListener('input', sizeChanged);
     height.addEventListener('input', sizeChanged);
+    const lengths = [width, height, ...Object.values(margins)];
+    unitSelect.addEventListener('change', () => {
+      const mm = lengths.map(mmOf);
+      unit = unitSelect.value as LengthUnit;
+      lengths.forEach((el, i) => {
+        el.value = show(mm[i]!);
+        el.step = UNIT_STEP[unit];
+      });
+      for (const span of unitLabels) span.textContent = ` ${unit}`;
+    });
     const geometryBox = h(
       'fieldset',
       { class: 'page-geometry' },
       h('legend', {}, t('page.paperAndMargins')),
-      h('div', { class: 'page-row' }, h('label', {}, `${t('page.paper')} `, paper), h('label', {}, `${t('page.orientation')} `, orientation), h('label', {}, `${t('page.width')} `, width, ' cm'), h('label', {}, `${t('page.height')} `, height, ' cm')),
-      h('div', { class: 'page-row' }, ...(['top', 'right', 'bottom', 'left'] as const).map((k) => h('label', {}, `${t(`page.${k}`)} `, margins[k], ' cm'))),
+      h('div', { class: 'page-row' }, h('label', {}, `${t('page.paper')} `, paper), h('label', {}, `${t('page.orientation')} `, orientation), h('label', {}, `${t('page.width')} `, width, unitLabel()), h('label', {}, `${t('page.height')} `, height, unitLabel()), h('label', {}, `${t('unit.label')} `, unitSelect)),
+      h('div', { class: 'page-row' }, ...(['top', 'right', 'bottom', 'left'] as const).map((k) => h('label', {}, `${t(`page.${k}`)} `, margins[k], unitLabel()))),
     );
     const readGeometry = (): PageGeometry => {
-      const v = (el: HTMLInputElement): number => Math.round(Number(el.value) * 100) / 10;
-      return { width: v(width), height: v(height), top: v(margins.top), right: v(margins.right), bottom: v(margins.bottom), left: v(margins.left) };
+      return { width: mmOf(width), height: mmOf(height), top: mmOf(margins.top), right: mmOf(margins.right), bottom: mmOf(margins.bottom), left: mmOf(margins.left) };
     };
     const dialog = h('dialog', { class: 'dialog hf-dialog', 'aria-labelledby': 'hf-title' });
     const finish = (ok: boolean): void => {
       dialog.close();
       dialog.remove();
       if (!ok) return resolve(null);
+      if (unit !== loadLengthUnit()) saveLengthUnit(unit);
       const zones = (kind: 'header' | 'footer'): PageZones => Object.fromEntries(ZONES.map((z) => [z, inputs.get(`${kind}.${z}`)!.value]));
       const first = Math.round(Number(start.value));
       resolve(

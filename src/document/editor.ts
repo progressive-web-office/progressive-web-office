@@ -25,7 +25,8 @@ import { writeDocumentAsync, type TextFormat } from './io';
 import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64, writeMarkdown } from './markdown-writer';
 import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
-import { Rulers, type RulerUnit } from './rulers';
+import { Rulers } from './rulers';
+import { LENGTH_UNITS, loadLengthUnit, loadRulerSides, RULERS_EVENT, saveLengthUnit, saveRulerSides, UNIT_EVENT, type LengthUnit, type RulerSides } from './units';
 import { writeLatex } from './latex-writer';
 import { readLatex } from './latex-reader';
 import { addResource, allParagraphs, cleanPageSetup, defaultGeometry, isFillRun, isLandscape, paperName, textHeight, textWidth, type PageGeometry, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type FieldFormat, type FieldRun, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
@@ -131,24 +132,6 @@ function saveHyphenation(on: boolean): void {
   }
 }
 
-/** DOC-047: rulers shown (by default on a large screen), and their unit. */
-function loadRulers(): boolean {
-  try {
-    const v = localStorage.getItem('pwo.doc.rulers');
-    if (v !== null) return v === '1';
-  } catch {
-    /* storage unavailable */
-  }
-  return typeof matchMedia === 'function' && matchMedia('(min-width: 900px)').matches;
-}
-function saveRulers(on: boolean): void {
-  try {
-    localStorage.setItem('pwo.doc.rulers', on ? '1' : '0');
-  } catch {
-    /* storage unavailable */
-  }
-}
-const loadRulerUnit = (): RulerUnit => (typeof navigator !== 'undefined' && /^en-US$/.test(navigator.language) ? 'in' : 'cm');
 
 /** DOC-044: how a document is edited; the last choice is kept per kind of document. */
 type EditMode = 'visual' | 'source' | 'reading';
@@ -283,13 +266,16 @@ export class DocumentEditor implements EditorView {
         indent: (kind, pt) => void this.command(setParagraphAttrs({ [kind]: pt ? pt : null })),
       },
       { horizontal: t('ruler.horizontal'), vertical: t('ruler.vertical'), left: t('ruler.leftMargin'), right: t('ruler.rightMargin'), indent: t('para.indent'), firstLine: t('para.firstLine'), page: (n) => t('ruler.page', { n }) },
-      loadRulerUnit(),
+      loadLengthUnit(),
     );
     const sheet = h('div', { class: 'doc-sheet' }, this.rulers.horizontal, h('div', { class: 'doc-sheet-body' }, this.rulers.vertical, this.page));
     const scroller = h('div', { class: 'doc-scroll' }, this.headerStrip, sheet, this.footerStrip, this.notes);
     this.scroller = scroller;
     this.element = h('div', { class: 'doc-editor' });
-    this.element.classList.toggle('show-rulers', loadRulers());
+    this.showRulers(loadRulerSides());
+    // DOC-054: the rulers and the unit follow the settings, in every document open.
+    addEventListener(RULERS_EVENT, this.onRulerSides);
+    addEventListener(UNIT_EVENT, this.onUnit);
     this.element.classList.toggle('hyphenate', loadHyphenation());
     // REVIEW-001: read and comment page by page.
     this.review = new DocReview(
@@ -1635,7 +1621,10 @@ export class DocumentEditor implements EditorView {
         ...(this.sourceLang() ? [h('option', { value: 'mode-source' }, `${mark(this.mode === 'source')}${t('mode.source')}`)] : []),
         h('option', { value: 'mode-reading' }, `${mark(this.mode === 'reading')}${t('mode.reading')}`),
         h('option', { value: 'hyphenate' }, `${mark(this.element.classList.contains('hyphenate'))}${t('typo.hyphenate')}`),
-        h('option', { value: 'rulers' }, `${mark(this.element.classList.contains('show-rulers'))}${t('ruler.menu')}`),
+        // DOC-054: each ruler on its own, and the unit of the page.
+        h('option', { value: 'ruler-h' }, `${mark(this.element.classList.contains('show-ruler-h'))}${t('ruler.horizontal')}`),
+        h('option', { value: 'ruler-v' }, `${mark(this.element.classList.contains('show-ruler-v'))}${t('ruler.vertical')}`),
+        h('optgroup', { label: t('unit.label') }, ...LENGTH_UNITS.map((u) => h('option', { value: `unit-${u}` }, `${mark(loadLengthUnit() === u)}${t(`unit.${u}`)}`))),
         // COLOR-002: the colours as a printer would print them.
         h('option', { value: 'proof' }, `${mark(this.element.classList.contains('soft-proof'))}${t('color.proof')}`),
         h('option', { value: 'readability' }, `${mark(this.writing.readability)}${t('wview.readability')}`),
@@ -1660,7 +1649,10 @@ export class DocumentEditor implements EditorView {
         fill();
         return;
       }
-      if (value === 'rulers') this.setRulers(!this.element.classList.contains('show-rulers'));
+      const sides = this.rulerSides();
+      if (value === 'ruler-h') saveRulerSides({ ...sides, horizontal: !sides.horizontal });
+      if (value === 'ruler-v') saveRulerSides({ ...sides, vertical: !sides.vertical });
+      if (value.startsWith('unit-')) saveLengthUnit(value.slice(5) as LengthUnit);
       if (value === 'proof') this.element.classList.toggle('soft-proof');
       if (value === 'hyphenate') {
         const on = !this.element.classList.contains('hyphenate');
@@ -2213,6 +2205,8 @@ export class DocumentEditor implements EditorView {
 
   destroy(): void {
     removeEventListener('resize', this.onResize);
+    removeEventListener(RULERS_EVENT, this.onRulerSides);
+    removeEventListener(UNIT_EVENT, this.onUnit);
     removeEventListener('beforeprint', this.beforePrint);
     removeEventListener('afterprint', this.onResize);
     if (this.springsFrame) cancelAnimationFrame(this.springsFrame);
@@ -2283,11 +2277,19 @@ export class DocumentEditor implements EditorView {
     this.rulers.render({ geometry: g, pxPerMm, indent: para.indent ?? 0, firstLine: para.firstLine ?? 0, height: rect.height, pageEnds: ends });
   }
 
-  private setRulers(on: boolean): void {
-    this.element.classList.toggle('show-rulers', on);
-    saveRulers(on);
-    if (on) this.rulersSoon();
+  private rulerSides(): RulerSides {
+    return { horizontal: this.element.classList.contains('show-ruler-h'), vertical: this.element.classList.contains('show-ruler-v') };
   }
+
+  private showRulers(sides: RulerSides): void {
+    this.element.classList.toggle('show-ruler-h', sides.horizontal);
+    this.element.classList.toggle('show-ruler-v', sides.vertical);
+    this.element.classList.toggle('show-rulers', sides.horizontal || sides.vertical);
+    if (this.view && (sides.horizontal || sides.vertical)) this.rulersSoon();
+  }
+
+  private readonly onRulerSides = (e: Event): void => this.showRulers((e as CustomEvent<RulerSides>).detail);
+  private readonly onUnit = (e: Event): void => this.rulers.setUnit((e as CustomEvent<LengthUnit>).detail);
 
   private springsFrame = 0;
   private readonly onResize = (): void => {

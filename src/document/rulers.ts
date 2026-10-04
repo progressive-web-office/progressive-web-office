@@ -1,22 +1,29 @@
 /**
  * DOC-047: graduated rulers around the page, as in a word processor — the
- * horizontal one in centimetres (or inches) from the edge of the paper, its
+ * horizontal one in the unit of the page (DOC-054) from the edge of the paper, its
  * margins greyed, with the margins and the indents of the paragraph to drag;
  * the vertical one along the page, where each page's text ends marked.
  */
 import { h } from '../app/dom';
 import type { PageGeometry } from './model';
+import { fromMm, type LengthUnit } from './units';
 
 const SVG = 'http://www.w3.org/2000/svg';
 export const RULER = 22;
 
-export type RulerUnit = 'cm' | 'in';
+export type RulerUnit = LengthUnit;
 
-/** Where the marks of a ruler go: every mm (or 1/8 in), longer and numbered every cm (inch). */
+/**
+ * Where the marks of a ruler go: every mm, numbered every cm (in cm) or every
+ * 10 mm (in mm); every 1/8 in, numbered every inch; every 6 pt, numbered every 72 pt.
+ */
 export function ticks(lengthMm: number, unit: RulerUnit): { at: number; size: 1 | 2 | 3; label?: string }[] {
   const out: { at: number; size: 1 | 2 | 3; label?: string }[] = [];
-  if (unit === 'cm') {
-    for (let mm = 0; mm <= lengthMm + 1e-6; mm++) out.push(mm % 10 === 0 ? { at: mm, size: 3, label: String(mm / 10) } : { at: mm, size: mm % 5 === 0 ? 2 : 1 });
+  if (unit === 'cm' || unit === 'mm') {
+    for (let mm = 0; mm <= lengthMm + 1e-6; mm++) out.push(mm % 10 === 0 ? { at: mm, size: 3, label: String(unit === 'cm' ? mm / 10 : mm) } : { at: mm, size: mm % 5 === 0 ? 2 : 1 });
+  } else if (unit === 'pt') {
+    const step = 25.4 / 12;
+    for (let k = 0; k * step <= lengthMm + 1e-6; k++) out.push(k % 12 === 0 ? { at: k * step, size: 3, label: String(k * 6) } : { at: k * step, size: k % 6 === 0 ? 2 : 1 });
   } else {
     const step = 25.4 / 8;
     for (let k = 0; k * step <= lengthMm + 1e-6; k++) out.push(k % 8 === 0 ? { at: k * step, size: 3, label: String(k / 8) } : { at: k * step, size: k % 4 === 0 ? 2 : 1 });
@@ -131,7 +138,7 @@ export class Rulers {
     const node = h('span', { class: `ruler-handle ${kind}`, role: 'slider', tabindex: '0', 'aria-label': label, title: label, style: `left: ${x}px` });
     const k = this.state?.pxPerMm ?? 1;
     node.setAttribute('aria-valuenow', String(round(x / k)));
-    node.setAttribute('aria-valuetext', `${round(x / k / (this.unit === 'cm' ? 10 : 25.4))} ${this.unit}`);
+    node.setAttribute('aria-valuetext', `${fromMm(x / k, this.unit)} ${this.unit}`);
     let start: number | undefined;
     node.addEventListener('pointerdown', (e) => {
       e.preventDefault();

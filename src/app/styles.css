@@ -1201,8 +1201,8 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .doc-sheet .doc-page { width: 100%; margin: 0; }
 .doc-sheet-body { position: relative; }
 .ruler { display: none; }
-.doc-editor.show-rulers .ruler { display: block; }
-.doc-editor.show-rulers .doc-scroll { padding-left: 40px; padding-right: 40px; }
+.doc-editor.show-ruler-h .ruler-h, .doc-editor.show-ruler-v .ruler-v { display: block; }
+.doc-editor.show-ruler-v .doc-scroll { padding-left: 40px; padding-right: 40px; }
 .ruler-h { position: sticky; top: 0; z-index: 2; height: 22px; margin-bottom: 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
 .ruler-h > svg, .ruler-v > svg { display: block; }
 .ruler-v { position: absolute; top: 0; left: -28px; width: 22px; box-shadow: 1px 0 2px rgba(0, 0, 0, 0.12); }

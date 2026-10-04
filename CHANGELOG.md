@@ -105,6 +105,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Rulers shown or hidden **each on its own** (DOC-054): *View › Horizontal
+  ruler*, *View › Vertical ruler*, the command palette or the settings. The
+  **unit of measure** (mm, cm, inches, points) is the one of the page size:
+  chosen in the page setup, the View menu or the settings, it is used by the
+  page setup, the paragraph indents and the rulers' graduations.
+
 - Named paragraph styles (DOC-053): **🅰 Styles…** makes a style from the
   look of a paragraph (font, size, colour, bold, italic, alignment,
   spacing, indents, line spacing), changes, renames and deletes it; the
