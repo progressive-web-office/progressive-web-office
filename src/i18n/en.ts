@@ -1922,6 +1922,9 @@ export const en = {
   'field.preview': 'Shows:',
   'field.delete': 'Delete the field',
   'field.edit': 'Change the field…',
+  'draw.lib.ladder': 'Ladder diagram (IEC 61131-3 LD)',
+  'draw.lib.fbd': 'Function blocks (IEC 61131-3 FBD)',
+  'draw.lib.sfc': 'Sequential function chart, Grafcet (IEC 61131-3 SFC)',
 } as const;
 
 export type MessageKey = keyof typeof en;

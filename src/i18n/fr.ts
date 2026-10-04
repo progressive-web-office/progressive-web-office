@@ -1924,4 +1924,7 @@ export const fr: Record<MessageKey, string> = {
   'field.preview': 'Affiche :',
   'field.delete': 'Supprimer le champ',
   'field.edit': 'Modifier le champ…',
+  'draw.lib.ladder': 'Langage à contacts (CEI 61131-3 LD)',
+  'draw.lib.fbd': 'Blocs fonctionnels (CEI 61131-3 FBD)',
+  'draw.lib.sfc': 'Grafcet, diagramme fonctionnel en séquence (CEI 61131-3 SFC)',
 };

@@ -1924,4 +1924,7 @@ export const zh: Record<MessageKey, string> = {
   'field.preview': '显示：',
   'field.delete': '删除字段',
   'field.edit': '修改字段…',
+  'draw.lib.ladder': '梯形图（IEC 61131-3 LD）',
+  'draw.lib.fbd': '功能块图（IEC 61131-3 FBD）',
+  'draw.lib.sfc': '顺序功能图（IEC 61131-3 SFC）',
 };

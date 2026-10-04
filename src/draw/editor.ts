@@ -21,7 +21,7 @@ const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<strin
   return el;
 };
 
-const CATEGORIES: SymbolCategory[] = ['electrical', 'logic', 'block', 'fluid', 'flowchart'];
+const CATEGORIES: SymbolCategory[] = ['electrical', 'logic', 'block', 'fluid', 'flowchart', 'ladder', 'fbd', 'sfc'];
 /** How close (in drawing units) a point snaps to a connection point. */
 const ATTACH = 8;
 

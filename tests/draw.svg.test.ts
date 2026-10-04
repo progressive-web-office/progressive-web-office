@@ -71,3 +71,14 @@ describe('DRAW-003 drawings saved as SVG', () => {
     expect(() => fromSvg('<html/>')).toThrow();
   });
 });
+
+describe('DRAW-012 labels of IEC 61131-3 symbols', () => {
+  it('writes a ladder variable above, an SFC condition to the right', () => {
+    const d = emptyDrawing();
+    placeSymbol(d, 'ld-no', 100, 100).value = 'Start';
+    placeSymbol(d, 'sfc-transition', 200, 100).value = 'Level > 80';
+    const svg = toSvg(d);
+    expect(svg).toMatch(/<text x="100" y="86"[^>]*>Start<\/text>/);
+    expect(svg).toMatch(/<text x="218" y="104"[^>]*>Level &gt; 80<\/text>/);
+  });
+});

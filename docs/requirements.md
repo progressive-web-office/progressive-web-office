@@ -582,6 +582,7 @@ integration is ever needed.
 | DRAW-009 | S | 0.2.0 | From an electrical schematic, the system shall give a netlist (SPICE) and a bill of materials (reference, value, quantity) as a spreadsheet. |
 | DRAW-010 | C | — | The system should open and save OpenDocument drawings (`.odg`) and open draw.io diagrams (`.drawio`, uncompressed). |
 | DRAW-011 | S | 0.2.0 | The drawing editor shall be accessible: every shape reachable with Tab and named for screen readers (its kind, its reference and value, its text), moved and resized with the keyboard, and the drawing given an alternative text. |
+| DRAW-012 | S | 0.2.0 | The system shall offer the graphical languages of IEC 61131-3 as symbol libraries: ladder diagram (power rails, contacts NO, NC, P, N; coils, negated, set, reset, P, N; the variable above), function block diagram (standard timers, counters, edge detectors, bistables, arithmetic and comparison functions, a generic block; named pins, instance names) and sequential function chart / Grafcet (steps, initial step, transitions with their condition, action blocks, simultaneous and selection divergences and convergences, jumps). |
 
 ## 10. Out of scope (Won't, this time)
 

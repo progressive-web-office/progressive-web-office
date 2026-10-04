@@ -131,3 +131,25 @@ describe('DRAW-011 accessible drawing editor', () => {
     expect(simplify([[0, 0], [1, 0.1], [2, 0], [3, 5], [4, 0]], 0.5)).toEqual([[0, 0], [2, 0], [3, 5], [4, 0]]);
   });
 });
+
+describe('DRAW-012 IEC 61131-3 graphical languages', () => {
+  it('has the ladder, function block and SFC libraries, found by their usual names', () => {
+    for (const c of ['ladder', 'fbd', 'sfc'] as const) expect(SYMBOLS.filter((s) => s.category === c).length).toBeGreaterThan(8);
+    expect(searchSymbols('TON').map((s) => s.id)).toContain('fb-ton');
+    expect(searchSymbols('grafcet étape').map((s) => s.id)).toEqual(['sfc-step', 'sfc-initial']);
+    expect(searchSymbols('ladder coil set').map((s) => s.id)).toEqual(['ld-set', 'ld-reset']);
+  });
+
+  it('gives function blocks their named pins on the grid, inputs left and outputs right', () => {
+    const ton = symbolDef('fb-ton')!;
+    expect(ton.pins).toEqual([[-40, -10], [-40, 10], [40, -10], [40, 10]]);
+    expect(ton.body).toContain('>IN<');
+    expect(ton.body).toContain('>ET<');
+    const ctud = symbolDef('fb-ctud')!;
+    expect(ctud.pins).toHaveLength(8);
+    expect(ctud.pins.every(([x, y]) => x % 10 === 0 && y % 10 === 0)).toBe(true);
+    const d = emptyDrawing();
+    expect(placeSymbol(d, 'fb-ton', 0, 0).ref).toBe('TON1');
+    expect(placeSymbol(d, 'ld-no', 0, 0).ref).toBeUndefined();
+  });
+});

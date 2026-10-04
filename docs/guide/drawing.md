@@ -61,7 +61,21 @@ choose a library:
   cylinders, 3/2 and 5/2 directional valves, pump, compressor, pressure
   source, exhaust, check valve, flow control valve, pressure gauge;
 - **Flowcharts (ISO 5807)**: start / end, process, decision, input / output,
-  predefined process, connector.
+  predefined process, connector;
+- the graphical languages of **IEC 61131-3** (programmable controllers):
+  - **Ladder diagram (LD)**: left and right power rails; contacts normally
+    open, normally closed, rising (P) and falling (N) edge; coils, negated,
+    set (S), reset (R), P and N. The variable (`%I0.0`, `Start`) is the
+    value, written above;
+  - **Function blocks (FBD)**: TON, TOF, TP timers; CTU, CTD, CTUD counters;
+    R_TRIG, F_TRIG; SR, RS bistables; ADD, SUB, MUL, DIV, GT, LT, EQ, SEL,
+    MOVE; a generic block whose name is its value. Inputs are on the left,
+    outputs on the right, each pin named; the instance gets a name (TON1…)
+    above. The logic gates of the IEC library (&, ≥1, =1) complete them;
+  - **Sequential function chart (SFC) / Grafcet**: step and initial step
+    (their number or name inside), transition (its condition to the right),
+    action block, simultaneous (AND, double lines) and selection (OR)
+    divergences and convergences, jump to a step.
 
 A click places the symbol in the middle of the view. Its pins sit on the grid
 and show as orange dots while the **Wire**, **Line** or **Arrow** tool is

@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **IEC 61131-3 graphical languages** in the drawing editor (DRAW-012):
+  ladder diagram (rails, contacts, coils), function block diagram (TON,
+  TOF, TP, CTU, CTD, CTUD, R_TRIG, F_TRIG, SR, RS, arithmetic and comparison
+  blocks, a generic block) and sequential function chart / Grafcet (steps,
+  transitions, actions, AND / OR divergences and convergences, jumps).
 - **Fields changed with a click** (DOC-050): what a field shows, the format
   of a date or a time (short, medium, long, full, ISO), today's or a fixed
   date, with a preview; kept in Markdown (`{date:full=2025-12-24}`),

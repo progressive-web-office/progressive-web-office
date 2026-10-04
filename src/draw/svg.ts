@@ -61,6 +61,17 @@ function symbolSvg(s: SymbolShape): string {
     return out;
   }
   const horizontal = s.rot === 0 || s.rot === 180;
+  // DRAW-012: a ladder variable above its contact or coil, an SFC condition to the right of its transition.
+  if (def?.label === 'above' && horizontal) {
+    if (s.value) out += label(s.x, box[1] - 4, s.value, 'middle');
+    if (s.ref) out += label(s.x, box[3] + 13, s.ref, 'middle');
+    return out;
+  }
+  if (def?.label === 'right' && horizontal) {
+    if (s.value) out += label(box[2] + 6, s.y + 4, s.value, 'start');
+    if (s.ref) out += label(box[0] - 6, s.y + 4, s.ref, 'end');
+    return out;
+  }
   if (horizontal) {
     if (s.ref) out += label(s.x, box[1] - 4, s.ref, 'middle');
     if (s.value) out += label(s.x, box[3] + 13, s.value, 'middle');

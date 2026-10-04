@@ -6,7 +6,7 @@
 
 export type Pt = [number, number];
 
-export type SymbolCategory = 'electrical' | 'logic' | 'block' | 'fluid' | 'flowchart';
+export type SymbolCategory = 'electrical' | 'logic' | 'block' | 'fluid' | 'flowchart' | 'ladder' | 'fbd' | 'sfc';
 
 export interface SymbolDef {
   id: string;
@@ -20,6 +20,8 @@ export interface SymbolDef {
   unit?: string;
   /** The value is written inside the symbol (flowcharts, blocks) rather than beside it. */
   inside?: boolean;
+  /** Where the value goes otherwise: above (ladder variables) or to the right (SFC transitions); below by default. */
+  label?: 'above' | 'right';
   /** Pins, relative to the centre. */
   pins: Pt[];
   /** Bounding box [x0, y0, x1, y1], relative to the centre. */
@@ -204,7 +206,88 @@ const FLOWCHART: SymbolDef[] = [
   flow('connector', 'Connector', C(0, 0, 10), 'on-page reference', [[0, -10], [10, 0], [0, 10], [-10, 0]], [-10, -10, 10, 10]),
 ];
 
-export const SYMBOLS: SymbolDef[] = [...ELECTRICAL, ...LOGIC, ...BLOCK, ...FLUID, ...FLOWCHART];
+/* IEC 61131-3 graphical languages (DRAW-012). */
+
+const contact = (id: string, name: string, mark: string, keywords: string): SymbolDef => ({
+  id, name, category: 'ladder', keywords: `IEC 61131-3 LD ladder contact ${keywords}`, prefix: '', label: 'above', pins: H2, box: [-30, -10, 30, 10],
+  body: L(-30, 0, -6, 0) + L(6, 0, 30, 0) + L(-6, -10, -6, 10) + L(6, -10, 6, 10) + mark,
+});
+const coil = (id: string, name: string, mark: string, keywords: string): SymbolDef => ({
+  id, name, category: 'ladder', keywords: `IEC 61131-3 LD ladder coil output ${keywords}`, prefix: '', label: 'above', pins: H2, box: [-30, -10, 30, 10],
+  body: L(-30, 0, -9, 0) + L(9, 0, 30, 0) + '<path d="M-5 -9Q-11 0 -5 9"/><path d="M5 -9Q11 0 5 9"/>' + mark,
+});
+const rail = (id: string, name: string, side: 1 | -1): SymbolDef => ({
+  id, name, category: 'ladder', keywords: 'IEC 61131-3 LD ladder power rail bus', prefix: '', pins: [[0, -30], [0, -10], [0, 10], [0, 30]], box: [-2, -40, 2, 40],
+  body: `<path d="M0 -40L0 40" stroke-width="3"/>` + (side > 0 ? '' : ''),
+});
+const LADDER: SymbolDef[] = [
+  rail('rail-left', 'Left power rail', 1),
+  rail('rail-right', 'Right power rail', -1),
+  contact('ld-no', 'Contact (normally open)', '', 'NO make'),
+  contact('ld-nc', 'Contact (normally closed)', L(-6, 9, 6, -9), 'NC break negated'),
+  contact('ld-p', 'Contact (rising edge, P)', T(0, 0, 'P', 10), 'positive transition edge'),
+  contact('ld-n', 'Contact (falling edge, N)', T(0, 0, 'N', 10), 'negative transition edge'),
+  coil('ld-coil', 'Coil', '', ''),
+  coil('ld-coil-neg', 'Coil (negated)', L(-4, 7, 4, -7), 'negated /'),
+  coil('ld-set', 'Coil (set, S)', T(0, 0, 'S', 10), 'set latch'),
+  coil('ld-reset', 'Coil (reset, R)', T(0, 0, 'R', 10), 'reset unlatch'),
+  coil('ld-coil-p', 'Coil (rising edge, P)', T(0, 0, 'P', 10), 'positive transition'),
+  coil('ld-coil-n', 'Coil (falling edge, N)', T(0, 0, 'N', 10), 'negative transition'),
+];
+
+/** A function block of FBD: its type inside at the top, its inputs on the left and outputs on the right, named. */
+const fb = (type: string, inputs: string[], outputs: string[], name = type, keywords = '', prefix = type): SymbolDef => {
+  const n = Math.max(inputs.length, outputs.length, 1);
+  const top = -(n - 1) * 10;
+  const h0 = top - 20;
+  const h1 = -top + 20;
+  const pin = (i: number): number => top + i * 20;
+  const body =
+    `<rect x="-30" y="${h0}" width="60" height="${h1 - h0}"/>` +
+    T(0, h0 + 9, type, 9) +
+    inputs.map((p, i) => L(-40, pin(i), -30, pin(i)) + `<text x="-27" y="${pin(i)}" font-size="7" dominant-baseline="central" fill="currentColor" stroke="none">${p}</text>`).join('') +
+    outputs.map((p, i) => L(30, pin(i), 40, pin(i)) + `<text x="27" y="${pin(i)}" font-size="7" text-anchor="end" dominant-baseline="central" fill="currentColor" stroke="none">${p}</text>`).join('');
+  return {
+    id: `fb-${type.toLowerCase()}`, name, category: 'fbd', keywords: `IEC 61131-3 FBD function block ${type} ${keywords}`, prefix,
+    pins: [...inputs.map((_, i): Pt => [-40, pin(i)]), ...outputs.map((_, i): Pt => [40, pin(i)])], box: [-40, h0, 40, h1], body,
+  };
+};
+const FBD: SymbolDef[] = [
+  fb('TON', ['IN', 'PT'], ['Q', 'ET'], 'Timer on delay (TON)', 'timer delay'),
+  fb('TOF', ['IN', 'PT'], ['Q', 'ET'], 'Timer off delay (TOF)', 'timer delay'),
+  fb('TP', ['IN', 'PT'], ['Q', 'ET'], 'Timer pulse (TP)', 'timer pulse'),
+  fb('CTU', ['CU', 'R', 'PV'], ['Q', 'CV'], 'Counter up (CTU)', 'counter'),
+  fb('CTD', ['CD', 'LD', 'PV'], ['Q', 'CV'], 'Counter down (CTD)', 'counter'),
+  fb('CTUD', ['CU', 'CD', 'R', 'LD', 'PV'], ['QU', 'QD', 'CV'], 'Counter up-down (CTUD)', 'counter'),
+  fb('R_TRIG', ['CLK'], ['Q'], 'Rising edge (R_TRIG)', 'edge trigger'),
+  fb('F_TRIG', ['CLK'], ['Q'], 'Falling edge (F_TRIG)', 'edge trigger'),
+  fb('SR', ['S1', 'R'], ['Q1'], 'Set-dominant bistable (SR)', 'flip-flop latch memory'),
+  fb('RS', ['S', 'R1'], ['Q1'], 'Reset-dominant bistable (RS)', 'flip-flop latch memory'),
+  fb('ADD', ['IN1', 'IN2'], ['OUT'], 'Addition (ADD)', 'arithmetic +', ''),
+  fb('SUB', ['IN1', 'IN2'], ['OUT'], 'Subtraction (SUB)', 'arithmetic -', ''),
+  fb('MUL', ['IN1', 'IN2'], ['OUT'], 'Multiplication (MUL)', 'arithmetic *', ''),
+  fb('DIV', ['IN1', 'IN2'], ['OUT'], 'Division (DIV)', 'arithmetic /', ''),
+  fb('GT', ['IN1', 'IN2'], ['OUT'], 'Greater than (GT)', 'comparison >', ''),
+  fb('LT', ['IN1', 'IN2'], ['OUT'], 'Less than (LT)', 'comparison <', ''),
+  fb('EQ', ['IN1', 'IN2'], ['OUT'], 'Equal (EQ)', 'comparison =', ''),
+  fb('SEL', ['G', 'IN0', 'IN1'], ['OUT'], 'Selection (SEL)', 'select', ''),
+  fb('MOVE', ['IN'], ['OUT'], 'Move (MOVE)', 'assignment copy', ''),
+  { ...fb('FB', ['IN1', 'IN2'], ['OUT'], 'Function block (generic)', 'custom user', 'FB'), inside: true, body: fb('', ['', ''], ['']).body },
+];
+
+const SFC: SymbolDef[] = [
+  { id: 'sfc-step', name: 'Step', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet IEC 60848 étape', prefix: '', inside: true, pins: [[0, -30], [0, 30], [20, 0]], box: [-20, -30, 20, 30], body: '<rect x="-20" y="-20" width="40" height="40"/>' + L(0, -30, 0, -20) + L(0, 20, 0, 30) },
+  { id: 'sfc-initial', name: 'Initial step', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet initial étape', prefix: '', inside: true, pins: [[0, -30], [0, 30], [20, 0]], box: [-20, -30, 20, 30], body: '<rect x="-20" y="-20" width="40" height="40"/><rect x="-16" y="-16" width="32" height="32"/>' + L(0, -30, 0, -20) + L(0, 20, 0, 30) },
+  { id: 'sfc-transition', name: 'Transition', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet transition receptivity condition', prefix: '', label: 'right', pins: [[0, -20], [0, 20]], box: [-12, -20, 12, 20], body: L(0, -20, 0, 20) + '<path d="M-12 0L12 0" stroke-width="3"/>' },
+  { id: 'sfc-action', name: 'Action block', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet action qualifier N S R', prefix: '', inside: true, pins: [[-50, 0]], box: [-50, -10, 50, 10], body: '<rect x="-40" y="-10" width="90" height="20"/>' + L(-50, 0, -40, 0) },
+  { id: 'sfc-and-div', name: 'Simultaneous divergence (AND)', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet parallel branch double line', prefix: '', pins: [[0, -10], [-30, 10], [30, 10]], box: [-40, -10, 40, 10], body: L(0, -10, 0, -2) + L(-40, -2, 40, -2) + L(-40, 2, 40, 2) + L(-30, 2, -30, 10) + L(30, 2, 30, 10) },
+  { id: 'sfc-and-conv', name: 'Simultaneous convergence (AND)', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet parallel join double line', prefix: '', pins: [[-30, -10], [30, -10], [0, 10]], box: [-40, -10, 40, 10], body: L(-30, -10, -30, -2) + L(30, -10, 30, -2) + L(-40, -2, 40, -2) + L(-40, 2, 40, 2) + L(0, 2, 0, 10) },
+  { id: 'sfc-or-div', name: 'Selection divergence (OR)', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet alternative branch', prefix: '', pins: [[0, -10], [-30, 10], [30, 10]], box: [-30, -10, 30, 10], body: L(0, -10, 0, 0) + L(-30, 0, 30, 0) + L(-30, 0, -30, 10) + L(30, 0, 30, 10) },
+  { id: 'sfc-or-conv', name: 'Selection convergence (OR)', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet alternative join', prefix: '', pins: [[-30, -10], [30, -10], [0, 10]], box: [-30, -10, 30, 10], body: L(-30, -10, -30, 0) + L(30, -10, 30, 0) + L(-30, 0, 30, 0) + L(0, 0, 0, 10) },
+  { id: 'sfc-jump', name: 'Jump to a step', category: 'sfc', keywords: 'IEC 61131-3 SFC Grafcet jump goto renvoi', prefix: '', label: 'right', pins: [[0, -20]], box: [-8, -20, 8, 8], body: L(0, -20, 0, -4) + '<path d="M-8 -4L8 -4L0 8Z" fill="currentColor"/>' },
+];
+
+export const SYMBOLS: SymbolDef[] = [...ELECTRICAL, ...LOGIC, ...BLOCK, ...FLUID, ...FLOWCHART, ...LADDER, ...FBD, ...SFC];
 
 const BY_ID = new Map(SYMBOLS.map((s) => [s.id, s]));
 
