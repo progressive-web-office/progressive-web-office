@@ -1,5 +1,5 @@
 /**
- * Callouts (MD-019): a quote whose first line is `[!NOTE] Title` (Obsidian,
+ * Callouts (MD-019): a quote whose first line is `[!NOTE] Title` (note apps,
  * GitHub alerts) is drawn as a coloured box, by type; the text stays as it is.
  */
 import { Plugin, PluginKey } from 'prosemirror-state';

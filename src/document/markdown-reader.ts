@@ -207,7 +207,7 @@ function fillInline(state: StateInline, silent: boolean): boolean {
   return true;
 }
 
-/** MD-019: a callout's first line, `[!NOTE] Title` (Obsidian, GitHub alerts). */
+/** MD-019: a callout's first line, `[!NOTE] Title` (note apps, GitHub alerts). */
 export const CALLOUT = /^\[!([A-Za-z][\w-]*)\]([+-]?)/;
 
 let parser: MarkdownIt | undefined;
