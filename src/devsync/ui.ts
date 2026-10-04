@@ -10,7 +10,7 @@ import { t } from '../i18n';
 import { listen, startSync, stopSync, currentSync, SYNC_FOLDER } from './live';
 import { TRASH } from './plan';
 import { INVITE_MINUTES, hostInvitation, invitationUrl, joinInvitation, newInvitation, parseInvitation, type Invitation } from './invite';
-import { loadSyncState, newPairing, parsePairingCode, saveSyncState, unpaired, TOMBSTONE_DAYS } from './state';
+import { defaultName, deviceModelName, loadSyncState, newPairing, parsePairingCode, saveSyncState, unpaired, TOMBSTONE_DAYS } from './state';
 
 export interface SyncDialogOptions {
   openBackup?(): void;
@@ -118,6 +118,9 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       area.replaceChildren(
         h('div', { class: 'devsync-code' }, zoomableQr(() => host, url, t('devsync.code'), 180, 'devsync-qr'), copy),
         h('p', { class: 'hint' }, t('devsync.inviteValid', { time: new Date(inv.expires).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })),
+        // What to do on the new device, said where the user looks.
+        h('p', {}, t('devsync.inviteSteps')),
+        h('ol', { class: 'devsync-steps' }, h('li', {}, t('devsync.inviteStep1')), h('li', {}, t('devsync.inviteStep2')), h('li', {}, t('devsync.inviteStep3'))),
         requests,
       );
     };
@@ -136,7 +139,15 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       }
       const name = h('input', { type: 'text', value: state.name, maxlength: '60', 'aria-label': t('devsync.deviceName') });
       name.addEventListener('change', () => saveSyncState({ ...loadSyncState(), name: name.value.trim() || state.name }));
-      const nameRow = h('label', { class: 'git-row' }, t('devsync.deviceName'), ' ', name);
+      const nameRow = h('div', {}, h('label', { class: 'git-row' }, t('devsync.deviceName'), ' ', name), h('p', { class: 'hint' }, t('devsync.nameHint')));
+      // The model of a phone, when the browser tells it, rather than "Android · Chrome".
+      if (state.name === defaultName()) {
+        void deviceModelName().then((better) => {
+          if (!better || loadSyncState().name !== state.name) return;
+          saveSyncState({ ...loadSyncState(), name: better });
+          if (name.value === state.name) name.value = better;
+        });
+      }
       if (!state.pairing) {
         const code = h('input', { type: 'text', 'aria-label': t('devsync.code'), placeholder: 'https://…#pwo-pair=…', spellcheck: 'false', autocomplete: 'off' });
         const go = button(t('devsync.join'), async () => {
@@ -164,19 +175,45 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
           h('div', { class: 'git-row' }, code, ' ', go),
           h('details', {}, h('summary', {}, t('devsync.reminder')), warnings()),
         );
-        // Opened by an invitation link: join at once.
+        // Opened by an invitation link: the link in place, the name of this device to check, then Pair.
         if (pendingInvitation) {
           const inv = parseInvitation(pendingInvitation);
-          pendingInvitation = undefined;
           if (inv === 'expired') fail(t('devsync.expired'));
-          else if (inv) await join(inv).catch((err: Error) => fail(err.message));
-          else fail(t('devsync.badCode'));
+          else if (!inv) fail(t('devsync.badCode'));
+          else {
+            code.value = pendingInvitation;
+            status.textContent = t('devsync.invitationReady');
+            name.focus();
+            name.select();
+          }
+          pendingInvitation = undefined;
         }
         return;
       }
+      // Opened by an invitation while already paired: joining it replaces the pairing of this device.
+      let switchTo: HTMLElement | string = '';
       if (pendingInvitation) {
+        const text = pendingInvitation;
         pendingInvitation = undefined;
-        fail(t('devsync.alreadyPaired'));
+        const inv = parseInvitation(text);
+        if (inv === 'expired') fail(t('devsync.expired'));
+        else if (!inv) fail(t('devsync.badCode'));
+        else
+          switchTo = h(
+            'div',
+            { class: 'devsync-request', role: 'alert' },
+            h('p', {}, t('devsync.alreadyPaired')),
+            h(
+              'div',
+              { class: 'dialog-actions start' },
+              button(t('devsync.switch'), () => {
+                stopSync();
+                saveSyncState(unpaired(loadSyncState()));
+                void join(inv).catch((err: Error) => fail(err.message));
+              }, { className: 'primary' }),
+              button(t('devsync.keep'), () => switchTo instanceof HTMLElement && switchTo.remove()),
+            ),
+          );
       }
       const peers = h('ul', { class: 'devsync-peers' });
       const showPeers = (): void => {
@@ -191,11 +228,18 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       showPeers();
       const auto = h('input', { type: 'checkbox', checked: state.auto });
       auto.addEventListener('change', () => saveSyncState({ ...loadSyncState(), auto: auto.checked }));
+      // What "Sync now" did, right under it.
+      const nowStatus = h('p', { class: 'hint devsync-now', role: 'status', 'aria-live': 'polite' });
+      const say = (text: string): void => {
+        nowStatus.textContent = text;
+        status.textContent = '';
+      };
       const now = button(t('devsync.now'), async () => {
         error.hidden = true;
+        say(t('devsync.connecting'));
         const live = currentSync() ?? (await start(false));
-        if (!live) return;
-        if (!live.sync.peerCount()) return void (status.textContent = t('devsync.waiting'));
+        if (!live) return say('');
+        if (!live.sync.peerCount()) return say(t('devsync.waiting'));
         await live.sync.syncNow();
       }, { className: 'primary' });
       const revoke = button(t('devsync.revoke'), () => {
@@ -217,11 +261,13 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       }
       const last = loadSyncState().lastSync;
       body.replaceChildren(
+        switchTo,
         nameRow,
         h('h3', {}, t('devsync.devices')),
         peers,
         h('p', { class: 'hint' }, last ? t('devsync.lastSync', { when: new Date(last).toLocaleString() }) : t('devsync.neverSynced')),
         h('div', { class: 'dialog-actions start' }, now),
+        nowStatus,
         h('label', {}, auto, ` ${t('devsync.auto')}`),
         h('h3', {}, t('devsync.addDevice')),
         h('p', { class: 'hint' }, t('devsync.addDeviceHint', { minutes: INVITE_MINUTES })),
@@ -234,9 +280,9 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       unlisten?.();
       unlisten = listen({
         peers: () => showPeers(),
-        status: (s) => (status.textContent = s === 'idle' ? '' : t(s === 'scanning' ? 'devsync.scanning' : 'devsync.merging')),
+        status: (s) => s !== 'idle' && say(t(s === 'scanning' ? 'devsync.scanning' : 'devsync.merging')),
         synced: (r) => {
-          status.textContent = t('devsync.synced', { peer: r.peer, n: r.fetched.length, d: r.trashed.length, c: r.conflicts.length, f: r.failed.length });
+          say(t('devsync.synced', { peer: r.peer, n: r.fetched.length, d: r.trashed.length, c: r.conflicts.length, f: r.failed.length }));
           showPeers();
         },
         error: (m) => fail(m),

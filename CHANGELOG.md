@@ -37,6 +37,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   application, which opens ready to pair. The command palette has *Sync my
   devices now*, *Add a device: show an invitation QR code* and *Pair this
   device: scan an invitation QR code*.
+- **Sync my devices**: an invitation opened on a device already paired was
+  ignored behind a small message, and **Sync now** then seemed to do
+  nothing; the device now offers to join the invitation instead, Sync now
+  says what it does under the button, the invitation explains what to do on
+  the new device, which is named before pairing (a phone gets its model as
+  first name when the browser tells it).
 
 - A private repository added as a source of templates (**Templates and
   examples → ＋ Source…**) could not be read without an account of its site:

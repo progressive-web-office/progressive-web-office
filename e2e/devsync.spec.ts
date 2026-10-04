@@ -62,6 +62,8 @@ test('a new device joins by an invitation link, accepted on the paired device af
   await laptop.getByRole('button', { name: 'Sync my devices' }).click();
   const host = laptop.getByRole('dialog', { name: 'Sync my devices' });
   await host.getByRole('button', { name: 'Show an invitation QR code' }).click();
+  // What to do on the new device is said here.
+  await expect(host.getByText(/Scan this QR code/)).toBeVisible();
   await host.getByRole('button', { name: 'Copy the link' }).click();
   const link = await laptop.evaluate(() => navigator.clipboard.readText());
   expect(link).toMatch(/#pwo-pair=/);
@@ -80,18 +82,39 @@ test('a new device joins by an invitation link, accepted on the paired device af
   await expect(phone).not.toHaveURL(/pwo-pair/);
   await join.getByLabel(/I understand/).check();
   await join.getByRole('button', { name: 'Continue' }).click();
+  // The link is in place; the device is named, then paired.
+  await expect(join.getByText(/Invitation received/)).toBeVisible();
+  await join.getByLabel('Name of this device').fill('Phone');
+  await join.getByLabel('Name of this device').press('Tab');
+  await join.getByRole('button', { name: 'Pair', exact: true }).click();
   const emojis = join.locator('.devsync-emojis');
   await expect(emojis).toBeVisible();
   // The same emojis on the paired device, where the user accepts.
-  await expect(host.getByText(/asks to join/)).toBeVisible();
+  await expect(host.getByText('Phone asks to join', { exact: false })).toBeVisible();
   await expect(host.locator('.devsync-emojis')).toHaveText((await emojis.textContent())!);
   await host.getByRole('button', { name: 'Accept' }).click();
   await expect(host.getByText(/is paired\./)).toBeVisible();
   await expect(join.getByText('No other device yet.').or(join.getByText(/Laptop/))).toBeVisible();
   const secret = await phone.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').pairing?.secret);
-  expect(await phone.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').name)).not.toBe('Laptop');
+  expect(await phone.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').name)).toBe('Phone');
   expect(secret).toBe('the-key-of-the-documents-in-test');
+  // Sync now says what it does, under the button.
+  await join.getByRole('button', { name: 'Sync now' }).click();
+  await expect(join.locator('.devsync-now')).not.toBeEmpty();
   await context.close();
+});
+
+test('an invitation opened on a device already paired offers to join it instead (DEVSYNC-006)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pwo.collab.transport', 'local'));
+  await openApp(page);
+  await page.evaluate(() => localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'd1', name: 'Tablet', understood: true, auto: false, peers: {}, base: {}, known: {}, deleted: {}, pairing: { room: 'an-old-pairing-room', secret: 'an-old-key-of-older-documents', since: 1 } })));
+  const expires = Math.floor(Date.now() / 1000 + 300).toString(36);
+  await page.goto(`./#pwo-pair=room-of-an-invite.secret-of-an-invitation-xyz.${expires}`);
+  const dialog = page.getByRole('dialog', { name: 'Sync my devices' });
+  await expect(dialog.getByText(/already paired with other devices/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Join this invitation' }).click();
+  await expect(dialog.locator('.devsync-emojis')).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').pairing)).toBeUndefined();
 });
 
 test('the command palette syncs the devices, shows an invitation or scans one (DEVSYNC-006)', async ({ page }) => {

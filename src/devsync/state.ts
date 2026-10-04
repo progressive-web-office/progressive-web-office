@@ -38,11 +38,27 @@ export function randomId(bytes: number): string {
   return btoa(String.fromCharCode(...buf)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function defaultName(): string {
+export function defaultName(): string {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
   const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : 'Device';
   const browser = /Firefox\//.test(ua) ? 'Firefox' : /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
   return [os, browser].filter(Boolean).join(' · ');
+}
+
+/**
+ * A better name from the browser, when it tells the model of the device (a
+ * phone: "Pixel 7 · Chrome"). Browsers never tell the name of a computer.
+ */
+export async function deviceModelName(): Promise<string | undefined> {
+  const data = (navigator as Navigator & { userAgentData?: { getHighEntropyValues(hints: string[]): Promise<{ model?: string }> } }).userAgentData;
+  try {
+    const model = (await data?.getHighEntropyValues(['model']))?.model?.trim();
+    if (!model) return undefined;
+    const browser = defaultName().split(' · ')[1];
+    return [model, browser].filter(Boolean).join(' · ').slice(0, 60);
+  } catch {
+    return undefined;
+  }
 }
 
 export function loadSyncState(): DeviceSyncState {

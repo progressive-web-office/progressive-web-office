@@ -30,19 +30,30 @@ The window shows these warnings first, and asks you to acknowledge them:
 2. To add another device, on a device already paired: **Add a device ›
    Show an invitation QR code** (or, in the command palette, *Add a device:
    show an invitation QR code*). The invitation is valid **5 minutes**, for
-   **one device**.
+   **one device**; the window says, under the QR code, what to do on the new
+   device.
 3. On the new device, scan the QR code — with **Scan the invitation QR
    code…** (the scanner of [QRShare](./sharing.md)), the camera of the phone,
    or any QR reader: it is a link to the application, which opens ready to
    pair. You can also copy the link (**Copy the link**) and paste it in
-   **Invitation link**. Read and acknowledge the warnings: the new device
-   then shows **four emojis**.
+   **Invitation link**. Read and acknowledge the warnings, check the **name
+   of the device** (the other device shows it), then **Pair**: the new
+   device shows **four emojis**.
 4. The paired device shows *“… asks to join”* with four emojis. **Accept
    only if they are the same as on the new device.** Only then does it send
    the key, encrypted, to the new device, which starts synchronising.
 
 The command palette (**⌘ Commands**, `Ctrl+Shift+P`) also has *Sync my
 devices now* and *Pair this device: scan an invitation QR code*.
+
+The name of a device is yours to choose: a web page cannot read the name of
+the computer. On a phone, the browser may tell its model (*Pixel 7 ·
+Chrome*), used as a first name; elsewhere it is the system and the browser
+(*Windows · Chrome*).
+
+A device **already paired** that opens an invitation asks first: **Join
+this invitation** stops its current pairing (its documents stay) and joins
+the devices of the invitation; **Keep the current pairing** ignores it.
 
 ## Synchronising
 
