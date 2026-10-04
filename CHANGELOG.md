@@ -142,6 +142,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Contacts (CONTACT-001..CONTACT-004): people kept as notes of `People`
+  (e-mails, phones, organisation, birthday…), searched by name, e-mail,
+  organisation or tag; the card of a contact shows the events it attends
+  and the notes linking to it, its birthdays are in the calendar, and vCard
+  files are imported and exported.
+
 - A calendar (CAL-001..CAL-005): the events of a folder, each a note of
   `Events` with its fields in the front matter, shown by month, week, day
   or agenda, coloured by calendar; created with a click on a day or an hour,

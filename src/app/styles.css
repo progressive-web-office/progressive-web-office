@@ -1858,3 +1858,32 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
   .calendar-agenda-day li { grid-template-columns: 6em minmax(0, 1fr); }
 }
 @media print { .calendar-bar button { display: none; } }
+
+/* CONTACT-002: the contacts. */
+.contacts-view { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 8px 12px; gap: 8px; background: var(--bg); color: var(--text); }
+.contacts-bar { display: flex; gap: 6px; align-items: center; }
+.contacts-search { flex: 1; min-width: 0; max-width: 28em; }
+.contacts-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(14em, 22em) 1fr; gap: 12px; }
+.contacts-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.contacts-list .contacts-letter { position: sticky; top: 0; padding: 4px 10px; background: var(--surface); color: var(--muted); font-size: 0.75rem; font-weight: 600; border-bottom: 1px solid var(--border); }
+.contacts-list li[role='option'] { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; }
+.contacts-list li[role='option']:hover { background: var(--sel); }
+.contacts-list li.selected { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.contact-line { display: flex; flex-direction: column; min-width: 0; }
+.contact-line > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contact-line small { color: var(--muted); }
+.contact-avatar { flex: none; display: inline-grid; place-items: center; width: 2.2em; height: 2.2em; border-radius: 50%; background: var(--avatar); color: #fff; font-weight: 600; font-size: 0.85rem; }
+.contact-avatar.large { width: 3.6em; height: 3.6em; font-size: 1.2rem; }
+.contact-card { overflow-y: auto; padding: 4px 8px; }
+.contact-head { display: flex; align-items: center; gap: 14px; }
+.contact-head h2 { margin: 0; }
+.contact-head .hint { margin: 2px 0 0; }
+.contact-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.contact-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
+.contact-row { display: contents; }
+.contact-row dt { color: var(--muted); }
+.contact-row dd { margin: 0; overflow-wrap: anywhere; }
+.contact-card h3 { font-size: 0.95rem; margin: 14px 0 4px; }
+.contact-card ul { list-style: none; margin: 0; padding: 0; }
+.calendar-event.birthday { cursor: pointer; }
+@media (max-width: 700px) { .contacts-body { grid-template-columns: 1fr; grid-template-rows: minmax(8em, 35%) 1fr; } }

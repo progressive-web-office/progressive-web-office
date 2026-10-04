@@ -10,7 +10,7 @@ import { t, type MessageKey } from '../i18n';
 import type { StorageProvider } from '../fs';
 import type { EditorView } from '../app/views';
 import { occurrences, readCalendar, writeCalendar, type CalEvent } from './ical';
-import { loadEvents, loadPimSettings, saveEvent, type Stored, type StoredEvent } from './store';
+import { loadContacts, loadEvents, loadPimSettings, saveEvent, type Stored, type StoredEvent } from './store';
 
 export interface CalendarHost {
   provider: StorageProvider;
@@ -70,6 +70,8 @@ export class CalendarView implements EditorView {
   private mode: CalendarMode;
   private cursor = new Date();
   private events: Stored<StoredEvent>[] = [];
+  /** CONTACT-004: the birthdays of the contacts, as yearly events (their notes are the contacts'). */
+  private birthdays: Stored<StoredEvent>[] = [];
   private loaded = false;
 
   constructor(private readonly host: CalendarHost) {
@@ -101,7 +103,13 @@ export class CalendarView implements EditorView {
 
   /** Read the event notes again (they changed elsewhere). */
   async reload(): Promise<void> {
-    this.events = await loadEvents(this.host.provider).catch(() => []);
+    const [events, contacts] = await Promise.all([loadEvents(this.host.provider).catch(() => []), loadContacts(this.host.provider).catch(() => [])]);
+    this.events = events;
+    this.birthdays = contacts.flatMap((c) =>
+      c.item.birthday
+        ? [{ path: c.path, text: c.text, item: { uid: `birthday-${c.item.uid}`, title: `🎂 ${c.item.name}`, start: c.item.birthday.startsWith('--') ? `2000${c.item.birthday.slice(1)}` : c.item.birthday, allDay: true, recurrence: 'FREQ=YEARLY', calendar: t('people.birthday') } }]
+        : [],
+    );
     this.loaded = true;
     this.render();
   }
@@ -160,7 +168,7 @@ export class CalendarView implements EditorView {
   /** The occurrences of the events in the days shown, by start. */
   private shown(from: Date, to: Date): Shown[] {
     const out: Shown[] = [];
-    for (const stored of this.events) {
+    for (const stored of [...this.events, ...this.birthdays]) {
       const e = stored.item;
       const minutes = lengthOf(e);
       // An event started before the days shown but still going on counts too.
@@ -216,16 +224,25 @@ export class CalendarView implements EditorView {
     const time = s.allDay || !withTime ? '' : `${fmt(s.start, { hour: '2-digit', minute: '2-digit' })} `;
     // Not a <button> from button(): that one keeps the pointer from starting a drag.
     const el = h('div', { class: `calendar-event${s.allDay ? ' all-day' : ''}`, role: 'button', tabindex: '0', title: [e.title, e.location, e.calendar].filter(Boolean).join(' · ') }, `${time}${e.title || t('cal.untitled')}`);
+    // A birthday opens its contact's note; an event, its window.
+    const birthday = this.birthdays.includes(s.stored);
+    const open = (): void => (birthday ? this.host.open(s.stored.path) : this.edit(s.stored));
     el.addEventListener('click', (ev) => {
       ev.stopPropagation();
-      this.edit(s.stored);
+      open();
     });
     el.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
-        this.edit(s.stored);
+        open();
       }
     });
+    if (birthday) {
+      el.classList.add('birthday');
+      el.title = t('people.birthdayOf', { name: e.title.replace(/^🎂 /, '') });
+      el.style.setProperty('--event-colour', calendarColour(e.calendar));
+      return el;
+    }
     el.style.setProperty('--event-colour', calendarColour(e.calendar));
     el.draggable = true;
     el.addEventListener('dragstart', (ev) => {

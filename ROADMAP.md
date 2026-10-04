@@ -173,8 +173,10 @@ any other tool. Planned, the most useful first:
   click opens or creates it (FOLDER-027); next: previous and next day
 - ✅ A calendar of events kept as notes — month, week, day and agenda,
   dragged to move, repeating, linked from the daily notes — and iCalendar
-  files (CAL-001..CAL-005); next: contacts as notes (CONTACT-001..004), and
-  CalDAV / CardDAV synchronisation (CAL-006, CONTACT-005)
+  files (CAL-001..CAL-005)
+- ✅ Contacts kept as notes — searched, linked from the notes and the
+  events, birthdays in the calendar — and vCard files (CONTACT-001..004);
+  next: CalDAV / CardDAV synchronisation (CAL-006, CONTACT-005)
 - Weekly, monthly, quarterly and yearly notes, each with its format, folder
   and template
 - Dates written in words (`@today`, `@next friday`) made links to their day

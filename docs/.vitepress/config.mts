@@ -57,7 +57,7 @@ export default defineConfig({
           { text: 'Exam mode', link: '/guide/exam' },
           { text: 'Printing', link: '/guide/printing' },
           { text: 'Folders and master documents', link: '/guide/folders' },
-          { text: 'Calendar', link: '/guide/calendar' },
+          { text: 'Calendar and contacts', link: '/guide/calendar' },
           { text: 'ZIP archives and source files', link: '/guide/archives' },
           { text: 'Git repositories', link: '/guide/git' },
           { text: 'Nextcloud / WebDAV', link: '/guide/cloud' },

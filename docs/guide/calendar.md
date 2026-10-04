@@ -1,8 +1,8 @@
 ---
-description: The calendar of PWO — events kept as notes of a folder, month, week, day and agenda views, daily notes, iCalendar files.
+description: The calendar and the contacts of PWO — events and people kept as notes of a folder, month, week, day and agenda views, daily notes, iCalendar and vCard files.
 ---
 
-# Calendar
+# Calendar and contacts
 
 The calendar shows the **events of the folder open** — or, with no folder
 open, of the documents kept in the browser. Open it with **📅 Calendar** on
@@ -72,3 +72,46 @@ an event created for a day whose daily note exists is added to it (CAL-005).
 note of `Events`; an event already imported is updated, not repeated. **⇩**
 exports the events as a `.ics` file (CAL-003). Times given in a time zone
 or in UTC are shown at your local time; repeating events follow their rule.
+
+## Contacts
+
+**👥 Contacts** (start screen, command palette) shows the people of the
+folder: each is a note of the `People` folder (CONTACT-001):
+
+```markdown
+---
+title: Ada Lovelace
+type: "[[Person]]"
+first name: Ada
+last name: Lovelace
+emails:
+  - ada@example.org
+phones:
+  - "+33 6 12 34 56 78"
+organization: "[[Analytical Engines]]"
+birthday: 1815-12-10
+tags:
+  - person
+---
+
+What you know of her, met where, about what.
+```
+
+- The **list** is searched by name, e-mail, organisation or `#tag`
+  (CONTACT-002); the **card** of a contact shows its fields — an e-mail to
+  write to, a number to call, its organisation's note — then the
+  **events** it attends and the **notes linking to it**, with the words
+  around each link: write `[[Ada Lovelace]]` in a note, or name her among
+  the attendees of an event.
+- **＋ New contact**, **Edit** and **Delete** change the contacts; the name
+  shown follows the first and last names until you write it.
+- **Birthdays** are shown in the calendar, every year (CONTACT-004); a click
+  opens the contact.
+- **⇪** imports a `.vcf` file (vCard 3.0 or 4.0, from a phone or another
+  address book) as notes; **⇩** exports the contacts as a `.vcf` file
+  (CONTACT-003).
+
+## Folders
+
+Events go to `Events` and contacts to `People`, at the root of the folder
+open; both are notes like the others: move, rename or link them freely.

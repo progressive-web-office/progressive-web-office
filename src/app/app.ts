@@ -1281,6 +1281,8 @@ export class App {
           button(t('start.browserDocs'), () => void this.openBrowserDocuments(), { className: 'card browser-docs', icon: '🗄️', title: t('start.browserDocsTitle') }),
           // CAL-002: the calendar of the events kept as notes.
           button(t('cal.title'), () => void this.openCalendarApp(), { className: 'card calendar', icon: '📅', title: t('cal.cardTitle') }),
+          // CONTACT-002: the people kept as notes.
+          button(t('people.title'), () => void this.openContactsApp(), { className: 'card contacts', icon: '👥', title: t('people.cardTitle') }),
           exam ? null : button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
           exam ? null : button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
           exam ? null : button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
@@ -1548,6 +1550,30 @@ export class App {
     });
     folder.setCurrent(undefined);
     this.setDocument({ name: t('cal.title'), format: 'text', kind: 'file', view });
+  }
+
+  /** CONTACT-002: the contacts of the folder open (else of the browser's storage), in place of the document. */
+  async openContactsApp(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    if (!this.folder) await this.openBrowserStorage();
+    const folder = this.folder;
+    if (!folder) return;
+    const [{ ContactsView }, { noteName }] = await Promise.all([import('../pim/contacts-view'), import('../folder/vault')]);
+    const view = new ContactsView({
+      provider: folder.provider,
+      open: (path) => void this.openFromFolder(path),
+      noteNames: () => folder.vault.index.notes().map((p) => noteName(p)),
+      backlinks: (path) => folder.vault.backlinks(path),
+      changed: (paths) => {
+        void folder.refresh();
+        void Promise.all(paths.map((p) => folder.vault.changed(p))).catch(() => undefined);
+      },
+      error: (message) => this.showError(message),
+      statusChanged: () => this.renderStatus(),
+      download: (name, text, type) => void saveFile(new TextEncoder().encode(text), name, 'text', { mimeType: type, extension: name.slice(name.lastIndexOf('.') + 1) }),
+    });
+    folder.setCurrent(undefined);
+    this.setDocument({ name: t('people.title'), format: 'text', kind: 'file', view });
   }
 
   /** FOLDER-027: the calendar of the notes (of the folder open, else of the browser's storage), or today's note. */
@@ -2741,6 +2767,7 @@ export class App {
         { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
         { label: t('devsync.cmdScan'), where, keywords, run: () => void this.receiveFromDevice() },
         { label: t('docs.title'), where, keywords: `${keywords} documents history historique trash corbeille 历史`, run: () => void this.openBrowserDocuments() },
+        { label: t('people.title'), where: t('daily.notes'), keywords: 'contacts people address book persons contacts personnes carnet d’adresses 联系人 通讯录', run: () => void setTimeout(() => void this.openContactsApp()) },
         { label: t('cal.title'), where: t('daily.notes'), keywords: 'calendar events agenda month week journal calendrier événements agenda mois semaine 日历 事件', run: () => void setTimeout(() => void this.openCalendarApp()) },
         { label: t('daily.todayNote'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien aujourd’hui 日历 每日 今天', run: () => void setTimeout(() => void this.openCalendar(true)) },
         { label: t('goto.title'), where: t('folder.browserStorage'), keys: ['Ctrl+Shift+O'], keywords: 'go to file open quick aller ouvrir fichier rapide 转到 打开 文件', run: () => void setTimeout(() => void this.goToFile()) },
