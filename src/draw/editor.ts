@@ -1,0 +1,703 @@
+/**
+ * DRAW-001..DRAW-006, DRAW-011: the drawing editor — shapes, connectors,
+ * schematic symbols and wires on a grid, in a dialog.
+ */
+import { button, h } from '../app/dom';
+import { t } from '../i18n';
+import {
+  bbox, connectionPoints, duplicate, emptyDrawing, formatValue, mirror, moveShapes, newId, placeSymbol, reconnect, remove, rotate, route, shapeById, snap,
+  type Drawing, type End, type LineShape, type Pt, type Shape,
+} from './model';
+import { exportPng } from './raster';
+import { drawingBody, toSvg } from './svg';
+import { searchSymbols, symbolDef, type SymbolCategory, type SymbolDef } from './symbols';
+
+type Tool = 'select' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'free' | 'text' | 'wire';
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svgEl = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number> = {}): SVGElementTagNameMap[K] => {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  return el;
+};
+
+const CATEGORIES: SymbolCategory[] = ['electrical', 'logic', 'block', 'fluid', 'flowchart'];
+/** How close (in drawing units) a point snaps to a connection point. */
+const ATTACH = 8;
+
+/** The name read by screen readers and shown in the list of objects (DRAW-011). */
+export function shapeName(s: Shape): string {
+  switch (s.kind) {
+    case 'symbol': {
+      const def = symbolDef(s.sym);
+      return [def?.name ?? s.sym, s.ref, s.value].filter(Boolean).join(' ');
+    }
+    case 'text':
+      return `${t('draw.text')}: ${s.text}`;
+    case 'line':
+      return [s.wire ? t('draw.wire') : s.end || s.start ? t('draw.arrow') : t('draw.line'), s.label].filter(Boolean).join(' ');
+    case 'rect':
+      return t('draw.rect');
+    case 'ellipse':
+      return t('draw.ellipse');
+    case 'free':
+      return t('draw.free');
+    default:
+      return t('draw.picture');
+  }
+}
+
+export function symbolPreview(def: SymbolDef): string {
+  const [x0, y0, x1, y1] = def.box;
+  const pad = 4;
+  return `<svg xmlns="${SVG_NS}" viewBox="${x0 - pad} ${y0 - pad} ${x1 - x0 + 2 * pad} ${y1 - y0 + 2 * pad}" width="44" height="32" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">${def.body}</g></svg>`;
+}
+
+export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawing | null> {
+  return new Promise((resolve) => {
+    let d: Drawing = initial ? structuredClone(initial) : emptyDrawing();
+    let tool: Tool = 'select';
+    let selected: string[] = [];
+    let zoom = 1;
+    const undo: string[] = [];
+    const redo: string[] = [];
+    const snapshot = (): void => {
+      undo.push(JSON.stringify(d));
+      if (undo.length > 200) undo.shift();
+      redo.length = 0;
+    };
+    let style = { stroke: '#000000', fill: 'none', width: 1.5, dash: '' as '' | 'dash' | 'dot' };
+
+    // --- stage ---------------------------------------------------------------
+    const svg = svgEl('svg', { class: 'draw-stage', tabindex: 0, role: 'application', 'aria-roledescription': t('draw.canvas'), 'aria-label': t('draw.canvas') });
+    const defs = svgEl('defs');
+    defs.innerHTML = `<pattern id="draw-grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="#c8d0da" stroke-width="0.5"/></pattern>`;
+    const paper = svgEl('rect', { x: 0, y: 0, fill: '#ffffff' });
+    const grid = svgEl('rect', { x: 0, y: 0, fill: 'url(#draw-grid)', 'pointer-events': 'none' });
+    const content = svgEl('g', { class: 'draw-content' });
+    const overlay = svgEl('g', { class: 'draw-overlay' });
+    svg.append(defs, paper, grid, content, overlay);
+    const stage = h('div', { class: 'draw-scroll' }, svg);
+    const status = h('p', { class: 'draw-status', role: 'status' });
+
+    // --- properties ---------------------------------------------------------
+    const strokeInput = h('input', { type: 'color', value: style.stroke, 'aria-label': t('draw.stroke') });
+    const fillInput = h('input', { type: 'color', value: '#ffffff', 'aria-label': t('draw.fill') });
+    const noFill = h('input', { type: 'checkbox', checked: true });
+    const widthInput = h('select', { 'aria-label': t('draw.width') }, ...[0.5, 1, 1.5, 2, 3, 5, 8].map((w) => h('option', { value: String(w), selected: w === 1.5 }, `${w}`)));
+    const dashInput = h('select', { 'aria-label': t('draw.dash') }, h('option', { value: '' }, '———'), h('option', { value: 'dash' }, '– – –'), h('option', { value: 'dot' }, '· · ·'));
+    const refInput = h('input', { type: 'text', size: 5, 'aria-label': t('draw.ref') });
+    const valueInput = h('input', { type: 'text', size: 10, 'aria-label': t('draw.value') });
+    const textInput = h('input', { type: 'text', size: 18, 'aria-label': t('draw.label') });
+    const symbolProps = h('span', { class: 'draw-props-group', hidden: true }, h('label', {}, `${t('draw.ref')} `, refInput), h('label', {}, `${t('draw.value')} `, valueInput));
+    const textProps = h('span', { class: 'draw-props-group', hidden: true }, h('label', {}, `${t('draw.label')} `, textInput));
+
+    const sel = (): Shape[] => selected.map((id) => shapeById(d, id)).filter((s): s is Shape => !!s);
+    const applyStyle = (patch: Partial<Shape>): void => {
+      if (!selected.length) return;
+      snapshot();
+      for (const s of sel()) if (s.kind !== 'raw') Object.assign(s, patch);
+      render();
+    };
+    strokeInput.addEventListener('input', () => {
+      style.stroke = strokeInput.value;
+      applyStyle({ stroke: style.stroke } as Partial<Shape>);
+    });
+    const fillChanged = (): void => {
+      style.fill = noFill.checked ? 'none' : fillInput.value;
+      applyStyle({ fill: style.fill } as Partial<Shape>);
+    };
+    fillInput.addEventListener('input', () => {
+      noFill.checked = false;
+      fillChanged();
+    });
+    noFill.addEventListener('change', fillChanged);
+    widthInput.addEventListener('change', () => {
+      style.width = Number(widthInput.value);
+      applyStyle({ width: style.width } as Partial<Shape>);
+    });
+    dashInput.addEventListener('change', () => {
+      style.dash = dashInput.value as typeof style.dash;
+      applyStyle({ dash: style.dash || undefined } as Partial<Shape>);
+    });
+    refInput.addEventListener('change', () => {
+      const s = sel()[0];
+      if (s?.kind !== 'symbol') return;
+      snapshot();
+      s.ref = refInput.value.trim() || undefined;
+      render();
+    });
+    valueInput.addEventListener('change', () => {
+      const s = sel()[0];
+      if (s?.kind !== 'symbol') return;
+      snapshot();
+      s.value = formatValue(valueInput.value, symbolDef(s.sym)?.unit) || undefined;
+      valueInput.value = s.value ?? '';
+      render();
+    });
+    textInput.addEventListener('change', () => {
+      const s = sel()[0];
+      if (!s) return;
+      snapshot();
+      if (s.kind === 'text') s.text = textInput.value || s.text;
+      else if (s.kind === 'line') s.label = textInput.value.trim() || undefined;
+      render();
+    });
+
+    // --- objects list (DRAW-011) -----------------------------------------------
+    const objects = h('ul', { class: 'draw-objects', 'aria-label': t('draw.objects') });
+
+    const select = (ids: string[]): void => {
+      selected = ids;
+      render();
+    };
+
+    // --- rendering -------------------------------------------------------------
+    const render = (): void => {
+      reconnect(d);
+      svg.setAttribute('viewBox', `0 0 ${d.width} ${d.height}`);
+      svg.setAttribute('width', String(d.width * zoom));
+      svg.setAttribute('height', String(d.height * zoom));
+      for (const r of [paper, grid]) {
+        r.setAttribute('width', String(d.width));
+        r.setAttribute('height', String(d.height));
+      }
+      grid.toggleAttribute('hidden', !d.showGrid);
+      grid.style.display = d.showGrid ? '' : 'none';
+      content.innerHTML = drawingBody(d);
+      overlay.replaceChildren();
+      for (const s of sel()) {
+        const b = bbox(s) ?? domBox(s.id);
+        if (!b) continue;
+        overlay.append(svgEl('rect', { x: b[0] - 3, y: b[1] - 3, width: b[2] - b[0] + 6, height: b[3] - b[1] + 6, class: 'draw-selection' }));
+        if ((s.kind === 'rect' || s.kind === 'ellipse') && selected.length === 1) overlay.append(svgEl('rect', { x: b[2] - 4, y: b[3] - 4, width: 8, height: 8, class: 'draw-handle', 'data-handle': 'resize' }));
+        if (s.kind === 'line' && selected.length === 1) for (const [i, p] of s.points.entries()) if (i === 0 || i === s.points.length - 1) overlay.append(svgEl('circle', { cx: p[0], cy: p[1], r: 4, class: 'draw-handle', 'data-handle': i === 0 ? 'start' : 'end' }));
+      }
+      if (tool === 'wire' || tool === 'line' || tool === 'arrow') for (const s of d.shapes) for (const [x, y] of connectionPoints(s)) overlay.append(svgEl('circle', { cx: x, cy: y, r: 2.5, class: 'draw-pin' }));
+      // Properties of the selection.
+      const one = sel().length === 1 ? sel()[0] : undefined;
+      symbolProps.hidden = one?.kind !== 'symbol';
+      textProps.hidden = one?.kind !== 'text' && one?.kind !== 'line';
+      if (one?.kind === 'symbol') {
+        if (document.activeElement !== refInput) refInput.value = one.ref ?? '';
+        if (document.activeElement !== valueInput) valueInput.value = one.value ?? '';
+      }
+      if ((one?.kind === 'text' || one?.kind === 'line') && document.activeElement !== textInput) textInput.value = one.kind === 'text' ? one.text : (one.label ?? '');
+      if (one && one.kind !== 'raw') {
+        strokeInput.value = /^#[0-9a-f]{6}$/i.test(one.stroke ?? '') ? one.stroke! : '#000000';
+        noFill.checked = !one.fill || one.fill === 'none';
+        if (!noFill.checked && /^#[0-9a-f]{6}$/i.test(one.fill!)) fillInput.value = one.fill!;
+      }
+      // Objects list.
+      const focused = (document.activeElement as HTMLElement | null)?.dataset?.id;
+      objects.replaceChildren(
+        ...d.shapes.map((s) => {
+          const b = h('button', { type: 'button', 'data-id': s.id, 'aria-pressed': String(selected.includes(s.id)) }, shapeName(s));
+          b.addEventListener('click', (e) => select(e.shiftKey ? toggle(s.id) : [s.id]));
+          b.addEventListener('keydown', onKey);
+          return h('li', {}, b);
+        }),
+      );
+      if (focused) objects.querySelector<HTMLElement>(`[data-id="${CSS.escape(focused)}"]`)?.focus();
+      undoBtn.disabled = !undo.length;
+      redoBtn.disabled = !redo.length;
+      status.textContent = selected.length ? t('draw.selected', { n: selected.length, name: one ? shapeName(one) : '' }) : '';
+    };
+    const domBox = (id: string): [number, number, number, number] | undefined => {
+      const el = content.querySelector<SVGGraphicsElement>(`[data-id="${CSS.escape(id)}"]`);
+      if (!el || typeof el.getBBox !== 'function') return undefined;
+      const b = el.getBBox();
+      const m = el.transform?.baseVal?.consolidate()?.matrix;
+      const [dx, dy] = m ? [m.e, m.f] : [0, 0];
+      return [b.x + dx, b.y + dy, b.x + b.width + dx, b.y + b.height + dy];
+    };
+    const toggle = (id: string): string[] => (selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
+    // --- pointer -----------------------------------------------------------------
+    const point = (e: PointerEvent | MouseEvent): Pt => {
+      const r = svg.getBoundingClientRect();
+      return [((e.clientX - r.left) / r.width) * d.width, ((e.clientY - r.top) / r.height) * d.height];
+    };
+    const snapPt = (p: Pt, fine = false): Pt => (fine ? [Math.round(p[0]), Math.round(p[1])] : [snap(p[0], d.grid), snap(p[1], d.grid)]);
+    /** The nearest connection point, to attach a connector end to. */
+    const attachAt = (p: Pt, except?: string): { end: End; at: Pt } | undefined => {
+      let best: { end: End; at: Pt; dist: number } | undefined;
+      for (const s of d.shapes) {
+        if (s.id === except || s.kind === 'line') continue;
+        connectionPoints(s).forEach((c, pin) => {
+          const dist = Math.hypot(c[0] - p[0], c[1] - p[1]);
+          if (dist <= ATTACH && (!best || dist < best.dist)) best = { end: { shape: s.id, pin }, at: c, dist };
+        });
+      }
+      return best;
+    };
+
+    type Drag =
+      | { kind: 'move'; from: Pt; last: Pt; moved: boolean }
+      | { kind: 'band'; from: Pt; el: SVGRectElement; add: boolean }
+      | { kind: 'create'; shape: Shape; from: Pt }
+      | { kind: 'resize'; id: string; from: Pt }
+      | { kind: 'end'; id: string; which: 'start' | 'end' };
+    let drag: Drag | undefined;
+
+    svg.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      svg.focus();
+      svg.setPointerCapture?.(e.pointerId);
+      const p = point(e);
+      const target = e.target as Element;
+      const handle = target.closest<SVGElement>('[data-handle]')?.dataset.handle;
+      if (handle && selected.length === 1) {
+        snapshot();
+        drag = handle === 'resize' ? { kind: 'resize', id: selected[0]!, from: p } : { kind: 'end', id: selected[0]!, which: handle as 'start' | 'end' };
+        return;
+      }
+      if (tool === 'select') {
+        const id = target.closest('[data-id]')?.getAttribute('data-id') ?? target.closest('[data-for]')?.getAttribute('data-for');
+        if (id) {
+          if (e.shiftKey) selected = toggle(id);
+          else if (!selected.includes(id)) selected = [id];
+          snapshot();
+          drag = { kind: 'move', from: snapPt(p), last: snapPt(p), moved: false };
+          render();
+        } else {
+          const el = svgEl('rect', { class: 'draw-band', x: p[0], y: p[1], width: 0, height: 0 });
+          overlay.append(el);
+          drag = { kind: 'band', from: p, el, add: e.shiftKey };
+        }
+        return;
+      }
+      snapshot();
+      const st = { stroke: style.stroke, width: style.width, ...(style.dash ? { dash: style.dash } : {}) };
+      const at = snapPt(p, e.altKey);
+      const id = newId(d);
+      let shape: Shape;
+      if (tool === 'rect' || tool === 'ellipse') shape = { id, kind: tool, x: at[0], y: at[1], w: 0, h: 0, ...st, fill: style.fill };
+      else if (tool === 'free') shape = { id, kind: 'free', points: [p], ...st, width: Math.max(2, style.width) };
+      else if (tool === 'text') {
+        const text = window.prompt(t('draw.textPrompt'))?.trim();
+        if (!text) return void undo.pop();
+        d.shapes.push({ id, kind: 'text', x: at[0], y: at[1], text, size: 16, fill: style.stroke });
+        tool = 'select';
+        syncTools();
+        return select([id]);
+      } else {
+        const start = attachAt(p);
+        const a = start?.at ?? at;
+        shape = { id, kind: 'line', points: [a, a], ...st, ...(start ? { from: start.end } : {}) } as LineShape;
+        if (tool === 'arrow') (shape as LineShape).end = 'arrow';
+        if (tool === 'wire') Object.assign(shape, { wire: true, ortho: true, stroke: style.stroke, width: 1.5 });
+      }
+      d.shapes.push(shape);
+      drag = { kind: 'create', shape, from: at };
+      render();
+    });
+
+    svg.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const p = point(e);
+      if (drag.kind === 'move') {
+        const q = snapPt(p, e.altKey);
+        const [dx, dy] = [q[0] - drag.last[0], q[1] - drag.last[1]];
+        if (!dx && !dy) return;
+        drag.last = q;
+        drag.moved = true;
+        moveShapes(d, selected, dx, dy);
+        // A connector moved alone leaves the shapes it was attached to.
+        for (const s of sel()) if (s.kind === 'line' && !selected.includes(s.from?.shape ?? '')) delete s.from;
+        for (const s of sel()) if (s.kind === 'line' && !selected.includes(s.to?.shape ?? '')) delete s.to;
+        render();
+      } else if (drag.kind === 'band') {
+        const [x0, y0] = drag.from;
+        drag.el.setAttribute('x', String(Math.min(x0, p[0])));
+        drag.el.setAttribute('y', String(Math.min(y0, p[1])));
+        drag.el.setAttribute('width', String(Math.abs(p[0] - x0)));
+        drag.el.setAttribute('height', String(Math.abs(p[1] - y0)));
+      } else if (drag.kind === 'create') {
+        const s = drag.shape;
+        const q = snapPt(p, e.altKey);
+        if (s.kind === 'rect' || s.kind === 'ellipse') {
+          let [w, hh] = [q[0] - drag.from[0], q[1] - drag.from[1]];
+          if (e.shiftKey) w = hh = Math.max(Math.abs(w), Math.abs(hh)) * Math.sign(w || 1);
+          Object.assign(s, { x: Math.min(drag.from[0], drag.from[0] + w), y: Math.min(drag.from[1], drag.from[1] + hh), w: Math.abs(w), h: Math.abs(hh) });
+        } else if (s.kind === 'free') s.points.push(p);
+        else if (s.kind === 'line') {
+          const end = attachAt(p)?.at ?? q;
+          s.points = s.ortho ? route(s.points[0]!, end, Math.abs(end[0] - s.points[0]![0]) >= Math.abs(end[1] - s.points[0]![1])) : [s.points[0]!, end];
+        }
+        content.innerHTML = drawingBody(d);
+      } else if (drag.kind === 'resize') {
+        const s = shapeById(d, drag.id);
+        if (s?.kind === 'rect' || s?.kind === 'ellipse') {
+          const q = snapPt(p, e.altKey);
+          s.w = Math.max(d.grid || 4, q[0] - s.x);
+          s.h = Math.max(d.grid || 4, q[1] - s.y);
+          render();
+        }
+      } else if (drag.kind === 'end') {
+        const s = shapeById(d, drag.id);
+        if (s?.kind !== 'line') return;
+        const a = attachAt(p);
+        const q = a?.at ?? snapPt(p, e.altKey);
+        const key = drag.which === 'start' ? 'from' : 'to';
+        if (a) s[key] = a.end;
+        else delete s[key];
+        if (s.ortho) {
+          const other = drag.which === 'start' ? s.points[s.points.length - 1]! : s.points[0]!;
+          const r = route(other, q, Math.abs(q[0] - other[0]) >= Math.abs(q[1] - other[1]));
+          s.points = drag.which === 'start' ? r.reverse() : r;
+        } else if (drag.which === 'start') s.points[0] = q;
+        else s.points[s.points.length - 1] = q;
+        render();
+      }
+    });
+
+    const release = (e: PointerEvent): void => {
+      const dr = drag;
+      drag = undefined;
+      if (!dr) return;
+      if (dr.kind === 'move' && !dr.moved) undo.pop();
+      if (dr.kind === 'band') {
+        const p = point(e);
+        const [x0, x1] = [Math.min(dr.from[0], p[0]), Math.max(dr.from[0], p[0])];
+        const [y0, y1] = [Math.min(dr.from[1], p[1]), Math.max(dr.from[1], p[1])];
+        const inside = d.shapes.filter((s) => {
+          const b = bbox(s) ?? domBox(s.id);
+          return b && b[0] >= x0 && b[2] <= x1 && b[1] >= y0 && b[3] <= y1;
+        });
+        return select([...(dr.add ? selected : []), ...inside.map((s) => s.id)]);
+      }
+      if (dr.kind === 'create') {
+        const s = dr.shape;
+        const tiny =
+          ((s.kind === 'rect' || s.kind === 'ellipse') && (s.w < 2 || s.h < 2)) ||
+          (s.kind === 'line' && s.points.length === 2 && s.points[0]![0] === s.points[1]![0] && s.points[0]![1] === s.points[1]![1]) ||
+          (s.kind === 'free' && s.points.length < 2);
+        if (tiny) {
+          remove(d, [s.id]);
+          undo.pop();
+          return render();
+        }
+        if (s.kind === 'line') {
+          const end = attachAt(s.points[s.points.length - 1]!, s.from?.shape);
+          if (end) s.to = end.end;
+        }
+        if (s.kind === 'free') s.points = simplify(s.points, 0.8).map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
+        selected = [s.id];
+      }
+      render();
+    };
+    svg.addEventListener('pointerup', release);
+    svg.addEventListener('pointercancel', release);
+    svg.addEventListener('dblclick', (e) => {
+      const target = e.target as Element;
+      const id = target.closest('[data-id]')?.getAttribute('data-id') ?? target.closest('[data-for]')?.getAttribute('data-for');
+      const s = id ? shapeById(d, id) : undefined;
+      if (!s) return;
+      select([s.id]);
+      if (s.kind === 'symbol') valueInput.focus();
+      else if (s.kind === 'text' || s.kind === 'line') textInput.focus();
+    });
+
+    // --- commands ------------------------------------------------------------------
+    const restore = (from: string[], to: string[]): void => {
+      const prev = from.pop();
+      if (!prev) return;
+      to.push(JSON.stringify(d));
+      d = JSON.parse(prev) as Drawing;
+      selected = selected.filter((id) => shapeById(d, id));
+      render();
+    };
+    const doUndo = (): void => restore(undo, redo);
+    const doRedo = (): void => restore(redo, undo);
+    const del = (): void => {
+      if (!selected.length) return;
+      snapshot();
+      remove(d, selected);
+      select([]);
+    };
+    const dup = (): void => {
+      if (!selected.length) return;
+      snapshot();
+      select(duplicate(d, selected, d.grid * 2 || 10, d.grid * 2 || 10).map((s) => s.id));
+    };
+    const turn = (): void => {
+      if (!sel().some((s) => s.kind === 'symbol')) return;
+      snapshot();
+      rotate(d, selected);
+      render();
+    };
+    const flip = (): void => {
+      if (!sel().some((s) => s.kind === 'symbol')) return;
+      snapshot();
+      mirror(d, selected);
+      render();
+    };
+    const order = (front: boolean): void => {
+      if (!selected.length) return;
+      snapshot();
+      const picked = d.shapes.filter((s) => selected.includes(s.id));
+      const rest = d.shapes.filter((s) => !selected.includes(s.id));
+      d.shapes = front ? [...rest, ...picked] : [...picked, ...rest];
+      render();
+    };
+    const align = (how: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom'): void => {
+      const boxes = sel().map((s) => [s, bbox(s) ?? domBox(s.id)] as const).filter((x): x is readonly [Shape, [number, number, number, number]] => !!x[1]);
+      if (boxes.length < 2) return;
+      snapshot();
+      const all = boxes.map((x) => x[1]);
+      const target = {
+        left: Math.min(...all.map((b) => b[0])), right: Math.max(...all.map((b) => b[2])), top: Math.min(...all.map((b) => b[1])), bottom: Math.max(...all.map((b) => b[3])),
+        center: (Math.min(...all.map((b) => b[0])) + Math.max(...all.map((b) => b[2]))) / 2, middle: (Math.min(...all.map((b) => b[1])) + Math.max(...all.map((b) => b[3]))) / 2,
+      }[how];
+      for (const [s, b] of boxes) {
+        const dx = how === 'left' ? target - b[0] : how === 'right' ? target - b[2] : how === 'center' ? target - (b[0] + b[2]) / 2 : 0;
+        const dy = how === 'top' ? target - b[1] : how === 'bottom' ? target - b[3] : how === 'middle' ? target - (b[1] + b[3]) / 2 : 0;
+        moveShapes(d, [s.id], dx, dy);
+      }
+      render();
+    };
+    const setZoom = (z: number): void => {
+      zoom = Math.min(4, Math.max(0.25, z));
+      zoomLabel.textContent = `${Math.round(zoom * 100)} %`;
+      render();
+    };
+    const addSymbol = (def: SymbolDef): void => {
+      snapshot();
+      const r = stage.getBoundingClientRect();
+      const s = svg.getBoundingClientRect();
+      const cx = r.width && s.width ? ((r.left + r.width / 2 - s.left) / s.width) * d.width : d.width / 2;
+      const cy = r.height && s.height ? ((r.top + r.height / 2 - s.top) / s.height) * d.height : d.height / 2;
+      // Shifted when another symbol is already there.
+      let [x, y] = [Math.min(d.width - 40, Math.max(40, cx)), Math.min(d.height - 40, Math.max(40, cy))];
+      while (d.shapes.some((o) => o.kind === 'symbol' && Math.abs(o.x - snap(x, d.grid)) < 20 && Math.abs(o.y - snap(y, d.grid)) < 20)) [x, y] = [x + 20, y + 20];
+      const placed = placeSymbol(d, def.id, x, y);
+      if (style.stroke !== '#000000') placed.stroke = style.stroke;
+      setTool('select');
+      select([placed.id]);
+      svg.focus();
+    };
+
+    function onKey(e: KeyboardEvent): void {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        return e.shiftKey ? doRedo() : doUndo();
+      }
+      if (mod && e.key.toLowerCase() === 'y') return void (e.preventDefault(), doRedo());
+      if (mod && e.key.toLowerCase() === 'd') return void (e.preventDefault(), dup());
+      if (mod && e.key.toLowerCase() === 'a') return void (e.preventDefault(), select(d.shapes.map((s) => s.id)));
+      if (mod || e.altKey) return;
+      if (e.key === 'Delete' || e.key === 'Backspace') return void (e.preventDefault(), del());
+      if (e.key === 'Escape' && (selected.length || tool !== 'select')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setTool('select');
+        return select([]);
+      }
+      const step = e.shiftKey ? 1 : d.grid || 10;
+      const moves: Record<string, Pt> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+      if (moves[e.key] && selected.length) {
+        e.preventDefault();
+        snapshot();
+        moveShapes(d, selected, ...moves[e.key]!);
+        return render();
+      }
+      if (e.key === 'r' || e.key === 'R') return turn();
+      if (e.key === 'm' || e.key === 'M') return flip();
+    }
+    svg.addEventListener('keydown', onKey);
+
+    // --- toolbar -------------------------------------------------------------------
+    const tools: [Tool, string, string][] = [
+      ['select', '⬚', t('draw.select')], ['rect', '▭', t('draw.rect')], ['ellipse', '◯', t('draw.ellipse')], ['line', '╱', t('draw.line')],
+      ['arrow', '➝', t('draw.arrow')], ['free', '✎', t('draw.free')], ['text', 'T', t('draw.text')], ['wire', '⌐', t('draw.wire')],
+    ];
+    const toolButtons = tools.map(([value, icon, label]) => {
+      const b = button(label, () => setTool(value), { text: icon, title: label, pressed: value === tool });
+      b.dataset.tool = value;
+      return b;
+    });
+    const syncTools = (): void => {
+      for (const b of toolButtons) b.setAttribute('aria-pressed', String(b.dataset.tool === tool));
+      svg.dataset.tool = tool;
+    };
+    const setTool = (value: Tool): void => {
+      tool = value;
+      if (tool !== 'select') selected = [];
+      syncTools();
+      render();
+    };
+    const undoBtn = button(t('common.undo'), doUndo, { text: '↶', title: t('common.undo') });
+    const redoBtn = button(t('common.redo'), doRedo, { text: '↷', title: t('common.redo') });
+    const zoomLabel = h('span', { class: 'draw-zoom' }, '100 %');
+    const gridBox = h('input', { type: 'checkbox', checked: !!d.showGrid });
+    gridBox.addEventListener('change', () => {
+      d.showGrid = gridBox.checked;
+      render();
+    });
+    const snapBox = h('input', { type: 'checkbox', checked: d.grid > 0 });
+    snapBox.addEventListener('change', () => {
+      d.grid = snapBox.checked ? 10 : 0;
+      render();
+    });
+    const alignSelect = h('select', { 'aria-label': t('draw.align') }, h('option', { value: '' }, t('draw.align')), ...(['left', 'center', 'right', 'top', 'middle', 'bottom'] as const).map((a) => h('option', { value: a }, t(`draw.align.${a}`))));
+    alignSelect.addEventListener('change', () => {
+      if (alignSelect.value) align(alignSelect.value as Parameters<typeof align>[0]);
+      alignSelect.value = '';
+    });
+
+    // --- symbols -------------------------------------------------------------------
+    const search = h('input', { type: 'search', placeholder: t('draw.searchSymbols'), 'aria-label': t('draw.searchSymbols') });
+    const category = h('select', { 'aria-label': t('draw.library') }, h('option', { value: '' }, t('draw.allLibraries')), ...CATEGORIES.map((c) => h('option', { value: c }, t(`draw.lib.${c}`))));
+    const list = h('div', { class: 'draw-symbols', role: 'list', 'aria-label': t('draw.symbols') });
+    const fillSymbols = (): void => {
+      list.replaceChildren(
+        ...searchSymbols(search.value, (category.value || undefined) as SymbolCategory | undefined).map((def) => {
+          const b = h('button', { type: 'button', class: 'draw-symbol', role: 'listitem', title: def.name, 'aria-label': def.name });
+          b.innerHTML = symbolPreview(def);
+          b.append(h('span', {}, def.name));
+          b.addEventListener('click', () => addSymbol(def));
+          return b;
+        }),
+      );
+    };
+    search.addEventListener('input', fillSymbols);
+    category.addEventListener('change', fillSymbols);
+    fillSymbols();
+
+    // --- size, alt text, export ---------------------------------------------------
+    const sizeInput = (value: number, label: string, set: (v: number) => void): HTMLInputElement => {
+      const input = h('input', { type: 'number', min: '50', max: '5000', step: '10', value: String(value), 'aria-label': label, class: 'draw-size' });
+      input.addEventListener('change', () => {
+        const v = Number(input.value);
+        if (v >= 50 && v <= 5000) {
+          snapshot();
+          set(v);
+          render();
+        }
+      });
+      return input;
+    };
+    const alt = h('input', { type: 'text', value: d.alt ?? '', 'aria-label': t('draw.alt'), placeholder: t('draw.altHint'), class: 'draw-alt' });
+    alt.addEventListener('change', () => {
+      d.alt = alt.value.trim() || undefined;
+    });
+    const fit = (): void => {
+      const boxes = d.shapes.map((s) => bbox(s) ?? domBox(s.id)).filter((b): b is [number, number, number, number] => !!b);
+      if (!boxes.length) return;
+      snapshot();
+      const [x0, y0] = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1]))];
+      const [x1, y1] = [Math.max(...boxes.map((b) => b[2])), Math.max(...boxes.map((b) => b[3]))];
+      const m = 20;
+      moveShapes(d, d.shapes.map((s) => s.id), snap(m - x0, d.grid), snap(m - y0, d.grid));
+      d.width = Math.max(50, Math.ceil((x1 - x0 + 2 * m) / 10) * 10);
+      d.height = Math.max(50, Math.ceil((y1 - y0 + 2 * m) / 10) * 10);
+      widthSize.value = String(d.width);
+      heightSize.value = String(d.height);
+      render();
+    };
+    const widthSize = sizeInput(d.width, t('draw.widthPx'), (v) => (d.width = v));
+    const heightSize = sizeInput(d.height, t('draw.heightPx'), (v) => (d.height = v));
+    const save = (blob: Blob, name: string): void => {
+      const url = URL.createObjectURL(blob);
+      const a = h('a', { href: url, download: name });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    };
+    const exportSvg = (): void => save(new Blob([toSvg(d)], { type: 'image/svg+xml' }), 'drawing.svg');
+    const exportAsPng = async (): Promise<void> => save(await exportPng(d, 2), 'drawing.png');
+
+    const dialog = h('dialog', { class: 'dialog draw-dialog', 'aria-labelledby': 'draw-title' });
+    const finish = (value: Drawing | null): void => {
+      dialog.close();
+      dialog.remove();
+      resolve(value);
+    };
+    dialog.append(
+      h('h2', { id: 'draw-title' }, t('draw.title')),
+      h(
+        'div',
+        { class: 'draw-toolbar', role: 'toolbar', 'aria-label': t('draw.tools') },
+        h('span', { class: 'draw-group' }, ...toolButtons),
+        h('span', { class: 'draw-group' }, undoBtn, redoBtn),
+        h(
+          'span',
+          { class: 'draw-group' },
+          button(t('draw.delete'), del, { text: '🗑', title: `${t('draw.delete')} (Del)` }),
+          button(t('draw.duplicate'), dup, { text: '⧉', title: `${t('draw.duplicate')} (Ctrl+D)` }),
+          button(t('draw.rotate'), turn, { text: '⟳', title: `${t('draw.rotate')} (R)` }),
+          button(t('draw.mirror'), flip, { text: '⇋', title: `${t('draw.mirror')} (M)` }),
+          button(t('draw.front'), () => order(true), { text: '⬆', title: t('draw.front') }),
+          button(t('draw.back'), () => order(false), { text: '⬇', title: t('draw.back') }),
+          alignSelect,
+        ),
+        h(
+          'span',
+          { class: 'draw-group' },
+          button(t('draw.zoomOut'), () => setZoom(zoom / 1.25), { text: '−', title: t('draw.zoomOut') }),
+          zoomLabel,
+          button(t('draw.zoomIn'), () => setZoom(zoom * 1.25), { text: '+', title: t('draw.zoomIn') }),
+          h('label', {}, gridBox, ` ${t('draw.grid')}`),
+          h('label', {}, snapBox, ` ${t('draw.snap')}`),
+        ),
+      ),
+      h(
+        'div',
+        { class: 'draw-props', role: 'group', 'aria-label': t('draw.props') },
+        h('label', {}, `${t('draw.stroke')} `, strokeInput),
+        h('label', {}, `${t('draw.fill')} `, fillInput),
+        h('label', {}, noFill, ` ${t('draw.noFill')}`),
+        h('label', {}, `${t('draw.width')} `, widthInput),
+        h('label', {}, `${t('draw.dash')} `, dashInput),
+        symbolProps,
+        textProps,
+      ),
+      h(
+        'div',
+        { class: 'draw-body' },
+        h('aside', { class: 'draw-library', 'aria-label': t('draw.symbols') }, search, category, list),
+        h('div', { class: 'draw-main' }, stage, status),
+        h('aside', { class: 'draw-side' }, h('h3', {}, t('draw.objects')), objects),
+      ),
+      h(
+        'div',
+        { class: 'draw-footer' },
+        h('label', {}, `${t('draw.alt')} `, alt),
+        h('label', {}, `${t('draw.widthPx')} `, widthSize),
+        h('label', {}, `${t('draw.heightPx')} `, heightSize),
+        button(t('draw.fit'), fit, { title: t('draw.fitTitle') }),
+        button(t('draw.exportSvg'), exportSvg),
+        button(t('draw.exportPng'), () => void exportAsPng()),
+      ),
+      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(null)), button(t('draw.done'), () => finish(d), { className: 'primary' })),
+    );
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      if (!undo.length || window.confirm(t('draw.discard'))) finish(null);
+    });
+    host.append(dialog);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    syncTools();
+    render();
+    svg.focus();
+  });
+}
+
+/** Ramer–Douglas–Peucker: fewer points along a freehand stroke. */
+export function simplify(points: Pt[], tolerance: number): Pt[] {
+  if (points.length < 3) return points;
+  const [a, b] = [points[0]!, points[points.length - 1]!];
+  let [index, max] = [0, 0];
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i]!;
+    const dist = len ? Math.abs((b[0] - a[0]) * (a[1] - p[1]) - (a[0] - p[0]) * (b[1] - a[1])) / len : Math.hypot(p[0] - a[0], p[1] - a[1]);
+    if (dist > max) [index, max] = [i, dist];
+  }
+  if (max <= tolerance) return [a, b];
+  return [...simplify(points.slice(0, index + 1), tolerance).slice(0, -1), ...simplify(points.slice(index), tolerance)];
+}

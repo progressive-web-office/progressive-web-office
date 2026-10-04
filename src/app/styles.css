@@ -429,6 +429,43 @@ textarea.pdf-field { resize: none; }
 .photo-sliders { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 8px; }
 .photo-slider { display: grid; gap: 2px; font-size: 0.85rem; }
 .photo-size { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--muted); }
+/* DRAW-001..DRAW-011: the drawing editor. */
+.draw-dialog { width: min(98vw, 1280px); max-width: none; height: min(96vh, 900px); display: none; flex-direction: column; gap: 6px; }
+.draw-dialog[open] { display: flex; }
+.draw-dialog h2 { margin: 0; font-size: 1.1rem; }
+.draw-toolbar, .draw-props, .draw-footer { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.draw-group, .draw-props-group { display: inline-flex; gap: 4px; align-items: center; padding-right: 6px; border-right: 1px solid var(--border); }
+.draw-props-group[hidden] { display: none; }
+.draw-toolbar button[aria-pressed="true"] { background: var(--accent, #2563eb); color: #fff; }
+.draw-props label, .draw-footer label { display: inline-flex; gap: 4px; align-items: center; font-size: 0.85rem; }
+.draw-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr 180px; gap: 6px; }
+.draw-library, .draw-side { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow: auto; }
+.draw-side h3 { margin: 0; font-size: 0.9rem; }
+.draw-symbols { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; overflow: auto; }
+.draw-symbol { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; font-size: 0.7rem; line-height: 1.1; text-align: center; background: var(--surface, #fff); color: var(--text, #111); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.draw-symbol:hover, .draw-symbol:focus-visible { border-color: var(--accent, #2563eb); }
+.draw-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.draw-scroll { flex: 1; overflow: auto; background: #e5e7eb; border-radius: 6px; padding: 12px; }
+.draw-stage { display: block; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); touch-action: none; cursor: crosshair; color: #000; }
+.draw-stage[data-tool="select"] { cursor: default; }
+.draw-stage:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+.draw-selection { fill: none; stroke: #2563eb; stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; }
+.draw-handle { fill: #fff; stroke: #2563eb; stroke-width: 1.5; cursor: nwse-resize; }
+.draw-pin { fill: #f59e0b; pointer-events: none; }
+.draw-band { fill: rgba(37, 99, 235, 0.08); stroke: #2563eb; stroke-dasharray: 3 2; pointer-events: none; }
+.draw-status { margin: 2px 0 0; min-height: 1.2em; font-size: 0.8rem; color: var(--muted); }
+.draw-objects { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.draw-objects button { width: 100%; text-align: left; font-size: 0.8rem; padding: 2px 6px; }
+.draw-objects button[aria-pressed="true"] { background: var(--accent, #2563eb); color: #fff; }
+.draw-size { width: 5em; }
+.draw-alt { width: 18em; }
+.draw-zoom { min-width: 3.5em; text-align: center; font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .draw-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  .draw-library { max-height: 9rem; }
+  .draw-symbols { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+  .draw-side { max-height: 6rem; }
+}
 
 /* Presentations */
 .slide-editor { display: flex; flex-direction: column; height: 100%; }

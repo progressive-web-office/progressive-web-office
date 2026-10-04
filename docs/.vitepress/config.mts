@@ -36,6 +36,7 @@ export default defineConfig({
           { text: 'Text documents', link: '/guide/documents' },
           { text: 'Equations', link: '/guide/equations' },
           { text: 'Diagrams', link: '/guide/diagrams' },
+          { text: 'Drawings and schematics', link: '/guide/drawing' },
           { text: 'Code cells (Python, JavaScript)', link: '/guide/code' },
           { text: 'LaTeX', link: '/guide/latex' },
           { text: 'Templates and examples', link: '/guide/templates' },

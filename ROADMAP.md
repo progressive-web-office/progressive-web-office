@@ -205,15 +205,16 @@ group is not a commitment.
 - ✅ Minimal photo editing: crop, turn, mirror, resize, brightness /
   contrast, blur a region (IMG-001), arrows, text and highlights (IMG-004);
   next: editing picture files and slide pictures
-- Vector drawing (DRAW-001..DRAW-004): shapes, lines and arrows, freehand,
+- ✅ Vector drawing (DRAW-001..DRAW-004): shapes, lines and arrows, freehand,
   text, grid and snapping, connectors that follow the shapes; saved as SVG
   (editable again), exported as PNG
-- Schematics (DRAW-005, DRAW-006): symbol libraries — electrical and
+- ✅ Schematics (DRAW-005, DRAW-006): symbol libraries — electrical and
   electronic (IEC 60617), logic gates, control block diagrams, pneumatic and
   hydraulic (ISO 1219), flowcharts (ISO 5807) — pins on the grid, orthogonal
   wires that stay connected, junction dots, references (R1, C1…) and values
   with units; next: netlist (SPICE) and bill of materials (DRAW-009)
-- Drawings inserted in documents and slides, editable in place (DRAW-007)
+- ✅ Drawings inserted in text documents, editable in place (DRAW-007);
+  next: in slides, PNG version for DOCX and PDF
 - Bitmap painting (DRAW-008): pencil, brush, eraser, fill, shapes, text,
   selection, canvas size — for a new picture or any picture
 - OpenDocument drawings (.odg), draw.io diagrams (DRAW-010)

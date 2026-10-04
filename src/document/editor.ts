@@ -364,7 +364,8 @@ export class DocumentEditor implements EditorView {
           citations: () => this.citations(),
           openInclude: (src) => this.ctx.openLink?.(src) ?? false,
           editCitation: (pos, node) => void this.editCitation(pos, node),
-          editImage: (pos, node) => void this.describeImage(pos, node),
+          // DRAW-007: a drawing (an SVG picture) opens again in the drawing editor.
+          editImage: (pos, node) => void (this.doc.resources.get(node.attrs.image as string)?.mediaType === 'image/svg+xml' ? this.editDrawing(pos) : this.describeImage(pos, node)),
           fieldContext: (pos) => this.fieldContext(pos),
         }),
         editable: () => !this.readOnly && !this.reviewing && this.mode === 'visual',
@@ -988,7 +989,9 @@ export class DocumentEditor implements EditorView {
     if (imgNode?.type === schema.nodes.image && imgPos !== undefined && imgNode.attrs.image && editable) {
       entries.push(
         { title: t('ctx.picture') },
-        { label: t('photo.edit'), icon: '🎨', run: () => void this.editPhoto(imgPos) },
+        this.doc.resources.get(imgNode.attrs.image as string)?.mediaType === 'image/svg+xml'
+          ? { label: t('draw.edit'), icon: '✏️', run: () => void this.editDrawing(imgPos) }
+          : { label: t('photo.edit'), icon: '🎨', run: () => void this.editPhoto(imgPos) },
         { label: t('picture.describe'), icon: '🏷', run: () => void this.describeImage(imgPos, imgNode) },
         'separator',
       );
@@ -1047,6 +1050,7 @@ export class DocumentEditor implements EditorView {
         ...(isInTable(state) ? [] : [{ title: t('ctx.table') }, tableSizePicker((rows, cols) => t('ctx.tableSize', { rows, cols }), (rows, cols) => cmd(insertTable(rows, cols))())]),
         'separator',
         { label: t('common.insertImage'), icon: '🖼', run: () => void this.pickImage() },
+        { label: t('draw.insert'), icon: '✏️', run: () => void this.editDrawing() },
         { label: t('doc.insertEquation'), icon: '∑', run: () => void this.editMath() },
         ...(link ? [] : [{ label: t('doc.insertLink'), icon: '🔗', run: () => this.insertLink() }]),
         { label: t('note.button'), icon: '¹', run: () => void this.editNote() },
@@ -2291,6 +2295,7 @@ export class DocumentEditor implements EditorView {
       toolGroup(t('group.insert'), '＋', [
         act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
         act(t('common.insertImage'), '🖼', () => void this.pickImage()),
+        act(t('draw.insert'), '✏️', () => void this.editDrawing(), t('draw.insertTitle')),
         act(t('doc.insertTable'), '▦', () => this.command(insertTable()), t('doc.insertTableTitle')),
         act(t('doc.insertEquation'), '∑', () => void this.editMath(), t('doc.insertEquationTitle')),
         act(t('doc.insertCode'), '{ }', () => void this.editCell(), t('doc.insertCodeTitle')),
@@ -2485,6 +2490,29 @@ export class DocumentEditor implements EditorView {
     // The shown width is kept (no wider than the picture), the height follows the new proportions.
     const width = Math.min((current.attrs.width as number | null) ?? edited.width, edited.width);
     this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, image: key, width, height: Math.round((width * edited.height) / edited.width) }));
+    this.refocus();
+  }
+
+  /** DRAW-007: a new drawing, or a drawing (any SVG picture) of the document edited again. */
+  private async editDrawing(pos?: number): Promise<void> {
+    if (this.readOnly) return;
+    const node = pos !== undefined ? this.view.state.doc.nodeAt(pos) : null;
+    const res = node?.type === schema.nodes.image ? this.doc.resources.get(node.attrs.image as string) : undefined;
+    const [{ editDrawing }, { fromSvg, toSvg }] = await Promise.all([import('../draw/editor'), import('../draw/svg')]);
+    let initial;
+    try {
+      initial = res ? fromSvg(new TextDecoder().decode(res.data)) : undefined;
+    } catch {
+      initial = undefined;
+    }
+    if (initial && !initial.alt && node?.attrs.alt) initial.alt = node.attrs.alt as string;
+    const drawing = await editDrawing(this.element, initial);
+    if (!drawing) return this.refocus();
+    const key = addResource(this.doc, new TextEncoder().encode(toSvg(drawing)), 'image/svg+xml', res?.name ?? 'drawing.svg');
+    const attrs = { image: key, alt: drawing.alt ?? null, width: drawing.width, height: drawing.height };
+    const current = pos !== undefined ? this.view.state.doc.nodeAt(pos) : null;
+    if (pos !== undefined && current?.type === schema.nodes.image) this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, ...attrs }));
+    else this.command(insertInline(schema.nodes.image!.create(attrs)));
     this.refocus();
   }
 

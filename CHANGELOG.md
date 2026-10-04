@@ -10,6 +10,18 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Drawings and schematics** (DRAW-001..DRAW-007, DRAW-011): a vector
+  drawing editor for text documents — rectangles, ellipses, lines, arrows,
+  freehand, text; colours, thickness, dashes; grid and snapping; select,
+  move, align, bring to front, duplicate, undo — with **symbol libraries**:
+  electrical and electronic (IEC 60617), logic gates (IEC and ANSI), block
+  diagrams, pneumatic and hydraulic (ISO 1219), flowcharts (ISO 5807).
+  Wires snap to the pins, are drawn in right angles, stay connected when a
+  symbol moves, turns or is mirrored, and get junction dots; symbols are
+  numbered (R1, C1, Q1…) and their values written with units (`4k7` →
+  `4.7 kΩ`). Drawings are saved as SVG that open again editable (a double
+  click), as are SVG pictures made elsewhere; export as SVG or PNG; a list of
+  named objects and keyboard moves for accessibility.
 - **Physical quantities and dimensional analysis** in spreadsheets
   (UNIT-001..UNIT-004): type `12 mm`, `3.5 kN`, `9.81 m/s²`; formulas compute
   with the units (`12 mm + 3 m` → `3012 mm`, `2 kN × 0.5 m` → `1 kN·m`) and
