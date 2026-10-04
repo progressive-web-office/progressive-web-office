@@ -769,6 +769,8 @@ export const en = {
   'backup.restoreSelected': 'Restore the selected files',
   'backup.restored': '✓ {n} restored, {m} restored next to a newer file, {s} unchanged; {r} records added.',
   'backup.reminder': 'Your documents kept in this browser have not been backed up for a while. {last}',
+  'move.notice': 'Progressive Web Office moves to a new address:',
+  'move.how': 'Your documents stay in this browser at the old address: back them up here, then restore the backup there (💾 Backup → Restore).',
   'backup.remindLater': 'Later',
   'devsync.button': 'Sync my devices',
   'devsync.buttonTitle': 'Find the documents of this browser on your other devices (peer to peer, end-to-end encrypted)',

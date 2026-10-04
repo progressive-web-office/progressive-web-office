@@ -1,5 +1,6 @@
 /** Application shell: start screen, header toolbar, file open/save flow. */
 import { backupDue, loadBackupSettings } from '../backup/settings';
+import { NEW_HOME, movedFrom } from './move';
 import { backupAge as backupAgeText, lastBackupText as backupLastText } from '../backup/text';
 import { getLocale, LOCALES, setLocale, t, type Locale, type MessageKey } from '../i18n';
 import {
@@ -89,6 +90,8 @@ export interface AppOptions {
   drafts?: DraftStore;
   /** Autosave period in milliseconds (default 30 s). */
   autosaveMs?: number;
+  /** The address of the page (default: the browser's), for the moving notice (BACKUP-006). */
+  location?: string;
 }
 
 const basename = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
@@ -1243,6 +1246,7 @@ export class App {
     void this.offerDraft(recent);
     void this.offerLastFolder(recent);
     void this.offerBackup(recent);
+    this.offerMove(recent);
     void this.resumeDeviceSync();
     this.renderHeader();
     this.renderStatus();
@@ -1360,6 +1364,20 @@ export class App {
       button(t('backup.remindLater'), () => banner.remove()),
     );
     container.prepend(banner);
+  }
+
+  /** BACKUP-006: on the old site, ask to back up and restore at the new address. */
+  private offerMove(container: HTMLElement): void {
+    if (!movedFrom(this.options.location ?? location.href)) return;
+    container.prepend(
+      h(
+        'div',
+        { class: 'draft-banner move-banner', role: 'status' },
+        h('span', {}, t('move.notice'), ' ', h('a', { href: NEW_HOME, rel: 'noopener' }, NEW_HOME)),
+        h('span', {}, t('move.how')),
+        button(t('backup.now'), () => void this.openBackup(), { className: 'primary' }),
+      ),
+    );
   }
 
   private discardDraft(): void {

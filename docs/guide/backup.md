@@ -61,3 +61,15 @@ A backup is a ZIP archive (encrypted as a whole when a password is set) with
 a `manifest.json` (date, files, numbers of records), the files under
 `files/`, and the records of the browser's database under `records/`. The
 settings and accounts (tokens, passwords) are **not** included.
+
+## Moving to the new address
+
+Progressive Web Office moves from `s-celles.github.io/progressive-web-office`
+to <https://progressive-web-office.github.io/progressive-web-office/>.
+The browser keeps documents **per site**, so the documents kept at the old
+address do not follow on their own:
+
+1. At the old address, the start screen shows a notice: choose
+   **Back up now** and save the backup.
+2. Open the new address, then **💾 Backup → Restore…** and pick that backup.
+3. Install the application again from the new address if you had installed it.

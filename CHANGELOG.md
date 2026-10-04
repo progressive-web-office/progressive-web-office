@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Moving notice** (BACKUP-006): the application moves to
+  <https://progressive-web-office.github.io/progressive-web-office/>. At the
+  former address, the start screen announces the new one and offers a
+  backup, to restore there: the browser keeps documents per site.
 - A **plugins proposal** (docs: *Plugins (proposal)*, PLUG-001..PLUG-008):
   content packs first, then sandboxed code plugins, distributed through a
   registry of Git repositories.

@@ -771,6 +771,8 @@ export const zh: Record<MessageKey, string> = {
   'backup.restoreSelected': '恢复所选文件',
   'backup.restored': '✓ 已恢复 {n} 个，{m} 个恢复在较新文件旁，{s} 个未变；添加了 {r} 条记录。',
   'backup.reminder': '保存在此浏览器中的文档已有一段时间未备份。{last}',
+  'move.notice': 'Progressive Web Office 正在迁移到新地址：',
+  'move.how': '您的文档仍保存在此浏览器的旧地址中：请在此处备份，然后在新地址恢复备份（💾 备份 → 恢复）。',
   'backup.remindLater': '稍后',
   'devsync.button': '同步我的设备',
   'devsync.buttonTitle': '在您的其他设备上找到此浏览器中的文档（点对点、端到端加密）',

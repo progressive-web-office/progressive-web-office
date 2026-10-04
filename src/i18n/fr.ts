@@ -771,6 +771,8 @@ export const fr: Record<MessageKey, string> = {
   'backup.restoreSelected': 'Restaurer les fichiers cochés',
   'backup.restored': '✓ {n} restaurés, {m} restaurés à côté d’un fichier plus récent, {s} inchangés ; {r} enregistrements ajoutés.',
   'backup.reminder': 'Les documents gardés dans ce navigateur n’ont pas été sauvegardés depuis un moment. {last}',
+  'move.notice': 'Progressive Web Office déménage à une nouvelle adresse :',
+  'move.how': 'Vos documents restent dans ce navigateur à l’ancienne adresse : sauvegardez-les ici, puis restaurez la sauvegarde là-bas (💾 Sauvegarde → Restaurer).',
   'backup.remindLater': 'Plus tard',
   'devsync.button': 'Synchroniser mes appareils',
   'devsync.buttonTitle': 'Retrouver les documents de ce navigateur sur vos autres appareils (pair à pair, chiffré de bout en bout)',
