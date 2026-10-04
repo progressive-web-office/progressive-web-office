@@ -32,7 +32,7 @@ group is not a commitment.
   borders, alignment) and freeze panes (SHEET-017); next: fonts and sizes,
   merged cells
 - ✅ Sort (SHEET-016) and autofilter (SHEET-018), fill handle (SHEET-027),
-  data validation (SHEET-028); next: conditional formatting
+  data validation (SHEET-028), conditional formatting (SHEET-029)
 - More functions (financial, engineering, array formulas)
 - Executable notebooks: code cells (Python/JavaScript) that read and write
   the cells of an open workbook

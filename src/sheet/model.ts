@@ -74,6 +74,8 @@ export interface Sheet {
   filter?: import('./filter').AutoFilter;
   /** Data validation (SHEET-028). */
   validations?: import('./validation').Validation[];
+  /** Conditional formatting (SHEET-029), the first format winning over the next. */
+  conditional?: import('./conditional').ConditionalFormat[];
 }
 
 export interface Workbook {

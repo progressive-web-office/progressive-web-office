@@ -1,5 +1,6 @@
 /** OpenDocument Spreadsheet (.ods) writer (SHEET-009). */
 import { odfCondition, type Validation } from './validation';
+import { odfCondValue, odfRangeAddress, type CondStyle } from './conditional';
 import { escapeXml as esc } from '../core/xml';
 import { writeZip } from '../core/zip';
 import { MIME_TYPES } from '../core/format';
@@ -192,6 +193,36 @@ export function writeOds(wb: Workbook): Uint8Array {
     }
     return name;
   };
+  // SHEET-029: conditional formats, as LibreOffice writes them, with named styles in styles.xml.
+  const condStyles = new Map<string, string>();
+  const condStyle = (look: CondStyle): string => {
+    const key = JSON.stringify(look);
+    let name = condStyles.get(key);
+    if (!name) {
+      name = `PWO_Conditional_${condStyles.size + 1}`;
+      condStyles.set(key, name);
+    }
+    return name;
+  };
+  const conditionalFormats = (sheet: Workbook['sheets'][number]): string => {
+    if (!sheet.conditional?.length) return '';
+    const items = sheet.conditional.map((f) => {
+      const first = f.ranges[0]!;
+      const base = odfAddress(sheet.name, first.r1, first.c1);
+      const rule = f.rule;
+      let inner: string;
+      if (rule.kind === 'colorScale') {
+        const types = rule.colors.length === 3 ? [['minimum', '0'], ['percentile', '50'], ['maximum', '0']] : [['minimum', '0'], ['maximum', '0']];
+        inner = `<calcext:color-scale>${rule.colors.map((c, i) => `<calcext:color-scale-entry calcext:value="${types[i]![1]}" calcext:type="${types[i]![0]}" calcext:color="${c}"/>`).join('')}</calcext:color-scale>`;
+      } else if (rule.kind === 'dataBar') {
+        inner = `<calcext:data-bar calcext:positive-color="${rule.color}" calcext:negative-color="#ff0000" calcext:axis-position="automatic" calcext:axis-color="#000000"><calcext:formatting-entry calcext:value="0" calcext:type="auto-minimum"/><calcext:formatting-entry calcext:value="0" calcext:type="auto-maximum"/></calcext:data-bar>`;
+      } else {
+        inner = `<calcext:condition calcext:apply-style-name="${condStyle(rule.style)}" calcext:value="${esc(odfCondValue(rule) ?? '')}" calcext:base-cell-address="${esc(base)}"/>`;
+      }
+      return `<calcext:conditional-format calcext:target-range-address="${esc(odfRangeAddress(sheet.name, f.ranges, quoteSheet))}">${inner}</calcext:conditional-format>`;
+    });
+    return `<calcext:conditional-formats>${items.join('')}</calcext:conditional-formats>`;
+  };
   const contentValidations = (): string => (validationXml.length ? `<table:content-validations>${validationXml.join('')}</table:content-validations>` : '');
   const colStyle = (px: number): string => {
     let name = colStyles.get(px);
@@ -311,7 +342,7 @@ export function writeOds(wb: Workbook): Uint8Array {
       body += `<table:table-row${hidden.has(r) ? ' table:visibility="filter"' : ''}>${rowXml}</table:table-row>`;
     }
     flushEmpty();
-    return `<table:table table:name="${esc(sheet.name)}">${columns}${body}</table:table>`;
+    return `<table:table table:name="${esc(sheet.name)}">${columns}${body}${conditionalFormats(sheet)}</table:table>`;
   });
 
   const content =
@@ -327,6 +358,7 @@ export function writeOds(wb: Workbook): Uint8Array {
     `<office:document-styles ${ODF_XMLNS} office:version="1.3"><office:styles>` +
     '<style:default-style style:family="table-cell"><style:text-properties fo:font-size="10pt"/></style:default-style>' +
     '<style:style style:name="Default" style:family="table-cell"/>' +
+    [...condStyles].map(([key, name]) => `<style:style style:name="${name}" style:family="table-cell" style:parent-style-name="Default">${lookXml(JSON.parse(key) as CondStyle)}</style:style>`).join('') +
     '</office:styles></office:document-styles>';
 
   const settings = settingsXml(wb);

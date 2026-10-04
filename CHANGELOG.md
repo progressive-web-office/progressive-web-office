@@ -101,6 +101,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Conditional formatting in spreadsheets (SHEET-029): **🎨 Conditional
+  formatting…** colours cells compared with a value, containing a text,
+  duplicated or unique, above or below the average, among the highest or
+  lowest, on a colour scale or with data bars; kept in XLSX and ODS files.
+
 - Data validation in spreadsheets (SHEET-028): **☑ Data validation…** limits
   cells to a list of values (picked from a drop-down, or with Alt+Down),
   whole numbers, numbers, dates or texts of some length; a message while the

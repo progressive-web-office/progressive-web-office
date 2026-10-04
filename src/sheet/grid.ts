@@ -20,6 +20,8 @@ import { chooseSort } from './sort-dialog';
 import { fillDownEnd, fillRange, fillTarget } from './fill';
 import { isValid, listItems, setValidation, validationAt, type Validation } from './validation';
 import { chooseValidation, describeRule } from './validation-dialog';
+import { evaluateConditional, formatsIn, type CondLook } from './conditional';
+import { chooseConditional } from './conditional-dialog';
 import { columnValues, displayText, hiddenRows, RowMap, setColumnFilter, toggleFilter } from './filter';
 
 const ROW_H = 24;
@@ -86,6 +88,8 @@ export class SheetEditor implements EditorView {
   private undoStack: { si: number; wb: Workbook }[] = [];
   private redoStack: { si: number; wb: Workbook }[] = [];
   private dragging = false;
+  /** SHEET-029: the looks given by conditional formatting, for the sheet and workbook they were worked out for. */
+  private condCache?: { si: number; wb: Workbook; looks: Map<string, CondLook> };
   /** SHEET-027: the selection being filled by dragging its handle, and the range it will fill. */
   private filling?: { from: Range; to: Range };
   /** Where the other participants are (COLLAB-003). */
@@ -224,6 +228,7 @@ export class SheetEditor implements EditorView {
         table.append(h('thead', {}, head));
       }
       const body = h('tbody');
+      const cond = sheet.conditional?.length ? evaluateConditional(sheet, (r, c) => this.calc.value(si, [r, c])) : undefined;
       for (let r = 0; r < rows; r++) {
         const tr = h('tr');
         if (settings.headings) tr.append(h('th', {}, String(r + 1)));
@@ -233,6 +238,10 @@ export class SheetEditor implements EditorView {
           const td = h('td', { class: typeof v === 'number' ? 'num' : undefined });
           if (cell) fillWithMath(td, formatValue(v, this.calc.format(si, [r, c])));
           if (cell?.style) applyLook(td, cell.style, true);
+          // SHEET-029: conditional formatting printed too.
+          const extra = cond?.get(cellKey(r, c));
+          if (extra?.look) applyLook(td, extra.look, true);
+          if (extra?.bar) td.style.backgroundImage = `linear-gradient(to right, ${extra.bar.color}aa 0 ${(extra.bar.ratio * 100).toFixed(1)}%, transparent ${(extra.bar.ratio * 100).toFixed(1)}%)`;
           tr.append(td);
         }
         body.append(tr);
@@ -352,6 +361,11 @@ export class SheetEditor implements EditorView {
     this.lastRow = last;
     const sheet = this.wb.sheets[this.si]!;
     const filter = sheet.filter;
+    // SHEET-029: the looks of the conditional formats, worked out again when the content changed.
+    if (force || this.condCache?.si !== this.si || this.condCache.wb !== this.wb) {
+      this.condCache = sheet.conditional?.length ? { si: this.si, wb: this.wb, looks: evaluateConditional(sheet, this.valueAt) } : undefined;
+    }
+    const cond = this.condCache?.looks;
     const tbody = this.table.tBodies[0]!;
     let hasMath = false;
     const rows: HTMLTableRowElement[] = [];
@@ -370,6 +384,9 @@ export class SheetEditor implements EditorView {
           else if (typeof v === 'boolean') td.classList.add('bool');
           else if (isError(v)) td.classList.add('err');
           if (cell.style) applyLook(td, cell.style);
+          const extra = cond?.get(cellKey(r, c));
+          if (extra?.look) applyLook(td, extra.look);
+          if (extra?.bar) td.style.backgroundImage = `linear-gradient(to right, ${extra.bar.color}aa 0 ${(extra.bar.ratio * 100).toFixed(1)}%, transparent ${(extra.bar.ratio * 100).toFixed(1)}%)`;
         }
         // SHEET-028: a value the validation of its cell does not accept.
         if (sheet.validations) {
@@ -860,6 +877,26 @@ export class SheetEditor implements EditorView {
     this.viewport.focus();
   }
 
+  /** SHEET-029: the "Conditional formatting…" dialog for the selection. */
+  private async editConditional(): Promise<void> {
+    if (this.readOnly) return;
+    this.commitEdit();
+    const r = this.range();
+    const sheet = this.wb.sheets[this.si]!;
+    const label = (x: Range): string => (x.r1 === x.r2 && x.c1 === x.c2 ? refName(x.r1, x.c1) : `${refName(x.r1, x.c1)}:${refName(x.r2, x.c2)}`);
+    const existing = formatsIn(sheet, r).map((index) => ({ index, format: sheet.conditional![index]!, where: sheet.conditional![index]!.ranges.map(label).join(', ') }));
+    const choice = await chooseConditional(this.element, label(r), existing);
+    if (!choice || (!choice.add && !choice.remove.length)) return this.viewport.focus();
+    this.snapshot();
+    const kept = (sheet.conditional ?? []).filter((_, i) => !choice.remove.includes(i));
+    // A new format comes first: it wins over the older ones.
+    if (choice.add) kept.unshift({ ranges: [r], rule: choice.add });
+    if (kept.length) sheet.conditional = kept;
+    else delete sheet.conditional;
+    this.changed(true);
+    this.viewport.focus();
+  }
+
   /** SHEET-028: the values of the list of the active cell, to pick one. */
   private openValidationList(): void {
     const sheet = this.wb.sheets[this.si]!;
@@ -1147,6 +1184,7 @@ export class SheetEditor implements EditorView {
       act(t('sheet.insertChart'), '📊', () => void this.insertChart()),
       act(t('sort.button'), '⇅', () => void this.sort()),
       act(t('validation.button'), '☑', () => void this.editValidation()),
+      act(t('cf.button'), '🎨', () => void this.editConditional()),
       this.filterButton,
       this.freezeButton,
     );
@@ -1472,6 +1510,7 @@ export class SheetEditor implements EditorView {
       { label: t('sheet.fillRight'), keys: ['Ctrl+R'], where, run: () => this.fillSelection('right') },
       { label: t('sheet.fillSeries'), where, run: () => this.fillSeries() },
       { label: t('validation.button'), where, run: () => void this.editValidation() },
+      { label: t('cf.button'), where, run: () => void this.editConditional() },
     ];
   }
 

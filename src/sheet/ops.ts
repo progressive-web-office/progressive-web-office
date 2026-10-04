@@ -5,6 +5,7 @@ import { shiftFormula, tokenize, refText, translateFormula, type RefToken } from
 import { cleanCellStyle, isError, parseInput, newSheet, type Cell, type CellStyle, type Value, type Workbook } from './model';
 import type { Calculator } from './engine';
 import { shiftValidations } from './validation';
+import { shiftConditional } from './conditional';
 
 export interface Range {
   r1: number;
@@ -49,6 +50,8 @@ function moveCells(wb: Workbook, si: number, axis: 'rows' | 'cols', index: numbe
   }
   // SHEET-028: the validated ranges follow their cells.
   shiftValidations(sheet, axis, index, count);
+  // SHEET-029: and the conditional formats.
+  shiftConditional(sheet, axis, index, count);
   if (axis === 'cols' && sheet.colWidths) {
     const widths = new Map<number, number>();
     for (const [c, w] of sheet.colWidths) {

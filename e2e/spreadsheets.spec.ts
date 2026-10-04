@@ -278,3 +278,57 @@ test('validates data: a list to pick from, numbers refused or kept, kept in XLSX
   await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveClass(/invalid/);
   expect(errors).toEqual([]);
 });
+
+test('formats cells by their values, kept in ODS (SHEET-029)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'scores.csv', 'Name,Score,Done\nAda,17,yes\nBob,8,late\nChloé,12,yes\nDan,8,late\n', 'text/csv');
+  const td = (r: number, c: number) => page.locator(`td[data-r="${r}"][data-c="${c}"]`);
+  // Scores below 10: light red.
+  await td(1, 1).click();
+  await td(4, 1).click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Conditional formatting…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Conditional formatting' });
+  await dialog.getByLabel('Which is').selectOption('lessThan');
+  await dialog.getByLabel('Value', { exact: true }).fill('10');
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  await expect(dialog).toBeHidden();
+  const fill = (r: number, c: number) => td(r, c).evaluate((el) => (el as HTMLElement).style.getPropertyValue('--fill'));
+  expect(await fill(2, 1)).toBe('#ffc7ce');
+  expect(await fill(1, 1)).toBe('');
+  // Typing a new score formats it again.
+  await td(1, 1).click();
+  await page.keyboard.type('3');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => fill(1, 1)).toBe('#ffc7ce');
+
+  // "late" in column C: bold.
+  await td(1, 2).click();
+  await td(4, 2).click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Conditional formatting…' }).click();
+  await dialog.getByLabel('Format the cells whose value is').selectOption('containsText');
+  await dialog.getByLabel('Text', { exact: true }).fill('LATE');
+  await dialog.locator('fieldset select').selectOption('bold');
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  await expect(td(2, 2)).toHaveCSS('font-weight', '700');
+  await expect(td(1, 2)).not.toHaveCSS('font-weight', '700');
+
+  // Data bars on B, then removed from the dialog, the red rule kept.
+  await td(1, 1).click();
+  await td(4, 1).click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Conditional formatting…' }).click();
+  await dialog.getByLabel('Format the cells whose value is').selectOption('dataBar');
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  await expect.poll(() => td(3, 1).evaluate((el) => (el as HTMLElement).style.backgroundImage)).toContain('linear-gradient');
+  await page.getByRole('button', { name: 'Conditional formatting…' }).click();
+  await expect(dialog.locator('.cf-list li')).toHaveCount(2);
+  await dialog.locator('.cf-list li', { hasText: 'shown as a bar' }).getByRole('button', { name: 'Delete' }).click();
+  await dialog.getByRole('button', { name: 'Only delete' }).click();
+  await expect.poll(() => td(3, 1).evaluate((el) => (el as HTMLElement).style.backgroundImage)).toBe('');
+  expect(await fill(2, 1)).toBe('#ffc7ce');
+
+  const ods = await saveAs(page, 'OpenDocument spreadsheet (.ods)');
+  await openFile(page, 'scores-back.ods', ods.data);
+  await expect.poll(() => fill(2, 1)).toBe('#ffc7ce');
+  await expect(td(4, 2)).toHaveCSS('font-weight', '700');
+  expect(errors).toEqual([]);
+});

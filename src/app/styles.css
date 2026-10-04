@@ -358,6 +358,16 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 .validation-dialog details { margin: 8px 0; }
 .validation-dialog summary { cursor: pointer; margin-bottom: 8px; }
 .validation-dialog .error { color: var(--danger, #c62828); }
+/* SHEET-029: conditional formatting dialog. */
+.cf-dialog .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.cf-dialog h3 { font-size: 1rem; margin: 12px 0 6px; }
+.cf-dialog .cf-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; }
+.cf-dialog .cf-style { border: 1px solid var(--border); border-radius: 4px; margin: 8px 0; }
+.cf-dialog .error { color: var(--danger); }
+.cf-swatch { display: inline-block; min-width: 5rem; padding: 2px 8px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); color: var(--text); font-size: 0.85rem; }
+.cf-list { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
+.cf-list li { display: flex; gap: 8px; align-items: center; }
+.cf-list li > span:nth-child(2) { flex: 1; }
 .cell-input {
   position: absolute; z-index: 4; padding: 0 5px; border: 2px solid var(--accent);
   font: inherit; font-size: 0.9rem; background: var(--surface); color: var(--text); box-sizing: border-box;

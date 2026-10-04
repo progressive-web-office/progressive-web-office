@@ -59,6 +59,29 @@ down as far as the column beside goes. The command palette also has **Fill
 a series into the empty cells of the selection**: select the start of the
 series and the empty cells after it.
 
+## Conditional formatting
+
+**🎨 Conditional formatting…** formats the selected cells by their values,
+and again each time they change:
+
+| Format the cells whose value is | For example |
+|---------------------------------|-------------|
+| compared with a value | less than 10, between 1 and 5, equal to `done` |
+| a text containing… | `late` (upper or lower case alike) |
+| a duplicate, unique | the same name twice |
+| above, below the average | |
+| among the highest, the lowest | the 3 highest, the lowest 10 % |
+| on a colour scale | red for the lowest, green for the highest (two or three colours) |
+| shown as a bar | a bar as long as the value |
+
+Choose the look among the usual ones (light red fill with dark red text,
+yellow, green, bold, red text) or a custom fill, text colour, bold and
+italic. Several formats may cover the same cells: the newest wins where two
+change the same thing. The dialog lists the formats of the selected cells,
+to delete them. The formats follow inserted and deleted rows and columns,
+are printed, and are kept in XLSX (`conditionalFormatting`) and ODS files
+(as LibreOffice writes them).
+
 ## Data validation
 
 **☑ Data validation…** sets what the selected cells may hold:

@@ -8,6 +8,7 @@
  * - `list`: ordered parts (the paragraphs of a document).
  */
 import { cleanValidations } from '../sheet/validation';
+import { cleanConditional } from '../sheet/conditional';
 import type { Block, RichDocument } from '../document/model';
 import type { Sheet, Workbook } from '../sheet/model';
 
@@ -95,6 +96,9 @@ export function partsWorkbook(parts: CollabParts): Workbook {
     const validations = cleanValidations(settings.validations);
     if (validations) settings.validations = validations;
     else delete settings.validations;
+    const conditional = cleanConditional(settings.conditional);
+    if (conditional) settings.conditional = conditional;
+    else delete settings.conditional;
     sheets[Number(m[1])] = { ...settings, cells: new Map() };
   }
   for (const [key, text] of Object.entries(parts.keys)) {

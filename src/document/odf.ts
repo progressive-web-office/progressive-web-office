@@ -19,6 +19,7 @@ export const ODF_NS = {
   of: 'urn:oasis:names:tc:opendocument:xmlns:of:1.2',
   manifest: 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0',
   loext: 'urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0',
+  calcext: 'urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0',
 };
 
 /** All namespace declarations, for root elements. */

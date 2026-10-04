@@ -1,5 +1,6 @@
 /** XLSX (SpreadsheetML) reader (SHEET-001). */
 import { validationFromXlsx } from './validation';
+import { conditionalFromXlsx, styleFromDxf, type CondStyle } from './conditional';
 import { readSheetCharts } from './chart-ooxml';
 import { parseRange } from './chart';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
@@ -56,6 +57,8 @@ function text(el: Element): string {
 class XlsxReader {
   private strings: string[] = [];
   private styles: { numFmt?: string; style?: CellStyle }[] = [];
+  /** SHEET-029: the differential formats of conditional formatting. */
+  private dxfs: CondStyle[] = [];
 
   constructor(private readonly zip: ZipEntries) {}
 
@@ -98,6 +101,9 @@ class XlsxReader {
           return v ? [v] : [];
         });
         if (validations.length) sheet.validations = validations;
+        // SHEET-029: conditional formatting.
+        const conditional = conditionalFromXlsx(sheetDoc, (i) => this.dxfs[i] ?? {});
+        if (conditional.length) sheet.conditional = conditional;
         // SHEET-017: frozen panes.
         const pane = descendants(sheetDoc, 'pane').find((p) => /^frozen/.test(attr(p, 'state') ?? ''));
         const rows = pane ? Math.max(0, Math.round(Number(attr(pane, 'ySplit') ?? 0))) : 0;
@@ -122,6 +128,8 @@ class XlsxReader {
     const xml = readZipText(this.zip, 'xl/styles.xml');
     if (!xml) return;
     const doc = parseXml(xml);
+    const dxfGroup = descendants(doc, 'dxfs')[0];
+    this.dxfs = dxfGroup ? children(dxfGroup, 'dxf').map(styleFromDxf) : [];
     const custom = new Map<number, string>();
     for (const f of descendants(doc, 'numFmt')) custom.set(Number(attr(f, 'numFmtId')), attr(f, 'formatCode') ?? '');
     // SHEET-014: fonts, fills and borders, by index.

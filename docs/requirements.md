@@ -275,6 +275,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | SHEET-026 | S | 0.2.0 | The system shall let the user change the width of columns: dragged at the edge of a column header, fitted to the content by a double click, or typed for the columns selected; kept in XLSX and ODS files. |
 | SHEET-027 | S | 0.2.0 | The system shall let the user fill cells from the selection with a fill handle dragged in any direction, a double click on it (down as far as the data beside), Ctrl+D and Ctrl+R (copy), continuing numbers and dates as a series, texts ending with a number, names of days and months, and moving the relative references of formulas. |
 | SHEET-028 | S | 0.2.0 | The system shall let the user restrict what cells accept (a value from a list written out or read from a range, a whole number, a number, a date, a text length, compared with values), show a message while such a cell is selected, offer the values of a list in a drop-down (also with Alt+Down), refuse a wrong value or ask or tell about it, mark the values not accepted, and keep the rules in XLSX and ODS files. |
+| SHEET-029 | S | 0.2.0 | The system shall let the user format cells by their values (a comparison with a value, a text contained, duplicate or unique values, above or below the average, the highest or lowest ones, a colour scale of two or three colours, data bars), list and delete the formats of the selection, print them, and keep them in XLSX and ODS files. |
 
 ## 6. Presentations (PRES)
 

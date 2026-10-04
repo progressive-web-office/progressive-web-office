@@ -1,5 +1,6 @@
 /** OpenDocument Spreadsheet (.ods) reader (SHEET-002). */
 import { rangesOfCells, ruleFromOdf, type Validation } from './validation';
+import { condFromOdf, rangesFromOdfAddress, type CondStyle, type ConditionalFormat } from './conditional';
 import { readChartFrame } from './chart-odf';
 import { attr, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText } from '../core/zip';
@@ -268,6 +269,32 @@ export function readOds(bytes: Uint8Array): Workbook {
       return rule ? [{ ...rule, ranges: rangesOfCells(cells) }] : [];
     });
     if (validations.length) sheet.validations = validations;
+    // SHEET-029: conditional formats (LibreOffice's calcext).
+    const conditional = descendants(table, 'conditional-format').flatMap((cf): ConditionalFormat[] => {
+      const ranges = rangesFromOdfAddress(attr(cf, 'target-range-address') ?? '');
+      if (!ranges.length) return [];
+      const out: ConditionalFormat[] = [];
+      for (const el of children(cf)) {
+        if (el.localName === 'condition') {
+          const look = lookOf(attr(el, 'apply-style-name')) ?? {};
+          const style: CondStyle = {};
+          for (const k of ['fill', 'color', 'bold', 'italic', 'underline'] as const) if (look[k] !== undefined) (style as Record<string, unknown>)[k] = look[k];
+          const rule = condFromOdf(attr(el, 'value') ?? '', style);
+          if (rule) out.push({ ranges, rule });
+        } else if (el.localName === 'color-scale') {
+          const colors = children(el, 'color-scale-entry').flatMap((e) => {
+            const c = attr(e, 'color');
+            return c && /^#[0-9a-f]{6}$/i.test(c) ? [c.toLowerCase()] : [];
+          });
+          if (colors.length === 2 || colors.length === 3) out.push({ ranges, rule: { kind: 'colorScale', colors } });
+        } else if (el.localName === 'data-bar') {
+          const c = attr(el, 'positive-color');
+          if (c && /^#[0-9a-f]{6}$/i.test(c)) out.push({ ranges, rule: { kind: 'dataBar', color: c.toLowerCase() } });
+        }
+      }
+      return out;
+    });
+    if (conditional.length) sheet.conditional = conditional;
     sheets.push(sheet);
   }
   if (!sheets.length) sheets.push({ name: 'Sheet1', cells: new Map() });
