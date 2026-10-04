@@ -639,6 +639,7 @@ export const fr: Record<MessageKey, string> = {
   'about.requirements': 'Exigences',
   'about.privacy': 'Vos documents restent sur votre appareil : tout s’exécute dans le navigateur et rien n’est envoyé nulle part sans votre choix (cloud, git, assistant IA, collaboration).',
   'about.credits': 'Construit avec des logiciels libres, notamment pdf.js, MathLive, Mermaid, Pyodide, Yjs, trystero, fflate et lean-qr.',
+  'about.trademark': 'Progressive Web Office et son logo sont des marques du projet.',
   'about.copyDetails': 'Copier les détails',
   'about.copyDetailsTitle': 'Copier la version et les détails du navigateur, à coller dans un signalement',
   'collab.qrAlt': 'QR code du lien d’invitation',

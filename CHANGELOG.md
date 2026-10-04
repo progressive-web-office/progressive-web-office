@@ -15,6 +15,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   also in the header of the application, on its start screen and in the
   documentation; a **Brand** page in the documentation (files, colours,
   type, usage).
+- A **trademark policy** (`TRADEMARKS.md`) for the names *Progressive Web
+  Office* and *PWO* and the logo: the AGPL-3.0 covers the code, not the
+  marks (its section 7(e)); forks use another name and logo. Noted in the
+  README, the Brand page and the About window.
 - The tagline says what the application does today — documents,
   spreadsheets, presentations, PDF, drawings, notes and live code — and
   that files stay on the device **unless you choose** to share, sync or

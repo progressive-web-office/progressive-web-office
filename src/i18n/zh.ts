@@ -639,6 +639,7 @@ export const zh: Record<MessageKey, string> = {
   'about.requirements': '需求',
   'about.privacy': '你的文档保留在你的设备上：一切都在浏览器中运行，除非你选择（云、git、AI 助手、协作），否则不会发送到任何地方。',
   'about.credits': '基于开源软件构建，包括 pdf.js、MathLive、Mermaid、Pyodide、Yjs、trystero、fflate 和 lean-qr。',
+  'about.trademark': 'Progressive Web Office 及其标志是本项目的商标。',
   'about.copyDetails': '复制详细信息',
   'about.copyDetailsTitle': '复制版本和浏览器信息，用于粘贴到问题报告中',
   'collab.qrAlt': '邀请链接的二维码',

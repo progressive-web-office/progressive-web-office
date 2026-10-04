@@ -59,3 +59,13 @@ name is **PWO**.
 - On a light background, use `icon.svg` (its own navy square) rather than
   the bare `mark.svg`.
 - Smallest size: 16 px for the icon, 24 px for the bare mark.
+
+## Trademark
+
+The names **Progressive Web Office** and **PWO** and the logo are the
+project's marks; their use is governed by the
+[trademark policy](https://github.com/progressive-web-office/progressive-web-office/blob/main/TRADEMARKS.md).
+The AGPL-3.0 licence of the code grants no right to them (its section 7(e)):
+you may say a document was made with Progressive Web Office, or host the
+unchanged application under its name, but a modified version must use
+another name and another logo.

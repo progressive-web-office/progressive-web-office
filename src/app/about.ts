@@ -104,6 +104,7 @@ export function aboutContent(appUrl: string): HTMLElement {
     dependencyList(),
     h('p', { class: 'hint' }, t('about.privacy')),
     h('p', { class: 'hint' }, t('about.credits')),
+    h('p', { class: 'hint' }, link(`${SOURCE_URL}/blob/main/TRADEMARKS.md`, t('about.trademark'))),
   );
 }
 

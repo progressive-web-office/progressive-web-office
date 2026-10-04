@@ -253,4 +253,10 @@ Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), the
 
 ## License
 
-[GNU Affero General Public License v3.0 or later](LICENSE.md).
+The code is under the [GNU Affero General Public License v3.0 or later](LICENSE.md).
+
+**Notice — names and logo.** *Progressive Web Office*, *PWO* and the
+fanned-sheets logo are trademarks of the project: see the
+[trademark policy](TRADEMARKS.md). As section 7(e) of the AGPL-3.0 allows,
+the licence grants no right to use them; forks must use another name and
+another logo.

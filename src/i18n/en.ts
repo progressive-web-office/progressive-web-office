@@ -637,6 +637,7 @@ export const en = {
   'about.requirements': 'Requirements',
   'about.privacy': 'Your documents stay on your device: everything runs in the browser, and nothing is sent anywhere unless you choose to (cloud, git, AI assistant, collaboration).',
   'about.credits': 'Built with open-source software, including pdf.js, MathLive, Mermaid, Pyodide, Yjs, trystero, fflate and lean-qr.',
+  'about.trademark': 'Progressive Web Office and its logo are trademarks of the project.',
   'about.copyDetails': 'Copy details',
   'about.copyDetailsTitle': 'Copy the version and browser details, to paste into a problem report',
   'collab.qrAlt': 'QR code of the invitation link',
