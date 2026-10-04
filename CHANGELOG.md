@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- The tagline says what the application does today — documents,
+  spreadsheets, presentations, PDF, drawings, notes and live code — and
+  that files stay on the device **unless you choose** to share, sync or
+  collaborate (no longer "nothing leaves your device").
 - The project moved to the **progressive-web-office** organisation: the
   source is at <https://github.com/progressive-web-office/progressive-web-office>
   and the application at

@@ -1,7 +1,7 @@
 {
   "name": "progressive-web-office",
   "version": "0.1.0",
-  "description": "A simple office suite that runs entirely in the browser: edit .docx/.odt documents, .xlsx/.ods/.csv spreadsheets and view PDF files.",
+  "description": "An office suite in the browser: documents, spreadsheets, presentations, PDF, drawings, notes and live code; files stay on the device unless the user chooses to share, sync or collaborate.",
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-or-later",

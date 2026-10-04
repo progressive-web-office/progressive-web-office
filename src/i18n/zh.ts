@@ -3,7 +3,7 @@ import type { MessageKey } from './en';
 
 export const zh: Record<MessageKey, string> = {
   'app.name': 'Progressive Web Office',
-  'app.tagline': '在浏览器中私密地打开、编辑和保存文档、电子表格与演示文稿。',
+  'app.tagline': '文档、电子表格、演示文稿、PDF、绘图、笔记和可运行的代码——都在您的浏览器中。您的文件保留在您的设备上，除非您选择共享、同步或协作。',
   'app.ready': '就绪',
   'app.working': '处理中…',
   'app.header': '应用程序',

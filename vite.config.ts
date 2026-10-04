@@ -142,7 +142,7 @@ export default defineConfig({
         id: './',
         name: 'Progressive Web Office',
         short_name: 'PWO',
-        description: 'Documents, spreadsheets, presentations and PDF — privately, in your browser.',
+        description: 'Documents, spreadsheets, presentations, PDF, notes and live code, in your browser — your files on your device unless you choose to share them.',
         start_url: './',
         scope: './',
         display: 'standalone',

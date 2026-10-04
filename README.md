@@ -1,7 +1,10 @@
 # Progressive Web Office
 
-An office suite that runs entirely in your browser. No account, no server,
-and it can even exchange documents without a network.
+An office suite in your browser — documents, spreadsheets, presentations,
+PDF, drawings, notes and live code. No account and no server of ours: your
+files stay on your device, unless you choose to share them, sync your
+devices or collaborate — and it can even exchange documents without a
+network.
 
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE.md)
 [![CI](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/ci.yml/badge.svg)](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/ci.yml)

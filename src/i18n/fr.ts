@@ -3,7 +3,7 @@ import type { MessageKey } from './en';
 
 export const fr: Record<MessageKey, string> = {
   'app.name': 'Progressive Web Office',
-  'app.tagline': 'Ouvrez, modifiez et enregistrez documents, classeurs et présentations — en toute confidentialité, dans votre navigateur.',
+  'app.tagline': 'Documents, classeurs, présentations, PDF, dessins, notes et code exécutable — dans votre navigateur. Vos fichiers restent sur votre appareil, sauf si vous choisissez de les partager, de les synchroniser ou de collaborer.',
   'app.ready': 'Prêt',
   'app.working': 'Traitement…',
   'app.header': 'Application',

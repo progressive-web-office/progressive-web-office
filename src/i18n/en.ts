@@ -1,7 +1,7 @@
 /** English messages (reference catalog: every key must exist in all languages). */
 export const en = {
   'app.name': 'Progressive Web Office',
-  'app.tagline': 'Open, edit and save documents, spreadsheets and presentations — privately, in your browser.',
+  'app.tagline': 'Documents, spreadsheets, presentations, PDF, drawings, notes and live code — in your browser. Your files stay on your device, unless you choose to share, sync or collaborate.',
   'app.ready': 'Ready',
   'app.working': 'Working…',
   'app.header': 'Application',

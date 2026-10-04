@@ -1,11 +1,11 @@
 ---
 layout: home
 title: Progressive Web Office
-description: A simple, private office suite that runs entirely in your browser.
+description: An office suite in your browser — documents, spreadsheets, presentations, PDF, notes and live code — your files on your device unless you choose to share them.
 hero:
   name: Progressive Web Office
   text: Your office suite, in the browser
-  tagline: "Documents, spreadsheets, presentations and PDF — nothing leaves your device."
+  tagline: "Documents, spreadsheets, presentations, PDF, drawings, notes and live code. Your files stay on your device — until you choose to share, sync or collaborate."
   image:
     src: /logo.svg
     alt: Progressive Web Office
@@ -22,8 +22,8 @@ hero:
       link: /formats/
 features:
   - icon: 🔒
-    title: Private by design
-    details: Files are opened, edited and saved locally. No upload, no account, no tracking.
+    title: Private by default
+    details: Files are opened, edited and saved on your device. Nothing is sent unless you choose to — sharing, syncing your devices, collaborating, asking the assistant. No account, no tracking.
   - icon: 📶
     title: Works offline
     details: Install it as a Progressive Web App; it keeps working without a network connection.
