@@ -665,6 +665,22 @@ See [DigitalSignalix](./digitalsignalix.md).
 | SIGN-004 | S | 0.3.0 | If a Manager cannot be reached or refuses a request, the system shall say whether the certificate, the browser's access to the local network, CORS or the token is the likely cause, and link to the setup guide. |
 | SIGN-005 | C | — | The system should let the user preview a slide or a pack on the size of a screen, and install packs whose `targets` include `signage` to try them in PWO. |
 
+## 9x. Calendar (CAL)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| CAL-001 | S | 0.2.0 | An event shall be a Markdown note — in an `Events` folder by default — its fields in the front matter (`type: "[[Event]]"`, title, start, end, all day, location, attendees, calendar, recurrence, exceptions, tags, uid) and its description the text of the note, so that events are linked, tagged, found and shown like notes; changing an event shall keep the other properties and the text of its note. |
+| CAL-002 | S | 0.2.0 | The system shall offer a calendar of the events of the folder open — month, week, day and agenda views, today marked, the events coloured by calendar — in which the user creates an event (a click on a day or a time), opens, moves and changes it in a window, and opens its note. |
+| CAL-003 | S | 0.2.0 | The system shall read and write iCalendar (RFC 5545) events: times of a time zone or UTC made the user's local time, whole days, folded lines and escapes, alarms left out; and import a `.ics` file as event notes, and export events as a `.ics` file. |
+| CAL-004 | S | 0.2.0 | The system shall show repeating events by their rule (daily, weekly by day, monthly, yearly; interval, count, until) without their exceptions. |
+| CAL-005 | S | 0.2.0 | A daily note shall list the events of its day, and its `events` property link to them; a click on a day of the calendar shall open its daily note. |
+| CAL-006 | S | 0.2.0 | The system shall synchronise event notes both ways with the calendars of a CalDAV server (Nextcloud…) of an account the user added: the calendars found from the account, the events of a time range read, the new and changed ones written with the version they replace (ETag), a change on both sides kept as two notes for the user to choose. |
+| CONTACT-001 | S | 0.2.0 | A contact shall be a Markdown note — in a `People` folder by default — its fields in the front matter (`type: "[[Person]]"`, name, first and last name, e-mails, phones, organisation, role, birthday, address, website, tags, uid) and the rest of the note free, so that a person is linked from notes and events (`[[Ada Lovelace]]`) and shows them as backlinks. |
+| CONTACT-002 | S | 0.2.0 | The system shall offer the contacts of the folder open — a list searched by name, e-mail, organisation or tag, and the card of a contact with its fields, the notes and events linking to it, and actions to write an e-mail or call — in which the user creates and changes contacts. |
+| CONTACT-003 | S | 0.2.0 | The system shall read and write vCard 3.0 and 4.0 (RFC 6350) contacts, and import a `.vcf` file as contact notes, and export contacts as a `.vcf` file. |
+| CONTACT-004 | S | 0.2.0 | The birthdays of contacts shall be shown in the calendar as yearly events. |
+| CONTACT-005 | S | 0.2.0 | The system shall synchronise contact notes both ways with the address books of a CardDAV server of an account the user added, as CAL-006 does for events. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.

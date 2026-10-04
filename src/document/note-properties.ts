@@ -57,6 +57,8 @@ export function typed(raw: string): PropertyValue {
 function entries(extra: string): { key: string; lines: string[] }[] {
   const out: { key: string; lines: string[] }[] = [];
   for (const line of extra.split('\n')) {
+    // Blank lines before the first key (an empty front matter) are no property.
+    if (!line.trim() && !out.length) continue;
     // A key may hold spaces (`see also:`), not start with one, nor be a list item or a comment.
     const key = /^([A-Za-z_][\w -]*?):(?:\s|$)/.exec(line)?.[1];
     if (key) out.push({ key, lines: [line] });

@@ -157,10 +157,14 @@ describe('FILE-029 the origin of a document kept in its metadata', () => {
 describe('FILE-029 a Markdown file of a repository gets no front matter for its origin alone', () => {
   it('writes the source only beside other properties', async () => {
     const { writeMarkdown } = await import('../src/document/markdown-writer');
+    const { readMarkdown } = await import('../src/document/markdown-reader');
     const source = 'https://github.com/me/notes/blob/main/README.md';
     const heading = { ...paragraph('Notes'), style: 'h1' as const };
     expect(writeMarkdown({ ...emptyDocument(), blocks: [heading], meta: { title: 'Notes', source } })).toBe('# Notes\n');
     expect(writeMarkdown({ ...emptyDocument(), blocks: [paragraph('x')], meta: { source } })).toBe('x\n');
-    expect(writeMarkdown({ ...emptyDocument(), blocks: [paragraph('x')], meta: { author: 'Ada', source } })).toContain(`source: "${source}"`);
+    // An address stays a plain YAML scalar, and reads back the same.
+    const md = writeMarkdown({ ...emptyDocument(), blocks: [paragraph('x')], meta: { author: 'Ada', source } });
+    expect(md).toContain(`source: ${source}\n`);
+    expect(readMarkdown(md).meta.source).toBe(source);
   });
 });

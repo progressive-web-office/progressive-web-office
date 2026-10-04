@@ -110,9 +110,13 @@ export function parseFrontMatter(text: string): FrontMatter {
   return { meta: cleanMeta(meta), extra: extra.join('\n'), body: src.slice(m[0].length) };
 }
 
-/** Quote a scalar when plain YAML could misread it. */
+/**
+ * Quote a scalar when plain YAML could misread it: an address, an e-mail or
+ * a time stays plain (`https://…`, `ada@example.org`), but not ': ' (a key),
+ * ' #' (a comment), a boolean, null or a number.
+ */
 export function scalar(value: string): string {
-  return /^[\wÀ-￿][\wÀ-￿ .,/()+-]*$/.test(value) && !/^(true|false|null|yes|no|~)$/i.test(value) && !/^[\d.+-]+$/.test(value.replace(/-/g, '')) ? value : JSON.stringify(value);
+  return /^[\wÀ-￿][\wÀ-￿ .,/()+\-@:'&%=~?!*]*$/.test(value) && !/:(\s|$)|\s#/.test(value) && !/^(true|false|null|yes|no|~)$/i.test(value) && !/^[\d.+-]+$/.test(value.replace(/-/g, '')) ? value : JSON.stringify(value);
 }
 
 /** Front matter for `meta` and the verbatim `extra` lines; empty when there is nothing to write. */
