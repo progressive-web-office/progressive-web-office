@@ -10,6 +10,8 @@ document you pick opens as a new, untitled document in your preferred format
 where you want. The templates are written in the language of the interface
 (English for languages without a translation of their content).
 
+![The gallery of templates: a tab per kind, each with its emoji, and a card with its emoji per template](/screenshots/templates.png)
+
 The gallery shows **one kind at a time**: the tabs at the top — *Text
 documents*, *Spreadsheets*, *Presentations*, *Drawings and pictures*,
 *Examples*, and *My templates* or the templates of the open folder when

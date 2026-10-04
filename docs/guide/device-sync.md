@@ -24,6 +24,8 @@ The window shows these warnings first, and asks you to acknowledge them:
 
 ## Pairing
 
+![Sync my devices: the fingerprint of the pairing, and an invitation QR code valid five minutes, with what to do on the new device](/screenshots/device-sync.png)
+
 1. On the first device: **🔁 Sync my devices** (in *Share*, or the command
    palette), name the device, then **Create a pairing**. This makes the
    **key** of your documents, which stays on your devices.

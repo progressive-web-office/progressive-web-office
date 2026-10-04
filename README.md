@@ -135,6 +135,8 @@ layout for phones.
 | *A letter template, dated by a field* | *Designing a PDF form* |
 | ![The command palette, every action by category](docs/public/screenshots/palette.png) | ![The context menu in a table](docs/public/screenshots/context-menu.png) |
 | *The command palette* | *The context menu in a table* |
+| ![The gallery of templates, a tab and an emoji per kind](docs/public/screenshots/templates.png) | ![The properties of a PDF form field: tooltip, maximum length, a pattern of one's own](docs/public/screenshots/form-properties.png) |
+| *Templates and examples* | *The properties of a PDF form field* |
 
 ## Share without a network
 

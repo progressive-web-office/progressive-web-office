@@ -39,6 +39,8 @@ Reopened here, the form can be filled (see [PDF › Filling forms](./pdf.md#fill
 
 ### The properties of a field
 
+![The properties window of a text field: tooltip, required, maximum length in boxes, and a pattern of one's own tried with a value](/screenshots/form-properties.png)
+
 | Section | Properties |
 |---|---|
 | General | **name**, **tooltip** (shown when the pointer rests on the field, read by screen readers), **required**, **read only** |

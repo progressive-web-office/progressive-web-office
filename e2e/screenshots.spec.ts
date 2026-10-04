@@ -113,3 +113,51 @@ test('designing a PDF form', async ({ page }) => {
   await page.waitForTimeout(800);
   await shot(page, 'form-design');
 });
+
+test('templates and examples', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: /Templates and examples/ }).first().click();
+  await page.locator('.template-dialog').waitFor();
+  await shot(page, 'templates');
+});
+
+test('the properties of a PDF form field', async ({ page }) => {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const pdfPage = doc.addPage([595, 842]);
+  pdfPage.drawText('Order form', { x: 72, y: 760, size: 22, font });
+  pdfPage.drawText('Client code', { x: 72, y: 700, size: 12, font });
+  await openApp(page);
+  await openFile(page, 'order.pdf', Buffer.from(await doc.save()), 'application/pdf');
+  await page.locator('.pdf-page canvas').first().waitFor();
+  await page.getByRole('button', { name: 'Design the form' }).click();
+  const box = (await page.locator('.pdf-page').first().boundingBox())!;
+  await page.mouse.click(box.x + 170, box.y + 140);
+  const dialog = page.getByRole('dialog', { name: 'Text' });
+  await dialog.getByLabel(/Name of the field/).fill('Client code');
+  await dialog.getByLabel(/^Tooltip/).fill('Two letters, then three digits');
+  await dialog.getByLabel('Required').check();
+  await dialog.getByLabel('Maximum number of characters').fill('5');
+  await dialog.getByLabel('One box per character (comb)').check();
+  await dialog.getByLabel('What may be typed').selectOption('regex');
+  await dialog.getByLabel(/^Pattern/).fill('[A-Z]{2}\\d{3}');
+  await dialog.getByLabel(/^Message when/).fill('Two letters, then three digits');
+  await dialog.getByPlaceholder('Type a value to check it').fill('AB123');
+  await page.setViewportSize({ width: 1280, height: 1250 });
+  await dialog.evaluate((d) => d.scrollTo(0, 0));
+  await shot(page, 'form-properties');
+});
+
+test('adding a device to the synchronisation', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pwo.collab.transport', 'local');
+    localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'd1', name: 'Laptop', understood: true, auto: true, peers: {}, base: {}, known: {}, deleted: {}, pairing: { room: 'room-of-the-screenshot', secret: 'the-key-of-the-documents-shot', since: 1 } }));
+  });
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await openApp(page);
+  await page.keyboard.press('Control+Shift+P');
+  await page.getByRole('combobox', { name: 'Commands' }).fill('show an invitation');
+  await page.keyboard.press('Enter');
+  await page.locator('img.devsync-qr').waitFor();
+  await shot(page, 'device-sync');
+});
