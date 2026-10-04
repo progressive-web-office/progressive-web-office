@@ -98,6 +98,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Lines of drawings**: arrows at either end and right angles changed on
+  a line already drawn, and **bends** — a double click on the line adds one,
+  drag it to move it, a double click removes it — for the loops of a GRAFCET
+  or a flowchart (DRAW-017).
 - **Layers in the painting editor** (DRAW-013..DRAW-016): painted and
   vector layers — shown or hidden, see-through, reordered, merged, renamed —
   where lines, rectangles, ellipses and texts stay shapes to move and

@@ -29,6 +29,12 @@ whole.
 | ⬚ Select and move | Click a shape (Shift+click adds to the selection), drag to move it; drag on an empty spot to select everything in a rectangle |
 | ▭ Rectangle, ◯ Ellipse | Drag from one corner to the other; Shift draws a square or a circle |
 | ╱ Line, ➝ Arrow | Drag from one end to the other; an end dropped on a connection point stays attached to it |
+
+A line selected shows its properties: **arrow at the start**, **arrow at
+the end**, and **right angles** (routed in horizontal and vertical
+segments between its ends). **Double-click a line to add a bend** there,
+drag a bend to move it, double-click a bend to remove it — for a loop back
+in a GRAFCET or a flowchart, or a pipe around a part.
 | ✎ Freehand | Draw with the mouse, the finger or a pen; the stroke is smoothed |
 | T Text | Click where the text goes |
 | ⌐ Wire | Drag from a pin to another pin: the wire is drawn in right angles |

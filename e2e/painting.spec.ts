@@ -211,3 +211,39 @@ test('a poster in layers from the examples; a picture imported as a layer; the b
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   expect(errors).toEqual([]);
 });
+
+test('a line gets arrows, right angles and bends added, moved and removed (DRAW-017)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New drawing or schematic' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Drawing' });
+  await dialog.getByRole('button', { name: 'Line', exact: true }).click();
+  const svg = dialog.locator('svg.draw-stage');
+  const box = (await svg.boundingBox())!;
+  await page.mouse.move(box.x + 100, box.y + 100);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 300, box.y + 100, { steps: 4 });
+  await page.mouse.up();
+  await dialog.getByRole('button', { name: 'Select and move' }).click();
+  await dialog.locator('.draw-objects button').first().click();
+  await dialog.getByLabel('arrow at the end').check();
+  // A bend added by a double click on the line, then moved.
+  await page.mouse.dblclick(box.x + 200, box.y + 100);
+  await expect(dialog.locator('.draw-bend')).toHaveCount(1);
+  const bend = (await dialog.locator('.draw-bend').boundingBox())!;
+  await page.mouse.move(bend.x + bend.width / 2, bend.y + bend.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bend.x + bend.width / 2, bend.y + 80, { steps: 4 });
+  await page.mouse.up();
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  const download = page.waitForEvent('download');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  const chunks: Buffer[] = [];
+  for await (const c of await (await download).createReadStream()) chunks.push(c as Buffer);
+  const svgText = Buffer.concat(chunks).toString();
+  const json = JSON.parse(/<metadata id="pwo-drawing">([\s\S]*?)<\/metadata>/.exec(svgText)![1]!.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+  const line = json.shapes.find((s: { kind: string }) => s.kind === 'line');
+  expect(line.end).toBe('arrow');
+  expect(line.points).toHaveLength(3);
+  expect(line.points[1][1]).toBeGreaterThan(line.points[0][1]);
+  expect(errors).toEqual([]);
+});

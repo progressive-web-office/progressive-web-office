@@ -91,6 +91,44 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
     const textInput = h('input', { type: 'text', size: 18, 'aria-label': t('draw.label') });
     const symbolProps = h('span', { class: 'draw-props-group', hidden: true }, h('label', {}, `${t('draw.ref')} `, refInput), h('label', {}, `${t('draw.value')} `, valueInput));
     const textProps = h('span', { class: 'draw-props-group', hidden: true }, h('label', {}, `${t('draw.label')} `, textInput));
+    // DRAW-017: the arrows of a line and its routing in right angles.
+    const arrowStart = h('input', { type: 'checkbox' });
+    const arrowEnd = h('input', { type: 'checkbox' });
+    const orthoInput = h('input', { type: 'checkbox' });
+    const arrowProps = h('span', { class: 'draw-props-group' }, h('label', {}, arrowStart, ` ${t('draw.arrowStart')}`), h('label', {}, arrowEnd, ` ${t('draw.arrowEnd')}`));
+    const lineProps = h('span', { class: 'draw-props-group', hidden: true }, arrowProps, h('label', { title: t('draw.orthoTitle') }, orthoInput, ` ${t('draw.ortho')}`), h('span', { class: 'hint' }, t('draw.bendHint')));
+    const oneLine = (): LineShape | undefined => {
+      const one = selected.length === 1 ? shapeById(d, selected[0]!) : undefined;
+      return one?.kind === 'line' ? one : undefined;
+    };
+    arrowStart.addEventListener('change', () => {
+      const l = oneLine();
+      if (!l) return;
+      snapshot();
+      if (arrowStart.checked) l.start = 'arrow';
+      else delete l.start;
+      render();
+    });
+    arrowEnd.addEventListener('change', () => {
+      const l = oneLine();
+      if (!l) return;
+      snapshot();
+      if (arrowEnd.checked) l.end = 'arrow';
+      else delete l.end;
+      render();
+    });
+    orthoInput.addEventListener('change', () => {
+      const l = oneLine();
+      if (!l) return;
+      snapshot();
+      const a = l.points[0]!;
+      const b = l.points[l.points.length - 1]!;
+      if (orthoInput.checked) {
+        l.ortho = true;
+        l.points = route(a, b, Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]));
+      } else delete l.ortho;
+      render();
+    });
 
     const sel = (): Shape[] => selected.map((id) => shapeById(d, id)).filter((s): s is Shape => !!s);
     const applyStyle = (patch: Partial<Shape>): void => {
@@ -171,12 +209,24 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
         if (!b) continue;
         overlay.append(svgEl('rect', { x: b[0] - 3, y: b[1] - 3, width: b[2] - b[0] + 6, height: b[3] - b[1] + 6, class: 'draw-selection' }));
         if ((s.kind === 'rect' || s.kind === 'ellipse') && selected.length === 1) overlay.append(svgEl('rect', { x: b[2] - 4, y: b[3] - 4, width: 8, height: 8, class: 'draw-handle', 'data-handle': 'resize' }));
-        if (s.kind === 'line' && selected.length === 1) for (const [i, p] of s.points.entries()) if (i === 0 || i === s.points.length - 1) overlay.append(svgEl('circle', { cx: p[0], cy: p[1], r: 4, class: 'draw-handle', 'data-handle': i === 0 ? 'start' : 'end' }));
+        if (s.kind === 'line' && selected.length === 1)
+          for (const [i, p] of s.points.entries()) {
+            const end = i === 0 || i === s.points.length - 1;
+            // DRAW-017: the bends, dragged; a double click removes one.
+            overlay.append(svgEl('circle', { cx: p[0], cy: p[1], r: end ? 4 : 3.5, class: end ? 'draw-handle' : 'draw-handle draw-bend', 'data-handle': i === 0 ? 'start' : end ? 'end' : 'bend', 'data-index': String(i) }));
+          }
       }
       if (tool === 'wire' || tool === 'line' || tool === 'arrow') for (const s of d.shapes) for (const [x, y] of connectionPoints(s)) overlay.append(svgEl('circle', { cx: x, cy: y, r: 2.5, class: 'draw-pin' }));
       // Properties of the selection.
       const one = sel().length === 1 ? sel()[0] : undefined;
       symbolProps.hidden = one?.kind !== 'symbol';
+      lineProps.hidden = one?.kind !== 'line';
+      if (one?.kind === 'line') {
+        arrowProps.hidden = !!one.wire;
+        arrowStart.checked = one.start === 'arrow';
+        arrowEnd.checked = one.end === 'arrow';
+        orthoInput.checked = !!one.ortho;
+      }
       textProps.hidden = one?.kind !== 'text' && one?.kind !== 'line';
       if (one?.kind === 'symbol') {
         if (document.activeElement !== refInput) refInput.value = one.ref ?? '';
@@ -238,11 +288,16 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
       | { kind: 'band'; from: Pt; el: SVGRectElement; add: boolean }
       | { kind: 'create'; shape: Shape; from: Pt }
       | { kind: 'resize'; id: string; from: Pt }
-      | { kind: 'end'; id: string; which: 'start' | 'end' };
+      | { kind: 'end'; id: string; which: 'start' | 'end' }
+      | { kind: 'bend'; id: string; index: number };
     let drag: Drag | undefined;
 
     svg.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
+      if (isDouble(e)) {
+        drag = undefined;
+        return onDouble(e);
+      }
       svg.focus();
       svg.setPointerCapture?.(e.pointerId);
       const p = point(e);
@@ -250,7 +305,13 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
       const handle = target.closest<SVGElement>('[data-handle]')?.dataset.handle;
       if (handle && selected.length === 1) {
         snapshot();
-        drag = handle === 'resize' ? { kind: 'resize', id: selected[0]!, from: p } : { kind: 'end', id: selected[0]!, which: handle as 'start' | 'end' };
+        const index = Number(target.closest<SVGElement>('[data-handle]')?.dataset.index);
+        drag =
+          handle === 'resize'
+            ? { kind: 'resize', id: selected[0]!, from: p }
+            : handle === 'bend'
+              ? { kind: 'bend', id: selected[0]!, index }
+              : { kind: 'end', id: selected[0]!, which: handle as 'start' | 'end' };
         return;
       }
       if (tool === 'select') {
@@ -335,6 +396,13 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
           s.h = Math.max(d.grid || 4, q[1] - s.y);
           render();
         }
+      } else if (drag.kind === 'bend') {
+        // DRAW-017: a bend moved freely: the line is no longer routed by itself.
+        const s = shapeById(d, drag.id);
+        if (s?.kind !== 'line' || !s.points[drag.index]) return;
+        delete s.ortho;
+        s.points[drag.index] = snapPt(p, e.altKey);
+        render();
       } else if (drag.kind === 'end') {
         const s = shapeById(d, drag.id);
         if (s?.kind !== 'line') return;
@@ -390,15 +458,49 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
     };
     svg.addEventListener('pointerup', release);
     svg.addEventListener('pointercancel', release);
-    svg.addEventListener('dblclick', (e) => {
+    // A double click told by two presses close in time and place: the drawing is drawn again
+    // between them, so the browser's own dblclick (same element twice) does not come.
+    let lastDown: { t: number; x: number; y: number } | undefined;
+    const isDouble = (e: PointerEvent): boolean => {
+      const now = performance.now();
+      const double = !!lastDown && now - lastDown.t < 400 && Math.hypot(e.clientX - lastDown.x, e.clientY - lastDown.y) < 6;
+      lastDown = double ? undefined : { t: now, x: e.clientX, y: e.clientY };
+      return double;
+    };
+    const onDouble = (e: MouseEvent): void => {
       const target = e.target as Element;
+      // DRAW-017: a double click on a bend removes it; on a selected line, adds one there.
+      const handle = target.closest<SVGElement>('[data-handle]');
+      const line = oneLine();
+      if (line && handle?.dataset.handle === 'bend') {
+        snapshot();
+        delete line.ortho;
+        line.points.splice(Number(handle.dataset.index), 1);
+        return render();
+      }
+      // Near a line (its selection frame, or the first click, may have hidden it): a bend there.
+      const raw = point(e as unknown as PointerEvent);
+      let near: { line: LineShape; index: number; dist: number } | undefined;
+      for (const sh of d.shapes) {
+        if (sh.kind !== 'line' || sh.wire) continue;
+        for (let i = 0; i < sh.points.length - 1; i++) {
+          const dd = segmentDistance(raw, sh.points[i]!, sh.points[i + 1]!);
+          if (dd <= 6 + (sh.width ?? 1) && (!near || dd < near.dist)) near = { line: sh, index: i, dist: dd };
+        }
+      }
+      if (near && (tool === 'select' || line)) {
+        snapshot();
+        delete near.line.ortho;
+        near.line.points.splice(near.index + 1, 0, snapPt(raw, e.altKey));
+        return select([near.line.id]);
+      }
       const id = target.closest('[data-id]')?.getAttribute('data-id') ?? target.closest('[data-for]')?.getAttribute('data-for');
       const s = id ? shapeById(d, id) : undefined;
       if (!s) return;
       select([s.id]);
       if (s.kind === 'symbol') valueInput.focus();
       else if (s.kind === 'text' || s.kind === 'line') textInput.focus();
-    });
+    };
 
     // --- commands ------------------------------------------------------------------
     const restore = (from: string[], to: string[]): void => {
@@ -666,6 +768,7 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
         h('label', {}, `${t('draw.width')} `, widthInput),
         h('label', {}, `${t('draw.dash')} `, dashInput),
         symbolProps,
+        lineProps,
         textProps,
       ),
       h(
@@ -715,4 +818,12 @@ export function simplify(points: Pt[], tolerance: number): Pt[] {
   }
   if (max <= tolerance) return [a, b];
   return [...simplify(points.slice(0, index + 1), tolerance).slice(0, -1), ...simplify(points.slice(index), tolerance)];
+}
+
+/** The distance from a point to a segment. */
+function segmentDistance(p: Pt, a: Pt, b: Pt): number {
+  const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+  const len = dx * dx + dy * dy;
+  const k = len ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len)) : 0;
+  return Math.hypot(p[0] - (a[0] + k * dx), p[1] - (a[1] + k * dy));
 }
