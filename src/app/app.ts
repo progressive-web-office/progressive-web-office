@@ -2221,10 +2221,8 @@ export class App {
     const { isInside } = await import('../fs');
     // FOLDER-005: links to a renamed note follow it.
     if (this.folder && change.to && change.kind === 'file' && /\.(md|markdown)$/i.test(change.path)) {
-      const notes = this.folder.files().filter((p) => /\.(md|markdown)$/i.test(p));
-      this.folder.vault.clear();
       const skip = doc?.folderPath && this.dirty ? doc.folderPath : undefined;
-      const changed = await this.folder.vault.renameLinks(change.path, change.to, notes, skip);
+      const changed = await this.folder.vault.renameLinks(change.path, change.to, skip);
       if (changed.length) this.showNotice(t('vault.linksUpdated', { n: changed.length }));
       if (doc?.folderPath && changed.includes(doc.folderPath) && !this.dirty) {
         const path = doc.folderPath;
@@ -2340,6 +2338,8 @@ export class App {
       this.dirty = false;
       this.discardDraft();
       if (format) await folder.refresh();
+      // FOLDER-025: the note saved, read again by the index of the notes (its links, its tags).
+      void folder.vault.changed(path).then(() => folder.showBacklinks(path)).catch(() => undefined);
       folder.setCurrent(path);
       if (folder.provider.id === BROWSER_FOLDER_ID) this.onFileSaved?.(new File([bytes as BlobPart], basename(path), { type: MIME_TYPES[target] }), target, `${BROWSER_ORIGIN}${path}`);
       this.renderHeader();
@@ -2454,8 +2454,7 @@ export class App {
     const target = hash >= 0 ? ref.slice(0, hash) : ref;
     const heading = hash >= 0 ? ref.slice(hash + 1) : '';
     const from = this.current?.folderPath ?? '';
-    const notes = folder.files().filter((p) => /\.(md|markdown)$/i.test(p));
-    let path = target ? await folder.vault.resolve(target, notes, from) : from;
+    let path = target ? await folder.vault.resolve(target, from) : from;
     if (!path) {
       if (!window.confirm(t('vault.create', { name: target }))) return;
       const { join, dirname } = await import('../fs');

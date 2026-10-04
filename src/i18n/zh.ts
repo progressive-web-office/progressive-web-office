@@ -1345,6 +1345,8 @@ export const zh: Record<MessageKey, string> = {
   'vault.backlinks': '链接到此处的笔记',
   'vault.backlinksCount': '反向链接（{n}）',
   'vault.noBacklinks': '尚无笔记链接到此笔记。',
+  'vault.indexing': '正在读取文件夹中的笔记…',
+  'vault.indexingCount': '正在读取笔记：{done} / {total}',
   'vault.related': '相关笔记',
   'vault.linked': '有链接',
   'remote.title': '指向服务器上文件的链接',

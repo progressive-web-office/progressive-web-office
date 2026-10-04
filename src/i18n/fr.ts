@@ -1345,6 +1345,8 @@ export const fr: Record<MessageKey, string> = {
   'vault.backlinks': 'Notes qui pointent ici',
   'vault.backlinksCount': 'Liée depuis ({n})',
   'vault.noBacklinks': 'Aucune note ne pointe encore vers celle-ci.',
+  'vault.indexing': 'Lecture des notes du dossier…',
+  'vault.indexingCount': 'Lecture des notes : {done} / {total}',
   'vault.related': 'Notes liées',
   'vault.linked': 'liée',
   'remote.title': 'Lien vers un fichier sur un serveur',

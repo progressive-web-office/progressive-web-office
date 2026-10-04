@@ -55,6 +55,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- A folder of thousands of notes froze the browser (FOLDER-025): each note
+  opened read every note of the folder again, one after the other, and
+  searched every note for each link — 17 s with the page frozen, two
+  minutes in all, for 3,000 notes. The notes are now indexed once, in steps
+  that leave the page responsive (the progress shown), only what changed is
+  read again, links are found by name at once, and the backlinks show the
+  words around each link.
+
 - Synchronising one's devices along a chain (DEVSYNC-013): when the laptop
   met the phone, then the phone the tablet with the laptop off, the tablet
   did not know the laptop; worse, depending on which device started, a

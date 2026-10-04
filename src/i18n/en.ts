@@ -1343,6 +1343,8 @@ export const en = {
   'vault.backlinks': 'Notes linking here',
   'vault.backlinksCount': 'Linked from ({n})',
   'vault.noBacklinks': 'No note links to this one yet.',
+  'vault.indexing': 'Reading the notes of the folder…',
+  'vault.indexingCount': 'Reading the notes: {done} / {total}',
   'vault.related': 'Related notes',
   'vault.linked': 'linked',
   'remote.title': 'Link to a file on a server',

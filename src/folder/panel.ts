@@ -4,7 +4,7 @@
  */
 import { busyText, button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
-import { basename, dirname, Explorer, listFiles, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
+import { basename, dirname, Explorer, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault, noteName } from './vault';
@@ -166,6 +166,7 @@ export class FolderPanel {
       this.search,
       this.results,
       this.explorer.element,
+      this.indexStatus,
       this.tagSection,
       this.backlinks,
     );
@@ -197,7 +198,7 @@ export class FolderPanel {
   /** Names of the notes to link to (but `from`) or tags used in the folder, for completion (FOLDER-021). */
   async completions(kind: 'link' | 'tag', from?: string): Promise<string[]> {
     const notes = this.notes();
-    if (kind === 'tag') return [...(await this.vault.tags(notes)).keys()];
+    if (kind === 'tag') return [...(await this.vault.tags()).keys()];
     // A note by its name; by its path without extension when the name is not unique.
     const names = notes.map((n) => noteName(n));
     return notes.flatMap((n, i) => (n === from ? [] : [names.indexOf(names[i]!) === names.lastIndexOf(names[i]!) ? names[i]! : n.replace(/\.(md|markdown)$/i, '')]));
@@ -235,7 +236,7 @@ export class FolderPanel {
 
   /** The tags of the notes, the most used first; a click lists their notes (FOLDER-017). */
   private async renderTags(): Promise<void> {
-    const tags = await this.vault.tags(this.notes());
+    const tags = await this.vault.tags();
     this.tagList.replaceChildren(
       ...(tags.size
         ? [...tags].map(([tag, notes]) =>
@@ -256,7 +257,7 @@ export class FolderPanel {
   }
 
   private async showTag(tag: string): Promise<void> {
-    const tags = await this.vault.tags(this.notes());
+    const tags = await this.vault.tags();
     const notes = [...tags].find(([t]) => t.toLowerCase() === tag.toLowerCase())?.[1] ?? [];
     if (`#${tag}` !== this.search.value.trim()) return;
     this.results.replaceChildren(
@@ -269,7 +270,7 @@ export class FolderPanel {
     const name = (await this.hooks.prompt(t('folder.renameTagPrompt', { tag }), tag))?.trim().replace(/^#/, '');
     if (!name || name === tag || /\s/.test(name)) return;
     try {
-      const changed = await this.vault.renameTag(tag, name, this.notes());
+      const changed = await this.vault.renameTag(tag, name);
       await this.renderTags();
       await this.hooks.notesChanged?.(changed);
     } catch (err) {
@@ -279,24 +280,58 @@ export class FolderPanel {
 
   /** The notes and the links between them, as a graph; a click opens a note (FOLDER-018). */
   private async showGraph(): Promise<void> {
-    const notes = this.notes().slice(0, 200);
     const { notesGraphDialog } = await import('./graph');
-    const links = await this.vault.links(notes);
+    const notes = (await this.vault.indexed()).notes().slice(0, 200);
+    const keep = new Set(notes);
+    const links = (await this.vault.links()).filter((l) => keep.has(l.from) && keep.has(l.to));
     const path = await notesGraphDialog(document.body, notes, links);
     if (path) this.hooks.open(path);
   }
 
+  private current: string | undefined;
+  private indexing = false;
+  private readonly indexStatus = h('p', { class: 'hint folder-index-status', role: 'status', hidden: true });
+
+  /** FOLDER-025: read the notes changed since the last time, the progress shown, the page left responsive. */
+  private async indexNotes(): Promise<void> {
+    this.indexing = true;
+    let shown = false;
+    const timer = setTimeout(() => {
+      shown = true;
+      this.indexStatus.hidden = false;
+    }, 400);
+    try {
+      await this.vault.sync((done, total) => {
+        if (shown || total > 200) {
+          this.indexStatus.hidden = false;
+          this.indexStatus.replaceChildren(...busyText(t('vault.indexingCount', { done, total })));
+        }
+      }, this.entries);
+    } catch (err) {
+      this.hooks.error((err as Error).message);
+    } finally {
+      clearTimeout(timer);
+      this.indexing = false;
+      this.indexStatus.hidden = true;
+    }
+  }
+
+  /** The files of the folder, listed once for the panel and the index of the notes. */
+  private entries: Entry[] = [];
+
   private async reindex(): Promise<void> {
-    this.paths = (await listFiles(this.provider)).filter((p) => OPENABLE.test(p));
+    const entries: Entry[] = [];
+    for await (const e of walk(this.provider, '', { maxDepth: 32, maxEntries: 100_000 })) entries.push(e);
+    this.entries = entries;
+    this.paths = entries.map((e) => e.path).filter((p) => OPENABLE.test(p));
   }
 
   async refresh(): Promise<void> {
     await this.reindex();
     await this.explorer.refresh();
-    if (this.tagSection.open) {
-      this.vault.clear();
-      await this.renderTags();
-    }
+    // FOLDER-025: the index of the notes, brought up to date in the background (only what changed is read).
+    void this.indexNotes();
+    if (this.tagSection.open) await this.renderTags();
     if (this.search.value.trim()) await this.runSearch();
   }
 
@@ -306,6 +341,7 @@ export class FolderPanel {
   }
 
   setCurrent(path: string | undefined): void {
+    this.current = path;
     this.explorer.setCurrent(path);
     if (!path) this.backlinks.hidden = true;
   }
@@ -316,18 +352,24 @@ export class FolderPanel {
       this.backlinks.hidden = true;
       return;
     }
-    this.vault.clear();
-    const from = await this.vault.backlinks(path, this.paths.filter(isNote));
     this.backlinks.hidden = false;
+    if (this.indexing) this.backlinks.replaceChildren(h('p', { class: 'hint' }, ...busyText(t('vault.indexing'))));
+    const from = await this.vault.backlinks(path);
+    if (this.current !== path) return;
     this.backlinks.replaceChildren(
       h('h3', {}, t('vault.backlinksCount', { n: from.length })),
       from.length
-        ? h('ul', { role: 'list' }, ...from.map((p) => h('li', {}, button(p, () => this.hooks.open(p), { className: 'folder-file', icon: '↩' }))))
+        ? h(
+            'ul',
+            { role: 'list', class: 'folder-backlink-list' },
+            // FOLDER-025: each with the words around the link.
+            ...from.map((b) => h('li', {}, button(b.from, () => this.hooks.open(b.from), { className: 'folder-file', icon: '↩' }), h('p', { class: 'folder-snippet' }, b.context))),
+          )
         : h('p', { class: 'hint' }, t('vault.noBacklinks')),
     );
     // FOLDER-019: notes sharing its tags or linked with it.
-    const related = await this.vault.related(path, this.notes());
-    if (!related.length) return;
+    const related = await this.vault.related(path);
+    if (!related.length || this.current !== path) return;
     this.backlinks.append(
       h('h3', {}, t('vault.related')),
       h(
@@ -352,7 +394,7 @@ export class FolderPanel {
     if (!query) return;
     // FOLDER-017: `#tag` lists the notes with that tag.
     if (/^#[^\s#]+$/.test(query)) return this.showTag(query.slice(1));
-    const all = await listFiles(this.provider);
+    const all = this.entries.map((e) => e.path);
     if (query !== this.search.value.trim()) return;
     // FOLDER-008: files whose name matches come first, at once.
     const q = fold(query);

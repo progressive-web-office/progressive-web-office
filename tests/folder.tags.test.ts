@@ -41,10 +41,9 @@ describe('FOLDER-017/FOLDER-018 tags and links across the folder', () => {
         'sub/c.md': 'Nothing.',
       }),
     );
-  const notes = ['a.md', 'b.md', 'sub/c.md'];
 
   it('counts the notes of each tag', async () => {
-    const tags = await vault().tags(notes);
+    const tags = await vault().tags();
     expect([...tags].map(([t, n]) => [t, n])).toEqual([
       ['todo', ['a.md', 'b.md']],
       ['physics', ['a.md']],
@@ -52,7 +51,7 @@ describe('FOLDER-017/FOLDER-018 tags and links across the folder', () => {
   });
 
   it('gives the links between the notes', async () => {
-    expect(await vault().links(notes)).toEqual([
+    expect(await vault().links()).toEqual([
       { from: 'a.md', to: 'b.md' },
       { from: 'a.md', to: 'sub/c.md' },
       { from: 'b.md', to: 'a.md' },
@@ -61,8 +60,8 @@ describe('FOLDER-017/FOLDER-018 tags and links across the folder', () => {
 
   it('renames a tag in every note of the folder', async () => {
     const v = vault();
-    expect(await v.renameTag('todo', 'next', notes)).toEqual(['a.md', 'b.md']);
-    expect([...(await v.tags(notes)).keys()]).toEqual(['next', 'physics']);
+    expect(await v.renameTag('todo', 'next')).toEqual(['a.md', 'b.md']);
+    expect([...(await v.tags()).keys()]).toEqual(['next', 'physics']);
   });
 });
 
@@ -89,7 +88,7 @@ describe('FOLDER-019 related notes', () => {
         'e.md': 'Unrelated #cooking',
       }),
     );
-    const related = await v.related('a.md', ['a.md', 'b.md', 'c.md', 'd.md', 'e.md']);
+    const related = await v.related('a.md');
     expect(related).toEqual([
       { path: 'c.md', tags: ['physics', 'optics'], linked: false },
       { path: 'b.md', tags: [], linked: true },

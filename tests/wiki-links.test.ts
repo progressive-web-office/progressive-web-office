@@ -54,21 +54,21 @@ describe('FOLDER-005 note vault', async () => {
     'notes/control.md': '# Control',
     'other.md': 'Nothing here, [[Roadmap]].',
   };
-  const notes = Object.keys(files);
 
   it('finds backlinks through names, aliases and relative links', async () => {
     const vault = new NoteVault(new MemoryProvider('m', 'M', files));
-    expect(await vault.backlinks('notes/control.md', notes)).toEqual(['index.md', 'notes/plan.md']);
-    expect(await vault.backlinks('notes/plan.md', notes)).toEqual(['index.md', 'other.md']);
-    expect(await vault.resolve('Roadmap', notes, 'other.md')).toBe('notes/plan.md');
+    expect((await vault.backlinks('notes/control.md')).map((b) => b.from)).toEqual(['index.md', 'notes/plan.md']);
+    expect((await vault.backlinks('notes/plan.md')).map((b) => b.from)).toEqual(['index.md', 'other.md']);
+    expect(await vault.resolve('Roadmap', 'other.md')).toBe('notes/plan.md');
+    // FOLDER-025: with the words around the link.
+    expect((await vault.backlinks('notes/control.md'))[1]!.context).toBe('See [[Control#PID|PID]].');
   });
 
   it('updates links when a note is renamed', async () => {
     const p = new MemoryProvider('m', 'M', files);
     const vault = new NoteVault(p);
     await p.move('notes/control.md', 'notes/regulation.md');
-    const moved = notes.map((n) => (n === 'notes/control.md' ? 'notes/regulation.md' : n));
-    expect(await vault.renameLinks('notes/control.md', 'notes/regulation.md', moved)).toEqual(['index.md', 'notes/plan.md']);
+    expect(await vault.renameLinks('notes/control.md', 'notes/regulation.md')).toEqual(['index.md', 'notes/plan.md']);
     expect(await readText(p, 'notes/plan.md')).toContain('See [[regulation#PID|PID]].');
     expect(await readText(p, 'index.md')).toContain('[[regulation]] and');
   });

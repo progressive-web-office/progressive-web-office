@@ -1,152 +1,111 @@
 /**
  * Folders of linked Markdown notes (FOLDER-005): names, aliases, backlinks,
- * and links kept up to date when a note is renamed.
+ * and links kept up to date when a note is renamed — on the index of the
+ * notes (FOLDER-025), so that a folder of thousands of notes stays quick.
  */
-import { readText, resolve as resolvePath, type StorageProvider } from '../fs';
-import { frontMatterAliases, frontMatterId, noteName, parseWikiLinks, renameWikiLinks, resolveNote } from '../document/wiki-links';
-import { noteTags, renameTag } from './tags';
+import { readText, walk, type Entry, type StorageProvider } from '../fs';
+import { noteName, renameWikiLinks } from '../document/wiki-links';
+import { renameTag } from './tags';
+import { NoteIndex } from './note-index';
 
 export const isNote = (path: string): boolean => /\.(md|markdown)$/i.test(path);
 
-/** Markdown links `[text](relative/path.md)` of a text (targets as written). */
-const markdownLinks = (text: string): string[] => [...text.matchAll(/\]\(([^)\s]+\.(?:md|markdown))(?:#[^)]*)?\)/gi)].map((m) => decodeURI(m[1]!));
-
 export class NoteVault {
-  private readonly texts = new Map<string, string>();
+  readonly index: NoteIndex;
+  private ready: Promise<void> | undefined;
 
-  constructor(private readonly provider: StorageProvider) {}
+  constructor(private readonly provider: StorageProvider) {
+    this.index = new NoteIndex(provider);
+  }
 
-  /** Forget cached texts (after changes made outside the vault). */
-  clear(path?: string): void {
-    if (path) this.texts.delete(path);
-    else this.texts.clear();
+  /**
+   * Bring the index up to date with the folder (only the notes changed since
+   * are read); `progress` tells how far the reading is.
+   */
+  sync(progress?: (done: number, total: number) => void, entries?: Entry[]): Promise<void> {
+    this.ready = (async () => {
+      const notes: { path: string; size?: number; modified?: number }[] = [];
+      const add = (e: Entry): void => {
+        if (e.kind === 'file' && isNote(e.path)) notes.push({ path: e.path, ...(e.size !== undefined ? { size: e.size } : {}), ...(e.lastModified !== undefined ? { modified: e.lastModified } : {}) });
+      };
+      // The files listed by the caller, or listed here.
+      if (entries) entries.forEach(add);
+      else for await (const e of walk(this.provider, '', { maxDepth: 32, maxEntries: 100_000 })) add(e);
+      await this.index.update(notes, progress);
+    })();
+    return this.ready;
+  }
+
+  /** The index as last brought up to date (brought up to date first, the first time). */
+  async indexed(): Promise<NoteIndex> {
+    await (this.ready ?? this.sync());
+    return this.index;
+  }
+
+  /** A note was saved or changed here: read it again. */
+  async changed(path: string): Promise<void> {
+    if (isNote(path)) await this.index.refresh(path);
   }
 
   async text(path: string): Promise<string> {
-    let t = this.texts.get(path);
-    if (t === undefined) {
-      t = await readText(this.provider, path).catch(() => '');
-      this.texts.set(path, t);
-    }
-    return t;
-  }
-
-  async aliases(notes: string[]): Promise<Map<string, string[]>> {
-    const out = new Map<string, string[]>();
-    for (const n of notes) {
-      const text = await this.text(n);
-      // FOLDER-024: the identifier of the front matter works as an alias.
-      const a = [...frontMatterAliases(text), ...[frontMatterId(text)].filter((x): x is string => !!x)];
-      if (a.length) out.set(n, a);
-    }
-    return out;
+    return readText(this.provider, path).catch(() => '');
   }
 
   /** The note a `[[target]]` written in `from` points to. */
-  async resolve(target: string, notes: string[], from: string): Promise<string | undefined> {
-    return resolveNote(target, notes, from) ?? resolveNote(target, notes, from, await this.aliases(notes));
+  async resolve(target: string, from: string): Promise<string | undefined> {
+    return (await this.indexed()).resolve(target, from);
   }
 
-  /** Notes that link to `path`, by wiki link or relative Markdown link. */
-  async backlinks(path: string, notes: string[]): Promise<string[]> {
-    const aliases = await this.aliases(notes);
-    const out: string[] = [];
-    for (const n of notes) {
-      if (n === path) continue;
-      const text = await this.text(n);
-      const wiki = parseWikiLinks(text).some((l) => l.target && resolveNote(l.target, notes, n, aliases) === path);
-      if (wiki || markdownLinks(text).some((href) => !/^[a-z]+:/i.test(href) && resolvePath(n, href) === path)) out.push(n);
-    }
-    return out;
+  /** Notes that link to `path`, with the words around the link. */
+  async backlinks(path: string): Promise<{ from: string; context: string }[]> {
+    return (await this.indexed()).backlinks(path);
   }
 
   /** Notes of each tag, the most used first (FOLDER-017). */
-  async tags(notes: string[]): Promise<Map<string, string[]>> {
-    const byKey = new Map<string, { tag: string; notes: string[] }>();
-    for (const n of notes) {
-      for (const tag of noteTags(await this.text(n))) {
-        const key = tag.toLowerCase();
-        const entry = byKey.get(key) ?? { tag, notes: [] };
-        entry.notes.push(n);
-        byKey.set(key, entry);
-      }
-    }
-    const sorted = [...byKey.values()].sort((a, b) => b.notes.length - a.notes.length || a.tag.localeCompare(b.tag));
-    return new Map(sorted.map((e) => [e.tag, e.notes]));
+  async tags(): Promise<Map<string, string[]>> {
+    return (await this.indexed()).tags();
   }
 
-  /** Rename a tag in every note; returns the notes changed. */
-  async renameTag(from: string, to: string, notes: string[]): Promise<string[]> {
+  /** Rename a tag in the notes holding it; returns the notes changed. */
+  async renameTag(from: string, to: string): Promise<string[]> {
+    const index = await this.indexed();
     const changed: string[] = [];
-    for (const n of notes) {
+    for (const n of index.notesWithTag(from)) {
       const { text, count } = renameTag(await this.text(n), from, to);
       if (!count) continue;
       await this.provider.write(n, new Blob([text]));
-      this.texts.set(n, text);
+      await index.refresh(n);
       changed.push(n);
     }
     return changed;
   }
 
-  /**
-   * Notes related to `path` (FOLDER-019): sharing its tags (2 points each) or
-   * linked with it either way (3 points), the closest first.
-   */
-  async related(path: string, notes: string[], max = 10): Promise<{ path: string; tags: string[]; linked: boolean }[]> {
-    const mine = new Map(noteTags(await this.text(path)).map((t) => [t.toLowerCase(), t]));
-    const links = await this.links(notes);
-    const linked = new Set(links.filter((l) => l.from === path || l.to === path).map((l) => (l.from === path ? l.to : l.from)));
-    const out: { path: string; tags: string[]; linked: boolean; score: number }[] = [];
-    for (const n of notes) {
-      if (n === path) continue;
-      const shared = noteTags(await this.text(n)).filter((t) => mine.has(t.toLowerCase())).map((t) => mine.get(t.toLowerCase())!);
-      const isLinked = linked.has(n);
-      const score = shared.length * 2 + (isLinked ? 3 : 0);
-      if (score) out.push({ path: n, tags: shared, linked: isLinked, score });
-    }
-    return out
-      .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
-      .slice(0, max)
-      .map(({ score: _score, ...r }) => r);
+  /** Notes related to `path` (FOLDER-019). */
+  async related(path: string, max = 10): Promise<{ path: string; tags: string[]; linked: boolean }[]> {
+    return (await this.indexed()).related(path, max);
   }
 
-  /** Links between the notes (wiki links and relative Markdown links), each once (FOLDER-018). */
-  async links(notes: string[]): Promise<{ from: string; to: string }[]> {
-    const aliases = await this.aliases(notes);
-    const known = new Set(notes);
-    const out: { from: string; to: string }[] = [];
-    for (const n of notes) {
-      const text = await this.text(n);
-      const targets = new Set<string>();
-      for (const l of parseWikiLinks(text)) {
-        const to = l.target ? resolveNote(l.target, notes, n, aliases) : undefined;
-        if (to && to !== n) targets.add(to);
-      }
-      for (const href of markdownLinks(text)) {
-        if (/^[a-z]+:/i.test(href)) continue;
-        const to = resolvePath(n, href);
-        if (known.has(to) && to !== n) targets.add(to);
-      }
-      for (const to of targets) out.push({ from: n, to });
-    }
-    return out;
+  /** Links between the notes, each once (FOLDER-018). */
+  async links(): Promise<{ from: string; to: string }[]> {
+    return (await this.indexed()).links();
   }
 
   /**
    * After `from` was renamed to `to`: rewrite the wiki links naming it in the
-   * other notes; returns the notes changed (`skip` is left alone).
+   * notes writing them; returns the notes changed (`skip` is left alone).
    */
-  async renameLinks(from: string, to: string, notes: string[], skip?: string): Promise<string[]> {
+  async renameLinks(from: string, to: string, skip?: string): Promise<string[]> {
     const oldName = noteName(from);
     const newName = noteName(to);
     if (oldName === newName) return [];
+    const index = await this.indexed();
     const changed: string[] = [];
-    for (const n of notes) {
+    for (const n of index.notesLinkingName(oldName)) {
       if (n === skip) continue;
       const { text, count } = renameWikiLinks(await this.text(n), oldName, newName);
       if (!count) continue;
       await this.provider.write(n, new Blob([text]));
-      this.texts.set(n, text);
+      await index.refresh(n);
       changed.push(n);
     }
     return changed;
