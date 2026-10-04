@@ -36,6 +36,8 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  FIELD_FORMATS,
+  type FieldFormat,
   isInputRun,
   isInputKind,
   type InputRun,
@@ -119,10 +121,12 @@ export function blocksToDom(
 }
 
 /** A field as shown: its current value (DOC-041). */
-export function fieldElement(kind: FieldKind, value: string, doc: Document = document): HTMLElement {
+export function fieldElement(kind: FieldKind, value: string, doc: Document = document, run?: { format?: FieldFormat; fixed?: string }): HTMLElement {
   const span = doc.createElement('span');
   span.className = 'field';
   span.dataset.field = kind;
+  if (run?.format) span.dataset.format = run.format;
+  if (run?.fixed) span.dataset.fixed = run.fixed;
   span.textContent = value;
   return span;
 }
@@ -366,7 +370,7 @@ function appendRuns(el: HTMLElement, runs: Run[], doc: Document, resolveImage: (
       continue;
     }
     if (isFieldRun(run)) {
-      el.append(fieldElement(run.field, fieldValue(run.field, fieldCtx), doc));
+      el.append(fieldElement(run.field, fieldValue(run.field, fieldCtx, run), doc, run));
       continue;
     }
     if (isInputRun(run)) {
@@ -716,7 +720,8 @@ export function domToBlocks(
       return;
     }
     if (el.dataset?.field !== undefined && el.classList.contains('field') && isFieldKind(el.dataset.field)) {
-      open(ctx).runs.push({ field: el.dataset.field });
+      const format = el.dataset.format && (FIELD_FORMATS as readonly string[]).includes(el.dataset.format) ? (el.dataset.format as FieldFormat) : undefined;
+      open(ctx).runs.push({ field: el.dataset.field, ...(format ? { format } : {}), ...(el.dataset.fixed ? { fixed: el.dataset.fixed } : {}) });
       return;
     }
     if (el.dataset?.seq !== undefined && el.classList.contains('seq')) {

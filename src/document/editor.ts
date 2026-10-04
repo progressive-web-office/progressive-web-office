@@ -28,7 +28,7 @@ import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
 import { Rulers, type RulerUnit } from './rulers';
 import { writeLatex } from './latex-writer';
 import { readLatex } from './latex-reader';
-import { addResource, allParagraphs, cleanPageSetup, defaultGeometry, isFillRun, isLandscape, paperName, textHeight, textWidth, type PageGeometry, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
+import { addResource, allParagraphs, cleanPageSetup, defaultGeometry, isFillRun, isLandscape, paperName, textHeight, textWidth, type PageGeometry, FIELD_KINDS, INPUT_KINDS, type InputKind, fieldValue, newAnchor, wordCount, type CodeLang, type FieldContext, type FieldKind, type FieldFormat, type FieldRun, type Run, type Align, type Block, type ParagraphStyle, type RichDocument, type Revision } from './model';
 import type { CodeRunner } from '../code/runner';
 import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmCrossRefs } from './pm/convert';
 import { schema } from './pm/schema';
@@ -380,6 +380,12 @@ export class DocumentEditor implements EditorView {
           const href = (event.target as HTMLElement).closest?.('a[href]:not(.xref)')?.getAttribute('href') ?? (mark?.attrs.href as string | undefined);
           if (!href || href.startsWith('#')) return false;
           if (!this.ctx.openLink?.(href) && isSafeUrl(href)) window.open(href, '_blank', 'noopener');
+          return true;
+        },
+        // DOC-050: a click on a field changes it.
+        handleClickOn: (_view, _pos, node, nodePos, event) => {
+          if (node.type !== schema.nodes.field || this.readOnly || this.mode !== 'visual' || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+          setTimeout(() => void this.editFieldAt(nodePos));
           return true;
         },
         handleDrop: (_view, event) => this.onDrop(event as DragEvent),
@@ -862,11 +868,26 @@ export class DocumentEditor implements EditorView {
   private freezeField(pos: number): void {
     const node = this.view.state.doc.nodeAt(pos);
     if (node?.type !== schema.nodes.field) return;
-    const text = fieldValue(node.attrs.kind as FieldKind, this.fieldContext(pos));
+    const text = fieldValue(node.attrs.kind as FieldKind, this.fieldContext(pos), { format: node.attrs.format ?? undefined, fixed: node.attrs.fixed ?? undefined });
     const tr = this.view.state.tr;
     if (text) tr.replaceWith(pos, pos + node.nodeSize, schema.text(text, this.view.state.doc.resolve(pos).marks()));
     else tr.delete(pos, pos + node.nodeSize);
     this.view.dispatch(tr);
+  }
+
+  /** DOC-050: the field at a position changed in its dialog. */
+  private async editFieldAt(pos: number): Promise<void> {
+    const node = this.view.state.doc.nodeAt(pos);
+    if (node?.type !== schema.nodes.field) return;
+    const { editField } = await import('./field-dialog');
+    const run: FieldRun = { field: node.attrs.kind as FieldKind, ...(node.attrs.format ? { format: node.attrs.format as FieldFormat } : {}), ...(node.attrs.fixed ? { fixed: node.attrs.fixed as string } : {}) };
+    const choice = await editField(this.element, run, this.fieldContext(pos));
+    const now = this.view.state.doc.nodeAt(pos);
+    if (!choice || now?.type !== schema.nodes.field) return this.refocus();
+    if (choice.action === 'freeze') this.freezeField(pos);
+    else if (choice.action === 'delete') this.view.dispatch(this.view.state.tr.delete(pos, pos + now.nodeSize));
+    else this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { kind: choice.run.field, format: choice.run.format ?? null, fixed: choice.run.fixed ?? null }));
+    this.refocus();
   }
 
   /** Insert a field at the cursor (DOC-041). */
@@ -964,6 +985,7 @@ export class DocumentEditor implements EditorView {
       const kind = view.state.doc.nodeAt(field)?.attrs.kind as FieldKind;
       entries.push(
         { title: t('field.menu') },
+        { label: t('field.edit'), icon: '✎', run: () => void this.editFieldAt(field) },
         ...FIELD_KINDS.filter((k) => k !== kind).map((k): MenuAction => ({ label: t('field.changeTo', { kind: t(`field.${k}`) }), icon: FIELD_ICONS[k], run: () => view.dispatch(view.state.tr.setNodeMarkup(field, undefined, { kind: k })) })),
         { label: t('field.freeze'), icon: '📌', run: () => this.freezeField(field) },
         'separator',

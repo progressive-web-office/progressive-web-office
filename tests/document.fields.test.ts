@@ -70,3 +70,56 @@ describe('DOC-041 fields from LaTeX', () => {
     expect(fields(await readDocument('tex', new TextEncoder().encode(tex)))).toEqual(['date', 'page', 'pages']);
   });
 });
+
+describe('DOC-050 a field changed: its kind, its format, a fixed date', () => {
+  const runs = (d: RichDocument) => allParagraphs(d.blocks).flatMap((p) => p.runs.filter(isFieldRun));
+  const now = new Date(2026, 9, 3, 14, 5, 9);
+
+  it('shows a date or a time in the format chosen, or the fixed one', () => {
+    expect(fieldValue('date', { lang: 'fr', now }, { format: 'short' })).toBe('03/10/2026');
+    expect(fieldValue('date', { lang: 'fr', now }, { format: 'full' })).toBe('samedi 3 octobre 2026');
+    expect(fieldValue('date', { lang: 'fr', now }, { format: 'iso' })).toBe('2026-10-03');
+    expect(fieldValue('date', { lang: 'fr', now }, { fixed: '2025-12-24' })).toBe('24 décembre 2025');
+    expect(fieldValue('date', { lang: 'en-GB', now }, { format: 'medium', fixed: '2025-12-24' })).toBe('24 Dec 2025');
+    expect(fieldValue('time', { lang: 'fr', now }, { format: 'medium' })).toBe('14:05:09');
+    expect(fieldValue('time', { lang: 'fr', now }, { fixed: '08:30' })).toBe('08:30');
+  });
+
+  it('reads and writes `{date:full}`, `{date=2025-12-24}` in Markdown', async () => {
+    const doc = readMarkdown('A {date:full}, B {date=2025-12-24}, C {time:medium=08:30}, D {date:iso}.\n');
+    expect(runs(doc)).toEqual([{ field: 'date', format: 'full' }, { field: 'date', fixed: '2025-12-24' }, { field: 'time', format: 'medium', fixed: '08:30' }, { field: 'date', format: 'iso' }]);
+    const md = new TextDecoder().decode(writeDocument(doc, 'md'));
+    expect(md).toBe('A {date:full}, B {date=2025-12-24}, C {time:medium=08:30}, D {date:iso}.\n');
+    // Unknown formats are text.
+    expect(runs(readMarkdown('{date:weird}\n'))).toEqual([]);
+  });
+
+  it('keeps the format and the fixed date in OpenDocument text', async () => {
+    const doc = readMarkdown('A {date:full}, B {date=2025-12-24}, C {time:medium}.\n');
+    const bytes = writeDocument(doc, 'odt');
+    const xml = readZipText(readZip(bytes), 'content.xml')!;
+    expect(xml).toContain('<text:date style:data-style-name="NDate-full"');
+    expect(xml).toContain('text:date-value="2025-12-24" text:fixed="true"');
+    expect(xml).toContain('<number:date-style style:name="NDate-full"');
+    expect(runs(await readDocument('odt', bytes))).toEqual([{ field: 'date', format: 'full' }, { field: 'date', fixed: '2025-12-24' }, { field: 'time', format: 'medium' }]);
+  });
+
+  it('writes the format as a Word date picture; a fixed date stays as its text', async () => {
+    const doc = readMarkdown('A {date:iso}, B {date=2025-12-24}.\n');
+    const bytes = writeDocument(doc, 'docx');
+    const xml = readZipText(readZip(bytes), 'word/document.xml')!;
+    expect(xml).toContain('w:instr=" DATE \\@ &quot;yyyy-MM-dd&quot; "');
+    expect(xml).toContain('w:fldLock="1"');
+    const back = await readDocument('docx', bytes);
+    expect(runs(back)).toEqual([{ field: 'date', format: 'iso' }]);
+    expect(JSON.stringify(back.blocks)).toMatch(/2025/);
+  });
+
+  it('goes through HTML with its format and fixed date', () => {
+    const doc = readMarkdown('{date:short=2025-12-24}\n');
+    const host = document.createElement('div');
+    host.append(blocksToDom(doc.blocks, document, () => undefined, undefined, { lang: 'fr', now }));
+    expect(host.querySelector('span.field')?.textContent).toBe('24/12/2025');
+    expect(runs({ ...doc, blocks: domToBlocks(host, () => undefined) })).toEqual([{ field: 'date', format: 'short', fixed: '2025-12-24' }]);
+  });
+});

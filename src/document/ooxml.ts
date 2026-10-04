@@ -171,3 +171,10 @@ export const EMU_PER_PX = 9525;
 
 /** DOC-029: page number formats as w:pgNumType w:fmt values. */
 export const DOCX_NUMBER_FORMAT: Record<PageNumberFormat, string> = { decimal: 'decimal', 'lower-roman': 'lowerRoman', 'upper-roman': 'upperRoman', 'lower-alpha': 'lowerLetter', 'upper-alpha': 'upperLetter' };
+
+/** DOC-050: Word date and time pictures of the formats. */
+export const DOCX_PICTURES: Record<'date' | 'time', Record<import('./model').FieldFormat, string>> = {
+  date: { short: 'dd/MM/yyyy', medium: 'd MMM yyyy', long: 'd MMMM yyyy', full: 'dddd d MMMM yyyy', iso: 'yyyy-MM-dd' },
+  time: { short: 'HH:mm', medium: 'HH:mm:ss', long: 'HH:mm:ss', full: 'HH:mm:ss', iso: 'HH:mm' },
+};
+

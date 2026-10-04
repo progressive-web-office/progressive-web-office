@@ -120,6 +120,12 @@ class OdtWriter {
       // DOC-041: dates of fields, written out in the document's language ("3 October 2026").
       '<number:date-style style:name="NDate" number:automatic-order="true"><number:day/><number:text> </number:text><number:month number:textual="true" number:style="long"/><number:text> </number:text><number:year number:style="long"/></number:date-style>' +
       '<number:time-style style:name="NTime"><number:hours number:style="long"/><number:text>:</number:text><number:minutes number:style="long"/></number:time-style>' +
+      // DOC-050: the other formats of dates and times.
+      '<number:date-style style:name="NDate-short" number:automatic-order="true"><number:day number:style="long"/><number:text>/</number:text><number:month number:style="long"/><number:text>/</number:text><number:year number:style="long"/></number:date-style>' +
+      '<number:date-style style:name="NDate-medium" number:automatic-order="true"><number:day/><number:text> </number:text><number:month number:textual="true"/><number:text> </number:text><number:year number:style="long"/></number:date-style>' +
+      '<number:date-style style:name="NDate-full" number:automatic-order="true"><number:day-of-week number:style="long"/><number:text> </number:text><number:day/><number:text> </number:text><number:month number:textual="true" number:style="long"/><number:text> </number:text><number:year number:style="long"/></number:date-style>' +
+      '<number:date-style style:name="NDate-iso"><number:year number:style="long"/><number:text>-</number:text><number:month number:style="long"/><number:text>-</number:text><number:day number:style="long"/></number:date-style>' +
+      '<number:time-style style:name="NTime-medium"><number:hours number:style="long"/><number:text>:</number:text><number:minutes number:style="long"/><number:text>:</number:text><number:seconds number:style="long"/></number:time-style>' +
       '<style:style style:name="fr1" style:family="graphic" style:parent-style-name="Graphics"/>' +
       '<style:style style:name="frMath" style:family="graphic"><style:graphic-properties style:vertical-pos="middle" style:vertical-rel="text" draw:ole-draw-aspect="1"/></style:style>' +
       TABLE_STYLES +
@@ -459,13 +465,17 @@ class OdtWriter {
       }
       if (isFieldRun(run)) {
         // DOC-041: a field LibreOffice computes again; its value as it is now in between.
-        const value = esc(fieldValue(run.field, { meta: this.doc.meta }));
+        const value = esc(fieldValue(run.field, { meta: this.doc.meta }, run));
         const now = new Date().toISOString().slice(0, 19);
+        // DOC-050: the format as a data style, a fixed date or time kept as such.
+        const dateStyle = run.format && run.format !== 'long' ? `NDate-${run.format}` : 'NDate';
+        const timeStyle = run.format === 'medium' || run.format === 'long' || run.format === 'full' ? 'NTime-medium' : 'NTime';
+        const fixed = run.fixed ? ' text:fixed="true"' : '';
         out +=
           run.field === 'date'
-            ? `<text:date style:data-style-name="NDate" text:date-value="${now}">${value}</text:date>`
+            ? `<text:date style:data-style-name="${dateStyle}" text:date-value="${run.fixed ?? now}"${fixed}>${value}</text:date>`
             : run.field === 'time'
-              ? `<text:time style:data-style-name="NTime" text:time-value="${now}">${value}</text:time>`
+              ? `<text:time style:data-style-name="${timeStyle}" text:time-value="${run.fixed ? `PT${run.fixed.replace(/^(\d+):(\d+)(?::(\d+))?$/, (_m, h, mi, s) => `${h}H${mi}M${s ?? '00'}S`)}` : now}"${fixed}>${value}</text:time>`
               : run.field === 'page'
                 ? `<text:page-number text:select-page="current">${value}</text:page-number>`
                 : run.field === 'pages'

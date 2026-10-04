@@ -28,6 +28,7 @@ import {
   type TableCell,
   seqKindOf,
   type FieldKind,
+  type FieldFormat,
   type InputRun,
   resolveAnchors,
   unwrapEquationNumbers,
@@ -158,6 +159,15 @@ export function odfInputOf(el: Element): InputRun | undefined {
   const options = children(el, 'label').map((l) => attr(l, 'value') ?? '');
   if (options.length === 2 && options[0] === '☐' && options[1] === '☒') return { input: 'checkbox', name, checked: value.trim() === '☒' };
   return { input: 'dropdown', name, options, ...(value ? { value } : {}) };
+}
+
+/** DOC-050: a fixed date (`2025-12-24…`) or time (`PT08H30M00S`, or a timestamp) as the field keeps it. */
+function odfFixedValue(kind: string, value: string | null): string | undefined {
+  if (!value) return undefined;
+  if (kind === 'date') return /^(\d{4}-\d{2}-\d{2})/.exec(value)?.[1];
+  if (kind !== 'time') return undefined;
+  const d = /^PT(\d+)H(\d+)M/.exec(value) ?? /T(\d{2}):(\d{2})/.exec(value);
+  return d ? `${d[1]!.padStart(2, '0')}:${d[2]!.padStart(2, '0')}` : undefined;
 }
 
 /** DOC-041: the fields of OpenDocument text read as fields. */
@@ -603,8 +613,12 @@ class OdtReader {
           case 'file-name': {
             // DOC-041: a field computed when shown; a fixed date or time is its text.
             const field = ODT_FIELDS[c.localName];
-            if (field && attr(c, 'fixed') !== 'true' && (c.localName !== 'page-number' || (attr(c, 'select-page') ?? 'current') === 'current')) out.push({ field });
-            else this.readInline(c, fmt, out, pre);
+            const fixedValue = attr(c, 'fixed') === 'true' ? odfFixedValue(c.localName, attr(c, c.localName === 'time' ? 'time-value' : 'date-value')) : undefined;
+            if (field && (attr(c, 'fixed') !== 'true' || fixedValue) && (c.localName !== 'page-number' || (attr(c, 'select-page') ?? 'current') === 'current')) {
+              // DOC-050: the format from the data style written by this application, a fixed date or time.
+              const style = /^N(?:Date|Time)-(short|medium|full|iso)$/.exec(attr(c, 'data-style-name') ?? '')?.[1] as FieldFormat | undefined;
+              out.push({ field, ...(style ? { format: style } : {}), ...(fixedValue ? { fixed: fixedValue } : {}) });
+            } else this.readInline(c, fmt, out, pre);
             break;
           }
           case 'text-input':

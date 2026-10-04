@@ -474,6 +474,12 @@ textarea.pdf-field { resize: none; }
 .paint-overlay { position: absolute; left: 0; top: 0; pointer-events: none; image-rendering: pixelated; }
 .paint-value { min-width: 3.5em; font-variant-numeric: tabular-nums; font-size: 0.8rem; }
 .paint-status { margin: 0; font-size: 0.8rem; color: var(--muted); }
+/* DOC-050: a field changed. */
+.field-dialog label { display: block; margin: 6px 0; }
+.field-when { border: 1px solid var(--border); border-radius: 6px; margin: 8px 0; }
+.field-when label { display: inline-flex; gap: 4px; align-items: center; margin-right: 8px; }
+.field-preview { font-weight: 600; }
+.field-timed[hidden] { display: none; }
 @media (max-width: 760px) {
   .draw-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
   .draw-library { max-height: 9rem; }

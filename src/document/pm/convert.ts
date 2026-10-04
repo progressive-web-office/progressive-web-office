@@ -1,6 +1,6 @@
 /** Lossless conversions between the document model and ProseMirror (DOC-018). */
 import type { Mark, Node as PmNode } from 'prosemirror-model';
-import { LAYOUT_KEYS, cleanColumns, columnSegments, inColumns, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type FieldKind, type InputKind, type InputRun, type Table, type TableCell, type TextFormat } from '../model';
+import { LAYOUT_KEYS, cleanColumns, columnSegments, inColumns, describeRuns, normalizeRuns, seqLabel, type Block, type CiteRun, type CrossTarget, type Paragraph, type Run, type SeqKind, type FieldKind, type FieldFormat, type InputKind, type InputRun, type Table, type TableCell, type TextFormat } from '../model';
 import { schema } from './schema';
 
 function marksFor(f: TextFormat): Mark[] {
@@ -75,7 +75,7 @@ function runsToInline(runs: Run[]): PmNode[] {
     } else if ('seq' in run) {
       out.push(schema.nodes.seq!.create({ kind: run.seq }));
     } else if ('field' in run) {
-      out.push(schema.nodes.field!.create({ kind: run.field }));
+      out.push(schema.nodes.field!.create({ kind: run.field, format: run.format ?? null, fixed: run.fixed ?? null }));
     } else if ('hfill' in run) {
       out.push(schema.nodes.hfill!.create({ weight: run.hfill }));
     } else if ('input' in run) {
@@ -167,7 +167,7 @@ function inlineToRuns(node: PmNode): Run[] {
         runs.push({ seq: a.kind as SeqKind });
         break;
       case 'field':
-        runs.push({ field: a.kind as FieldKind });
+        runs.push({ field: a.kind as FieldKind, ...(a.format ? { format: a.format as FieldFormat } : {}), ...(a.fixed ? { fixed: a.fixed as string } : {}) });
         break;
       case 'hfill':
         runs.push({ hfill: a.weight as number });

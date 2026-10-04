@@ -340,6 +340,11 @@ class LatexWriter {
         const field = run.field;
         if (field === 'pages') this.fieldPackages.add('lastpage');
         if (field === 'title' || field === 'author') this.fieldPackages.add('titling');
+        // DOC-050: a fixed or formatted date or time is written as it shows.
+        if (run.fixed || (run.format && (field === 'date' || field === 'time'))) {
+          out += escapeLatex(fieldValue(field, { meta: this.doc.meta }, run));
+          continue;
+        }
         out +=
           field === 'date' ? '\\today{}' : field === 'page' ? '\\thepage{}' : field === 'pages' ? '\\pageref*{LastPage}' : field === 'title' ? '\\thetitle{}' : field === 'author' ? '\\theauthor{}' : field === 'filename' ? '\\jobname{}' : escapeLatex(fieldValue(field, { meta: this.doc.meta }));
         continue;

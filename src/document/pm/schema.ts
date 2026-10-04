@@ -249,9 +249,9 @@ export const schema = new Schema({
       inline: true,
       group: 'inline',
       atom: true,
-      attrs: { kind: { default: 'date' } },
-      parseDOM: [{ tag: 'span.field[data-field]', priority: 60, getAttrs: (d: HTMLElement) => ({ kind: d.dataset.field }) }],
-      toDOM: (n) => ['span', { class: 'field', 'data-field': n.attrs.kind }, `{${n.attrs.kind as string}}`],
+      attrs: { kind: { default: 'date' }, format: { default: null }, fixed: { default: null } },
+      parseDOM: [{ tag: 'span.field[data-field]', priority: 60, getAttrs: (d: HTMLElement) => ({ kind: d.dataset.field, format: d.dataset.format ?? null, fixed: d.dataset.fixed ?? null }) }],
+      toDOM: (n) => ['span', { class: 'field', 'data-field': n.attrs.kind, ...(n.attrs.format ? { 'data-format': n.attrs.format } : {}), ...(n.attrs.fixed ? { 'data-fixed': n.attrs.fixed } : {}) }, `{${n.attrs.kind as string}}`],
     },
     /** FORM-003: a form field, filled in where it stands. */
     form_input: {

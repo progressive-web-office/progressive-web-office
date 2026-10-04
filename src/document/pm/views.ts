@@ -223,7 +223,7 @@ class FieldView extends AtomView {
 
   refresh(): void {
     const kind = this.node.attrs.kind as FieldKind;
-    const text = fieldValue(kind, this.hooks.fieldContext(this.getPos())) || `{${kind}}`;
+    const text = fieldValue(kind, this.hooks.fieldContext(this.getPos()), { format: this.node.attrs.format ?? undefined, fixed: this.node.attrs.fixed ?? undefined }) || `{${kind}}`;
     if (this.dom.textContent !== text) this.dom.textContent = text;
     this.dom.dataset.field = kind;
     this.dom.title = t(`field.${kind}`);

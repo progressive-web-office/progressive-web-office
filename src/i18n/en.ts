@@ -1906,6 +1906,22 @@ export const en = {
   'gitwc.status.new': 'new',
   'gitwc.status.modified': 'modified',
   'gitwc.status.deleted': 'deleted',
+  'field.editTitle': 'Field',
+  'field.kind': 'Shows',
+  'field.format': 'Format',
+  'field.formatDefault': 'As usual',
+  'field.format.short': 'Short',
+  'field.format.medium': 'Medium',
+  'field.format.long': 'Long',
+  'field.format.full': 'Full',
+  'field.format.iso': 'ISO (2026-10-04)',
+  'field.when': 'Which one',
+  'field.today': 'today’s, updated when the document is opened or printed',
+  'field.fixed': 'always this one:',
+  'field.fixedValue': 'Fixed date or time',
+  'field.preview': 'Shows:',
+  'field.delete': 'Delete the field',
+  'field.edit': 'Change the field…',
 } as const;
 
 export type MessageKey = keyof typeof en;

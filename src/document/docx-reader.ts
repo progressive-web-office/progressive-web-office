@@ -11,6 +11,7 @@ import {
   unwrapEquationNumbers,
   seqKindOf,
   type FieldKind,
+  type FieldFormat,
   type InputRun,
   PAGE_BREAK,
   cleanColumns,
@@ -36,7 +37,7 @@ import type { BibEntry } from './bibliography';
 import { parseCitation, parseCslCitation, readSources } from './word-sources';
 import { diagramLangOf } from './diagram';
 import { pruneComments } from './comments';
-import { DOCX_NUMBER_FORMAT, EMU_PER_PX, IMAGE_CONTENT_TYPES, onOff, readCoreProps, readRels, type Relationship } from './ooxml';
+import { DOCX_NUMBER_FORMAT, DOCX_PICTURES, EMU_PER_PX, IMAGE_CONTENT_TYPES, onOff, readCoreProps, readRels, type Relationship } from './ooxml';
 
 interface StyleInfo {
   name: string;
@@ -492,7 +493,9 @@ class DocxReader {
         case 'fldSimple': {
           const result: Run[] = [];
           this.readInline(el, fmt, result);
-          out.push(...this.field(attr(el, 'instr') ?? '', result));
+          // DOC-050: a locked field keeps its text.
+          if (attr(el, 'fldLock') === '1' || attr(el, 'fldLock') === 'true') out.push(...result);
+          else out.push(...this.field(attr(el, 'instr') ?? '', result));
           break;
         }
         case 'oMath':
@@ -855,6 +858,12 @@ function fieldRuns(instr: string, result: Run[]): Run[] {
   if (name.toUpperCase() === 'REF' && arg) return [{ ref: anchorFromBookmark(arg) }];
   // DOC-041: fields computed when shown.
   const field = DOCX_FIELD_OF[name.toUpperCase()];
-  if (field) return [{ field }];
+  if (field) {
+    // DOC-050: a date picture this application writes gives back its format.
+    const picture = /\\@\s*"([^"]*)"/.exec(instr)?.[1];
+    const pictures = field === 'date' || field === 'time' ? DOCX_PICTURES[field] : undefined;
+    const format = picture && pictures ? (Object.entries(pictures).find(([f, p]) => p === picture && !(field === 'date' && f === 'long') && !(field === 'time' && f === 'short'))?.[0] as FieldFormat | undefined) : undefined;
+    return [{ field, ...(format ? { format } : {}) }];
+  }
   return result;
 }

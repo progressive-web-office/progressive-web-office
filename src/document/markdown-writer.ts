@@ -44,6 +44,7 @@ import {
   crossTargets,
   isSeqRun,
   isFieldRun,
+  fieldMarkdown,
   isInputRun,
   isFillRun,
   FIELD_SYNTAX,
@@ -332,7 +333,7 @@ class MarkdownWriter {
         continue;
       }
       if (isFieldRun(run)) {
-        out += `{${run.field}}`;
+        out += fieldMarkdown(run);
         continue;
       }
       if (isInputRun(run)) {

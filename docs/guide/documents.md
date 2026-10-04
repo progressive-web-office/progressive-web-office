@@ -368,6 +368,17 @@ next week's date. To keep the value it has now — the date a letter was sent
 editor, which shows the document as one long page, the page number is
 counted from the page breaks.
 
+**Change a field by clicking it**: the **Field** window chooses what it
+shows, the **format** of a date or a time — short (03/10/2026), medium,
+long (as usual), full (Saturday 3 October 2026), ISO (2026-10-03) — and
+whether it is **today's** (updated) or **always this one** (a fixed date or
+time, chosen in a calendar); its value is previewed. **Replace by its value
+now** turns it into text, **Delete the field** removes it. In Markdown a
+changed field is written `{date:full}`, `{date=2025-12-24}`,
+`{time:medium=08:30}`; OpenDocument keeps the format and the fixed date as
+such, Word gets the format as a date picture and a fixed date as a locked
+field.
+
 In Markdown, write `\{date}` for the text "{date}"; the `{{name}}` of a
 [mail merge](#mail-merge) is not a field. The *Letter* template dates the
 letter with a field.

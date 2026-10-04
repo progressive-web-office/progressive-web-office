@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Fields changed with a click** (DOC-050): what a field shows, the format
+  of a date or a time (short, medium, long, full, ISO), today's or a fixed
+  date, with a preview; kept in Markdown (`{date:full=2025-12-24}`),
+  OpenDocument and Word.
 - **Commits made by the application in a Git working copy** (GIT-017), with
   isomorphic-git, in the browser: Save offers a commit (message, files),
   the ⎇ branch menu commits the document or all the changes and shows the

@@ -159,8 +159,42 @@ export interface CiteRun {
 export const FIELD_KINDS = ['date', 'time', 'page', 'pages', 'title', 'author', 'filename'] as const;
 export type FieldKind = (typeof FIELD_KINDS)[number];
 
+/** DOC-050: how a date or a time is written. */
+export const FIELD_FORMATS = ['short', 'medium', 'long', 'full', 'iso'] as const;
+export type FieldFormat = (typeof FIELD_FORMATS)[number];
+
 export interface FieldRun {
   field: FieldKind;
+  /** DOC-050: how a date or a time is written (default: long date, short time). */
+  format?: FieldFormat;
+  /** DOC-050: a fixed date (`YYYY-MM-DD`) or time (`HH:mm`) instead of the current one. */
+  fixed?: string;
+}
+
+/** The date or time a field shows. */
+function fieldMoment(kind: FieldKind, fixed: string | undefined, now: Date): Date {
+  const d = fixed ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(fixed) : null;
+  if (kind === 'date' && d) return new Date(Number(d[1]), Number(d[2]) - 1, Number(d[3]));
+  const tm = fixed ? /^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(fixed) : null;
+  if (kind === 'time' && tm) return new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(tm[1]), Number(tm[2]), Number(tm[3] ?? 0));
+  return now;
+}
+
+const pad = (n: number): string => String(n).padStart(2, '0');
+
+/** DOC-050: the Markdown of a field: `{date}`, `{date:full}`, `{date=2025-12-24}`, `{time:medium=08:30}`. */
+export function fieldMarkdown(run: FieldRun): string {
+  return `{${run.field}${run.format ? `:${run.format}` : ''}${run.fixed ? `=${run.fixed}` : ''}}`;
+}
+
+/** DOC-050: `date:full=2025-12-24` → the field, when it is one. */
+export function parseFieldMarkdown(inner: string): FieldRun | undefined {
+  const m = /^([a-z]+)(?::([a-z]+))?(?:=(\d{4}-\d{2}-\d{2}|\d{2}:\d{2}(?::\d{2})?))?$/.exec(inner);
+  if (!m || !isFieldKind(m[1]!)) return undefined;
+  const format = m[2];
+  if (format !== undefined && !(FIELD_FORMATS as readonly string[]).includes(format)) return undefined;
+  if ((format || m[3]) && m[1] !== 'date' && m[1] !== 'time') return undefined;
+  return { field: m[1], ...(format ? { format: format as FieldFormat } : {}), ...(m[3] ? { fixed: m[3] } : {}) };
 }
 
 /** What a field shows, given the document and where it is. */
@@ -175,14 +209,24 @@ export interface FieldContext {
 }
 
 /** The value of a field, as shown. */
-export function fieldValue(kind: FieldKind, ctx: FieldContext = {}): string {
-  const now = ctx.now ?? new Date();
+export function fieldValue(kind: FieldKind, ctx: FieldContext = {}, opts: { format?: FieldFormat; fixed?: string } = {}): string {
+  const now = fieldMoment(kind, opts.fixed, ctx.now ?? new Date());
   const lang = ctx.lang || ctx.meta?.language || undefined;
   switch (kind) {
     case 'date':
-      return now.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' });
+      switch (opts.format) {
+        case 'iso':
+          return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        case 'short':
+        case 'medium':
+        case 'full':
+          return now.toLocaleDateString(lang, { dateStyle: opts.format });
+        default:
+          return now.toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' });
+      }
     case 'time':
-      return now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
+      if (opts.format === 'iso') return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      return now.toLocaleTimeString(lang, opts.format === 'medium' || opts.format === 'long' || opts.format === 'full' ? { hour: '2-digit', minute: '2-digit', second: '2-digit' } : { hour: '2-digit', minute: '2-digit' });
     case 'page':
       return String(ctx.page ?? 1);
     case 'pages':
@@ -199,7 +243,7 @@ export function fieldValue(kind: FieldKind, ctx: FieldContext = {}): string {
 export const isFieldKind = (s: string): s is FieldKind => (FIELD_KINDS as readonly string[]).includes(s);
 
 /** `{date}`… in Markdown text, but not inside the `{{name}}` of a mail merge. */
-export const FIELD_SYNTAX = new RegExp(`(?<!\\{)\\{(?:${FIELD_KINDS.join('|')})\\}(?!\\})`, 'g');
+export const FIELD_SYNTAX = new RegExp(`(?<!\\{)\\{(?:${FIELD_KINDS.join('|')})(?::[a-z]+)?(?:=[\\d:-]+)?\\}(?!\\})`, 'g');
 
 /**
  * DOC-042: a horizontal spring (LaTeX's `\hfill`): the free width of its line

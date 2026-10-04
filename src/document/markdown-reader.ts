@@ -25,8 +25,8 @@ import {
   allParagraphs,
   anchorKind,
   seqKindOf,
-  isFieldKind,
-  type FieldKind,
+  parseFieldMarkdown,
+  type FieldRun,
   type InputRun,
   isFootnoteRun,
   isRefRun,
@@ -159,9 +159,10 @@ function fieldInline(state: StateInline, silent: boolean): boolean {
   const start = state.pos;
   const src = state.src;
   if (src[start] !== '{' || src[start - 1] === '{') return false;
-  const m = /^\{([a-z]+)\}/.exec(src.slice(start, state.posMax));
-  if (!m || !isFieldKind(m[1]!) || src[start + m[0].length] === '}') return false;
-  if (!silent) state.push('pwo_field', '', 0).meta = { field: m[1] };
+  const m = /^\{([a-z]+(?::[a-z]+)?(?:=[\d:-]+)?)\}/.exec(src.slice(start, state.posMax));
+  const run = m ? parseFieldMarkdown(m[1]!) : undefined;
+  if (!m || !run || src[start + m[0].length] === '}') return false;
+  if (!silent) state.push('pwo_field', '', 0).meta = { run };
   state.pos = start + m[0].length;
   return true;
 }
@@ -687,7 +688,7 @@ function inlineRuns(tokens: Token[], doc: RichDocument, opts: MarkdownReadOption
         runs.push({ hfill: (tok.meta as { hfill: number }).hfill });
         break;
       case 'pwo_field':
-        runs.push({ field: (tok.meta as { field: FieldKind }).field });
+        runs.push({ ...(tok.meta as { run: FieldRun }).run });
         break;
       case 'pwo_input':
         runs.push({ ...(tok.meta as { run: InputRun }).run });

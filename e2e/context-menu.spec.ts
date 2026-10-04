@@ -151,3 +151,29 @@ test('a number format not in the list is shown and can be changed (SHEET-014)', 
   await expect(format.locator('option:checked')).toHaveText('0.000');
   expect(errors).toEqual([]);
 });
+
+test('a click on a field changes it: its format, a fixed date (DOC-050)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'letter.md', 'Paris, {date}.\n');
+  const field = page.getByRole('textbox', { name: 'Document' }).locator('.pm-field');
+  await field.click();
+  const dialog = page.getByRole('dialog', { name: 'Field' });
+  await dialog.getByLabel('Format').selectOption({ value: 'iso' });
+  await dialog.getByLabel('always this one:').check();
+  await dialog.getByLabel('Fixed date or time').fill('2025-12-24');
+  await expect(dialog.locator('.field-preview')).toHaveText('2025-12-24');
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(field).toHaveText('2025-12-24');
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString('utf8');
+  expect(md).toBe('Paris, {date:iso=2025-12-24}.\n');
+  // Back to today's date, then deleted.
+  await field.click();
+  await dialog.getByLabel(/today’s/).check();
+  await dialog.getByLabel('Format').selectOption({ value: '' });
+  await dialog.getByRole('button', { name: 'OK' }).click();
+  await expect(field).not.toHaveText('2025-12-24');
+  await field.click();
+  await dialog.getByRole('button', { name: 'Delete the field' }).click();
+  await expect(field).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

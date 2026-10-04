@@ -51,7 +51,7 @@ import { cellsAsBlocks } from './code-cells';
 import { diagramsAsPictures } from './diagram';
 import { anchoredComments, CommentRanges } from './comments';
 import { solutionSegments } from './solutions';
-import { APP_XML, coreXml, CUSTOM_PROPS_OVERRIDE, CUSTOM_PROPS_REL, customXml, DOCX_NUMBER_FORMAT, EMU_PER_PX, NS, REL } from './ooxml';
+import { APP_XML, coreXml, CUSTOM_PROPS_OVERRIDE, CUSTOM_PROPS_REL, customXml, DOCX_NUMBER_FORMAT, DOCX_PICTURES, EMU_PER_PX, NS, REL } from './ooxml';
 import { citations, formatEntry, type Citations } from './bibliography';
 import { citationInstr, SOURCES_PROPS, sourcesXml } from './word-sources';
 
@@ -518,7 +518,9 @@ class DocxWriter {
     if (isInputRun(run)) return inputControl(run);
     if (isFieldRun(run)) {
       // DOC-041: a field Word computes again (the date when the document is opened or printed).
-      return `<w:fldSimple w:instr="${esc(DOCX_FIELDS[run.field])}"><w:r><w:t xml:space="preserve">${esc(fieldValue(run.field, { meta: this.doc.meta }))}</w:t></w:r></w:fldSimple>`;
+      // DOC-050: the format as a date picture; a fixed date is a locked field (Word keeps its text).
+      const instr = run.format && (run.field === 'date' || run.field === 'time') ? ` ${run.field.toUpperCase()} \\@ "${DOCX_PICTURES[run.field][run.format]}" ` : DOCX_FIELDS[run.field];
+      return `<w:fldSimple w:instr="${esc(instr)}"${run.fixed ? ' w:fldLock="1"' : ''}><w:r><w:t xml:space="preserve">${esc(fieldValue(run.field, { meta: this.doc.meta }, run))}</w:t></w:r></w:fldSimple>`;
     }
     if (isCiteRun(run)) {
       // DOC-027: a CITATION field, in the content control Word gives citations.
