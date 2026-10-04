@@ -142,6 +142,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- A calendar (CAL-001..CAL-005): the events of a folder, each a note of
+  `Events` with its fields in the front matter, shown by month, week, day
+  or agenda, coloured by calendar; created with a click on a day or an hour,
+  moved by dragging, changed in a window (repeat, location, attendees as
+  links to their notes); the date of a day opens its daily note, which lists
+  the events of the day. iCalendar files imported and exported.
+
 - Code cells in any language (CODE-020): Bash, PowerShell, Julia, the most
   used languages of the TIOBE index (Java, C#, Visual Basic, Rust, Fortran,
   Go, Delphi, PHP, assembly, Ada, Swift, COBOL…) and formats such as JSON,

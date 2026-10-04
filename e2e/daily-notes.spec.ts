@@ -9,7 +9,7 @@ test("opens today's note from the command palette, in the browser's storage when
   await page.keyboard.press('Control+Shift+P');
   const commands = page.getByRole('combobox', { name: 'Commands' });
   await commands.fill('calendar');
-  await expect(page.getByRole('option', { name: /Calendar of the notes/ })).toBeVisible();
+  await expect(page.getByRole('option', { name: /^Calendar/ })).toBeVisible();
   await expect(page.getByRole('option', { name: /Today's note/ })).toBeVisible();
   await commands.fill("today's note");
   await commands.press('Enter');

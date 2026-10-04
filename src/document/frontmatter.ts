@@ -116,7 +116,7 @@ export function parseFrontMatter(text: string): FrontMatter {
  * ' #' (a comment), a boolean, null or a number.
  */
 export function scalar(value: string): string {
-  return /^[\wÀ-￿][\wÀ-￿ .,/()+\-@:'&%=~?!*]*$/.test(value) && !/:(\s|$)|\s#/.test(value) && !/^(true|false|null|yes|no|~)$/i.test(value) && !/^[\d.+-]+$/.test(value.replace(/-/g, '')) ? value : JSON.stringify(value);
+  return /^[\wÀ-￿][\wÀ-￿ .,;/()+\-@:'&%=~?!*]*$/.test(value) && !/:(\s|$)|\s#/.test(value) && !/^(true|false|null|yes|no|~)$/i.test(value) && !/^[\d.+-]+$/.test(value.replace(/-/g, '')) ? value : JSON.stringify(value);
 }
 
 /** Front matter for `meta` and the verbatim `extra` lines; empty when there is nothing to write. */

@@ -16,6 +16,8 @@ export interface CalendarHooks {
   openDay(date: Date): void;
   /** Write the template of daily notes as a note, to change it, and use it. */
   createTemplate?(): void;
+  /** CAL-002: the whole calendar, with the events. */
+  openFull?(): void;
 }
 
 const lang = (): string | undefined => document.documentElement.lang || undefined;
@@ -85,6 +87,7 @@ export class DailyCalendar {
           this.showMonthOf(new Date());
           this.hooks.openDay(new Date());
         }, { className: 'daily-today' }),
+        this.hooks.openFull ? button(t('daily.openFull'), () => this.hooks.openFull?.(), { text: '🗓', className: 'icon' }) : '',
         gear,
       ),
       this.settingsShown ? this.settingsForm(settings) : '',

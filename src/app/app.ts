@@ -1279,6 +1279,8 @@ export class App {
           button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
           // FILE-031: the documents saved in this browser, as a folder to look through.
           button(t('start.browserDocs'), () => void this.openBrowserDocuments(), { className: 'card browser-docs', icon: '🗄️', title: t('start.browserDocsTitle') }),
+          // CAL-002: the calendar of the events kept as notes.
+          button(t('cal.title'), () => void this.openCalendarApp(), { className: 'card calendar', icon: '📅', title: t('cal.cardTitle') }),
           exam ? null : button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
           exam ? null : button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
           exam ? null : button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
@@ -1517,6 +1519,35 @@ export class App {
     } finally {
       this.paletteOpen = false;
     }
+  }
+
+  /**
+   * CAL-002: the calendar of the events of the folder open (else of the
+   * browser's storage), in place of the document.
+   */
+  async openCalendarApp(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    if (!this.folder) await this.openBrowserStorage();
+    const folder = this.folder;
+    if (!folder) return;
+    const [{ CalendarView }, { noteName }] = await Promise.all([import('../pim/calendar-view'), import('../folder/vault')]);
+    const view = new CalendarView({
+      provider: folder.provider,
+      open: (path) => void this.openFromFolder(path),
+      openDaily: (date) => void folder.openDaily(date),
+      noteNames: () => folder.vault.index.notes().map((p) => noteName(p)),
+      changed: (paths, event) => {
+        void folder.refresh();
+        // CAL-005: the daily note of its day links to it.
+        if (event) void folder.linkEventToDaily(event.day, event.path);
+        void Promise.all(paths.map((p) => folder.vault.changed(p))).catch(() => undefined);
+      },
+      error: (message) => this.showError(message),
+      statusChanged: () => this.renderStatus(),
+      download: (name, text, type) => void saveFile(new TextEncoder().encode(text), name, 'text', { mimeType: type, extension: name.slice(name.lastIndexOf('.') + 1) }),
+    });
+    folder.setCurrent(undefined);
+    this.setDocument({ name: t('cal.title'), format: 'text', kind: 'file', view });
   }
 
   /** FOLDER-027: the calendar of the notes (of the folder open, else of the browser's storage), or today's note. */
@@ -2104,6 +2135,7 @@ export class App {
         }
       },
       tagsChanged: () => this.current?.view.tagsChanged?.(),
+      openCalendar: () => void this.openCalendarApp(),
       // FOLDER-026: the backlinks under the page of the open note.
       pageBottom: (el) => {
         const view = this.current?.view;
@@ -2709,7 +2741,7 @@ export class App {
         { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
         { label: t('devsync.cmdScan'), where, keywords, run: () => void this.receiveFromDevice() },
         { label: t('docs.title'), where, keywords: `${keywords} documents history historique trash corbeille 历史`, run: () => void this.openBrowserDocuments() },
-        { label: t('daily.cmdCalendar'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien agenda 日历 每日 笔记', run: () => void setTimeout(() => void this.openCalendar()) },
+        { label: t('cal.title'), where: t('daily.notes'), keywords: 'calendar events agenda month week journal calendrier événements agenda mois semaine 日历 事件', run: () => void setTimeout(() => void this.openCalendarApp()) },
         { label: t('daily.todayNote'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien aujourd’hui 日历 每日 今天', run: () => void setTimeout(() => void this.openCalendar(true)) },
         { label: t('goto.title'), where: t('folder.browserStorage'), keys: ['Ctrl+Shift+O'], keywords: 'go to file open quick aller ouvrir fichier rapide 转到 打开 文件', run: () => void setTimeout(() => void this.goToFile()) },
       ].filter((c) => !labels.has(c.label));
@@ -2814,7 +2846,7 @@ export class App {
 
   private renderStatus(): void {
     const doc = this.current;
-    this.statusBar.textContent = doc ? `${formatLabel(doc.format)}${doc.view.status ? ' · ' + doc.view.status() : ''}` : t('app.ready');
+    this.statusBar.textContent = doc ? `${doc.view.formatLabel?.() ?? formatLabel(doc.format)}${doc.view.status ? ' · ' + doc.view.status() : ''}` : t('app.ready');
   }
 
   private async pickAndOpen(): Promise<void> {

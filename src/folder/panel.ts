@@ -11,7 +11,8 @@ import { isNote, NoteVault, noteName } from './vault';
 import { newNoteId, newNoteText, noteId } from '../document/wiki-links';
 import { officeNewFiles } from './new-files';
 import { DailyCalendar } from './calendar';
-import { DAILY_TEMPLATE_PATH, DEFAULT_DAILY_TEMPLATE, dailyPath, dailyText, loadDailySettings, saveDailySettings } from './daily';
+import { DAILY_TEMPLATE_PATH, DEFAULT_DAILY_TEMPLATE, dailyPath, dailyText, dayKey, loadDailySettings, saveDailySettings } from './daily';
+import { listOf, withValues } from '../pim/notes';
 import { linkMention, loadBacklinkSettings, mentions, saveBacklinkSettings, type BacklinkSettings } from './backlinks';
 import { loadTagColours, setTagColour, TAG_COLOURS, type TagColour } from './tags';
 
@@ -31,6 +32,8 @@ export interface FolderPanelHooks {
   tagsChanged?(): void;
   /** Notes rewritten by the panel (a tag renamed): the open one may need reloading. */
   notesChanged?(paths: string[]): void | Promise<void>;
+  /** CAL-002: open the whole calendar. */
+  openCalendar?(): void;
   /** FOLDER-026: show this at the bottom of the open note's page (`null`: take it back); false when it cannot. */
   pageBottom?(el: HTMLElement | null): boolean;
 }
@@ -190,6 +193,7 @@ export class FolderPanel {
       current: () => this.current,
       openDay: (date) => void this.openDaily(date),
       ...(provider.capabilities.write ? { createTemplate: () => void this.createDailyTemplate() } : {}),
+      ...(hooks.openCalendar ? { openFull: () => hooks.openCalendar?.() } : {}),
     });
     this.calendarSection = h('details', { class: 'folder-calendar-section', open: calendarOpen() }, h('summary', {}, t('daily.calendar')), this.calendar.element) as HTMLDetailsElement;
     this.calendarSection.addEventListener('toggle', () => {
@@ -525,7 +529,11 @@ export class FolderPanel {
       try {
         const template = settings.template ? await readText(this.provider, settings.template).catch(() => undefined) : undefined;
         if (settings.template && template === undefined) this.hooks.error(t('daily.noTemplate', { path: settings.template }));
-        await this.provider.write(path, new Blob([dailyText(date, settings, template, lang)]));
+        let text = dailyText(date, settings, template, lang);
+        // CAL-005: the events of its day, linked.
+        const events = await this.eventsOn(date);
+        if (events.length && /^events:/m.test(text)) text = withValues(text, [['events', events.map((p) => `[[${noteName(p)}]]`)]]);
+        await this.provider.write(path, new Blob([text]));
         await this.refresh();
       } catch (err) {
         return this.hooks.error((err as Error).message);
@@ -533,6 +541,32 @@ export class FolderPanel {
     }
     this.calendar.showMonthOf(date);
     this.hooks.open(existing?.path ?? path);
+  }
+
+  /** CAL-005: the notes of the events of a day. */
+  private async eventsOn(date: Date): Promise<string[]> {
+    const [{ loadEvents }, { occurrences }] = await Promise.all([import('../pim/store'), import('../pim/ical')]);
+    const day = dayKey(date);
+    const next = dayKey(new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1));
+    return (await loadEvents(this.provider).catch(() => [])).filter((s) => occurrences(s.item, day, next).length).map((s) => s.path);
+  }
+
+  /** CAL-005: the daily note of a day, when there is one, links to an event of that day. */
+  async linkEventToDaily(date: Date, eventPath: string): Promise<void> {
+    const path = dailyPath(date, loadDailySettings(), document.documentElement.lang || undefined);
+    const existing = this.entries.find((e) => e.kind === 'file' && e.path.toLowerCase() === path.toLowerCase());
+    if (!existing || !this.provider.capabilities.write) return;
+    try {
+      const text = await readText(this.provider, existing.path);
+      const link = `[[${noteName(eventPath)}]]`;
+      const now = listOf(text, 'events');
+      if (now.some((l) => l.toLowerCase() === link.toLowerCase())) return;
+      await this.provider.write(existing.path, new Blob([withValues(text, [['events', [...now, link]]])]));
+      await this.vault.changed(existing.path);
+      await this.hooks.notesChanged?.([existing.path]);
+    } catch {
+      /* the daily note stays as it is */
+    }
   }
 
   /** FOLDER-027: the template of daily notes as a note of the folder (kept if it exists), used from now on, opened. */

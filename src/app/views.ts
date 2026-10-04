@@ -21,6 +21,8 @@ export interface EditorView {
   save?(format: DocumentFormat): Uint8Array | Promise<Uint8Array>;
   /** Short status text (word count, selection...). */
   status?(): string;
+  /** What is shown, in place of the format, in the status bar (a calendar). */
+  formatLabel?(): string;
   /** Called by the shell once the element is in the DOM. */
   mounted?(): void;
   focus?(): void;

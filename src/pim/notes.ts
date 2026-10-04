@@ -60,6 +60,12 @@ export function withValues(text: string, set: [string, Value][], body?: string):
   return `${head}\n${rest}`;
 }
 
+/** The items of a list property of a note (a single value as one item). */
+export function listOf(text: string, key: string): string[] {
+  const v = valuesOf(text).values.get(key.toLowerCase());
+  return Array.isArray(v) ? v : typeof v === 'string' ? [v] : [];
+}
+
 const str = (v: Value): string | undefined => (typeof v === 'string' ? v : Array.isArray(v) ? v.join(', ') : undefined);
 const list = (v: Value): string[] | undefined => (Array.isArray(v) ? v : typeof v === 'string' ? [v] : undefined);
 /** `[[Ada Lovelace|Ada]]` → `Ada Lovelace`. */

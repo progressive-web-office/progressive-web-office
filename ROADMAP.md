@@ -171,6 +171,10 @@ any other tool. Planned, the most useful first:
   makes sub-folders (FOLDER-027)
 - ✅ A month calendar beside the notes: a dot for each day with a note, a
   click opens or creates it (FOLDER-027); next: previous and next day
+- ✅ A calendar of events kept as notes — month, week, day and agenda,
+  dragged to move, repeating, linked from the daily notes — and iCalendar
+  files (CAL-001..CAL-005); next: contacts as notes (CONTACT-001..004), and
+  CalDAV / CardDAV synchronisation (CAL-006, CONTACT-005)
 - Weekly, monthly, quarterly and yearly notes, each with its format, folder
   and template
 - Dates written in words (`@today`, `@next friday`) made links to their day
