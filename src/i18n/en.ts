@@ -1391,6 +1391,8 @@ export const en = {
   'vault.bl.link': 'Link',
   'vault.bl.linkTitle': 'Make this mention a link to {name}',
   'daily.calendar': '📅 Calendar',
+  'daily.cmdCalendar': 'Calendar of the notes',
+  'daily.notes': 'Notes',
   'daily.todayNote': "Today's note",
   'daily.today': 'Today',
   'daily.prev': 'Previous month',

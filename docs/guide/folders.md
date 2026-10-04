@@ -157,10 +157,14 @@ hides the card.
 
 ### Daily notes and calendar
 
-**📅** in the panel's header opens **today's note**, created when there is
-none (FOLDER-027). The **📅 Calendar** section shows the month: a dot under
-each day that has its note; a click opens it, or creates it; **‹ ›** change
-the month, **Today** comes back.
+The **📅 Calendar** section of the folder panel shows the month (FOLDER-027):
+a dot under each day that has its note; a click opens it, or creates it;
+**‹ ›** change the month, **Today** comes back. **📅** in the panel's header
+opens **today's note**, created when there is none.
+
+With no folder open, the command palette (`Ctrl+Shift+P`) has **Calendar of
+the notes** and **Today's note**: they open the documents kept in the
+browser as the folder, then the calendar or today's note.
 
 **⚙** sets:
 

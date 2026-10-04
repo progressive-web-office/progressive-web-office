@@ -1393,6 +1393,8 @@ export const fr: Record<MessageKey, string> = {
   'vault.bl.link': 'Lier',
   'vault.bl.linkTitle': 'Faire de cette mention un lien vers {name}',
   'daily.calendar': '📅 Calendrier',
+  'daily.cmdCalendar': 'Calendrier des notes',
+  'daily.notes': 'Notes',
   'daily.todayNote': 'Note du jour',
   'daily.today': "Aujourd'hui",
   'daily.prev': 'Mois précédent',

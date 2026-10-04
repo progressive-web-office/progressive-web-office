@@ -1519,6 +1519,14 @@ export class App {
     }
   }
 
+  /** FOLDER-027: the calendar of the notes (of the folder open, else of the browser's storage), or today's note. */
+  async openCalendar(today = false): Promise<void> {
+    if (!this.folder) await this.openBrowserStorage();
+    if (!this.folder) return;
+    this.folder.showCalendar();
+    if (today) await this.folder.openDaily(new Date());
+  }
+
   /** The documents kept in this browser (and synchronised between one's devices), as the folder. */
   async openBrowserStorage(): Promise<void> {
     const { privateStorage } = await import('../fs');
@@ -2701,6 +2709,8 @@ export class App {
         { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
         { label: t('devsync.cmdScan'), where, keywords, run: () => void this.receiveFromDevice() },
         { label: t('docs.title'), where, keywords: `${keywords} documents history historique trash corbeille 历史`, run: () => void this.openBrowserDocuments() },
+        { label: t('daily.cmdCalendar'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien agenda 日历 每日 笔记', run: () => void setTimeout(() => void this.openCalendar()) },
+        { label: t('daily.todayNote'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien aujourd’hui 日历 每日 今天', run: () => void setTimeout(() => void this.openCalendar(true)) },
         { label: t('goto.title'), where: t('folder.browserStorage'), keys: ['Ctrl+Shift+O'], keywords: 'go to file open quick aller ouvrir fichier rapide 转到 打开 文件', run: () => void setTimeout(() => void this.goToFile()) },
       ].filter((c) => !labels.has(c.label));
       // TEACH-005: the exam mode, from the palette too.

@@ -50,7 +50,8 @@ const CALENDAR_KEY = 'pwo.notes.calendarOpen';
 
 function calendarOpen(): boolean {
   try {
-    return localStorage.getItem(CALENDAR_KEY) === '1';
+    // Open unless closed once.
+    return localStorage.getItem(CALENDAR_KEY) !== '0';
   } catch {
     return false;
   }
@@ -499,6 +500,14 @@ export class FolderPanel {
         ),
       ),
     );
+  }
+
+  /** FOLDER-027: the calendar, opened and shown. */
+  showCalendar(): void {
+    this.calendarSection.open = true;
+    this.calendar.render();
+    this.calendarSection.scrollIntoView({ block: 'nearest' });
+    this.calendarSection.querySelector<HTMLElement>('.daily-day.today, .daily-day')?.focus();
   }
 
   /**

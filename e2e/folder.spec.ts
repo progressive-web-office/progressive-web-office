@@ -203,7 +203,7 @@ test('opens or creates the note of a day from the calendar, named and filed as s
   });
   await openLocalFolder(page);
   const panel = page.getByRole('complementary', { name: 'Folder' });
-  await panel.getByText('📅 Calendar').click();
+  // Open at once in the panel.
   const calendar = panel.locator('.daily-calendar');
   await expect(calendar.locator('.daily-month')).toHaveText('October 2026');
   // The folder and template of the daily notes.

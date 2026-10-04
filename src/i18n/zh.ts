@@ -1393,6 +1393,8 @@ export const zh: Record<MessageKey, string> = {
   'vault.bl.link': '链接',
   'vault.bl.linkTitle': '将此提及设为指向 {name} 的链接',
   'daily.calendar': '📅 日历',
+  'daily.cmdCalendar': '笔记日历',
+  'daily.notes': '笔记',
   'daily.todayNote': '今日笔记',
   'daily.today': '今天',
   'daily.prev': '上个月',
