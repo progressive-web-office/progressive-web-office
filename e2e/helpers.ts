@@ -169,3 +169,25 @@ export async function pickTemplate(page: Page, name: string): Promise<void> {
   await gallery.getByRole('searchbox', { name: 'Search a template or an example…' }).fill(name);
   await gallery.getByRole('button', { name, exact: true }).click();
 }
+
+/**
+ * Answer "Run the code of this document?" and "Download code for this
+ * document?" whenever they show, until the returned function is called.
+ * (Locator handlers only run during actions and assertions, not while a
+ * test polls with counts.)
+ */
+export function answerCodeQuestions(page: Page): () => void {
+  let stop = false;
+  void (async () => {
+    while (!stop && !page.isClosed()) {
+      const question = page.getByRole('dialog', { name: /Run the code of this document\?|Download code for this document\?/ }).last();
+      try {
+        if (await question.isVisible()) await question.getByRole('button', { name: /^(Run|Allow)$/ }).click({ timeout: 2_000 });
+      } catch {
+        /* closed meanwhile */
+      }
+      await page.waitForTimeout(300).catch(() => undefined);
+    }
+  })();
+  return () => void (stop = true);
+}

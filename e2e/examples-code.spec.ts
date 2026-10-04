@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, usePyodidePackages, pickTemplate } from './helpers';
+import { answerCodeQuestions, openApp, usePyodidePackages, pickTemplate } from './helpers';
 
 /**
  * FILE-018, CODE-016: every example with code runs without an error — all
@@ -24,8 +24,7 @@ for (const [name, min] of EXAMPLES) {
     await pickTemplate(page, name);
     const cells = page.locator('.doc-page .code-cell');
     await expect.poll(() => cells.count()).toBeGreaterThanOrEqual(Math.max(1, min));
-    await page.addLocatorHandler(page.getByRole('dialog', { name: 'Run the code of this document?' }), async (d) => d.getByRole('button', { name: 'Run' }).click());
-    await page.addLocatorHandler(page.getByRole('dialog', { name: 'Download code for this document?' }), async (d) => d.getByRole('button', { name: 'Allow' }).click());
+    const stopAnswering = answerCodeQuestions(page);
     await cells.first().getByRole('button', { name: 'Run all cells' }).click();
     // Started, then done: an error, or no cell waiting or running any more.
     const pending = page.locator('.doc-page .code-cell-output.pending');
@@ -40,6 +39,7 @@ for (const [name, min] of EXAMPLES) {
       console.log(`[${name}] dialogs: ${JSON.stringify(await page.locator('dialog[open]').allTextContents())}`);
       console.log(`[${name}] console:\n${log.slice(-60).join('\n')}`);
     }
+    stopAnswering();
     expect(await done()).toBe(true);
     const problems = await failed.allTextContents();
     // The whole message in the CI log, to fix the example.

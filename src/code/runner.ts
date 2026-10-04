@@ -12,6 +12,7 @@ import { bootstrapHash, sandboxSrcdoc } from './sandbox-html';
 import type { CodeLang } from '../document/model';
 import PWO_WIDGETS from './widgets/pwo_widgets.py?raw';
 import { WidgetHost, type CommMessage } from './widgets/host';
+import { DownloadConsent } from './consent';
 
 /** Pyodide version bundled with the application (see vite.config.ts). */
 export const PYODIDE_VERSION = '314.0.7';
@@ -37,7 +38,7 @@ interface Pending {
 const coreUrl = (name: string): string => new URL(`pyodide/${name}`, document.baseURI).href;
 
 /** CODE-016, CODE-018: sites the user agreed to download code from, until the page is closed. */
-const ALLOWED = new Set<string>();
+const ALLOWED = new DownloadConsent();
 
 export class CodeRunner {
   private frame: HTMLIFrameElement | undefined;
@@ -122,10 +123,7 @@ export class CodeRunner {
 
   private async runR(code: string, onStatus?: (status: RunStatus) => void, project?: import('./project').RunProject): Promise<RunResult> {
     const { WEBR_ORIGIN } = await import('./r-frame-html');
-    if (!this.allowed.has(WEBR_ORIGIN)) {
-      if (!(await this.confirmDownload?.(WEBR_ORIGIN))) return { text: `Download from ${WEBR_ORIGIN} refused\n`, error: true, images: [] };
-      this.allowed.add(WEBR_ORIGIN);
-    }
+    if (!(await this.allowed.ask(WEBR_ORIGIN, this.confirmDownload))) return { text: `Download from ${WEBR_ORIGIN} refused\n`, error: true, images: [] };
     const { RRuntime } = await import('./r-runtime');
     this.r ??= new RRuntime(this.host);
     return this.r.run(code, onStatus, project);
@@ -252,10 +250,7 @@ export class CodeRunner {
     const [{ resolveSpec }, { runtimeHash }] = await Promise.all([import('./widgets/packages'), import('./runtimes')]);
     const files = await resolveSpec(spec, kind, async (url) => {
       const origin = new URL(url).origin;
-      if (!this.allowed.has(origin)) {
-        if (!(await this.confirmDownload?.(origin))) throw new Error(`Download from ${origin} refused`);
-        this.allowed.add(origin);
-      }
+      if (!(await this.allowed.ask(origin, this.confirmDownload))) throw new Error(`Download from ${origin} refused`);
     });
     // CODE-018: a runtime file must be the one expected (the sandbox cannot check it: no crypto there).
     const expected = runtimeHash(spec);

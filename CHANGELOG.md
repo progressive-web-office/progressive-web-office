@@ -8,6 +8,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ## [Unreleased]
 
+### Fixed
+
+- Code cells running side by side no longer open several "Download code
+  for this document?" windows at once, one hiding the other: the question
+  is asked once per site, one at a time (CODE-016).
+
 ### Added
 
 - **Moving notice** (BACKUP-006): the application moves to

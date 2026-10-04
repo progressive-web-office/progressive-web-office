@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile, usePyodidePackages, useRuntimePackages, useWebR, pickTemplate } from './helpers';
+import { answerCodeQuestions, openApp, openFile, usePyodidePackages, useRuntimePackages, useWebR, pickTemplate } from './helpers';
 
 // CODE-018: Lua and SQL files run with a runtime downloaded from its CDN after the user agreed.
 test('runs Lua and SQL files with runtimes downloaded when first needed (CODE-018)', async ({ page }) => {
@@ -66,8 +66,7 @@ test('runs every cell of the languages example (FILE-018, CODE-017, CODE-018)', 
   const cells = page.locator('.doc-page .code-cell');
   await expect(cells).toHaveCount(9);
   // Each download is asked once per site; the trust question comes first.
-  await page.addLocatorHandler(page.getByRole('dialog', { name: 'Run the code of this document?' }), async (d) => d.getByRole('button', { name: 'Run' }).click());
-  await page.addLocatorHandler(page.getByRole('dialog').filter({ hasText: /cdn\.jsdelivr\.net|webr\.r-wasm\.org/ }), async (d) => d.getByRole('button', { name: 'Allow' }).click());
+  answerCodeQuestions(page);
   await cells.first().getByRole('button', { name: 'Run all cells' }).click();
   const out = (i: number) => cells.nth(i).locator('.code-cell-output');
   // The languages run side by side: wait for each output.
