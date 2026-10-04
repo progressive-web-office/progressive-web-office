@@ -94,6 +94,9 @@ test('a new device joins by an invitation link, accepted on the paired device af
   await expect(emojis).toBeVisible();
   // The same emojis on the paired device, where the user accepts.
   await expect(host.getByText('Phone asks to join', { exact: false })).toBeVisible();
+  // At the top of the window, in sight without scrolling, Accept focused.
+  await expect(host.getByRole('alertdialog')).toBeInViewport();
+  await expect(host.getByRole('button', { name: 'Accept' })).toBeFocused();
   await expect(host.locator('.devsync-emojis')).toHaveText((await emojis.textContent())!);
   await host.getByRole('button', { name: 'Accept' }).click();
   await expect(host.getByText(/is paired\./)).toBeVisible();

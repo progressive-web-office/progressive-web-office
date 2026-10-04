@@ -45,6 +45,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- **Sync my devices**: on the paired device, the request of the new device
+  (its name and four emojis) came below the invitation, out of sight; it now
+  comes at the top of the window, scrolled into view, Accept focused (and a
+  short vibration on a phone).
 - **A spinner for every long operation** (UI-019): saving and exporting,
   opening the template gallery on a folder, the lists of Git, WebDAV,
   Grist and Zotero, a template source, searching a folder, the graph of the

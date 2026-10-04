@@ -44,6 +44,8 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       );
     let pendingInvitation = opts.invitation;
     let inviteOnOpen = !!opts.invite;
+    // DEVSYNC-006: a device asking to join, at the top of the window where it cannot be missed.
+    const alerts = h('div', { class: 'devsync-alerts', 'aria-live': 'assertive' });
     // The rooms of the invitations, left when the window closes.
     const leaving = new Set<() => void>();
     const leaveAll = (): void => {
@@ -92,12 +94,12 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         transport.leave();
       };
       leaving.add(leave);
-      const requests = h('div', { class: 'devsync-requests', 'aria-live': 'polite' });
       const waiting = h('p', { class: 'devsync-searching', role: 'status' }, h('span', { class: 'spinner', 'aria-hidden': 'true' }), ` ${t('devsync.waitingRequest')}`);
       const end = (message: string, delay = 0): void => {
         setTimeout(leave, delay);
         leaving.delete(leave);
         clearTimeout(timer);
+        alerts.replaceChildren();
         area.replaceChildren(h('p', { class: 'hint' }, message), button(t('devsync.invite'), () => void invite(area)));
       };
       const timer = setTimeout(() => end(t('devsync.inviteExpired')), Math.max(0, inv.expires - Date.now()));
@@ -106,15 +108,20 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         inv,
         pairing,
         (r) => {
+          const accept = button(t('devsync.accept'), () => r.accept(), { className: 'primary' });
           const row = h(
             'div',
-            { class: 'devsync-request' },
+            { class: 'devsync-request', role: 'alertdialog', 'aria-label': t('devsync.request', { name: r.name }) },
             h('p', {}, t('devsync.request', { name: r.name })),
             h('p', { class: 'devsync-emojis', 'aria-label': t('devsync.emojis') }, r.emojis),
-            h('div', { class: 'dialog-actions start' }, button(t('devsync.accept'), () => r.accept(), { className: 'primary' }), button(t('devsync.refuse'), () => (r.refuse(), row.remove()))),
+            h('div', { class: 'dialog-actions start' }, accept, button(t('devsync.refuse'), () => (r.refuse(), row.remove()))),
           );
-          requests.append(row);
+          alerts.append(row);
           waiting.hidden = true;
+          // In sight at once: the window scrolled to it, Accept focused, a short vibration on a phone.
+          row.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          accept.focus({ preventScroll: true });
+          navigator.vibrate?.(200);
         },
         // Leave a moment later, for the answer to reach the new device.
         (name) => end(t('devsync.added', { name }), 3000),
@@ -127,7 +134,6 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         h('p', {}, t('devsync.inviteSteps')),
         h('ol', { class: 'devsync-steps' }, h('li', {}, t('devsync.inviteStep1')), h('li', {}, t('devsync.inviteStep2')), h('li', {}, t('devsync.inviteStep3'))),
         waiting,
-        requests,
       );
     };
     const render = async (): Promise<void> => {
@@ -330,7 +336,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         if (rerender) await render();
       }
     };
-    const form = h('form', { method: 'dialog' }, h('h2', { id: 'devsync-title' }, t('devsync.title')), body, error, status, h('div', { class: 'dialog-actions' }, button(t('common.close'), () => finish())));
+    const form = h('form', { method: 'dialog' }, h('h2', { id: 'devsync-title' }, t('devsync.title')), alerts, body, error, status, h('div', { class: 'dialog-actions' }, button(t('common.close'), () => finish())));
     const dialog = h('dialog', { class: 'dialog devsync-dialog', 'aria-labelledby': 'devsync-title' }, form);
     const finish = (): void => {
       unlisten?.();
