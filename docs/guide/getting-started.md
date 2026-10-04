@@ -55,6 +55,11 @@ background in every theme, as on paper.
 
 ## Recent files and recovered drafts
 
+A document saved **in the browser** (*Save ▸ In the browser*, or in the
+folder *Browser storage*) appears in **Recent files** marked 🗄️ *Browser
+storage*: it reopens from there, as it is now, not as an old copy. The card
+**🗄️ In this browser** of the start screen lists all of them.
+
 Files you open are added to **Recent files** on the start screen (up to 12,
 files under 100 MB), with their format, size and the date and time they were
 last opened. The copies are stored only in this browser (IndexedDB);

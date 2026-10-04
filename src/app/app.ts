@@ -1,4 +1,5 @@
 /** Application shell: start screen, header toolbar, file open/save flow. */
+import { BROWSER_ORIGIN } from '../storage/recent';
 import { inExam } from '../exam/mode';
 import { backupDue, loadBackupSettings } from '../backup/settings';
 import { NEW_HOME, movedFrom } from './move';
@@ -101,6 +102,8 @@ const basename = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
 const SOURCE_URL = 'https://github.com/progressive-web-office/progressive-web-office';
 
 const KIND_KEY = { document: 'kind.document', spreadsheet: 'kind.spreadsheet', presentation: 'kind.presentation', pdf: 'kind.pdf', file: 'kind.file' } as const;
+
+const BROWSER_FOLDER_ID = 'opfs:Documents';
 
 export class App {
   private readonly header: HTMLElement;
@@ -1272,6 +1275,8 @@ export class App {
           button(t('start.newPainting'), () => void this.newPicture('painting'), { className: 'card painting', icon: '🎨', title: t('paint.newTitle') }),
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open', icon: '📂' }),
           button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
+          // FILE-031: the documents saved in this browser, as a folder to look through.
+          button(t('start.browserDocs'), () => void this.openBrowserStorage(), { className: 'card browser-docs', icon: '🗄️', title: t('start.browserDocsTitle') }),
           exam ? null : button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
           exam ? null : button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
           exam ? null : button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
@@ -1412,6 +1417,8 @@ export class App {
       this.discardDraft();
       this.renderHeader();
       this.showNotice(t('devsync.savedSynced', { name }));
+      // FILE-031: found again in the recent files, which reopen the file of the browser's storage.
+      this.onFileSaved?.(new File([bytes as BlobPart], name, { type: MIME_TYPES[doc.format] }), doc.format, `${BROWSER_ORIGIN}${name}`);
       // Synchronised at once with the devices online, when synchronising by itself.
       const [{ currentSync }, { loadSyncState }] = await Promise.all([import('../devsync/live'), import('../devsync/state')]);
       if (loadSyncState().auto && currentSync()?.sync.peerCount()) void currentSync()!.sync.syncNow();
@@ -1420,8 +1427,14 @@ export class App {
     }
   }
 
+  /** FILE-031: a document of the browser's storage, opened from its folder (a recent file). */
+  async openBrowserDocument(path: string): Promise<void> {
+    await this.openBrowserStorage();
+    if (this.folder?.provider.id === BROWSER_FOLDER_ID) await this.openFromFolder(path);
+  }
+
   /** The documents kept in this browser (and synchronised between one's devices), as the folder. */
-  private async openBrowserStorage(): Promise<void> {
+  async openBrowserStorage(): Promise<void> {
     const { privateStorage } = await import('../fs');
     const folder = await privateStorage('Documents', t('folder.browserStorage')).catch(() => null);
     if (folder) await this.setFolder(folder);
@@ -2228,6 +2241,8 @@ export class App {
       const images = /\.(md|markdown)$/i.test(path) ? await this.noteImages(path, new TextDecoder().decode(bytes), (p) => readBytes(folder.provider, p)) : undefined;
       if (!(await this.openBytes(basename(path), bytes, undefined, images && ((src) => images.get(src)), true))) return;
       if (this.current && !this.current.fromTemplate) this.current.folderPath = path;
+      // FILE-031: a document of the browser's storage goes into the recent files.
+      if (this.current && folder.provider.id === BROWSER_FOLDER_ID) this.onFileOpened?.(new File([bytes as BlobPart], basename(path), { type: MIME_TYPES[this.current.format] }), this.current.format, `${BROWSER_ORIGIN}${path}`);
       // FOLDER-023: now a note of the folder, its #tags are shown.
       this.current?.view.tagsChanged?.();
       if (this.current && !folder.provider.capabilities.write) this.setReadOnly(true, true);
@@ -2257,6 +2272,7 @@ export class App {
       this.discardDraft();
       if (format) await folder.refresh();
       folder.setCurrent(path);
+      if (folder.provider.id === BROWSER_FOLDER_ID) this.onFileSaved?.(new File([bytes as BlobPart], basename(path), { type: MIME_TYPES[target] }), target, `${BROWSER_ORIGIN}${path}`);
       this.renderHeader();
       // GIT-017: in a Git working copy, the save is offered as a commit.
       if (this.localRepo && (await import('../git/local-ui')).asksToCommit(folder.provider.id)) await this.commitLocal([path], true);

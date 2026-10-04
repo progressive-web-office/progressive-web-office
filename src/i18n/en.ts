@@ -10,6 +10,8 @@ export const en = {
   'start.newSpreadsheet': 'New spreadsheet',
   'start.newPresentation': 'New presentation',
   'start.open': 'Open file…',
+  'start.browserDocs': 'In this browser',
+  'start.browserDocsTitle': 'The documents saved in this browser (and synchronised with your devices), to look through and open',
   'start.tip': 'Tip: drop .odt, .ods, .odp, .md, .mdz, .tex, .zip, .csv, .docx, .xlsx, .pptx or .pdf files — or a whole folder — anywhere in this window.',
   'start.recent': 'Recent files',
   'start.drop': 'Drop to open (several files or a folder open in the folder panel)',

@@ -262,3 +262,38 @@ test('revoking one device only: a new key for the devices online, after they acc
   expect(Object.keys(b.peers)).not.toContain('tablet-9');
   await context.close();
 });
+
+test('a document saved in the browser is found again: recent files and the "In this browser" card (FILE-031)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pwo.collab.transport', 'local'));
+  const errors = await openApp(page);
+  await page.evaluate(() => localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'd1', name: 'Laptop', understood: true, auto: false, peers: {}, base: {}, known: {}, deleted: {}, pairing: { room: 'room-of-the-recent', secret: 'the-key-of-the-documents-recent', since: 1 } })));
+  await page.getByRole('button', { name: 'New document' }).click();
+  await page.locator('.ProseMirror').click();
+  await page.keyboard.type('Scientific article');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  const where = page.getByRole('dialog', { name: 'Save where?' });
+  await where.getByLabel('In the browser — synchronised with my devices').check();
+  await where.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/saved in the browser/)).toBeVisible();
+
+  // Another day: the start screen.
+  await page.reload();
+  const recent = page.locator('.recent-list li', { hasText: 'Browser storage' });
+  await expect(recent).toHaveCount(1);
+  await recent.getByRole('button').first().click();
+  await expect(page.locator('.ProseMirror')).toContainText('Scientific article');
+  // Edited and saved again, in place: the recent entry opens the new text.
+  await page.locator('.ProseMirror').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type(', revised');
+  await page.keyboard.press('Control+s');
+  await page.reload();
+  await page.locator('.recent-list li', { hasText: 'Browser storage' }).getByRole('button').first().click();
+  await expect(page.locator('.ProseMirror')).toContainText('Scientific article, revised');
+
+  // The card lists the documents of the browser, as a folder.
+  await page.reload();
+  await page.getByRole('button', { name: 'In this browser' }).click();
+  await expect(page.locator('.folder-panel')).toContainText(/\.(odt|docx)/);
+  expect(errors).toEqual([]);
+});

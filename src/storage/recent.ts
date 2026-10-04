@@ -9,6 +9,8 @@ const DB_VERSION = 4;
 /** Versions kept per document (FILE-025). */
 export const MAX_VERSIONS = 30;
 export const MAX_RECENT = 12;
+/** FILE-031: the origin of a recent file kept in the browser's storage, reopened from there rather than as a copy. */
+export const BROWSER_ORIGIN = 'pwo-browser:';
 /** Larger files are not kept in the recent list (storage quota). */
 export const MAX_RECENT_SIZE = 100 * 1024 * 1024;
 

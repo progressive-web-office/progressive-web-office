@@ -12,6 +12,8 @@ export const fr: Record<MessageKey, string> = {
   'start.newSpreadsheet': 'Nouveau classeur',
   'start.newPresentation': 'Nouvelle présentation',
   'start.open': 'Ouvrir un fichier…',
+  'start.browserDocs': 'Dans ce navigateur',
+  'start.browserDocsTitle': 'Les documents enregistrés dans ce navigateur (et synchronisés avec vos appareils), à parcourir et ouvrir',
   'start.tip': 'Astuce : déposez des fichiers .odt, .ods, .odp, .md, .mdz, .tex, .zip, .csv, .docx, .xlsx, .pptx ou .pdf — ou tout un dossier — n’importe où dans cette fenêtre.',
   'start.recent': 'Fichiers récents',
   'start.drop': 'Déposez pour ouvrir (plusieurs fichiers ou un dossier s’ouvrent dans le panneau Dossier)',

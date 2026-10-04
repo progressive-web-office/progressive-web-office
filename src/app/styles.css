@@ -1673,3 +1673,4 @@ th.colhead { position: relative; }
 .exam-log time { font-variant-numeric: tabular-nums; color: var(--muted); }
 .exam-log li:not(.exam-start) { color: var(--danger); }
 .exam-counts { font-weight: 600; }
+.card.browser-docs { border-left-color: var(--doc); }

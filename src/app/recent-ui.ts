@@ -1,7 +1,7 @@
 /** Recent files on the start screen (FILE-008, FILE-009). */
 import { getLocale, t } from '../i18n';
 import { formatLabel } from '../core/format';
-import { addRecent, clearRecent, getRecent, listRecent, removeRecent, renameRecent, type RecentEntry } from '../storage/recent';
+import { addRecent, BROWSER_ORIGIN, clearRecent, getRecent, listRecent, removeRecent, renameRecent, type RecentEntry } from '../storage/recent';
 import type { App } from './app';
 import { button, h } from './dom';
 
@@ -13,6 +13,7 @@ function formatSize(bytes: number): string {
 
 /** FILE-029: where a recent file comes from, shortly: `☁ host` or `owner/name`. */
 export function originLabel(url: string): string {
+  if (url.startsWith(BROWSER_ORIGIN)) return `🗄️ ${t('folder.browserStorage')}`;
   try {
     const u = new URL(url);
     const repo = /^\/([^/]+\/[^/]+?)(?:\/(?:-\/)?(?:blob|tree)\/|$)/.exec(u.pathname);
@@ -40,6 +41,8 @@ async function render(app: App, container: HTMLElement): Promise<void> {
   const list = h('ul');
   for (const e of entries) {
     const open = button(t('recent.open', { name: e.name }), async () => {
+      // FILE-031: a document of the browser's storage is opened there, as it is now.
+      if (e.origin?.startsWith(BROWSER_ORIGIN)) return void (await app.openBrowserDocument(e.origin.slice(BROWSER_ORIGIN.length)));
       const file = await getRecent(e.id);
       if (file) await app.openFile(file, e.origin);
     }, { className: 'open-recent', text: '' });

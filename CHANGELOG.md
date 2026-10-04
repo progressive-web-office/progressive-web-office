@@ -45,6 +45,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- A document saved in the browser could not be found again: it now appears
+  in the recent files (reopened from the browser's storage, as it is now),
+  and the start screen has an **🗄️ In this browser** card (FILE-031).
+
 - **Sync my devices**: a device renamed is shown under its new name on the
   other devices at once (when online), not only at their next meeting
   (DEVSYNC-008).

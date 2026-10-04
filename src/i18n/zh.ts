@@ -12,6 +12,8 @@ export const zh: Record<MessageKey, string> = {
   'start.newSpreadsheet': '新建电子表格',
   'start.newPresentation': '新建演示文稿',
   'start.open': '打开文件…',
+  'start.browserDocs': '在此浏览器中',
+  'start.browserDocsTitle': '保存在此浏览器中（并与您的设备同步）的文档，可浏览和打开',
   'start.tip': '提示：可将 .odt、.ods、.odp、.md、.mdz、.tex、.zip、.csv、.docx、.xlsx、.pptx 或 .pdf 文件（或整个文件夹）拖放到此窗口任意位置。',
   'start.recent': '最近的文件',
   'start.drop': '松开以打开（多个文件或文件夹会在文件夹面板中打开）',
