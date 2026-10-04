@@ -1,4 +1,5 @@
 /** OpenDocument Spreadsheet (.ods) reader (SHEET-002). */
+import { rangesOfCells, ruleFromOdf, type Validation } from './validation';
 import { readChartFrame } from './chart-odf';
 import { attr, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText } from '../core/zip';
@@ -7,6 +8,8 @@ import { cellKey, parseRef } from './address';
 import { cleanCellStyle, dateToSerial, type Cell, type CellStyle, type Sheet, type Workbook } from './model';
 import { ofToExcel } from './openformula';
 
+/** Rows of a validated range read at most, when a row is repeated (SHEET-028). */
+const MAX_VALIDATED_ROWS = 10_000;
 /** Safety caps for repeated rows/cells holding content. */
 const MAX_REPEAT_CONTENT = 10_000;
 /** Repeats beyond which formatted empty cells or rows are dropped (SHEET-014). */
@@ -148,6 +151,7 @@ export function readOds(bytes: Uint8Array): Workbook {
     return ds ? dataStyles.get(ds) : undefined;
   };
 
+  const rules = readContentValidations(doc);
   const sheets: Sheet[] = [];
   for (const table of descendants(doc, 'table')) {
     if (table.namespaceURI !== ODF_NS.table || table.parentElement?.localName !== 'spreadsheet') continue;
@@ -163,11 +167,22 @@ export function readOds(bytes: Uint8Array): Workbook {
       col += repeat;
     }
     let row = 0;
+    // SHEET-028: the cells of each content validation, by its name.
+    const validated = new Map<string, [number, number][]>();
+    let rowValidated: [number, string][] = [];
     const visitRows = (container: Element): void => {
       for (const el of children(container)) {
         if (el.localName === 'table-row') {
           const repeat = Number(attr(el, 'number-rows-repeated') ?? 1) || 1;
+          rowValidated = [];
           const cells = readRow(el);
+          for (let i = 0; i < Math.min(repeat, MAX_VALIDATED_ROWS); i++) {
+            for (const [c, name] of rowValidated) {
+              let list = validated.get(name);
+              if (!list) validated.set(name, (list = []));
+              list.push([row + i, c]);
+            }
+          }
           const formatOnly = cells.every(([, cell]) => cell.value === null && cell.formula === undefined);
           if (cells.length && !(formatOnly && repeat > MAX_REPEAT_FORMAT)) {
             for (let i = 0; i < Math.min(repeat, MAX_REPEAT_CONTENT); i++) {
@@ -186,6 +201,8 @@ export function readOds(bytes: Uint8Array): Workbook {
       for (const cellEl of children(rowEl)) {
         if (cellEl.localName !== 'table-cell' && cellEl.localName !== 'covered-table-cell') continue;
         const repeat = Number(attr(cellEl, 'number-columns-repeated') ?? 1) || 1;
+        const validation = attr(cellEl, 'content-validation-name');
+        if (validation) for (let i = 0; i < Math.min(repeat, 1024); i++) rowValidated.push([c + i, validation]);
         // SHEET-022: charts anchored in this cell.
         for (const frame of children(cellEl, 'frame')) {
           const chart = readChartFrame(zip, frame, row, c);
@@ -246,12 +263,46 @@ export function readOds(bytes: Uint8Array): Workbook {
       return cell;
     };
     visitRows(table);
+    const validations = [...validated].flatMap(([name, cells]) => {
+      const rule = rules.get(name);
+      return rule ? [{ ...rule, ranges: rangesOfCells(cells) }] : [];
+    });
+    if (validations.length) sheet.validations = validations;
     sheets.push(sheet);
   }
   if (!sheets.length) sheets.push({ name: 'Sheet1', cells: new Map() });
   readFrozenPanes(zip, sheets);
   readFilters(doc, sheets);
   return { sheets };
+}
+
+/** The content validations of the document, by name (SHEET-028). */
+function readContentValidations(doc: Document): Map<string, Omit<Validation, 'ranges'>> {
+  const out = new Map<string, Omit<Validation, 'ranges'>>();
+  for (const el of descendants(doc, 'content-validation')) {
+    const name = attr(el, 'name');
+    const rule = ruleFromOdf(attr(el, 'condition') ?? '');
+    if (!name || !rule) continue;
+    const message = (tag: string): { title?: string; message: string } | undefined => {
+      const m = children(el, tag)[0];
+      const text = m ? children(m, 'p').map(paragraphText).join('\n') : '';
+      if (!m || !text || attr(m, 'display') === 'false') return undefined;
+      const title = attr(m, 'title');
+      return { message: text, ...(title ? { title } : {}) };
+    };
+    const errorEl = children(el, 'error-message')[0];
+    const type = errorEl ? attr(errorEl, 'message-type') : null;
+    const input = message('help-message');
+    const error = message('error-message');
+    out.set(name, {
+      rule,
+      allowBlank: attr(el, 'allow-empty-cell') !== 'false',
+      errorStyle: type === 'warning' || type === 'information' ? type : 'stop',
+      ...(input ? { input } : {}),
+      ...(error ? { error } : {}),
+    });
+  }
+  return out;
 }
 
 /** Frozen panes from settings.xml (SHEET-017). */

@@ -4,6 +4,7 @@ import { writeZip } from '../core/zip';
 import { APP_XML, coreXml, NS, REL } from '../document/ooxml';
 import { parseKey, quoteSheet, refName } from './address';
 import { hiddenRows } from './filter';
+import { validationsXlsx } from './validation';
 import { Calculator } from './engine';
 import { isError, type CellStyle, type Sheet, type Workbook } from './model';
 import { BUILTIN_FORMATS, pxToWidth } from './xlsx-reader';
@@ -148,7 +149,7 @@ export function writeXlsx(wb: Workbook): Uint8Array {
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${NS.r}">` +
       sheetViews(sheet, si === 0) +
-      `<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData>${autoFilterXml(sheet)}${sheet.charts?.length ? '<drawing r:id="rId1"/>' : ''}</worksheet>`
+      `<sheetFormatPr defaultRowHeight="15"/>${cols}<sheetData>${data}</sheetData>${autoFilterXml(sheet)}${validationsXlsx(sheet)}${sheet.charts?.length ? '<drawing r:id="rId1"/>' : ''}</worksheet>`
     );
   });
 

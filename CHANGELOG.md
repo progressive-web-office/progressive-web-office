@@ -101,6 +101,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Data validation in spreadsheets (SHEET-028): **☑ Data validation…** limits
+  cells to a list of values (picked from a drop-down, or with Alt+Down),
+  whole numbers, numbers, dates or texts of some length; a message while the
+  cell is selected; a wrong value refused, asked about or only told; values
+  not accepted marked with a red corner; kept in XLSX and ODS files.
+
 - The fill handle of spreadsheets (SHEET-027): drag the corner of the
   selection to continue a series — numbers, dates, "Item 1", days, months,
   formulas with their references moved — double-click it to fill down as

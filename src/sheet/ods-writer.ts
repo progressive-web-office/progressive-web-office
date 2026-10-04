@@ -1,9 +1,10 @@
 /** OpenDocument Spreadsheet (.ods) writer (SHEET-009). */
+import { odfCondition, type Validation } from './validation';
 import { escapeXml as esc } from '../core/xml';
 import { writeZip } from '../core/zip';
 import { MIME_TYPES } from '../core/format';
 import { manifestXml, metaXml, ODF_XMLNS, pxToIn } from '../document/odf';
-import { parseKey, quoteSheet, refName } from './address';
+import { cellKey, parseKey, quoteSheet, refName } from './address';
 import { hiddenRows } from './filter';
 import { Calculator, formatGeneral } from './engine';
 import { isError, serialToDate, usedSize, type Cell, type CellStyle, type Value, type Workbook } from './model';
@@ -141,6 +142,9 @@ function databaseRanges(wb: Workbook): string {
   return ranges.length ? `<table:database-ranges>${ranges.join('')}</table:database-ranges>` : '';
 }
 
+/** Rows of a validated range written at most (SHEET-028). */
+const MAX_VALIDATED_ROWS = 10_000;
+
 export function writeOds(wb: Workbook): Uint8Array {
   const calc = new Calculator(wb);
   const formats = new Map<string, string>(); // fmt -> cell style name
@@ -169,6 +173,26 @@ export function writeOds(wb: Workbook): Uint8Array {
     }
     return ` table:style-name="${name}"`;
   };
+  // SHEET-028: one content validation per validation of the workbook.
+  const validationNames = new Map<object, string>();
+  const validationXml: string[] = [];
+  const validationName = (v: Validation): string => {
+    let name = validationNames.get(v);
+    if (!name) {
+      name = `val${validationNames.size + 1}`;
+      validationNames.set(v, name);
+      const message = (tag: string, m: { title?: string; message: string } | undefined, extra = ''): string =>
+        m ? `<table:${tag}${m.title ? ` table:title="${esc(m.title)}"` : ''} table:display="true"${extra}>${m.message.split('\n').map((l) => `<text:p>${esc(l)}</text:p>`).join('')}</table:${tag}>` : '';
+      validationXml.push(
+        `<table:content-validation table:name="${name}" table:condition="${esc(odfCondition(v.rule))}" table:allow-empty-cell="${v.allowBlank}"${v.rule.kind === 'list' ? ' table:display-list="unsorted"' : ''}>` +
+          message('help-message', v.input) +
+          (v.error ? message('error-message', v.error, ` table:message-type="${v.errorStyle}"`) : `<table:error-message table:display="true" table:message-type="${v.errorStyle}"/>`) +
+          '</table:content-validation>',
+      );
+    }
+    return name;
+  };
+  const contentValidations = (): string => (validationXml.length ? `<table:content-validations>${validationXml.join('')}</table:content-validations>` : '');
   const colStyle = (px: number): string => {
     let name = colStyles.get(px);
     if (!name) {
@@ -215,6 +239,18 @@ export function writeOds(wb: Workbook): Uint8Array {
       rows = Math.max(rows, chart.anchor.row + 1);
       cols = Math.max(cols, chart.anchor.col + 1);
     }
+    // SHEET-028: the validated cells, each with the name of its validation.
+    const validatedAt = new Map<string, string>();
+    for (const v of sheet.validations ?? []) {
+      const name = validationName(v);
+      for (const r of v.ranges) {
+        for (let row = r.r1; row <= Math.min(r.r2, r.r1 + MAX_VALIDATED_ROWS - 1); row++) {
+          for (let c = r.c1; c <= Math.min(r.c2, r.c1 + 1023); c++) validatedAt.set(cellKey(row, c), name);
+        }
+        rows = Math.max(rows, Math.min(r.r2, r.r1 + MAX_VALIDATED_ROWS - 1) + 1);
+        cols = Math.max(cols, Math.min(r.c2, r.c1 + 1023) + 1);
+      }
+    }
     // SHEET-026: an empty column keeps its width too.
     for (const c of sheet.colWidths?.keys() ?? []) cols = Math.max(cols, c + 1);
     let columns = '';
@@ -228,7 +264,7 @@ export function writeOds(wb: Workbook): Uint8Array {
       if (!byRow.has(r)) byRow.set(r, new Map());
       byRow.get(r)!.set(c, cell);
     }
-    for (const key of frames.keys()) {
+    for (const key of [...frames.keys(), ...validatedAt.keys()]) {
       const [r] = parseKey(key);
       if (!byRow.has(r)) byRow.set(r, new Map());
     }
@@ -252,21 +288,23 @@ export function writeOds(wb: Workbook): Uint8Array {
       for (let c = 0; c < cols; c++) {
         const cell = rowCells.get(c);
         const frame = frames.get(`${r},${c}`) ?? '';
-        if (!cell && !frame) {
+        const vn = validatedAt.get(cellKey(r, c));
+        const vAttr = vn ? ` table:content-validation-name="${vn}"` : '';
+        if (!cell && !frame && !vn) {
           gap++;
           continue;
         }
         if (gap) rowXml += `<table:table-cell${gap > 1 ? ` table:number-columns-repeated="${gap}"` : ''}/>`;
         gap = 0;
         if (!cell) {
-          rowXml += `<table:table-cell>${frame}</table:table-cell>`;
+          rowXml += frame ? `<table:table-cell${vAttr}>${frame}</table:table-cell>` : `<table:table-cell${vAttr}/>`;
           continue;
         }
         const v = cell.formula !== undefined ? calc.value(si, [r, c]) : cell.value;
         const formula = cell.formula !== undefined ? ` table:formula="${esc(excelToOf(cell.formula))}"` : '';
         const text = display(v);
         // UNIT-002: a formula giving a quantity is written with its unit in the number format.
-        rowXml += `<table:table-cell${cellStyle(cell.formula !== undefined ? calc.format(si, [r, c]) : cell.numFmt, cell.style)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
+        rowXml += `<table:table-cell${vAttr}${cellStyle(cell.formula !== undefined ? calc.format(si, [r, c]) : cell.numFmt, cell.style)}${formula}${valueAttrs(v, cell)}>${frame}${text ? `<text:p>${esc(text)}</text:p>` : ''}</table:table-cell>`;
       }
       if (gap) rowXml += `<table:table-cell${gap > 1 ? ` table:number-columns-repeated="${gap}"` : ''}/>`;
       if (!rowXml) rowXml = `<table:table-cell table:number-columns-repeated="${cols}"/>`;
@@ -282,7 +320,7 @@ export function writeOds(wb: Workbook): Uint8Array {
     '<office:automatic-styles><style:style style:name="co0" style:family="table-column"><style:table-column-properties style:column-width="0.8925in"/></style:style>' +
     styles.join('') +
     '</office:automatic-styles>' +
-    `<office:body><office:spreadsheet>${tables.join('')}${databaseRanges(wb)}</office:spreadsheet></office:body></office:document-content>`;
+    `<office:body><office:spreadsheet>${contentValidations()}${tables.join('')}${databaseRanges(wb)}</office:spreadsheet></office:body></office:document-content>`;
 
   const stylesXml =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +

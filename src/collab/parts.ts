@@ -7,6 +7,7 @@
  *   sheet's settings, an image, the document properties);
  * - `list`: ordered parts (the paragraphs of a document).
  */
+import { cleanValidations } from '../sheet/validation';
 import type { Block, RichDocument } from '../document/model';
 import type { Sheet, Workbook } from '../sheet/model';
 
@@ -88,7 +89,13 @@ export function partsWorkbook(parts: CollabParts): Workbook {
   const sheets: Sheet[] = [];
   for (const [key, text] of Object.entries(parts.keys)) {
     const m = /^s:(\d+)$/.exec(key);
-    if (m) sheets[Number(m[1])] = { ...parse<Omit<Sheet, 'cells'>>(text), cells: new Map() };
+    if (!m) continue;
+    const settings = parse<Omit<Sheet, 'cells'>>(text);
+    // SHEET-028: only well-formed validations from the other side.
+    const validations = cleanValidations(settings.validations);
+    if (validations) settings.validations = validations;
+    else delete settings.validations;
+    sheets[Number(m[1])] = { ...settings, cells: new Map() };
   }
   for (const [key, text] of Object.entries(parts.keys)) {
     const m = /^c:(\d+):(.+)$/.exec(key);

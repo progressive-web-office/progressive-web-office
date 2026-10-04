@@ -206,3 +206,75 @@ test('fills a series with the fill handle, by a double click and with Ctrl+D (SH
   await expect(page.locator('td[data-r="2"][data-c="4"]')).toHaveText('');
   expect(errors).toEqual([]);
 });
+
+test('validates data: a list to pick from, numbers refused or kept, kept in XLSX (SHEET-028)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'answers.csv', 'Answer,Score\n,\n,\n,\n', 'text/csv');
+  // A2:A4 accept yes or no, with a message.
+  await page.locator('td[data-r="1"][data-c="0"]').click();
+  await page.locator('td[data-r="3"][data-c="0"]').click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Data validation…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Data validation' });
+  await dialog.getByLabel('Allow').selectOption('list');
+  await dialog.getByLabel('Values, one per line').fill('yes\nno');
+  await dialog.getByText('Message when the cell is selected').click();
+  await dialog.getByLabel('Message', { exact: true }).fill('Yes or no');
+  await dialog.getByRole('button', { name: 'Apply' }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.locator('td[data-r="1"][data-c="0"]').click();
+  await expect(page.locator('.dv-hint')).toHaveText('Yes or no');
+  await page.locator('.dv-button').click();
+  await page.getByRole('option', { name: 'no', exact: true }).click();
+  await expect(page.locator('td[data-r="1"][data-c="0"]')).toHaveText('no');
+
+  // A wrong value is refused.
+  await page.locator('td[data-r="2"][data-c="0"]').click();
+  let message = '';
+  page.once('dialog', (d) => {
+    message = d.message();
+    void d.accept();
+  });
+  await page.keyboard.type('maybe');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => message).toContain('one of: yes, no');
+  await expect(page.locator('td[data-r="2"][data-c="0"]')).toHaveText('');
+  // Alt+Down opens the list from the keyboard.
+  await page.locator('td[data-r="2"][data-c="0"]').click();
+  await page.keyboard.press('Alt+ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('td[data-r="2"][data-c="0"]')).toHaveText('no');
+
+  // B2:B4: whole numbers from 0 to 20, asking whether to keep a wrong one.
+  await page.locator('td[data-r="1"][data-c="1"]').click();
+  await page.locator('td[data-r="3"][data-c="1"]').click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'Data validation…' }).click();
+  await dialog.getByLabel('Allow').selectOption('whole');
+  await dialog.getByLabel('Minimum').fill('0');
+  await dialog.getByLabel('Maximum').fill('20');
+  await dialog.getByText('When the value is wrong').click();
+  await dialog.getByLabel('Then').selectOption('warning');
+  await dialog.getByRole('button', { name: 'Apply' }).click();
+  await page.locator('td[data-r="1"][data-c="1"]').click();
+  page.once('dialog', (d) => void d.accept());
+  await page.keyboard.type('25');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveText('25');
+  await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveClass(/invalid/);
+  page.once('dialog', (d) => void d.dismiss());
+  await page.keyboard.type('30');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('td[data-r="2"][data-c="1"]')).toHaveText('');
+  await page.locator('td[data-r="3"][data-c="1"]').click();
+  await page.keyboard.type('12');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('td[data-r="3"][data-c="1"]')).not.toHaveClass(/invalid/);
+
+  const xlsx = await saveAs(page, 'Excel workbook (.xlsx)');
+  await openFile(page, 'answers-back.xlsx', xlsx.data);
+  await page.locator('td[data-r="3"][data-c="0"]').click();
+  await expect(page.locator('.dv-button')).toBeVisible();
+  await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveClass(/invalid/);
+  expect(errors).toEqual([]);
+});

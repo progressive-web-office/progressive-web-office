@@ -344,6 +344,20 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 .grid td:has(> .fill-handle):not(.frz-r):not(.frz-c) { position: relative; }
 .grid .fill-handle { position: absolute; right: 0; bottom: 0; width: 7px; height: 7px; background: var(--accent); border: 1px solid var(--bg, #fff); cursor: crosshair; z-index: 2; }
 .grid td.fill-preview { outline: 1px dashed var(--accent); outline-offset: -1px; }
+/* SHEET-028: data validation — the list of the active cell, its message, and refused values. */
+.grid td:has(> .dv-button):not(.frz-r):not(.frz-c) { position: relative; }
+.grid .dv-button { position: absolute; right: 9px; top: 2px; height: 19px; min-width: 18px; padding: 0 3px; font-size: 11px; line-height: 1; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); color: var(--text); cursor: pointer; z-index: 2; }
+.grid td.invalid { background-image: linear-gradient(225deg, var(--danger, #c62828) 6px, transparent 6px); }
+.dv-list { position: absolute; z-index: 6; max-height: 14rem; overflow: auto; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); outline: none; }
+.grid .dv-button::after { content: '▾'; }
+.dv-option { padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+.dv-option:hover, .dv-option.current { background: var(--sel); }
+.dv-option[aria-selected='true'] { font-weight: 600; }
+.dv-hint { position: absolute; z-index: 5; max-width: 18rem; padding: 6px 10px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 4px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); font-size: 0.85rem; pointer-events: none; display: flex; flex-direction: column; gap: 2px; }
+.validation-dialog .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.validation-dialog details { margin: 8px 0; }
+.validation-dialog summary { cursor: pointer; margin-bottom: 8px; }
+.validation-dialog .error { color: var(--danger, #c62828); }
 .cell-input {
   position: absolute; z-index: 4; padding: 0 5px; border: 2px solid var(--accent);
   font: inherit; font-size: 0.9rem; background: var(--surface); color: var(--text); box-sizing: border-box;

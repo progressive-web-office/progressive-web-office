@@ -1,4 +1,5 @@
 /** XLSX (SpreadsheetML) reader (SHEET-001). */
+import { validationFromXlsx } from './validation';
 import { readSheetCharts } from './chart-ooxml';
 import { parseRange } from './chart';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
@@ -87,6 +88,16 @@ class XlsxReader {
           }
           sheet.filter = { range, columns };
         }
+        // SHEET-028: data validation.
+        const validations = descendants(sheetDoc, 'dataValidation').flatMap((dv) => {
+          const f = (name: string): string | undefined => {
+            const el = child(dv, name);
+            return el ? (el.textContent ?? '') : undefined;
+          };
+          const v = validationFromXlsx((name) => attr(dv, name) ?? undefined, f('formula1'), f('formula2'));
+          return v ? [v] : [];
+        });
+        if (validations.length) sheet.validations = validations;
         // SHEET-017: frozen panes.
         const pane = descendants(sheetDoc, 'pane').find((p) => /^frozen/.test(attr(p, 'state') ?? ''));
         const rows = pane ? Math.max(0, Math.round(Number(attr(pane, 'ySplit') ?? 0))) : 0;

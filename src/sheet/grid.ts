@@ -18,6 +18,8 @@ import { partsWorkbook, workbookParts, type CollabAdapter, type PeerCursor } fro
 import { addSheet, applyCellStyle, clearCellStyle, clearRange, copyRange, deleteCells, deleteSheet, guessHeader, insertCells, pasteText, renameSheet, sortRange, type Range } from './ops';
 import { chooseSort } from './sort-dialog';
 import { fillDownEnd, fillRange, fillTarget } from './fill';
+import { isValid, listItems, setValidation, validationAt, type Validation } from './validation';
+import { chooseValidation, describeRule } from './validation-dialog';
 import { columnValues, displayText, hiddenRows, RowMap, setColumnFilter, toggleFilter } from './filter';
 
 const ROW_H = 24;
@@ -369,6 +371,14 @@ export class SheetEditor implements EditorView {
           else if (isError(v)) td.classList.add('err');
           if (cell.style) applyLook(td, cell.style);
         }
+        // SHEET-028: a value the validation of its cell does not accept.
+        if (sheet.validations) {
+          const v = validationAt(sheet, r, c);
+          if (v && cell && !isValid(v, this.calc.value(this.si, [r, c]), this.valueAt)) {
+            td.classList.add('invalid');
+            td.title = t('validation.invalidCell', { rule: describeRule(v.rule, listItems(v.rule, this.valueAt)) });
+          }
+        }
         if (filter && r === filter.range.r1 && c >= filter.range.c1 && c <= filter.range.c2) {
           const on = !!filter.columns[c];
           const b = h('button', { type: 'button', class: `filter-btn${on ? ' on' : ''}`, 'data-filter-col': String(c), 'aria-label': t('filter.column', { name: colName(c) }), 'aria-pressed': String(on), title: t('filter.column', { name: colName(c) }), tabindex: '-1' }, on ? '▼' : '▾');
@@ -403,6 +413,28 @@ export class SheetEditor implements EditorView {
     // SHEET-027: the fill handle, at the bottom right of the selection.
     this.table.querySelector('.fill-handle')?.remove();
     if (!this.readOnly) this.td(r.r2, r.c2)?.append(h('span', { class: 'fill-handle', title: t('sheet.fillHandle'), 'aria-hidden': 'true' }));
+    // SHEET-028: the list of the active cell, and the message of its validation.
+    this.table.querySelector('.dv-button')?.remove();
+    this.viewport.querySelector('.dv-hint')?.remove();
+    this.viewport.removeAttribute('aria-describedby');
+    const validation = validationAt(this.wb.sheets[this.si]!, this.focusCell.row, this.focusCell.col);
+    if (validation && active) {
+      if (validation.rule.kind === 'list' && !this.readOnly) {
+        active.append(h('button', { type: 'button', class: 'dv-button', tabindex: '-1', 'aria-hidden': 'true', title: `${t('validation.pick')} (Alt+↓)` }));
+      }
+      if (validation.input) {
+        const pos = this.cellPosition(this.focusCell.row, this.focusCell.col);
+        this.viewport.append(
+          h(
+            'div',
+            { class: 'dv-hint', id: 'dv-hint', role: 'note', style: `left: ${pos.x + 8}px; top: ${pos.y + ROW_H + 4}px` },
+            validation.input.title ? h('strong', {}, validation.input.title) : null,
+            h('span', {}, validation.input.message),
+          ),
+        );
+        this.viewport.setAttribute('aria-describedby', 'dv-hint');
+      }
+    }
     if (active) this.viewport.setAttribute('aria-activedescendant', (active.id = `cell-${this.focusCell.row}-${this.focusCell.col}`));
     this.nameBox.textContent = refName(this.focusCell.row, this.focusCell.col);
     const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
@@ -781,10 +813,112 @@ export class SheetEditor implements EditorView {
   private setActiveInput(text: string): void {
     const sheet = this.wb.sheets[this.si]!;
     const ref: [number, number] = [this.focusCell.row, this.focusCell.col];
-    if (cellInput(getCell(sheet, ref)) === text) return;
+    const before = getCell(sheet, ref);
+    if (cellInput(before) === text) return;
     this.snapshot();
     setInput(sheet, ref, text);
+    // SHEET-028: a value the validation refuses goes back to what the cell held.
+    const v = validationAt(sheet, ...ref);
+    if (v) {
+      this.calc.invalidate();
+      if (!isValid(v, this.calc.value(this.si, ref), this.valueAt) && !this.acceptInvalid(v)) {
+        if (before) sheet.cells.set(cellKey(...ref), before);
+        else sheet.cells.delete(cellKey(...ref));
+        this.undoStack.pop();
+        this.calc.invalidate();
+        this.renderSelection();
+        return;
+      }
+    }
     this.changed();
+  }
+
+  /** The computed value of a cell of the current sheet. */
+  private readonly valueAt = (row: number, col: number): ReturnType<Calculator['value']> => this.calc.value(this.si, [row, col]);
+
+  /** SHEET-028: tell about a value the validation does not accept; whether it is kept. */
+  private acceptInvalid(v: Validation): boolean {
+    const message = v.error?.message ?? t('validation.invalid', { rule: describeRule(v.rule, listItems(v.rule, this.valueAt)) });
+    const text = v.error?.title ? `${v.error.title}\n\n${message}` : message;
+    if (v.errorStyle === 'warning') return window.confirm(`${text}\n\n${t('validation.keep')}`);
+    window.alert(text);
+    return v.errorStyle === 'information';
+  }
+
+  /** SHEET-028: the "Data validation…" dialog for the selection. */
+  private async editValidation(): Promise<void> {
+    if (this.readOnly) return;
+    this.commitEdit();
+    const r = this.range();
+    const sheet = this.wb.sheets[this.si]!;
+    const label = r.r1 === r.r2 && r.c1 === r.c2 ? refName(r.r1, r.c1) : `${refName(r.r1, r.c1)}:${refName(r.r2, r.c2)}`;
+    const result = await chooseValidation(this.element, label, validationAt(sheet, this.focusCell.row, this.focusCell.col));
+    if (result === null) return this.viewport.focus();
+    this.snapshot();
+    setValidation(sheet, r, result === 'remove' ? undefined : result);
+    this.changed(true);
+    this.viewport.focus();
+  }
+
+  /** SHEET-028: the values of the list of the active cell, to pick one. */
+  private openValidationList(): void {
+    const sheet = this.wb.sheets[this.si]!;
+    const { row, col } = this.focusCell;
+    const v = validationAt(sheet, row, col);
+    if (!v || v.rule.kind !== 'list' || this.readOnly) return;
+    this.closeValidationList();
+    const values = listItems(v.rule, this.valueAt);
+    const current = String(this.calc.value(this.si, [row, col]) ?? '');
+    const pos = this.cellPosition(row, col);
+    const list = h('div', { class: 'dv-list', role: 'listbox', 'aria-label': t('validation.pick'), tabindex: '-1', style: `left: ${pos.x}px; top: ${pos.y + ROW_H}px; min-width: ${this.width(col)}px` });
+    const choose = (value: string): void => {
+      this.closeValidationList();
+      this.setActiveInput(value);
+      this.viewport.focus();
+    };
+    const options = values.map((value) => {
+      const o = h('div', { role: 'option', class: 'dv-option', 'aria-selected': String(value === current), tabindex: '-1' }, value);
+      o.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        choose(value);
+      });
+      return o;
+    });
+    list.append(...options);
+    let index = Math.max(0, values.indexOf(current));
+    const highlight = (): void => options.forEach((o, i) => o.classList.toggle('current', i === index));
+    highlight();
+    list.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        index = Math.max(0, Math.min(options.length - 1, index + (e.key === 'ArrowDown' ? 1 : -1)));
+        highlight();
+        options[index]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && values[index] !== undefined) {
+        e.preventDefault();
+        choose(values[index]!);
+      } else if (e.key === 'Escape' || e.key === 'Tab') {
+        e.preventDefault();
+        this.closeValidationList();
+        this.viewport.focus();
+      }
+    });
+    // Closed by a press anywhere else.
+    const outside = (e: Event): void => {
+      if (!list.contains(e.target as Node)) this.closeValidationList();
+    };
+    document.addEventListener('mousedown', outside, true);
+    this.closeList = () => document.removeEventListener('mousedown', outside, true);
+    this.viewport.append(list);
+    list.focus({ preventScroll: true });
+  }
+
+  private closeList?: () => void;
+
+  private closeValidationList(): void {
+    this.closeList?.();
+    this.closeList = undefined;
+    this.viewport.querySelector('.dv-list')?.remove();
   }
 
   // --- selection & editing ---------------------------------------------------------
@@ -904,6 +1038,11 @@ export class SheetEditor implements EditorView {
       PageUp: [-page, 0],
       PageDown: [page, 0],
     };
+    if (e.altKey && e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.openValidationList();
+      return;
+    }
     const move = moves[e.key];
     if (move) {
       e.preventDefault();
@@ -1007,6 +1146,7 @@ export class SheetEditor implements EditorView {
       act(t('sheet.autoSum'), 'Σ', () => this.autoSum()),
       act(t('sheet.insertChart'), '📊', () => void this.insertChart()),
       act(t('sort.button'), '⇅', () => void this.sort()),
+      act(t('validation.button'), '☑', () => void this.editValidation()),
       this.filterButton,
       this.freezeButton,
     );
@@ -1165,6 +1305,11 @@ export class SheetEditor implements EditorView {
       if (filterBtn) {
         e.preventDefault();
         void this.filterColumn(Number(filterBtn.dataset.filterCol));
+        return;
+      }
+      if (t.classList.contains('dv-button')) {
+        e.preventDefault();
+        this.openValidationList();
         return;
       }
       if (t.classList.contains('fill-handle')) {
@@ -1326,6 +1471,7 @@ export class SheetEditor implements EditorView {
       { label: t('sheet.fillDown'), keys: ['Ctrl+D'], where, run: () => this.fillSelection('down') },
       { label: t('sheet.fillRight'), keys: ['Ctrl+R'], where, run: () => this.fillSelection('right') },
       { label: t('sheet.fillSeries'), where, run: () => this.fillSeries() },
+      { label: t('validation.button'), where, run: () => void this.editValidation() },
     ];
   }
 

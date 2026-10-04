@@ -72,6 +72,8 @@ export interface Sheet {
   freeze?: { rows: number; cols: number };
   /** Autofilter (SHEET-018). */
   filter?: import('./filter').AutoFilter;
+  /** Data validation (SHEET-028). */
+  validations?: import('./validation').Validation[];
 }
 
 export interface Workbook {

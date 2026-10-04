@@ -59,6 +59,32 @@ down as far as the column beside goes. The command palette also has **Fill
 a series into the empty cells of the selection**: select the start of the
 series and the empty cells after it.
 
+## Data validation
+
+**☑ Data validation…** sets what the selected cells may hold:
+
+| Allow | For example |
+|-------|-------------|
+| A value from a list | `yes` / `no`, written one per line, or the cells holding them (`$E$1:$E$9`) |
+| A whole number, a number | between 1 and 10, greater than 0… |
+| A date | after 2026-01-01, chosen in a date picker |
+| A text of some length | at most 20 characters |
+
+- A cell with a list shows **▾**: click it, or press <kbd>Alt</kbd>+<kbd>↓</kbd>,
+  to pick a value (arrows and <kbd>Enter</kbd> in the list).
+- **Message when the cell is selected**: a hint shown under the cell.
+- **When the value is wrong**: *refuse it* (the cell keeps what it held), *ask
+  whether to keep it*, or *keep it and tell*. The message says what the cell
+  expects, unless you write your own.
+- A value the validation does not accept — kept anyway, pasted, or there
+  before the rule — has a red corner; hover it to read why.
+- **Any value** in *Allow*, or **Remove the validation**, takes it away.
+
+The rules are kept in XLSX (`dataValidations`) and ODS
+(`table:content-validations`) files, so other spreadsheets check the same
+values. Pasting and filling do not check the values, as in other
+spreadsheets: look for the red corners.
+
 ## Formulas
 
 Formulas use the usual A1 syntax: `=A1+B2`, `=SUM(A1:A10)`, `=$A$1*B2`,
