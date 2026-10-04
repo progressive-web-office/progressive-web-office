@@ -10,6 +10,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Bitmap painting** (DRAW-008): pencil, brush, eraser, fill bucket, lines,
+  rectangles and ellipses (filled or not), text, colour picker, selection
+  moved with the mouse or the arrows, copy, cut and paste, canvas resized,
+  undo and zoom — for a new picture or any PNG, JPEG or WebP picture.
+- The start screen offers **New drawing or schematic** (.svg) and **New
+  painting** (.png); SVG and bitmap pictures opened in the application have
+  **Edit the drawing** and **Paint on the picture** buttons and are saved
+  back; text documents insert a new painting or paint on their pictures.
 - **Drawings and schematics** (DRAW-001..DRAW-007, DRAW-011): a vector
   drawing editor for text documents — rectangles, ellipses, lines, arrows,
   freehand, text; colours, thickness, dashes; grid and snapping; select,

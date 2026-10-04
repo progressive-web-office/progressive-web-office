@@ -1,6 +1,11 @@
-/** Pictures (FILE-023): shown fitted to the window or at their own size. */
+/**
+ * Pictures (FILE-023): shown fitted to the window or at their own size; an
+ * SVG drawing edited in the drawing editor, a PNG, JPEG or WebP picture
+ * painted on (DRAW-001, DRAW-008), and saved back.
+ */
 import { button, h } from '../app/dom';
 import type { EditorView, ViewContext } from '../app/views';
+import type { DocumentFormat } from '../core/format';
 import { t } from '../i18n';
 import './files.css';
 
@@ -17,34 +22,83 @@ export function pictureType(bytes: Uint8Array): string {
   return 'image/svg+xml';
 }
 
+/** Pictures the painting editor writes back in their own type. */
+const PAINTABLE = ['image/png', 'image/jpeg', 'image/webp'];
+
 export class ImageView implements EditorView {
   readonly element: HTMLElement;
-  private readonly url: string;
+  private url = '';
   private readonly img: HTMLImageElement;
   private size = '';
+  private readonly type: string;
 
   constructor(
-    bytes: Uint8Array,
+    private bytes: Uint8Array,
     private readonly ctx: ViewContext,
     private readonly fileName: string,
   ) {
+    this.type = pictureType(bytes);
     // An SVG shown through <img> runs no script.
-    this.url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: pictureType(bytes) }));
-    this.img = h('img', { src: this.url, alt: fileName, class: 'picture fit' });
+    this.img = h('img', { alt: fileName, class: 'picture fit' });
     this.img.addEventListener('load', () => {
       this.size = `${this.img.naturalWidth} × ${this.img.naturalHeight} px`;
       this.ctx.statusChanged();
     });
+    this.show();
     const zoom = button(t('picture.actualSize'), () => {
       const fit = this.img.classList.toggle('fit');
       zoom.textContent = t(fit ? 'picture.actualSize' : 'picture.fit');
     });
+    const tools: HTMLElement[] = [zoom];
+    if (this.type === 'image/svg+xml') tools.push(button(t('draw.edit'), () => void this.edit(), { icon: '✏️', className: 'primary' }));
+    else if (PAINTABLE.includes(this.type)) tools.push(button(t('paint.edit'), () => void this.edit(), { icon: '🎨', className: 'primary' }));
     this.element = h(
       'div',
       { class: 'picture-view' },
-      h('div', { class: 'toolbar', role: 'toolbar', 'aria-label': t('picture.toolbar') }, zoom),
+      h('div', { class: 'toolbar', role: 'toolbar', 'aria-label': t('picture.toolbar') }, ...tools),
       h('div', { class: 'picture-scroll', tabindex: '0', 'aria-label': fileName }, this.img),
     );
+    this.img.addEventListener('dblclick', () => void this.edit());
+  }
+
+  private show(): void {
+    if (this.url) URL.revokeObjectURL(this.url);
+    this.url = URL.createObjectURL(new Blob([this.bytes as BlobPart], { type: this.type }));
+    this.img.src = this.url;
+  }
+
+  /** The drawing or painting editor, the picture replaced when done. */
+  async edit(): Promise<boolean> {
+    let out: Uint8Array | undefined;
+    if (this.type === 'image/svg+xml') {
+      const [{ editDrawing }, { fromSvg, toSvg }] = await Promise.all([import('../draw/editor'), import('../draw/svg')]);
+      let initial;
+      try {
+        initial = fromSvg(new TextDecoder().decode(this.bytes));
+      } catch {
+        initial = undefined;
+      }
+      const drawing = await editDrawing(this.element, initial);
+      if (drawing) out = new TextEncoder().encode(toSvg(drawing));
+    } else if (PAINTABLE.includes(this.type)) {
+      const { paintPicture } = await import('../paint/editor');
+      const painted = await paintPicture(this.element, { bytes: this.bytes, mediaType: this.type });
+      if (painted) out = painted.bytes;
+    } else return false;
+    if (!out) return false;
+    this.bytes = out;
+    this.show();
+    this.ctx.changed();
+    return true;
+  }
+
+  save(_format: DocumentFormat): Uint8Array {
+    return this.bytes;
+  }
+
+  /** The media type of the picture, to save it. */
+  mediaType(): string {
+    return this.type;
   }
 
   status(): string {

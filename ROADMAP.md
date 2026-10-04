@@ -215,7 +215,7 @@ group is not a commitment.
   with units; next: netlist (SPICE) and bill of materials (DRAW-009)
 - ✅ Drawings inserted in text documents and slides, editable in place, with
   a PNG version for DOCX and LaTeX (DRAW-007); next: PNG version in PPTX
-- Bitmap painting (DRAW-008): pencil, brush, eraser, fill, shapes, text,
+- ✅ Bitmap painting (DRAW-008): pencil, brush, eraser, fill, shapes, text,
   selection, canvas size — for a new picture or any picture
 - OpenDocument drawings (.odg), draw.io diagrams (DRAW-010)
 - ✅ Caption images easily: a caption and alt text when inserting or pasting

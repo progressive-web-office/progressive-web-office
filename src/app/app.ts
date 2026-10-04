@@ -524,6 +524,26 @@ export class App {
     });
   }
 
+  /** DRAW-001, DRAW-008: a new drawing (.svg) or painting (.png), drawn first, then open as a picture to save. */
+  async newPicture(kind: 'drawing' | 'painting'): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    let bytes: Uint8Array | undefined;
+    if (kind === 'drawing') {
+      const [{ editDrawing }, { toSvg }] = await Promise.all([import('../draw/editor'), import('../draw/svg')]);
+      const drawing = await editDrawing(this.root);
+      if (drawing) bytes = new TextEncoder().encode(toSvg(drawing));
+    } else {
+      const { paintPicture } = await import('../paint/editor');
+      bytes = (await paintPicture(this.root))?.bytes;
+    }
+    if (!bytes) return;
+    const name = t(kind === 'drawing' ? 'start.untitledDrawing' : 'start.untitledPainting');
+    const view = await openView('image', bytes, this.viewContext(), name);
+    this.setDocument({ name, format: 'image', kind: formatKind('image'), view });
+    this.dirty = true;
+    this.renderHeader();
+  }
+
   /** Save the open document as a template file: .ott, .dotx… (FILE-020). */
   async saveTemplateFile(base: DocumentFormat): Promise<void> {
     const doc = this.current;
@@ -626,7 +646,9 @@ export class App {
       const own = doc.kind === 'file';
       const name = own ? doc.name : replaceExtension(doc.name, fileExtension(target));
       const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : 'txt';
-      if (await saveFile(bytes, name, target, own ? { mimeType: 'text/plain', extension: ext } : undefined)) {
+      // A picture keeps its own type (DRAW-001, DRAW-008).
+      const mimeType = doc.format === 'image' ? ((doc.view as { mediaType?: () => string }).mediaType?.() ?? 'image/png') : 'text/plain';
+      if (await saveFile(bytes, name, target, own ? { mimeType, extension: ext } : undefined)) {
         // The document is now the file saved elsewhere, no longer the one of the folder.
         if (doc.folderPath && format) {
           delete doc.folderPath;
@@ -1003,6 +1025,8 @@ export class App {
           button(t('start.newDocument'), () => void this.newDocument('document'), { className: 'card doc', icon: '📝' }),
           button(t('start.newSpreadsheet'), () => void this.newDocument('spreadsheet'), { className: 'card sheet', icon: '📊' }),
           button(t('start.newPresentation'), () => void this.newDocument('presentation'), { className: 'card pres', icon: '📽️' }),
+          button(t('start.newDrawing'), () => void this.newPicture('drawing'), { className: 'card drawing', icon: '✏️', title: t('draw.insertTitle') }),
+          button(t('start.newPainting'), () => void this.newPicture('painting'), { className: 'card painting', icon: '🎨', title: t('paint.newTitle') }),
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open', icon: '📂' }),
           button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
           button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),

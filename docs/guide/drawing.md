@@ -8,6 +8,11 @@ click.
 
 ## Starting a drawing
 
+From the **start screen**, **✏️ New drawing or schematic** opens the editor
+straight away; **Done** shows the drawing as a picture, saved with **Save**
+as an `.svg` file. An `.svg` file opened in the application has an
+**✏️ Edit the drawing** button (a double click works too).
+
 In a text document, choose **Insert → ✏️ Drawing or schematic…** (also in the
 right-click menu and the command palette); in a presentation, the same button
 is in the slide toolbar. To change a drawing later, **double-click** it (in a
@@ -106,3 +111,30 @@ it as it was.
 | DOCX | a PNG picture with the SVG beside it (Word 2016 and later shows the SVG, older versions the PNG); reopened here, the SVG is read back, editable |
 | LaTeX (.zip) | a PNG picture for `\includegraphics`, the SVG next to it |
 | Print, PDF | drawn sharp at any size |
+
+## Painting (bitmap pictures)
+
+For a picture made of pixels — a sketch, a photo to touch up — use the
+painting editor:
+
+- from the **start screen**, **🎨 New painting** (a white 800 × 500 picture,
+  saved as `.png`);
+- a PNG, JPEG or WebP file opened in the application: **🎨 Paint on the
+  picture** (or a double click); it is saved back in its own format;
+- in a text document, **Insert → 🖌 Painting (new picture)…**, or right-click
+  a picture → **Paint on the picture**.
+
+| Tool | Use |
+|---|---|
+| ✏ Pencil | Hard-edged pixels, for pixel art and fine touches |
+| 🖌 Brush | Smooth strokes; the opacity applies to the whole stroke (no darker overlaps) |
+| ⌫ Eraser | Makes pixels transparent (white in a JPEG) |
+| 🪣 Fill | Fills the area of the same colour around the click |
+| ╱ ▭ ◯ | Line, rectangle, ellipse; Shift for 45° lines, squares and circles; **filled shapes** to fill them |
+| T Text | Writes text where you click, sized by **Size** |
+| 💧 Pick a colour | Takes the colour of a pixel |
+| ⬚ Select | Drag a rectangle; drag it (or use the arrows, Shift: 10 px) to move its pixels; Delete clears it; Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste |
+
+**Colour**, **Size** and **Opacity** set the tool; **Width** and **Height**
+resize the canvas (the picture stays at the top left). Undo and redo with
+Ctrl+Z and Ctrl+Y; zoom with − and +.
