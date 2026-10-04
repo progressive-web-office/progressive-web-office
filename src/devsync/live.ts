@@ -97,6 +97,8 @@ export async function startSync(files?: StorageProvider): Promise<LiveSync | und
   const transport = await connectRoom(state.pairing.room, state.pairing.secret);
   const stopFallback = relayFallback(transport);
   const store = { get: (): DeviceSyncState => loadSyncState(), set: (s: DeviceSyncState) => saveSyncState(s) };
+  // DEVSYNC-012: the user's templates go along, as files of the folder Templates.
+  const templates = await templateHooks(provider);
   const sync = new DeviceSync(transport.room, provider, store, {
     ...fan,
     peers: (p) => {
@@ -105,7 +107,7 @@ export async function startSync(files?: StorageProvider): Promise<LiveSync | und
       // A device arriving: merge with it, when synchronising by itself.
       if (p.length && loadSyncState().auto) void sync.syncNow();
     },
-  });
+  }, undefined, templates);
   // DEVSYNC-010: another device revoking one gives this one the new key, once the user accepted.
   serveRekey(
     transport.room,
@@ -146,6 +148,32 @@ export async function startSync(files?: StorageProvider): Promise<LiveSync | und
     },
   };
   return live;
+}
+
+const MIRROR_KEY = 'pwo.devsync.templates';
+
+/** DEVSYNC-012: the templates mirrored before each scan and taken in after each merge. */
+async function templateHooks(files: StorageProvider): Promise<{ before(): Promise<void>; after(): Promise<void> }> {
+  const [{ exportTemplates, importTemplates }, storage] = await Promise.all([import('./templates-mirror'), import('../storage/recent')]);
+  const store = { list: storage.listTemplates, load: storage.loadTemplate, save: storage.saveTemplate, remove: storage.deleteTemplate };
+  const load = (): Record<string, string> => {
+    try {
+      return (JSON.parse(localStorage.getItem(MIRROR_KEY) ?? '{}') as Record<string, string>) ?? {};
+    } catch {
+      return {};
+    }
+  };
+  const save = (m: Record<string, string>): void => {
+    try {
+      localStorage.setItem(MIRROR_KEY, JSON.stringify(m));
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  return {
+    before: async () => save(await exportTemplates(files, store, load())),
+    after: async () => save(await importTemplates(files, store, load())),
+  };
 }
 
 export function stopSync(): void {

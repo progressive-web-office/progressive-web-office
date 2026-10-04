@@ -62,9 +62,15 @@ the devices of the invitation; **Keep the current pairing** ignores it.
 ## Synchronising
 
 Only the documents **kept in the browser** are synchronised — *Open a
-folder › Browser storage*, its `Documents` folder; the window says how many,
+folder › Browser storage*, its `Documents` folder — and **your templates**
+(*Save as › Template*): they go along as files of the folder `Templates`,
+and a template saved, changed or deleted on one device is on the others
+after the next synchronisation. The window says how many documents,
 and **📁 Open these documents** opens them. The **recent files** of a device
-are files of its own disk (or of a cloud, a repository): they stay there. To
+are files of its own disk (or of a cloud, a repository): they stay there —
+copying them to the other devices would make copies that change apart from
+the file. A document saved in the browser is in the recent files of each
+device where it was opened, and in **🗄️ In this browser** on all of them. To
 find a document on your other devices, save it in the browser storage:
 
 - once a device is paired, **Save** asks where: **In the browser —

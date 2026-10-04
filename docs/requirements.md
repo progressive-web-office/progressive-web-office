@@ -572,6 +572,7 @@ integration is ever needed.
 | DEVSYNC-009 | S | 0.2.0 | The system shall list the files of the synchronisation trash of this device by day, restore one where it was (next to it when the name is taken) so that the other devices get it again, and delete one for good after confirmation. |
 | DEVSYNC-010 | S | 0.2.0 | When the user revokes one paired device, the system shall make a new pairing and give it to each other device online that accepts (after asking its user), encrypted for a fresh public key of that device (ECDH P-256, AES-GCM), never to the revoked device; stop the exchange with a device answered for twice; tell which devices got it; and forget the revoked device on all of them. |
 | DEVSYNC-011 | S | 0.2.0 | The system shall show the documents of this browser with, for each, whether it is the same on every paired device met, only here or different there, or on another device and not here yet (as of when each device was last met), the number of files in the trash, and a timestamped history of the synchronisations (device, documents received, trashed, conflicts, failures); a button of its own in the header shall open the synchronisation, marked while another device is online. |
+| DEVSYNC-012 | S | 0.2.0 | The user's templates shall be synchronised with the documents, as files of the folder `Templates`: a template saved, changed or deleted on one paired device shall be so on the others after the next synchronisation. |
 
 ## 9r. Versions and history (VER)
 

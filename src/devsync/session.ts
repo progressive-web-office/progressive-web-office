@@ -69,6 +69,8 @@ export class DeviceSync {
     private readonly state: { get(): DeviceSyncState; set(s: DeviceSyncState): void },
     private readonly events: SyncEvents = {},
     private readonly timeoutMs = 60_000,
+    /** DEVSYNC-012: work before scanning (things written into the documents) and after merging (things taken out). */
+    private readonly hooks: { before?(): Promise<void>; after?(): Promise<void> } = {},
   ) {
     const action = <T>(ns: string): [Send<T>, Receive<T>] => room.makeAction(ns) as unknown as [Send<T>, Receive<T>];
     let receiveHello: Receive<Hello>, receiveManifest: Receive<ManifestMsg>, receiveGet: Receive<GetMsg>, receiveFile: Receive<FileMsg>;
@@ -133,6 +135,7 @@ export class DeviceSync {
   syncNow(): Promise<void> {
     return this.enqueue(async () => {
       this.events.status?.('scanning');
+      await this.hooks.before?.().catch(() => undefined);
       const { manifest, state } = await scan(this.files, this.state.get());
       this.state.set(state);
       await this.sendManifest({ manifest, reply: true });
@@ -143,9 +146,11 @@ export class DeviceSync {
   private async merge(remote: SyncManifest, peer: string, reply: boolean): Promise<void> {
     if (this.closed) return;
     this.events.status?.('merging');
+    await this.hooks.before?.().catch(() => undefined);
     const scanned = await scan(this.files, this.state.get());
     const plan = planSync(scanned.manifest, remote, scanned.state.base);
     const result = await applyPlan(this.files, plan, (path) => this.fetch(path, peer));
+    await this.hooks.after?.().catch(() => undefined);
     await emptyOldTrash(this.files).catch(() => []);
     // What both devices now hold is the base of the next merge.
     const after = await scan(this.files, { ...scanned.state });

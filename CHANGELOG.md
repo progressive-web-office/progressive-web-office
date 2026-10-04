@@ -105,6 +105,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Templates synchronised between one's devices (DEVSYNC-012): saved,
+  changed or deleted on one device, they follow on the others, as files of
+  the folder `Templates` of the synchronised documents.
+
 - Drawings and paintings zoom with the wheel where the pointer is, pan with
   the middle button, and on touch screens pinch and pan with two fingers;
   a component of a schematic is dragged from anywhere inside it, not only
