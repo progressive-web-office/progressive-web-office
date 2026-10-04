@@ -182,3 +182,75 @@ export function pixelCanvas(): Promise<Uint8Array> {
     c.fillRect(0, 0, 32, 32);
   });
 }
+
+/**
+ * DRAW-013: a poster in layers (OpenRaster) — a sky in a gradient, a sun,
+ * hills half transparent, and a vector layer holding the title and its
+ * frame, which stay shapes: hide a layer, change its opacity, move the title.
+ */
+export async function layeredPoster(lang: TemplateLang): Promise<Uint8Array> {
+  const { writeOra } = await import('../paint/ora');
+  const { drawShapes } = await import('../paint/vector');
+  const [w, h] = [800, 500];
+  const shapes = [
+    { kind: 'rect' as const, x: 150, y: 40, w: 500, h: 110, color: '#ffffff', width: 6, opacity: 0.9, filled: false },
+    { kind: 'text' as const, x: 190, y: 62, text: lang === 'fr' ? 'Fête du printemps' : 'Spring fair', size: 56, color: '#1f2937', opacity: 1 },
+    { kind: 'text' as const, x: 300, y: 430, text: lang === 'fr' ? 'Samedi, 14 h — place du marché' : 'Saturday, 2 pm — market square', size: 24, color: '#ffffff', opacity: 1 },
+  ];
+  const draws: [string, (c: CanvasRenderingContext2D) => void, number][] = [
+    [
+      lang === 'fr' ? 'Ciel' : 'Sky',
+      (c) => {
+        const g = c.createLinearGradient(0, 0, 0, h);
+        g.addColorStop(0, '#7cc4f2');
+        g.addColorStop(1, '#fdf1d6');
+        c.fillStyle = g;
+        c.fillRect(0, 0, w, h);
+      },
+      1,
+    ],
+    [
+      lang === 'fr' ? 'Soleil' : 'Sun',
+      (c) => {
+        const g = c.createRadialGradient(640, 150, 0, 640, 150, 110);
+        g.addColorStop(0, '#fff3a0');
+        g.addColorStop(0.45, '#ffcf3f');
+        g.addColorStop(1, 'rgba(255, 207, 63, 0)');
+        c.fillStyle = g;
+        c.fillRect(0, 0, w, h);
+      },
+      1,
+    ],
+    [
+      lang === 'fr' ? 'Collines' : 'Hills',
+      (c) => {
+        c.fillStyle = '#2f9e57';
+        c.beginPath();
+        c.ellipse(220, 520, 420, 190, 0, 0, 2 * Math.PI);
+        c.fill();
+        c.fillStyle = '#237a43';
+        c.beginPath();
+        c.ellipse(660, 540, 380, 170, 0, 0, 2 * Math.PI);
+        c.fill();
+      },
+      0.85,
+    ],
+    [lang === 'fr' ? 'Titre' : 'Title', (c) => drawShapes(c, shapes), 1],
+  ];
+  const layers = await Promise.all(
+    draws.map(async ([name, draw, opacity], i) => ({ name, png: await png(w, h, draw), x: 0, y: 0, opacity, visible: true, ...(i === draws.length - 1 ? { shapes } : {}) })),
+  );
+  const flat = (scale: number): Promise<Uint8Array> =>
+    png(Math.round(w * scale), Math.round(h * scale), (c) => {
+      c.scale(scale, scale);
+      for (const [, draw, opacity] of draws) {
+        const layer = document.createElement('canvas');
+        layer.width = w;
+        layer.height = h;
+        draw(layer.getContext('2d')!);
+        c.globalAlpha = opacity;
+        c.drawImage(layer, 0, 0);
+      }
+    });
+  return writeOra({ width: w, height: h, layers }, await flat(1), await flat(0.32));
+}

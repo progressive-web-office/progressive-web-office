@@ -10,9 +10,13 @@ async function saveDownload(page: Page): Promise<{ name: string; data: Buffer }>
   return { name: d.suggestedFilename(), data: Buffer.concat(chunks) };
 }
 
-/** The colour of a pixel of the painted canvas. */
+/** The colour of a pixel of the active layer. */
 const pixel = (page: Page, x: number, y: number): Promise<number[]> =>
-  page.locator('canvas.paint-canvas').evaluate((c: HTMLCanvasElement, [px, py]) => Array.from(c.getContext('2d')!.getImageData(px!, py!, 1, 1).data), [x, y]);
+  page.locator('canvas.paint-layer.active').evaluate((c: HTMLCanvasElement, [px, py]) => Array.from(c.getContext('2d')!.getImageData(px!, py!, 1, 1).data), [x, y]);
+
+/** The colour of a pixel of a layer, by its place from the bottom. */
+const layerPixel = (page: Page, layer: number, x: number, y: number): Promise<number[]> =>
+  page.locator('.paint-stack canvas.paint-layer').nth(layer).evaluate((c: HTMLCanvasElement, [px, py]) => Array.from(c.getContext('2d')!.getImageData(px!, py!, 1, 1).data), [x, y]);
 
 test('paints a new picture from the start screen and saves it as PNG (DRAW-008)', async ({ page }) => {
   const errors = await openApp(page);
@@ -95,6 +99,115 @@ test('makes a new drawing from the start screen, saved as SVG (DRAW-001)', async
   // Edited again from the picture's toolbar.
   await page.getByRole('button', { name: 'Edit the drawing' }).click();
   await expect(dialog.locator('.draw-objects button', { hasText: 'NPN transistor Q1' })).toHaveCount(1);
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  expect(errors).toEqual([]);
+});
+
+test('paints on layers, vector shapes stay shapes, crops, rotates, and saves an OpenRaster file (DRAW-013..DRAW-015)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New painting' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Painting' });
+  const canvas = dialog.locator('canvas.paint-canvas');
+  const box = (await canvas.boundingBox())!;
+  const scale = box.width / 800;
+  const at = (x: number, y: number): [number, number] => [box.x + x * scale, box.y + y * scale];
+  const drag = async (a: [number, number], b: [number, number]): Promise<void> => {
+    await page.mouse.move(...at(...a));
+    await page.mouse.down();
+    await page.mouse.move(...at(...b), { steps: 4 });
+    await page.mouse.up();
+  };
+  const layers = dialog.getByRole('listbox', { name: 'Layers' });
+  await expect(layers.getByRole('option')).toHaveText([/Background/]);
+
+  // A painted layer over the white background: the background keeps its white.
+  await dialog.getByRole('button', { name: 'New painted layer' }).click();
+  await expect(layers.getByRole('option')).toHaveCount(2);
+  await dialog.getByLabel('Colour', { exact: true }).first().fill('#ff0000');
+  await dialog.getByRole('button', { name: 'Rectangle' }).click();
+  await dialog.getByLabel('filled shapes').check();
+  await drag([100, 100], [200, 180]);
+  expect(await layerPixel(page, 1, 150, 140)).toEqual([255, 0, 0, 255]);
+  expect(await layerPixel(page, 0, 150, 140)).toEqual([255, 255, 255, 255]);
+  // Transparent elsewhere: the alpha channel of a layer.
+  expect((await layerPixel(page, 1, 400, 300))[3]).toBe(0);
+
+  // A vector layer: a rectangle that stays a shape, picked and moved.
+  await dialog.getByRole('button', { name: /New vector layer/ }).click();
+  await dialog.getByLabel('Colour', { exact: true }).first().fill('#0000ff');
+  await drag([300, 100], [400, 160]);
+  expect(await layerPixel(page, 2, 350, 130)).toEqual([0, 0, 255, 255]);
+  await dialog.getByRole('button', { name: 'Brush' }).click();
+  await page.mouse.click(...at(500, 400));
+  await expect(dialog.getByRole('status').first()).toHaveText(/vector layer holds shapes/);
+  await dialog.getByRole('button', { name: 'Select', exact: true }).click();
+  await drag([350, 130], [450, 130]);
+  expect(await layerPixel(page, 2, 450, 130)).toEqual([0, 0, 255, 255]);
+  expect((await layerPixel(page, 2, 320, 130))[3]).toBe(0);
+
+  // Hidden, then shown again; its opacity changed.
+  await layers.getByRole('option').first().getByRole('button', { name: /Hide the layer/ }).click();
+  await expect(dialog.locator('.paint-stack canvas.paint-layer').nth(2)).toBeHidden();
+  await layers.getByRole('option').first().getByRole('button', { name: /Show the layer/ }).click();
+  await dialog.getByLabel('Opacity of the layer').fill('50');
+  await expect(layers.getByRole('option').first()).toContainText('50 %');
+
+  // Crop to a selection, then a quarter turn: the size follows.
+  await layers.getByRole('option').nth(1).click();
+  await drag([50, 50], [650, 350]);
+  await dialog.getByRole('button', { name: 'Crop to the selection' }).click();
+  await expect(dialog.getByLabel('Width', { exact: true })).toHaveValue('600');
+  await expect(dialog.getByLabel('Height', { exact: true })).toHaveValue('300');
+  // The vector layer becomes pixels: asked first.
+  page.once('dialog', (d) => void d.accept());
+  await dialog.getByRole('button', { name: 'Rotate a quarter turn right' }).click();
+  await expect(dialog.getByLabel('Width', { exact: true })).toHaveValue('300');
+  await expect(dialog.getByLabel('Height', { exact: true })).toHaveValue('600');
+  // Undone.
+  await canvas.press('Control+z');
+  await expect(dialog.getByLabel('Width', { exact: true })).toHaveValue('600');
+
+  // Saved with its layers, as OpenRaster.
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('.picture-view img')).toBeVisible();
+  const file = await saveDownload(page);
+  expect(file.name).toBe('Untitled picture.ora');
+  expect(file.data.subarray(30, 54).toString()).toBe('mimetypeimage/openraster');
+  // Painted again: the layers are back, the vector one with its shapes.
+  await page.getByRole('button', { name: 'Paint on the picture' }).click();
+  await expect(layers.getByRole('option')).toHaveCount(3);
+  await expect(layers.getByRole('option').first()).toContainText('Vector layer 3');
+  await expect(layers.getByRole('option').first()).toContainText('◇');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  expect(errors).toEqual([]);
+});
+
+test('a poster in layers from the examples; a picture imported as a layer; the background a colour (DRAW-013, DRAW-015)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: /Templates and examples/ }).first().click();
+  await page.getByRole('dialog').getByRole('tab', { name: /Examples/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Poster in layers' }).click();
+  await expect(page.locator('.picture-view img')).toBeVisible();
+  await page.getByRole('button', { name: 'Paint on the picture' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Painting' });
+  const layers = dialog.getByRole('listbox', { name: 'Layers' });
+  await expect(layers.getByRole('option')).toHaveText([/Title/, /Hills.*85 %/, /Sun/, /Sky/]);
+
+  // A picture of the device, imported as a new layer above the active one.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+  const chooser = page.waitForEvent('filechooser');
+  await dialog.getByRole('button', { name: 'Import a picture' }).click();
+  await (await chooser).setFiles({ name: 'logo.png', mimeType: 'image/png', buffer: png });
+  await expect(layers.getByRole('option')).toHaveCount(5);
+  await expect(dialog.getByText(/Picture imported on a new layer/)).toBeVisible();
+
+  // The background: a colour on the bottom layer.
+  await dialog.getByRole('button', { name: 'Background…' }).click();
+  const bg = page.getByRole('dialog', { name: 'Background…' });
+  await bg.getByLabel('Colour').fill('#ff00ff');
+  await bg.getByRole('button', { name: 'OK' }).click();
+  const bottom = await dialog.locator('.paint-stack canvas.paint-layer').first().evaluate((c: HTMLCanvasElement) => Array.from(c.getContext('2d')!.getImageData(5, 5, 1, 1).data));
+  expect(bottom).toEqual([255, 0, 255, 255]);
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   expect(errors).toEqual([]);
 });

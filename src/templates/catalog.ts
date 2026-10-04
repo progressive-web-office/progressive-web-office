@@ -20,7 +20,7 @@ export type Built =
   | { kind: 'spreadsheet'; wb: Workbook }
   | { kind: 'presentation'; pres: Presentation }
   /** A drawing (SVG) or a picture (PNG), opened as a picture to edit (DRAW-001, DRAW-008). */
-  | { kind: 'picture'; ext: 'svg' | 'png'; bytes: () => Promise<Uint8Array> };
+  | { kind: 'picture'; ext: 'svg' | 'png' | 'ora'; bytes: () => Promise<Uint8Array> };
 
 export interface Template {
   id: string;
@@ -387,6 +387,8 @@ export const TEMPLATES: Template[] = [
       ['pixel-art', '👾', 'tpl.pixelArt', 'tpl.pixelArtDesc', drawings.pixelCanvas],
     ] as const
   ).map(([id, icon, name, description, make]): Template => ({ id, kind: 'picture', icon, name, description, build: () => ({ kind: 'picture', ext: 'png', bytes: make }) })),
+  // DRAW-013: a picture in layers, to see what they do.
+  { id: 'layered-poster', kind: 'picture', example: true, icon: '🗂', name: 'tpl.layeredPoster', description: 'tpl.layeredPosterDesc', build: (lang) => ({ kind: 'picture', ext: 'ora', bytes: () => drawings.layeredPoster(lang) }) },
   { id: 'tour', kind: 'document', example: true, icon: '🧭', name: 'tpl.tour', description: 'tpl.tourDesc', build: documentFrom('tour') },
   { id: 'lab', kind: 'document', example: true, icon: '🧪', name: 'tpl.lab', description: 'tpl.labDesc', build: lab },
   { id: 'widgets', kind: 'document', example: true, icon: '🎛️', name: 'tpl.widgets', description: 'tpl.widgetsDesc', build: widgets },

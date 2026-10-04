@@ -41,7 +41,7 @@ export function formatLabel(format: DocumentFormat): string {
 
 
 /** File extensions accepted by the open dialog. */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.textpack', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.textpack', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ora'];
 
 export function formatKind(format: DocumentFormat): DocumentKind {
   switch (format) {
@@ -141,7 +141,9 @@ function isPicture(bytes: Uint8Array): boolean {
     (ascii(0, 'RIFF') && ascii(8, 'WEBP')) ||
     (ascii(0, 'BM') && bytes.length > 26) ||
     (ascii(4, 'ftyp') && (ascii(8, 'avif') || ascii(8, 'avis'))) ||
-    startsWith(bytes, [0x00, 0x00, 0x01, 0x00]) // ICO
+    startsWith(bytes, [0x00, 0x00, 0x01, 0x00]) || // ICO
+    // DRAW-013: an OpenRaster picture (a ZIP whose first entry says so).
+    (ascii(0, 'PK') && ascii(30, 'mimetypeimage/openraster'))
   );
 }
 

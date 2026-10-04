@@ -145,27 +145,85 @@ it as it was.
 
 ## Painting (bitmap pictures)
 
-For a picture made of pixels — a sketch, a photo to touch up — use the
-painting editor:
+For a picture made of pixels — a sketch, a poster, a photo to touch up —
+use the painting editor:
 
-- from the **start screen**, **🎨 New painting** (a white 800 × 500 picture,
-  saved as `.png`);
-- a PNG, JPEG or WebP file opened in the application: **🎨 Paint on the
-  picture** (or a double click); it is saved back in its own format;
+- from the **start screen**, **🎨 New painting** (a white 800 × 500
+  picture);
+- a PNG, JPEG, WebP or OpenRaster (`.ora`) file opened in the application:
+  **🎨 Paint on the picture** (or a double click);
 - in a text document, **Insert → 🖌 Painting (new picture)…**, or right-click
-  a picture → **Paint on the picture**.
+  a picture → **Paint on the picture**;
+- **Templates and examples → Examples → Poster in layers**, to see layers at
+  work.
+
+![The painting editor: the poster in layers, its title picked on a vector layer, the layers panel on the right](/screenshots/painting-layers.png)
 
 | Tool | Use |
 |---|---|
 | ✏ Pencil | Hard-edged pixels, for pixel art and fine touches |
 | 🖌 Brush | Smooth strokes; the opacity applies to the whole stroke (no darker overlaps) |
-| ⌫ Eraser | Makes pixels transparent (white in a JPEG) |
+| ⌫ Eraser | Makes pixels transparent (white on the background of a JPEG) |
 | 🪣 Fill | Fills the area of the same colour around the click |
+| 🌈 Gradient | Drag from where the gradient starts to where it ends: **linear**, **radial**, **turning** (conic), from the **colour** to the **second colour** — or **every hue, turning** (a colour wheel). It fills the selection, or the whole layer |
 | ╱ ▭ ◯ | Line, rectangle, ellipse; Shift for 45° lines, squares and circles; **filled shapes** to fill them |
 | T Text | Writes text where you click, sized by **Size** |
-| 💧 Pick a colour | Takes the colour of a pixel |
-| ⬚ Select | Drag a rectangle; drag it (or use the arrows, Shift: 10 px) to move its pixels; Delete clears it; Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste |
+| 💧 Pick a colour | Takes the colour of the picture as shown (all its visible layers) |
+| ⬚ Select | Drag a rectangle; drag it (or use the arrows, Shift: 10 px) to move its pixels; Delete clears it; Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste. On a vector layer: picks a shape |
 
 **Colour**, **Size** and **Opacity** set the tool; **Width** and **Height**
-resize the canvas (the picture stays at the top left). Undo and redo with
-Ctrl+Z and Ctrl+Y; zoom with − and +.
+resize the canvas (the picture stays at the top left, the background
+extended with its colour). Undo and redo with Ctrl+Z and Ctrl+Y; zoom with −
+and +.
+
+### Layers
+
+The **Layers** panel lists the layers from the top: painting happens on
+the one chosen (outlined). For each layer:
+
+- **👁** shows or hides it; **Opacity of the layer** makes it see-through;
+- **＋▦** adds a **painted layer** above the chosen one, **＋◇** a **vector
+  layer**; **⧉** duplicates it; **▲ ▼** move it; **⤓** merges it with the
+  layer below; **✎** (or a double click) renames it; **🗑** deletes it;
+- **🖼＋ Import a picture** puts a picture of the device on a new layer —
+  made smaller to fit if it is larger than the canvas, its transparency kept
+  — to move where you want before clicking beside it;
+- **⟳** turns the layer around its centre by any angle.
+
+A **vector layer** holds **shapes and texts that stay shapes**: draw lines,
+rectangles, ellipses and texts on it, then with **⬚ Select** click a shape
+to pick it — drag it or move it with the arrows, change its colour, size,
+opacity or fill with the controls, double-click a text to change it, Delete
+removes it. Painting tools (brush, fill…) do not work on it: **◇→▦** makes it
+pixels.
+
+### The picture
+
+| Button | Does |
+|---|---|
+| ✂ Crop to the selection | keeps only the part selected, on every layer |
+| ⟲ ⟳ | a quarter turn to the left or the right; the width and height swap |
+| ∠ Rotate by an angle… | any angle: the canvas grows to hold the picture, the new corners transparent |
+| ⇋ ⇅ | flip horizontally or vertically |
+| 🖼 Background… | the bottom layer: **a colour**, **transparent**, or **a picture** that covers the canvas, fits in it, is stretched to it or stays at its size, centred |
+| ▦ Grid… | lines every so many pixels (a decimal step: 5 mm at 96 dpi is 18.9), in the colour and opacity chosen — graph paper, pixel art |
+
+Turning or flipping makes vector layers pixels (asked first).
+
+### Transparency and saving
+
+Transparent pixels show as a checkerboard. **PNG**, **WebP** and
+**OpenRaster** keep the transparency; a **JPEG** has none: transparent parts
+become white.
+
+A picture with **several layers**, a vector layer, a hidden layer or a
+layer not fully opaque is saved as **OpenRaster** (`.ora`) — the open format
+of layered pictures, read by GIMP, Krita, MyPaint and Pinta — so that its
+layers come back here; **Save as… → Flattened PNG** gives a single picture
+for everything else. A picture with one opaque layer stays in its own format
+(PNG, JPEG, WebP). A painting inside a text document is always flattened
+(asked first).
+
+The shapes of a vector layer are kept for this application inside the
+`.ora` file; other applications see that layer as pixels.
+

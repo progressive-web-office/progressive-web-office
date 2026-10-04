@@ -658,16 +658,21 @@ export class App {
   async newPicture(kind: 'drawing' | 'painting'): Promise<void> {
     if (!this.confirmDiscard()) return;
     let bytes: Uint8Array | undefined;
+    let layeredName = false;
     if (kind === 'drawing') {
       const [{ editDrawing }, { toSvg }] = await Promise.all([import('../draw/editor'), import('../draw/svg')]);
       const drawing = await editDrawing(this.root);
       if (drawing) bytes = new TextEncoder().encode(toSvg(drawing));
     } else {
       const { paintPicture } = await import('../paint/editor');
-      bytes = (await paintPicture(this.root))?.bytes;
+      const painted = await paintPicture(this.root, undefined, undefined, { layered: true });
+      bytes = painted?.bytes;
+      // DRAW-013: a picture with layers is an OpenRaster file.
+      if (painted?.mediaType === 'image/openraster') layeredName = true;
     }
     if (!bytes) return;
-    const name = t(kind === 'drawing' ? 'start.untitledDrawing' : 'start.untitledPainting');
+    let name = t(kind === 'drawing' ? 'start.untitledDrawing' : 'start.untitledPainting');
+    if (layeredName) name = name.replace(/\.[^.]+$/, '.ora');
     const view = await openView('image', bytes, this.viewContext(), name);
     this.setDocument({ name, format: 'image', kind: formatKind('image'), view });
     this.dirty = true;
@@ -1062,6 +1067,11 @@ export class App {
   private viewContext(): ViewContext {
     return {
       busy: (task) => this.withBusy(task),
+      rename: (name) => {
+        if (!this.current) return;
+        this.current.name = name;
+        this.renderHeader();
+      },
       changed: () => {
         this.markChanged();
         this.collab?.changed();

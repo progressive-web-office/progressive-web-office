@@ -110,6 +110,8 @@ export interface ViewContext {
   busy?<T>(task: () => Promise<T>): Promise<T>;
   /** DOC-041: the name of the file, shown by its fields. */
   fileName?(): string | undefined;
+  /** DRAW-013: the file changes its name (a picture that becomes a layered .ora). */
+  rename?(name: string): void;
 }
 
 /** Create a view for existing file bytes. */

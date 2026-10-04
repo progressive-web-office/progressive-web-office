@@ -587,6 +587,10 @@ integration is ever needed.
 | DRAW-010 | C | — | The system should open and save OpenDocument drawings (`.odg`) and open draw.io diagrams (`.drawio`, uncompressed). |
 | DRAW-011 | S | 0.2.0 | The drawing editor shall be accessible: every shape reachable with Tab and named for screen readers (its kind, its reference and value, its text), moved and resized with the keyboard, and the drawing given an alternative text. |
 | DRAW-012 | S | 0.2.0 | The system shall offer the graphical languages of IEC 61131-3 as symbol libraries: ladder diagram (power rails, contacts NO, NC, P, N; coils, negated, set, reset, P, N; the variable above), function block diagram (standard timers, counters, edge detectors, bistables, arithmetic and comparison functions, a generic block; named pins, instance names) and sequential function chart / Grafcet (steps, initial step, transitions with their condition, action blocks, simultaneous and selection divergences and convergences, jumps). |
+| DRAW-013 | S | 0.2.0 | The painting editor shall have layers — painted or vector, shown or hidden, with their opacity, added, duplicated, renamed, reordered, merged and deleted — and save a picture with layers as OpenRaster (.ora), reading it back, with a flattened PNG on demand. |
+| DRAW-014 | S | 0.2.0 | On a vector layer, lines, rectangles, ellipses and texts shall stay shapes: picked, moved, restyled, their text changed, removed; kept in the OpenRaster file; made pixels on demand. |
+| DRAW-015 | S | 0.2.0 | The painting editor shall import a picture as a new layer, set the background (a colour, transparent, a picture fitted as asked), crop to the selection, turn the picture a quarter turn or by any angle, flip it, turn a layer, keep the alpha channel in PNG, WebP and OpenRaster, and show transparency as a checkerboard. |
+| DRAW-016 | S | 0.2.0 | The painting editor shall draw gradients (linear, radial, conic, every hue) and a grid of any step on a layer. |
 
 ## 9u. Plugins (PLUG) — proposal
 

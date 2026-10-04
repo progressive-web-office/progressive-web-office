@@ -84,6 +84,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Layers in the painting editor** (DRAW-013..DRAW-016): painted and
+  vector layers — shown or hidden, see-through, reordered, merged, renamed —
+  where lines, rectangles, ellipses and texts stay shapes to move and
+  restyle; pictures imported as layers; a background of a colour,
+  transparent or a picture; crop to the selection, quarter turns, any angle,
+  flips, a layer turned; gradients (linear, radial, conic, every hue) and a
+  grid; transparency kept and shown. A picture with layers is saved as
+  **OpenRaster** (`.ora`, read by GIMP, Krita, MyPaint), with a flattened
+  PNG on demand. A new example: **Poster in layers**.
 - **The properties of the fields of a PDF form** (FORM-005): drawing a
   field, or choosing *Field properties…* on any field, opens a window like
   that of PDF form applications — tooltip, required, read only, value by

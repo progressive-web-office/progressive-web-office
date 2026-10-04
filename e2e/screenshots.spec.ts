@@ -161,3 +161,18 @@ test('adding a device to the synchronisation', async ({ page }) => {
   await page.locator('img.devsync-qr').waitFor();
   await shot(page, 'device-sync');
 });
+
+test('painting in layers', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  await openApp(page);
+  await page.getByRole('button', { name: /Templates and examples/ }).first().click();
+  await page.getByRole('dialog').getByRole('tab', { name: /Examples/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Poster in layers' }).click();
+  await page.getByRole('button', { name: 'Paint on the picture' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Painting' });
+  await dialog.getByRole('listbox', { name: 'Layers' }).getByRole('option').first().click();
+  await dialog.getByRole('button', { name: 'Select', exact: true }).click();
+  const box = (await dialog.locator('canvas.paint-canvas').boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.4, box.y + box.height * 0.18);
+  await shot(page, 'painting-layers');
+});

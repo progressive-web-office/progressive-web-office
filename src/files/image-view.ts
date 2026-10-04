@@ -4,14 +4,16 @@
  * painted on (DRAW-001, DRAW-008), and saved back.
  */
 import { button, h } from '../app/dom';
-import type { EditorView, ViewContext } from '../app/views';
+import type { EditorView, SaveVariant, ViewContext } from '../app/views';
 import type { DocumentFormat } from '../core/format';
 import { t } from '../i18n';
+import { isOra, ORA_TYPE, oraMerged } from '../paint/ora';
 import './files.css';
 
 /** The media type of a picture, by signature (SVG as text). */
 export function pictureType(bytes: Uint8Array): string {
   const ascii = (from: number, s: string): boolean => [...s].every((c, i) => bytes[from + i] === c.charCodeAt(0));
+  if (isOra(bytes)) return ORA_TYPE;
   if (bytes[0] === 0x89 && ascii(1, 'PNG')) return 'image/png';
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
   if (ascii(0, 'GIF8')) return 'image/gif';
@@ -22,15 +24,15 @@ export function pictureType(bytes: Uint8Array): string {
   return 'image/svg+xml';
 }
 
-/** Pictures the painting editor writes back in their own type. */
-const PAINTABLE = ['image/png', 'image/jpeg', 'image/webp'];
+/** Pictures the painting editor writes back in their own type; a layered one becomes OpenRaster (DRAW-013). */
+const PAINTABLE = ['image/png', 'image/jpeg', 'image/webp', ORA_TYPE];
 
 export class ImageView implements EditorView {
   readonly element: HTMLElement;
   private url = '';
   private readonly img: HTMLImageElement;
   private size = '';
-  private readonly type: string;
+  private type: string;
 
   constructor(
     private bytes: Uint8Array,
@@ -63,7 +65,9 @@ export class ImageView implements EditorView {
 
   private show(): void {
     if (this.url) URL.revokeObjectURL(this.url);
-    this.url = URL.createObjectURL(new Blob([this.bytes as BlobPart], { type: this.type }));
+    // An OpenRaster picture is shown by its flattened image.
+    const shown = this.type === ORA_TYPE ? (oraMerged(this.bytes) ?? new Uint8Array()) : this.bytes;
+    this.url = URL.createObjectURL(new Blob([shown as BlobPart], { type: this.type === ORA_TYPE ? 'image/png' : this.type }));
     this.img.src = this.url;
   }
 
@@ -82,8 +86,17 @@ export class ImageView implements EditorView {
       if (drawing) out = new TextEncoder().encode(toSvg(drawing));
     } else if (PAINTABLE.includes(this.type)) {
       const { paintPicture } = await import('../paint/editor');
-      const painted = await paintPicture(this.element, { bytes: this.bytes, mediaType: this.type });
-      if (painted) out = painted.bytes;
+      const painted = await paintPicture(this.element, { bytes: this.bytes, mediaType: this.type }, undefined, { layered: true });
+      if (painted) {
+        out = painted.bytes;
+        // DRAW-013: layers added to a PNG make it an OpenRaster picture, under a name saying so.
+        if (painted.mediaType !== this.type) {
+          this.type = painted.mediaType;
+          const ext = this.type === ORA_TYPE ? 'ora' : this.type.split('/')[1] === 'jpeg' ? 'jpg' : this.type.split('/')[1]!;
+          this.ctx.rename?.(this.fileName.replace(/\.[^.]+$/, '') + `.${ext}`);
+          this.ctx.headerChanged?.();
+        }
+      }
     } else return false;
     if (!out) return false;
     this.bytes = out;
@@ -94,6 +107,12 @@ export class ImageView implements EditorView {
 
   save(_format: DocumentFormat): Uint8Array {
     return this.bytes;
+  }
+
+  /** DRAW-013: a layered picture also saved flattened, as PNG. */
+  saveVariants(): SaveVariant[] {
+    if (this.type !== ORA_TYPE) return [];
+    return [{ id: 'ora-flat', label: t('paint.saveFlat'), format: 'image', suffix: '', save: async () => oraMerged(this.bytes) ?? new Uint8Array() }];
   }
 
   /** The media type of the picture, to save it. */

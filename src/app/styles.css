@@ -483,6 +483,26 @@ textarea.pdf-field { resize: none; }
 .paint-overlay { position: absolute; left: 0; top: 0; pointer-events: none; image-rendering: pixelated; }
 .paint-value { min-width: 3.5em; font-variant-numeric: tabular-nums; font-size: 0.8rem; }
 .paint-status { margin: 0; font-size: 0.8rem; color: var(--muted); }
+/* DRAW-009: the layers, beside the picture. */
+.paint-main { flex: 1; min-height: 0; display: flex; gap: 8px; }
+.paint-main .paint-scroll { flex: 1; min-width: 0; }
+.paint-stack > canvas { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
+.paint-stack > canvas:first-child { position: relative; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+.paint-stack > canvas[hidden] { display: none; }
+.paint-stack > .paint-overlay { pointer-events: auto; touch-action: none; cursor: crosshair; }
+.paint-stack > .paint-overlay:focus-visible { outline: 2px solid var(--accent, #2563eb); outline-offset: 2px; }
+.paint-layers-panel { width: 230px; flex: none; display: flex; flex-direction: column; gap: 6px; overflow: auto; border-left: 1px solid var(--border); padding-left: 8px; }
+.paint-layers-panel h3 { margin: 0; font-size: 0.95rem; }
+.paint-layers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.paint-layer-row { display: flex; align-items: center; gap: 4px; padding: 3px 4px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
+.paint-layer-row.active { border-color: var(--accent); background: var(--sel); font-weight: 600; }
+.paint-layer-row .paint-eye { padding: 0 4px; min-width: 2em; }
+.paint-layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paint-layer-kind { color: var(--muted); }
+.paint-layer-opacity { display: flex; align-items: center; gap: 4px; font-size: 0.85rem; flex-wrap: wrap; }
+.paint-layer-buttons { display: flex; flex-wrap: wrap; gap: 4px; }
+.paint-layer-buttons button { padding: 2px 6px; }
+@media (max-width: 700px) { .paint-main { flex-direction: column; } .paint-layers-panel { width: auto; border-left: none; max-height: 30vh; } }
 /* DOC-050: a field changed. */
 .field-dialog label { display: block; margin: 6px 0; }
 .field-when { border: 1px solid var(--border); border-radius: 6px; margin: 8px 0; }
