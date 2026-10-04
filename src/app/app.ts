@@ -1260,6 +1260,8 @@ export class App {
           'nav',
           { class: 'start-links', 'aria-label': t('app.links') },
           h('a', { class: 'start-link', href: new URL('docs/', document.baseURI).href, target: '_blank', rel: 'noopener', 'data-icon': '📖' }, t('app.docs')),
+          // The ways of keeping and moving documents, compared.
+          h('a', { class: 'start-link', href: new URL('docs/guide/where.html', document.baseURI).href, target: '_blank', rel: 'noopener', 'data-icon': '🧭' }, t('app.where')),
           h('a', { class: 'start-link', href: SOURCE_URL, target: '_blank', rel: 'noopener', 'data-icon': '⌨️' }, t('app.source')),
           button(t('about.open'), () => void this.showAbout(), { className: 'start-link', title: t('about.openTitle'), icon: 'ℹ️' }),
         ),

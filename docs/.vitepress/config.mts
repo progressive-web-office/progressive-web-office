@@ -33,6 +33,7 @@ export default defineConfig({
         text: 'User guide',
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
+          { text: 'Where are my documents?', link: '/guide/where' },
           { text: 'Text documents', link: '/guide/documents' },
           { text: 'Equations', link: '/guide/equations' },
           { text: 'Diagrams', link: '/guide/diagrams' },

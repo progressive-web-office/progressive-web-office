@@ -105,6 +105,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- A guide page, [Where are my documents?](docs/guide/where.md), comparing
+  files, browser storage, sending, collaboration, Git, the cloud,
+  synchronising devices and backups, with what to choose; linked from the
+  start screen.
+
 - Documents of this browser and history of synchronisations (DEVSYNC-011):
   each document with its state on the other devices (✅ the same, ⬆️ only
   here, ⬇️ there and not here yet), the trash, and a timestamped history of

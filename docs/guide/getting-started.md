@@ -72,6 +72,10 @@ While a document has unsaved changes, a draft is saved in the browser every
 
 ## Saving
 
+::: tip Files, browser, sharing, collaboration, Git, cloud, synchronisation, backups…
+[Where are my documents?](./where.md) compares them all, and tells which to choose.
+:::
+
 - **Save** (<kbd>Ctrl</kbd>+<kbd>S</kbd>) writes the file in its current format.
 - **Save as…** converts to another format of the same family
   (for example `.docx` → `.odt`, `.xlsx` → `.ods`, `.pptx` → `.odp`).
