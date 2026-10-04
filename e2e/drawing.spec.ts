@@ -94,5 +94,30 @@ test('draws a schematic with symbols and wires, inserted in a document and edite
   const svg = Object.entries(odt).find(([p]) => p.endsWith('.svg'));
   expect(svg).toBeDefined();
   expect(strFromU8(svg![1])).toContain('<metadata id="pwo-drawing">');
+  // Word gets a PNG version beside the SVG.
+  const docx = unzipSync(new Uint8Array((await saveAs(page, 'Word document (.docx)')).data));
+  expect(Object.keys(docx).filter((p) => p.startsWith('word/media/')).sort()).toEqual(['word/media/image1.png', 'word/media/image1.svg']);
+  expect(docx['word/media/image1.png']!.length).toBeGreaterThan(1000);
+  expect(errors).toEqual([]);
+});
+
+test('puts a drawing on a slide, edited again by a double click (DRAW-007)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New presentation' }).click();
+  await page.getByRole('button', { name: 'Drawing or schematic…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Drawing' });
+  await dialog.getByLabel('Library').selectOption({ label: 'Flowcharts (ISO 5807)' });
+  await dialog.getByRole('listitem', { name: 'Decision' }).click();
+  await dialog.getByLabel('Value').fill('x > 0 ?');
+  await dialog.getByLabel('Value').press('Enter');
+  await dialog.getByRole('button', { name: 'Fit to the content' }).click();
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  const img = page.locator('.stage img');
+  await expect(img).toBeVisible();
+  await img.dblclick();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.draw-objects button', { hasText: 'Decision x > 0 ?' })).toHaveCount(1);
+  expect(await dialog.getByLabel('Width').inputValue()).toBe('140');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
   expect(errors).toEqual([]);
 });

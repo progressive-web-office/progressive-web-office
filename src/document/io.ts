@@ -78,7 +78,27 @@ export async function writeDocumentAsync(doc: RichDocument, format: TextFormat):
       }
     }
   }
-  return writeDocument(doc, format, { mathml, diagrams: await renderDiagrams(doc, format) });
+  return writeDocument(doc, format, { mathml, diagrams: await renderDiagrams(doc, format), svgPng: await rasterSvgs(doc, format) });
+}
+
+/** PNG versions of the SVG pictures, for Word and LaTeX (DRAW-007). */
+async function rasterSvgs(doc: RichDocument, format: TextFormat): Promise<Map<string, Uint8Array>> {
+  const out = new Map<string, Uint8Array>();
+  if (format !== 'docx' && format !== 'texzip') return out;
+  const used = JSON.stringify(doc.blocks);
+  const svgs = [...doc.resources].filter(([key, r]) => r.mediaType === 'image/svg+xml' && used.includes(`"image":${JSON.stringify(key)}`));
+  if (!svgs.length) return out;
+  const [{ svgToPng }, { svgSize }] = await Promise.all([import('../draw/raster'), import('./docx-writer')]);
+  for (const [key, res] of svgs) {
+    try {
+      const size = svgSize(res.data) ?? { width: 300, height: 200 };
+      const blob = await svgToPng(new TextDecoder().decode(res.data), size.width, size.height, 2);
+      out.set(key, new Uint8Array(await blob.arrayBuffer()));
+    } catch {
+      /* not drawable here: the SVG alone */
+    }
+  }
+  return out;
 }
 
 /** Rasterise diagrams for formats that embed them as pictures (DIAG-005, DIAG-006). */

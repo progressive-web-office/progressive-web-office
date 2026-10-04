@@ -21,7 +21,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   numbered (R1, C1, Q1…) and their values written with units (`4k7` →
   `4.7 kΩ`). Drawings are saved as SVG that open again editable (a double
   click), as are SVG pictures made elsewhere; export as SVG or PNG; a list of
-  named objects and keyboard moves for accessibility.
+  named objects and keyboard moves for accessibility. Drawings go on slides
+  too; Word documents get a PNG version beside the SVG (read back as SVG),
+  LaTeX projects a PNG for `\includegraphics`.
 - **Physical quantities and dimensional analysis** in spreadsheets
   (UNIT-001..UNIT-004): type `12 mm`, `3.5 kN`, `9.81 m/s²`; formulas compute
   with the units (`12 mm + 3 m` → `3012 mm`, `2 kN × 0.5 m` → `1 kN·m`) and

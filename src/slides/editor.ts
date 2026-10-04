@@ -369,6 +369,8 @@ export class SlideEditor implements EditorView {
     el.addEventListener('pointercancel', end);
     el.addEventListener('dblclick', () => {
       if (shape.kind !== 'image') this.startEditing(el, shape);
+      // DRAW-007: a drawing (an SVG picture) opens again in the drawing editor.
+      else if (!this.readOnly && this.pres.resources.get(shape.image ?? '')?.mediaType === 'image/svg+xml') void this.editDrawing(shape);
     });
   }
 
@@ -565,6 +567,36 @@ export class SlideEditor implements EditorView {
     this.addShape({ ...textShape('', { kind: 'image', image: key, alt: file.name.replace(/\.[^.]+$/, ''), x: (this.pres.width - width) / 2, y: (this.pres.height - height) / 2, width, height }), paragraphs: [] });
   }
 
+  /** DRAW-007: a new drawing on the slide, or a drawing of the slide edited again. */
+  private async editDrawing(shape?: Shape): Promise<void> {
+    const res = shape?.image ? this.pres.resources.get(shape.image) : undefined;
+    const [{ editDrawing }, { fromSvg, toSvg }] = await Promise.all([import('../draw/editor'), import('../draw/svg')]);
+    let initial;
+    try {
+      initial = res ? fromSvg(new TextDecoder().decode(res.data)) : undefined;
+    } catch {
+      initial = undefined;
+    }
+    if (initial && !initial.alt && shape?.alt) initial.alt = shape.alt;
+    const drawing = await editDrawing(this.element, initial);
+    if (!drawing) return;
+    const key = addResource(this.pres, new TextEncoder().encode(toSvg(drawing)), 'image/svg+xml', res?.name ?? 'drawing.svg');
+    if (shape) {
+      this.snapshot();
+      shape.image = key;
+      if (drawing.alt) shape.alt = drawing.alt;
+      // The width is kept, the height follows the drawing.
+      shape.height = Math.round((shape.width * drawing.height) / drawing.width);
+      this.changed();
+      this.select(shape.id);
+      return;
+    }
+    const ratio = Math.min(1, (this.pres.width * 0.8) / drawing.width, (this.pres.height * 0.8) / drawing.height);
+    const width = Math.round(drawing.width * ratio);
+    const height = Math.round(drawing.height * ratio);
+    this.addShape({ ...textShape('', { kind: 'image', image: key, alt: drawing.alt ?? '', x: (this.pres.width - width) / 2, y: (this.pres.height - height) / 2, width, height }), paragraphs: [] });
+  }
+
   /** Apply a command to the text being edited, or to the selected shape as a whole. */
   private format(command: string, value?: string): void {
     if (this.editing) {
@@ -688,6 +720,7 @@ export class SlideEditor implements EditorView {
       b(t('slides.addRect'), '▭', () => this.addShape({ ...textShape('', { kind: 'rect', fill: '#4472c4', x: w * 0.4, y: hh * 0.4, width: 200, height: 120, anchor: 'middle' }), paragraphs: [] })),
       b(t('slides.addEllipse'), '◯', () => this.addShape({ ...textShape('', { kind: 'ellipse', fill: '#ed7d31', x: w * 0.4, y: hh * 0.4, width: 160, height: 160, anchor: 'middle' }), paragraphs: [] })),
       b(t('slides.addImage'), '🖼', () => void this.addImage()),
+      b(t('draw.insert'), '✏️', () => void this.editDrawing()),
       h('span', { class: 'sep' }),
       b(t('common.bold'), 'B', () => this.format('bold')),
       b(t('common.italic'), 'I', () => this.format('italic')),

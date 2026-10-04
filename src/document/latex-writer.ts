@@ -82,7 +82,10 @@ class LatexWriter {
   /** Cross-reference targets and numbers (DOC-026). */
   private xref: ReturnType<typeof crossTargets> = { targets: new Map(), numbers: new Map() };
 
-  constructor(private readonly doc: RichDocument) {
+  constructor(
+    private readonly doc: RichDocument,
+    private readonly svgPng?: Map<string, Uint8Array>,
+  ) {
     this.authorYear = doc.references?.style === 'author-year';
   }
 
@@ -395,6 +398,13 @@ class LatexWriter {
       path = `images/${key}.${extensionForType(res.mediaType)}`;
       this.imagePaths.set(key, path);
       this.images.set(path, res.data);
+      // DRAW-007: LaTeX shows the PNG version of an SVG drawing, the SVG kept beside it.
+      const png = res.mediaType === 'image/svg+xml' ? this.svgPng?.get(key) : undefined;
+      if (png) {
+        path = `images/${key}.png`;
+        this.imagePaths.set(key, path);
+        this.images.set(path, png);
+      }
     }
     const target = path ?? src;
     if (!target) return '';
@@ -418,7 +428,7 @@ function pdfMetadata(meta: DocumentMeta): string[] {
 }
 
 export function writeLatex(doc: RichDocument, opts: WriteOptions = {}): LatexOutput {
-  const writer = new LatexWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)));
+  const writer = new LatexWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)), opts.svgPng);
   const tex = writer.write();
   // DOC-027: the sources, next to main.tex.
   if (doc.references?.entries.length) writer.images.set('references.bib', new TextEncoder().encode(writeBibtex(doc.references.entries)));

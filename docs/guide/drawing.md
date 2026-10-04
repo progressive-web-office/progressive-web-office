@@ -9,8 +9,9 @@ click.
 ## Starting a drawing
 
 In a text document, choose **Insert → ✏️ Drawing or schematic…** (also in the
-right-click menu and the command palette). To change a drawing later,
-**double-click** it, or right-click it and choose **Edit the drawing**.
+right-click menu and the command palette); in a presentation, the same button
+is in the slide toolbar. To change a drawing later, **double-click** it (in a
+document, right-clicking it and choosing **Edit the drawing** works too).
 Any SVG picture of a document opens the same way: its rectangles, circles,
 lines, polygons, paths and texts become editable; what cannot be edited
 (groups with transforms, embedded pictures) is kept as it is and moves as a
@@ -96,3 +97,12 @@ Tab; a click (or Enter) selects it, and the arrows then move it.
 
 **Done** puts the drawing in the document (or updates it), **Cancel** leaves
 it as it was.
+
+## In other formats
+
+| Format | The drawing is kept as |
+|---|---|
+| ODT, Markdown, MDZ | the SVG picture, editable again |
+| DOCX | a PNG picture with the SVG beside it (Word 2016 and later shows the SVG, older versions the PNG); reopened here, the SVG is read back, editable |
+| LaTeX (.zip) | a PNG picture for `\includegraphics`, the SVG next to it |
+| Print, PDF | drawn sharp at any size |

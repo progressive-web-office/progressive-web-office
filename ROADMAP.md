@@ -213,8 +213,8 @@ group is not a commitment.
   hydraulic (ISO 1219), flowcharts (ISO 5807) — pins on the grid, orthogonal
   wires that stay connected, junction dots, references (R1, C1…) and values
   with units; next: netlist (SPICE) and bill of materials (DRAW-009)
-- ✅ Drawings inserted in text documents, editable in place (DRAW-007);
-  next: in slides, PNG version for DOCX and PDF
+- ✅ Drawings inserted in text documents and slides, editable in place, with
+  a PNG version for DOCX and LaTeX (DRAW-007); next: PNG version in PPTX
 - Bitmap painting (DRAW-008): pencil, brush, eraser, fill, shapes, text,
   selection, canvas size — for a new picture or any picture
 - OpenDocument drawings (.odg), draw.io diagrams (DRAW-010)

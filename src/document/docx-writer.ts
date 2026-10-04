@@ -85,7 +85,8 @@ const MAX_IMAGE_WIDTH_PX = 600;
 class DocxWriter {
   private rels: { id: string; type: string; target: string; external?: boolean }[] = [];
   private linkIds = new Map<string, string>();
-  private media = new Map<string, { rid: string; path: string }>();
+  /** Pictures; an SVG also gets a PNG version, shown by Word versions that cannot draw SVG (DRAW-007). */
+  private media = new Map<string, { rid: string; path: string; png?: { rid: string; path: string; data: Uint8Array } }>();
   private abstractNums: string[] = [];
   private nums: string[] = [];
   private drawingId = 1;
@@ -188,13 +189,17 @@ class DocxWriter {
     for (const [key, m] of this.media) {
       const res = this.doc.resources.get(key);
       if (res) entries.push({ path: `word/${m.path}`, data: res.data });
+      if (m.png) entries.push({ path: `word/${m.png.path}`, data: m.png.data });
     }
     return writeZip(entries);
   }
 
   private contentTypes(): string {
     const exts = new Set<string>();
-    for (const m of this.media.values()) exts.add(m.path.slice(m.path.lastIndexOf('.') + 1));
+    for (const m of this.media.values()) {
+      exts.add(m.path.slice(m.path.lastIndexOf('.') + 1));
+      if (m.png) exts.add('png');
+    }
     const types: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', avif: 'image/avif', bin: 'application/octet-stream' };
     return (
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
@@ -575,8 +580,13 @@ class DocxWriter {
       m = { rid: this.nextRid(), path: `media/image${this.media.size + 1}.${extensionForType(res.mediaType)}` };
       this.media.set(run.image, m);
       this.rels.push({ id: m.rid, type: REL.image, target: m.path });
+      const png = res.mediaType === 'image/svg+xml' ? this.opts.svgPng?.get(run.image) : undefined;
+      if (png) {
+        m.png = { rid: this.nextRid(), path: m.path.replace(/\.svg$/, '.png'), data: png };
+        this.rels.push({ id: m.png.rid, type: REL.image, target: m.png.path });
+      }
     }
-    const natural = imageSize(res.data) ?? { width: 300, height: 200 };
+    const natural = imageSize(res.data) ?? svgSize(res.data) ?? { width: 300, height: 200 };
     let w = run.width ?? natural.width;
     let h = run.height ?? (run.width ? Math.round((natural.height * run.width) / natural.width) : natural.height);
     if (w > MAX_IMAGE_WIDTH_PX) {
@@ -594,7 +604,7 @@ class DocxWriter {
       '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
       '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic>' +
       `<pic:nvPicPr><pic:cNvPr id="${id}" name="Picture ${id}" descr="${alt}"${title}/><pic:cNvPicPr/></pic:nvPicPr>` +
-      `<pic:blipFill><a:blip r:embed="${m.rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+      `<pic:blipFill>${m.png ? `<a:blip r:embed="${m.png.rid}"><a:extLst><a:ext uri="${SVG_BLIP_EXT}"><asvg:svgBlip xmlns:asvg="${SVG_BLIP_NS}" r:embed="${m.rid}"/></a:ext></a:extLst></a:blip>` : `<a:blip r:embed="${m.rid}"/>`}<a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
       `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
       '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>'
     );
@@ -763,6 +773,22 @@ const STYLES_XML =
   '<w:style w:type="paragraph" w:styleId="CommentText"><w:name w:val="annotation text"/><w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:style>' +
   '<w:style w:type="character" w:styleId="CommentReference"><w:name w:val="annotation reference"/><w:rPr><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:style>' +
   '</w:styles>';
+
+/** The SVG picture extension of Office 2016 (a PNG shown elsewhere). */
+export const SVG_BLIP_EXT = '{96DAC541-7B7A-43D3-8B79-37D633B846F1}';
+export const SVG_BLIP_NS = 'http://schemas.microsoft.com/office/drawing/2016/SVG/main';
+
+/** The size of an SVG picture from its width and height, or its viewBox. */
+export function svgSize(data: Uint8Array): { width: number; height: number } | undefined {
+  const head = new TextDecoder().decode(data.subarray(0, 2000));
+  const tag = /<svg\b[^>]*>/.exec(head)?.[0];
+  if (!tag) return undefined;
+  const num = (name: string): number => parseFloat(new RegExp(`\\s${name}="([\\d.]+)(px)?"`).exec(tag)?.[1] ?? '');
+  const vb = /viewBox="[\d.\s,-]*?([\d.]+)[\s,]+([\d.]+)"/.exec(tag);
+  const width = num('width') || Number(vb?.[1]);
+  const height = num('height') || Number(vb?.[2]);
+  return width > 0 && height > 0 ? { width, height } : undefined;
+}
 
 export function writeDocx(doc: RichDocument, opts: WriteOptions = {}): Uint8Array {
   return new DocxWriter(cellsAsBlocks(diagramsAsPictures(doc, opts.diagrams)), opts).write();

@@ -624,7 +624,8 @@ class DocxReader {
       out.push({ diagram: source, lang });
       return;
     }
-    const blip = descendants(drawing, 'blip')[0];
+    // DRAW-007: the SVG of a picture rather than its PNG version.
+    const blip = descendants(drawing, 'svgBlip')[0] ?? descendants(drawing, 'blip')[0];
     const rid = blip ? (blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'embed') ?? attr(blip, 'embed')) : null;
     const rel = rid ? this.rels.get(rid) : undefined;
     if (!rel || rel.external) return;

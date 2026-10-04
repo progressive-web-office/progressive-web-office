@@ -882,6 +882,8 @@ export interface WriteOptions {
   mathml?: Map<string, string>;
   /** Diagram source -> rendered picture, prepared asynchronously (DIAG-005). */
   diagrams?: Map<string, RenderedDiagram>;
+  /** PNG versions of the SVG pictures, by resource key (DRAW-007). */
+  svgPng?: Map<string, Uint8Array>;
 }
 
 /** A diagram rasterised for formats that cannot render its source. */
