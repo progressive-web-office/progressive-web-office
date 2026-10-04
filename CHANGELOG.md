@@ -17,6 +17,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- A private repository added as a source of templates (**Templates and
+  examples → ＋ Source…**) could not be read without an account of its site:
+  it now asks for a token allowed to read it, checked on the repository
+  (FILE-030).
 - The "Instrument panel" example failed in Python: the marimo stand-in of
   the sandbox raised `NotImplementedError` when a library probed
   `marimo._runtime` (it now raises `ImportError`, as for a missing module).

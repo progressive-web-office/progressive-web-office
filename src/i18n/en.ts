@@ -434,6 +434,8 @@ export const en = {
   'git.addToken': 'Add a token to save here',
   'git.tokenTitle': 'A token to save in the repository',
   'git.tokenWhy': '{repo} was opened without a token. To save in it, give a token of your {site} account allowed to write in this repository.',
+  'git.tokenReadTitle': 'A token to read the repository',
+  'git.tokenReadWhy': '{repo} cannot be read without a token: it is private, or does not exist. Give a token of your {site} account allowed to read this repository.',
   'git.visibility.public': 'Public',
   'git.visibility.private': 'Private',
   'git.visibility.internal': 'Internal',

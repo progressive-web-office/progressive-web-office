@@ -527,7 +527,7 @@ function fillTokenHelp(howTo: HTMLElement, kind: GitProvider, api: string): void
  * when saving there; it is checked on the repository, then remembered in this
  * browser (or kept until the application is closed).
  */
-export function askToken(host: HTMLElement, base: Pick<GitAccount, 'provider' | 'apiUrl'>, repo: string): Promise<GitAccount | null> {
+export function askToken(host: HTMLElement, base: Pick<GitAccount, 'provider' | 'apiUrl'>, repo: string, purpose: 'save' | 'read' = 'save'): Promise<GitAccount | null> {
   return new Promise((resolve) => {
     const site = (() => {
       try {
@@ -536,7 +536,7 @@ export function askToken(host: HTMLElement, base: Pick<GitAccount, 'provider' | 
         return base.apiUrl;
       }
     })();
-    const { dialog, body, close } = modal(host, 'git-token-dialog', t('git.tokenTitle'));
+    const { dialog, body, close } = modal(host, 'git-token-dialog', t(purpose === 'read' ? 'git.tokenReadTitle' : 'git.tokenTitle'));
     const token = h('input', { type: 'password', 'aria-label': t('git.token'), autocomplete: 'off', spellcheck: 'false' });
     const remember = h('input', { type: 'checkbox', checked: true });
     const howTo = h('details', { class: 'git-token-help', open: true });
@@ -568,7 +568,7 @@ export function askToken(host: HTMLElement, base: Pick<GitAccount, 'provider' | 
       }
     });
     body.append(
-      h('p', {}, t('git.tokenWhy', { repo, site })),
+      h('p', {}, t(purpose === 'read' ? 'git.tokenReadWhy' : 'git.tokenWhy', { repo, site })),
       h('label', { class: 'git-row' }, t('git.token'), ' ', token),
       h('label', { class: 'git-remember' }, remember, ` ${t('git.remember')}`),
       howTo,

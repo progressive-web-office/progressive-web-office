@@ -3,6 +3,7 @@
  * Forgejo) or cloud folder (Nextcloud / WebDAV), offered in the gallery.
  */
 import { basename, walk, type StorageProvider } from '../fs';
+import type { GitAccount } from '../git/accounts';
 
 export interface TemplateSource {
   id: string;
@@ -66,8 +67,14 @@ export async function templatesIn(provider: StorageProvider, dir: string, max = 
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** The storage of a source and the folder of its templates. */
-export async function openSource(source: TemplateSource): Promise<{ provider: StorageProvider; dir: string }> {
+/** A token for a repository that cannot be read without one (a private repository), or null when refused. */
+export type AskToken = (base: Pick<GitAccount, 'provider' | 'apiUrl'>, repo: string) => Promise<GitAccount | null>;
+
+/**
+ * The storage of a source and the folder of its templates. A private
+ * repository reads as missing or refused without a token: `ask` then gets one.
+ */
+export async function openSource(source: TemplateSource, ask?: AskToken): Promise<{ provider: StorageProvider; dir: string }> {
   if (source.kind === 'dav') {
     const { loadDavAccounts, davClient, davLabel } = await import('../webdav/ui');
     const { WebDavProvider } = await import('../webdav/provider');
@@ -75,12 +82,27 @@ export async function openSource(source: TemplateSource): Promise<{ provider: St
     if (!account) throw new Error('The account of this cloud folder is no longer in this browser.');
     return { provider: new WebDavProvider(davClient(account), `webdav:${account.id}`, davLabel(account)), dir: source.folder ?? '' };
   }
-  const [{ parseRepoAddress, hostOfApi }, { loadAccounts, clientFor }, { GitRepoProvider }] = await Promise.all([import('../git/url'), import('../git/accounts'), import('../git/provider')]);
+  const [{ parseRepoAddress, hostOfApi }, { loadAccounts, clientFor }, { GitRepoProvider }, { GitError }] = await Promise.all([
+    import('../git/url'),
+    import('../git/accounts'),
+    import('../git/provider'),
+    import('../git/types'),
+  ]);
   const at = parseRepoAddress(source.url ?? '');
   if (!at) throw new Error('This repository address is not understood.');
   const found = loadAccounts().find((a) => a.provider === at.provider && (a.apiUrl.replace(/\/+$/, '') === at.apiUrl || hostOfApi(a.apiUrl) === at.host));
   // Without an account of the site, a public repository is read without a token.
-  const client = clientFor(found ?? { provider: at.provider, apiUrl: at.apiUrl, token: '' });
-  const repo = await client.getRepo(at.path);
+  let client = clientFor(found ?? { provider: at.provider, apiUrl: at.apiUrl, token: '' });
+  let repo;
+  try {
+    repo = await client.getRepo(at.path);
+  } catch (err) {
+    // A private repository: missing (404) or refused (401, 403) without a token that reaches it.
+    if (!ask || !(err instanceof GitError) || ![401, 403, 404].includes(err.status)) throw err;
+    const account = await ask({ provider: at.provider, apiUrl: found?.apiUrl ?? at.apiUrl }, at.path);
+    if (!account) throw err;
+    client = clientFor(account);
+    repo = await client.getRepo(at.path);
+  }
   return { provider: new GitRepoProvider(client, repo, at.branch ?? repo.defaultBranch), dir: at.isFile ? '' : (at.inside ?? '') };
 }

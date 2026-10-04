@@ -436,6 +436,8 @@ export const fr: Record<MessageKey, string> = {
   'git.addToken': 'Ajouter un jeton pour enregistrer ici',
   'git.tokenTitle': 'Un jeton pour enregistrer dans le dépôt',
   'git.tokenWhy': '{repo} a été ouvert sans jeton. Pour y enregistrer, donnez un jeton de votre compte {site} autorisé à écrire dans ce dépôt.',
+  'git.tokenReadTitle': 'Un jeton pour lire le dépôt',
+  'git.tokenReadWhy': '{repo} ne peut pas être lu sans jeton : il est privé, ou n’existe pas. Donnez un jeton de votre compte {site} autorisé à lire ce dépôt.',
   'git.visibility.public': 'Public',
   'git.visibility.private': 'Privé',
   'git.visibility.internal': 'Interne',

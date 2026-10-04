@@ -730,7 +730,7 @@ export class App {
     const sourcesModule = await import('../templates/sources');
     const opened = new Map<string, Promise<{ provider: import('../fs').StorageProvider; dir: string }>>();
     const open = (s: import('../templates/sources').TemplateSource) => {
-      if (!opened.has(s.id)) opened.set(s.id, sourcesModule.openSource(s));
+      if (!opened.has(s.id)) opened.set(s.id, sourcesModule.openSource(s, (base, repo) => this.askReadToken(base, repo)));
       return opened.get(s.id)!;
     };
     const sources = {
@@ -801,7 +801,7 @@ export class App {
 
   /** FILE-030: a repository or a cloud folder of templates, among the places used or given by its address. */
   private async addTemplateSource(): Promise<import('../templates/sources').TemplateSource | null> {
-    const [{ addSource }, { loadDavAccounts, davLabel }] = await Promise.all([import('../templates/sources'), import('../webdav/ui')]);
+    const [{ addSource, openSource }, { loadDavAccounts, davLabel }] = await Promise.all([import('../templates/sources'), import('../webdav/ui')]);
     const places = loadPlaces();
     const accounts = loadDavAccounts();
     const address = t('tpl.sourceAddress');
@@ -827,7 +827,21 @@ export class App {
       this.showError(t('git.badAddress'));
       return null;
     }
-    return addSource({ kind: 'git', label: `${at.path}${at.inside ? `/${at.inside}` : ''}`, url });
+    // A private repository is read with a token of the site, asked now if none reaches it.
+    const source = { kind: 'git' as const, label: `${at.path}${at.inside ? `/${at.inside}` : ''}`, url };
+    try {
+      await openSource({ ...source, id: '' }, (base, repo) => this.askReadToken(base, repo));
+    } catch (err) {
+      this.showError(t('tpl.sourceError', { message: (err as Error).message }));
+      return null;
+    }
+    return addSource(source);
+  }
+
+  /** FILE-030: a token for a private repository of templates, checked on it. */
+  private async askReadToken(base: Pick<import('../git/accounts').GitAccount, 'provider' | 'apiUrl'>, repo: string): Promise<import('../git/accounts').GitAccount | null> {
+    const { askToken } = await import('../git/ui');
+    return askToken(this.root, base, repo, 'read');
   }
 
   async save(format?: DocumentFormat): Promise<void> {

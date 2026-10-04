@@ -141,7 +141,10 @@ and templates, Markdown, LaTeX, CSV, drawings and pictures.
 
 A template picked there opens as a **new document**, not tied to the
 repository or the server: save it where you want. A public repository needs
-no account; a private one needs an account of its site (see
+no account. A **private** one is read with a token of its site: when no
+account of the site reaches it, adding it (or opening its tab later) asks
+for a token allowed to read the repository, checks it, and remembers it in
+this browser — or until the application is closed (see
 [Git repositories](./git.md)). **✕ Remove the source**, under its templates,
 takes it out of the gallery (its files are not touched). Shared with a team,
 the same repository gives everyone the same templates, and Git keeps their

@@ -436,6 +436,8 @@ export const zh: Record<MessageKey, string> = {
   'git.addToken': '添加令牌以便在此保存',
   'git.tokenTitle': '用于保存到仓库的令牌',
   'git.tokenWhy': '{repo} 是在没有令牌的情况下打开的。要保存到其中，请提供您 {site} 账户中有权写入此仓库的令牌。',
+  'git.tokenReadTitle': '用于读取仓库的令牌',
+  'git.tokenReadWhy': '没有令牌无法读取 {repo}：它是私有的，或者不存在。请提供您 {site} 账户中有权读取此仓库的令牌。',
   'git.visibility.public': '公开',
   'git.visibility.private': '私有',
   'git.visibility.internal': '内部',
