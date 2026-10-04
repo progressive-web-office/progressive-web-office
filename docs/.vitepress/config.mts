@@ -1,9 +1,16 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitepress';
 
 // The app is published one level above the documentation (see pages.yml).
 const APP_URL = process.env.DOCS_URL ? process.env.DOCS_URL.replace(/\/docs\/?$/, '/') : 'https://progressive-web-office.github.io/progressive-web-office/';
 
 export default defineConfig({
+  // The appearance in three positions (system, light, dark) in place of the default two.
+  vite: {
+    resolve: {
+      alias: [{ find: /^.*\/VPSwitchAppearance\.vue$/, replacement: fileURLToPath(new URL('./theme/AppearanceSwitch.vue', import.meta.url)) }],
+    },
+  },
   title: 'Progressive Web Office (PWO)',
   description: 'A simple office suite that runs entirely in your browser.',
   base: process.env.DOCS_BASE ?? '/',
