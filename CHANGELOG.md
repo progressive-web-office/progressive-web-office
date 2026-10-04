@@ -139,6 +139,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The front matter of a Markdown note shown as a card of properties above its
+  page (NOTE-001): tags as coloured chips, `[[links]]` to follow, dates,
+  yes/no and numbers, each changed in place and written back in its order;
+  or shown to read only, or as YAML to change at once.
+
 - **Dark paper** for documents (UI-023): *View › Paper of documents* (or
   the settings) shows a text document as the theme of the application (by
   default), on white paper, or as light text on dark paper for reading at

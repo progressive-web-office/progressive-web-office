@@ -635,6 +635,12 @@ integration is ever needed.
 | PLUG-007 | C | — | The plugin API should offer commands, importers and exporters, panels, symbols, templates, snippets and code-cell languages. |
 | PLUG-008 | C | — | A version of a plugin marked revoked in its registry should be disabled at the next check. |
 
+## 9v. Notes and knowledge (NOTE)
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| NOTE-001 | S | 0.2.0 | The front matter of a Markdown note shall be shown above its page as a card of properties, each with its type — text, list, date, number, yes/no, YAML left as it is — tags as coloured chips and `[[links]]` and web addresses drawn as links to follow; each property shall be changed, added or removed in place, the front matter written back in its order with the lines of the others unchanged; the card shall be shown to change, to read, or as the YAML source of the whole front matter, the choice kept, and hidden from the View menu. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.

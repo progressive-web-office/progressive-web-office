@@ -31,7 +31,7 @@ const KEYS: Record<string, keyof DocumentMeta> = {
   source: 'source',
 };
 
-function unquote(value: string): string | null {
+export function unquote(value: string): string | null {
   const v = value.trim();
   if (v.startsWith('"')) {
     if (!v.endsWith('"') || v.length < 2) return null;
@@ -47,7 +47,7 @@ function unquote(value: string): string | null {
   return v;
 }
 
-function inlineList(value: string): string[] | null {
+export function inlineList(value: string): string[] | null {
   const v = value.trim();
   if (!v.startsWith('[') || !v.endsWith(']')) return null;
   const items: string[] = [];
@@ -111,7 +111,7 @@ export function parseFrontMatter(text: string): FrontMatter {
 }
 
 /** Quote a scalar when plain YAML could misread it. */
-function scalar(value: string): string {
+export function scalar(value: string): string {
   return /^[\wÀ-￿][\wÀ-￿ .,/()+-]*$/.test(value) && !/^(true|false|null|yes|no|~)$/i.test(value) && !/^[\d.+-]+$/.test(value.replace(/-/g, '')) ? value : JSON.stringify(value);
 }
 

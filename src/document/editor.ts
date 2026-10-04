@@ -26,6 +26,7 @@ import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdo
 import { bytesToBase64, writeMarkdown } from './markdown-writer';
 import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
 import { Rulers } from './rulers';
+import { loadShowProperties, PropertiesCard, saveShowProperties } from './properties-card';
 import { loadPaper, PAPERS, savePaper, type PaperPreference } from '../app/paper';
 import { LENGTH_UNITS, loadLengthUnit, loadRulerSides, RULERS_EVENT, saveLengthUnit, saveRulerSides, UNIT_EVENT, type LengthUnit, type RulerSides } from './units';
 import { writeLatex } from './latex-writer';
@@ -270,7 +271,7 @@ export class DocumentEditor implements EditorView {
       loadLengthUnit(),
     );
     const sheet = h('div', { class: 'doc-sheet' }, this.rulers.horizontal, h('div', { class: 'doc-sheet-body' }, this.rulers.vertical, this.page));
-    const scroller = h('div', { class: 'doc-scroll' }, this.headerStrip, sheet, this.footerStrip, this.notes);
+    const scroller = h('div', { class: 'doc-scroll' }, this.propertiesCard.element, this.headerStrip, sheet, this.footerStrip, this.notes);
     this.scroller = scroller;
     this.element = h('div', { class: 'doc-editor' });
     this.showRulers(loadRulerSides());
@@ -487,7 +488,17 @@ export class DocumentEditor implements EditorView {
     const parsed = this.readSource(pane.text(), lang);
     for (const [key, res] of parsed.resources) if (!this.doc.resources.has(key)) this.doc.resources.set(key, res);
     this.doc.meta = { ...parsed.meta };
+    // The rest of the front matter too: the other keys (NOTE-001), the page, the sources.
+    if (lang === 'markdown') {
+      const { frontMatter: _old, ...extras } = this.doc.extras ?? {};
+      this.doc.extras = parsed.extras?.frontMatter ? { ...extras, frontMatter: parsed.extras.frontMatter } : extras;
+      if (parsed.page) this.doc.page = parsed.page;
+      else delete this.doc.page;
+      if (parsed.references) this.doc.references = parsed.references;
+      else delete this.doc.references;
+    }
     this.replaceBlocks(parsed.blocks.length ? parsed.blocks : [{ type: 'paragraph', style: 'normal', runs: [] }], false);
+    this.renderFurniture();
   }
 
   /** DOC-044: switch between visual editing, the source with its preview, and reading. */
@@ -534,6 +545,9 @@ export class DocumentEditor implements EditorView {
 
   /** Header and footer shown above and below the page, fields as examples. */
   private renderFurniture(): void {
+    // NOTE-001: the properties of a Markdown note, above its page.
+    if (this.sourceLang() === 'markdown' && loadShowProperties()) this.propertiesCard.render();
+    else this.propertiesCard.element.hidden = true;
     const page = this.doc.page;
     const title = this.doc.meta.title ?? '';
     for (const [strip, kind] of [[this.headerStrip, 'header'], [this.footerStrip, 'footer']] as const) {
@@ -1502,6 +1516,8 @@ export class DocumentEditor implements EditorView {
     const saved = loadEditMode(this.modeKind());
     if (saved === 'reading' || (saved === 'source' && this.sourceLang())) this.setMode(saved);
     this.viewMenu.dispatchEvent(new Event('refill'));
+    // NOTE-001: a Markdown note shows its properties (the file's name is known now).
+    this.renderFurniture();
     // SET-002: documents with text may open in review mode.
     if (loadReading().review && this.view.state.doc.textContent.trim()) this.review.toggle(true, false);
   }
@@ -1631,6 +1647,10 @@ export class DocumentEditor implements EditorView {
         h('option', { value: 'ruler-h' }, `${mark(this.element.classList.contains('show-ruler-h'))}${t('ruler.horizontal')}`),
         h('option', { value: 'ruler-v' }, `${mark(this.element.classList.contains('show-ruler-v'))}${t('ruler.vertical')}`),
         h('optgroup', { label: t('unit.label') }, ...LENGTH_UNITS.map((u) => h('option', { value: `unit-${u}` }, `${mark(loadLengthUnit() === u)}${t(`unit.${u}`)}`))),
+        // NOTE-001: the properties of a Markdown note.
+        ...(this.sourceLang() === 'markdown'
+          ? [h('option', { value: 'props-show' }, `${mark(loadShowProperties())}${t('props.show')}`), ...(this.readOnly ? [] : [h('option', { value: 'props-add' }, t('props.addMenu'))])]
+          : []),
         // UI-023: the paper on screen.
         h('optgroup', { label: t('paper.label') }, ...PAPERS.map((p) => h('option', { value: `paper-${p}` }, `${mark(loadPaper() === p)}${t(`paper.${p}`)}`))),
         // COLOR-002: the colours as a printer would print them.
@@ -1662,6 +1682,11 @@ export class DocumentEditor implements EditorView {
       if (value === 'ruler-v') saveRulerSides({ ...sides, vertical: !sides.vertical });
       if (value.startsWith('unit-')) saveLengthUnit(value.slice(5) as LengthUnit);
       if (value.startsWith('paper-')) savePaper(value.slice(6) as PaperPreference);
+      if (value === 'props-show') {
+        saveShowProperties(!loadShowProperties());
+        this.renderFurniture();
+      }
+      if (value === 'props-add') this.addProperty();
       if (value === 'proof') this.element.classList.toggle('soft-proof');
       if (value === 'hyphenate') {
         const on = !this.element.classList.contains('hyphenate');
@@ -1973,6 +1998,31 @@ export class DocumentEditor implements EditorView {
       );
     };
     await (this.ctx.busy ? this.ctx.busy(run) : run());
+  }
+
+  // --- NOTE-001: the properties of a note -------------------------------------------
+
+  private readonly propertiesCard = new PropertiesCard({
+    get: () => ({ meta: this.doc.meta, extra: typeof this.doc.extras?.frontMatter === 'string' ? this.doc.extras.frontMatter : '' }),
+    set: (meta, extra) => {
+      this.doc.meta = meta;
+      const { frontMatter: _old, ...extras } = this.doc.extras ?? {};
+      this.doc.extras = extra.trim() ? { ...extras, frontMatter: extra } : extras;
+      this.changed();
+    },
+    readOnly: () => this.readOnly,
+    open: (href) => {
+      if (!this.ctx.openLink?.(href) && isSafeUrl(href)) window.open(href, '_blank', 'noopener');
+    },
+    tagColour: (tag) => this.ctx.tagColour?.(tag),
+    suggestions: async (kind) => (await this.ctx.completions?.(kind)) ?? [],
+  });
+
+  /** Add a property to the note (and show its properties). */
+  private addProperty(): void {
+    if (this.readOnly || this.sourceLang() !== 'markdown') return;
+    if (!loadShowProperties()) saveShowProperties(true);
+    this.propertiesCard.add();
   }
 
   // --- DOC-053: named paragraph styles --------------------------------------------

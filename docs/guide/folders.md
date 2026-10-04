@@ -130,6 +130,23 @@ A folder of Markdown notes works as a set of linked notes:
 - The YAML front matter of each note (tags, aliases, any key) is kept as it
   is.
 
+### Properties of a note
+
+The front matter of a Markdown note is shown above its page as a card of
+**properties** (NOTE-001): tags as coloured chips, `[[links]]` and web
+addresses as links to follow, dates, yes/no boxes and numbers.
+
+- **Edit** changes a value in place; a value holding a link shows the link,
+  and its pencil ✎ changes it. *Add a property* (or **View › Add a
+  property…**) adds one with its type; the ✕ of a row removes it. The front
+  matter is written back in its order, the other lines as they were.
+- **Read** shows the values only, drawn: links, chips, dates in words.
+- **YAML** shows the whole front matter as text, to change at once — taken
+  back when you leave the field.
+
+The way chosen is kept for the next notes; **View › Properties of the note**
+hides the card.
+
 ### Tags
 
 **Tags** (below the tree) lists the tags of the notes, the most used first
