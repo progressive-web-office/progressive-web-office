@@ -127,6 +127,26 @@ These templates stay in this browser only (IndexedDB): they are not sent
 anywhere, and clearing the browser's data deletes them. To share a template,
 save the document as a file.
 
+## Templates in your own repository or cloud
+
+Keep your templates — letters with your letterhead, reports of your team,
+exercise sheets — in a **Git repository** (GitHub, GitLab, Gitea / Forgejo)
+or a **Nextcloud / WebDAV folder**, and add it to the gallery: **＋ Source…**
+at the end of the tabs offers the repositories and servers you have used,
+your cloud accounts (then the folder of the templates), or a repository by
+its address (`https://github.com/team/templates/tree/main/letters`). The
+source gets its own tab, read only when you choose it; every document in
+its folder (and sub-folders) is a template — OpenDocument and Office files
+and templates, Markdown, LaTeX, CSV, drawings and pictures.
+
+A template picked there opens as a **new document**, not tied to the
+repository or the server: save it where you want. A public repository needs
+no account; a private one needs an account of its site (see
+[Git repositories](./git.md)). **✕ Remove the source**, under its templates,
+takes it out of the gallery (its files are not touched). Shared with a team,
+the same repository gives everyone the same templates, and Git keeps their
+versions.
+
 ## Templates of a folder
 
 When a [folder](./folders.md) is open, the documents of its `Templates`

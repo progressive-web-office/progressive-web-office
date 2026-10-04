@@ -202,3 +202,36 @@ test('the gallery shows one kind at a time, finds templates by name, and opens d
   await expect(page.getByRole('button', { name: 'Paint on the picture' })).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('templates kept in one’s own repository, added as a source of the gallery (FILE-030)', async ({ page }) => {
+  const errors = await openApp(page);
+  const files: Record<string, string> = { 'letters/Invoice.md': '# Invoice\n\nNumber: …\n', 'letters/Minutes.md': '# Minutes\n', 'README.md': 'Read me' };
+  await page.route('https://api.github.com/**', async (route) => {
+    const p = new URL(route.request().url()).pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (p === '/repos/me/templates') return json({ full_name: 'me/templates', default_branch: 'main', private: false });
+    if (p === '/repos/me/templates/git/trees/main') return json({ tree: [{ path: 'letters', type: 'tree', sha: 't' }, ...Object.entries(files).map(([path, text]) => ({ path, type: 'blob', sha: `s-${path}`, size: text.length }))], truncated: false });
+    const m = /^\/repos\/me\/templates\/contents\/(.+)$/.exec(p);
+    if (m && files[decodeURIComponent(m[1]!)]) return json({ type: 'file', sha: 's', content: Buffer.from(files[decodeURIComponent(m[1]!)]!).toString('base64'), encoding: 'base64' });
+    return json({ message: 'Not Found' }, 404);
+  });
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  const gallery = page.getByRole('dialog', { name: 'New from a template' });
+  await gallery.getByRole('button', { name: 'Source…' }).click();
+  const choose = page.getByRole('dialog', { name: 'Source…' });
+  await choose.getByLabel('Another repository, by its address…').check();
+  page.once('dialog', (d) => void d.accept('https://github.com/me/templates/tree/main/letters'));
+  await choose.getByRole('button', { name: 'OK' }).click();
+  // Its own tab, read when chosen: only the documents of its folder.
+  const panel = gallery.getByRole('tabpanel', { name: 'me/templates/letters' });
+  await expect(panel.locator('.template-card')).toHaveText(['Invoice', 'Minutes']);
+  await panel.getByRole('button', { name: 'Invoice' }).click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Invoice');
+  // A new document: not tied to the repository of the templates.
+  await expect(page.locator('.doc-source')).toHaveCount(0);
+  // Remembered for the next time.
+  await page.reload();
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await expect(gallery.getByRole('tab', { name: 'me/templates/letters' })).toBeVisible();
+  expect(errors).toEqual([]);
+});

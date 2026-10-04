@@ -6,11 +6,26 @@ import { button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
 import type { UserTemplate } from '../storage/recent';
 import { TEMPLATES, type Template } from './catalog';
+import type { SourceTemplate, TemplateSource } from './sources';
 
 /** A template kept in the open folder (FOLDER-020). */
 export interface FolderTemplateChoice {
   name: string;
   path: string;
+}
+
+/** FILE-030: a template of a repository or a cloud folder. */
+export interface SourceTemplateChoice {
+  source: TemplateSource;
+  template: SourceTemplate;
+}
+
+/** FILE-030: the repositories and cloud folders of templates, and how to manage them. */
+export interface TemplateSources {
+  list: TemplateSource[];
+  load(source: TemplateSource): Promise<SourceTemplate[]>;
+  add(): Promise<TemplateSource | null>;
+  remove(source: TemplateSource): void;
 }
 
 const GROUPS: [MessageKey, (tpl: Template) => boolean][] = [
@@ -33,10 +48,11 @@ export function chooseTemplate(
   mine: UserTemplate[] = [],
   remove?: (id: string) => Promise<void>,
   folder?: { label: string; items: FolderTemplateChoice[] },
-): Promise<Template | UserTemplate | FolderTemplateChoice | null> {
+  sources?: TemplateSources,
+): Promise<Template | UserTemplate | FolderTemplateChoice | SourceTemplateChoice | null> {
   return new Promise((resolve) => {
     const dialog = h('dialog', { class: 'dialog template-dialog', 'aria-labelledby': 'tpl-title' });
-    const finish = (tpl: Template | UserTemplate | FolderTemplateChoice | null): void => {
+    const finish = (tpl: Template | UserTemplate | FolderTemplateChoice | SourceTemplateChoice | null): void => {
       dialog.close();
       dialog.remove();
       resolve(tpl);
@@ -70,10 +86,35 @@ export function chooseTemplate(
     const inFolder = (tpl: FolderTemplateChoice): HTMLElement =>
       h('li', {}, button(tpl.name, () => finish(tpl), { className: 'template-card', icon: '📁', title: tpl.path }), h('p', { class: 'hint' }, tpl.path));
     // One panel per kind, behind tabs; the folder's or the user's templates first when there are some.
-    const panels: { label: string; body: HTMLElement; cards: { el: HTMLElement; words: string }[] }[] = [];
+    const panels: { label: string; body: HTMLElement; cards: { el: HTMLElement; words: string }[]; load?: () => Promise<void> }[] = [];
     const panel = (label: string, items: HTMLElement[], words: string[], empty?: HTMLElement): void => {
       const list = h('ul', { class: 'template-list', role: 'list' }, ...items);
       panels.push({ label, body: h('div', { class: 'template-panel', role: 'tabpanel', 'aria-label': label }, items.length ? list : (empty ?? list)), cards: items.map((el, i) => ({ el, words: fold(words[i] ?? '') })) });
+    };
+    // FILE-030: a repository or a cloud folder of templates, read when its tab is first chosen.
+    const sourcePanel = (source: TemplateSource): void => {
+      const body = h('div', { class: 'template-panel', role: 'tabpanel', 'aria-label': source.label }, h('p', { class: 'hint' }, t('git.loading')));
+      const entry: (typeof panels)[number] = { label: source.label, body, cards: [] };
+      entry.load = async () => {
+        entry.load = undefined;
+        const forget = button(t('tpl.sourceRemove', { name: source.label }), () => {
+          if (!window.confirm(t('tpl.sourceRemoveConfirm', { name: source.label }))) return;
+          sources!.remove(source);
+          const i = panels.indexOf(entry);
+          panels.splice(i, 1);
+          tabs.splice(i, 1)[0]!.remove();
+          select(0);
+        }, { text: `✕ ${t('tpl.sourceRemove', { name: source.label })}`, className: 'link' });
+        try {
+          const items = await sources!.load(source);
+          const cards = items.map((tpl) => h('li', {}, button(tpl.name, () => finish({ source, template: tpl }), { className: 'template-card', icon: source.kind === 'git' ? '⎇' : '☁', title: tpl.path }), h('p', { class: 'hint' }, tpl.path)));
+          entry.cards = cards.map((el, i) => ({ el, words: fold(`${items[i]!.name} ${items[i]!.path}`) }));
+          body.replaceChildren(cards.length ? h('ul', { class: 'template-list', role: 'list' }, ...cards) : h('p', { class: 'hint' }, t('tpl.sourceEmpty')), h('p', {}, forget));
+        } catch (err) {
+          body.replaceChildren(h('p', { class: 'error', role: 'alert' }, t('tpl.sourceError', { message: (err as Error).message })), h('p', {}, forget));
+        }
+      };
+      panels.push(entry);
     };
     if (folder?.items.length) panel(t('tpl.folder', { name: folder.label }), folder.items.map(inFolder), folder.items.map((f) => `${f.name} ${f.path}`));
     if (mine.length) panel(t('tpl.mine'), mine.map(own), mine.map((m) => m.name));
@@ -82,19 +123,35 @@ export function chooseTemplate(
       if (items.length) panel(t(label), items.map(card), items.map((tpl) => `${t(tpl.name)} ${t(tpl.description)}`));
     }
     if (!mine.length) panel(t('tpl.mine'), [], [], h('p', { class: 'hint' }, t('tpl.mineEmpty')));
-    const tabs = panels.map((p, i) => {
-      const tab = h('button', { type: 'button', role: 'tab', class: 'template-tab', 'aria-selected': String(i === 0), tabindex: i === 0 ? '0' : '-1' }, p.label);
-      tab.addEventListener('click', () => select(i));
+    for (const source of sources?.list ?? []) sourcePanel(source);
+    const makeTab = (p: (typeof panels)[number]): HTMLButtonElement => {
+      const tab = h('button', { type: 'button', role: 'tab', class: 'template-tab', 'aria-selected': 'false', tabindex: '-1' }, p.label);
+      tab.addEventListener('click', () => select(panels.indexOf(p)));
       tab.addEventListener('keydown', (e) => {
         const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
         if (!step) return;
         e.preventDefault();
-        select((i + step + panels.length) % panels.length);
-        tabs[(i + step + panels.length) % panels.length]!.focus();
+        const next = (panels.indexOf(p) + step + panels.length) % panels.length;
+        select(next);
+        tabs[next]!.focus();
       });
       return tab;
-    });
-    const tablist = h('div', { class: 'template-tabs', role: 'tablist', 'aria-label': t('tpl.categories') }, ...tabs);
+    };
+    const tabs = panels.map(makeTab);
+    // FILE-030: another repository or cloud folder of templates.
+    const addTab = sources
+      ? button(t('tpl.sourceAdd'), () => {
+          void sources.add().then((source) => {
+            if (!source) return;
+            sourcePanel(source);
+            const tab = makeTab(panels[panels.length - 1]!);
+            tabs.push(tab);
+            tablist.insertBefore(tab, addTab);
+            select(panels.length - 1);
+          });
+        }, { className: 'template-tab template-add', text: `＋ ${t('tpl.sourceAdd')}`, title: t('tpl.sourceAddTitle') })
+      : null;
+    const tablist = h('div', { class: 'template-tabs', role: 'tablist', 'aria-label': t('tpl.categories') }, ...tabs, ...(addTab ? [addTab] : []));
     const stage = h('div', { class: 'template-stage' });
     const results = h('ul', { class: 'template-list', role: 'list', 'aria-label': t('tpl.search') });
     const noMatch = h('p', { class: 'hint' }, t('tpl.noMatch'));
@@ -106,6 +163,7 @@ export function chooseTemplate(
         tab.tabIndex = j === i ? 0 : -1;
       });
       stage.replaceChildren(panels[i]!.body);
+      void panels[i]!.load?.();
     }
     // A search shows every match, whatever its kind.
     const search = h('input', { type: 'search', class: 'template-search', placeholder: t('tpl.search'), 'aria-label': t('tpl.search') });

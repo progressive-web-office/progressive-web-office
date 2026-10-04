@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Templates in your own repository or cloud** (FILE-030): a Git repository
+  (or a folder of one) or a Nextcloud / WebDAV folder added to the gallery
+  with **＋ Source…**; its documents are templates, in their own tab, read
+  when chosen; a template opens as a new document.
 - **Drawings and pictures in the template gallery** (FILE-018): an
   electrical circuit, a ladder diagram, a Grafcet, a pneumatic circuit and a
   flowchart, editable at once; graph paper, a colour wheel and a pixel-art

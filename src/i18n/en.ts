@@ -1945,6 +1945,16 @@ export const en = {
   'tpl.search': 'Search a template or an example…',
   'tpl.categories': 'Kinds of templates',
   'tpl.noMatch': 'No template matches.',
+  'tpl.sourceAdd': 'Source…',
+  'tpl.sourceAddTitle': 'Add a repository or a cloud folder of your templates',
+  'tpl.sourceAddMessage': 'Where are your templates? A repository (GitHub, GitLab, Gitea / Forgejo) or a Nextcloud / WebDAV folder: every document in it becomes a template.',
+  'tpl.sourceAddress': 'Another repository, by its address…',
+  'tpl.sourceAddressPrompt': 'Address of the repository, or of a folder of it:',
+  'tpl.sourceFolderPrompt': 'Folder of the templates on this server (empty for all):',
+  'tpl.sourceEmpty': 'No document in this folder.',
+  'tpl.sourceError': 'The templates could not be read: {message}',
+  'tpl.sourceRemove': 'Remove the source {name}',
+  'tpl.sourceRemoveConfirm': 'Remove {name} from the template sources? Its files are not touched.',
 } as const;
 
 export type MessageKey = keyof typeof en;

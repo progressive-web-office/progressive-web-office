@@ -723,8 +723,41 @@ export class App {
     const mine = await storage.listTemplates().catch(() => []);
     const provider = this.folder?.provider;
     const inFolder = provider ? await import('../folder/templates').then((m) => m.folderTemplates(provider)).catch(() => []) : [];
-    const template = await chooseTemplate(this.root, mine, (id) => storage.deleteTemplate(id), provider ? { label: provider.label, items: inFolder } : undefined);
+    // FILE-030: the repositories and cloud folders of templates.
+    const sourcesModule = await import('../templates/sources');
+    const opened = new Map<string, Promise<{ provider: import('../fs').StorageProvider; dir: string }>>();
+    const open = (s: import('../templates/sources').TemplateSource) => {
+      if (!opened.has(s.id)) opened.set(s.id, sourcesModule.openSource(s));
+      return opened.get(s.id)!;
+    };
+    const sources = {
+      list: sourcesModule.loadSources(),
+      load: async (s: import('../templates/sources').TemplateSource) => {
+        const { provider: p, dir } = await open(s);
+        return sourcesModule.templatesIn(p, dir);
+      },
+      add: () => this.addTemplateSource(),
+      remove: (s: import('../templates/sources').TemplateSource) => sourcesModule.removeSource(s.id),
+    };
+    const template = await chooseTemplate(this.root, mine, (id) => storage.deleteTemplate(id), provider ? { label: provider.label, items: inFolder } : undefined, sources);
     if (!template || !this.confirmDiscard()) return;
+    if ('source' in template) {
+      // A copy of the template of the repository or the cloud folder: a new document, saved where the user wants.
+      await this.withBusy(async () => {
+        try {
+          const { provider: p } = await open(template.source);
+          const bytes = new Uint8Array(await (await p.read(template.template.path)).arrayBuffer());
+          await this.openBytes(template.template.path.replace(/^.*\//, ''), bytes);
+          if (this.current) {
+            delete this.current.source;
+            delete this.current.dav;
+          }
+        } catch (err) {
+          this.showError(t('tpl.sourceError', { message: (err as Error).message }));
+        }
+      });
+      return;
+    }
     if ('path' in template) {
       // A copy of the folder's template, a new document: saving asks where.
       await this.withBusy(async () => {
@@ -761,6 +794,37 @@ export class App {
         this.showError((err as Error).message);
       }
     });
+  }
+
+  /** FILE-030: a repository or a cloud folder of templates, among the places used or given by its address. */
+  private async addTemplateSource(): Promise<import('../templates/sources').TemplateSource | null> {
+    const [{ addSource }, { loadDavAccounts, davLabel }] = await Promise.all([import('../templates/sources'), import('../webdav/ui')]);
+    const places = loadPlaces();
+    const accounts = loadDavAccounts();
+    const address = t('tpl.sourceAddress');
+    const options = [...places.map((p) => `${p.kind === 'git' ? '⎇' : '☁'} ${p.label}`), ...accounts.map((a) => `☁ ${davLabel(a)}`), address];
+    const choice = await this.choose(t('tpl.sourceAdd'), t('tpl.sourceAddMessage'), options, options[0]!, t('common.ok'));
+    if (!choice) return null;
+    const i = options.indexOf(choice);
+    if (i < places.length) {
+      const p = places[i]!;
+      return p.kind === 'git' ? addSource({ kind: 'git', label: p.label, url: p.url }) : addSource({ kind: 'dav', label: p.label, ...(p.accountId ? { accountId: p.accountId } : {}), ...(p.folder ? { folder: p.folder } : {}) });
+    }
+    if (i < places.length + accounts.length) {
+      const a = accounts[i - places.length]!;
+      const folder = window.prompt(t('tpl.sourceFolderPrompt'), '')?.trim().replace(/^\/+|\/+$/g, '') ?? null;
+      if (folder === null) return null;
+      return addSource({ kind: 'dav', label: `${davLabel(a)}${folder ? `/${folder}` : ''}`, accountId: a.id, ...(folder ? { folder } : {}) });
+    }
+    const url = window.prompt(t('tpl.sourceAddressPrompt'), 'https://github.com/owner/templates')?.trim();
+    if (!url) return null;
+    const { parseRepoAddress } = await import('../git/url');
+    const at = parseRepoAddress(url);
+    if (!at) {
+      this.showError(t('git.badAddress'));
+      return null;
+    }
+    return addSource({ kind: 'git', label: `${at.path}${at.inside ? `/${at.inside}` : ''}`, url });
   }
 
   async save(format?: DocumentFormat): Promise<void> {
