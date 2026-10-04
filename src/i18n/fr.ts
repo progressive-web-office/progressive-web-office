@@ -841,6 +841,8 @@ export const fr: Record<MessageKey, string> = {
   'devsync.cmdScan': 'Appairer cet appareil : scanner un QR code d’invitation',
   'devsync.cmdInvite': 'Ajouter un appareil : montrer un QR code d’invitation',
   'devsync.done': 'Synchronisation demandée aux appareils en ligne.',
+  'devsync.searching': 'Recherche de vos autres appareils…',
+  'devsync.waitingRequest': 'En attente du nouvel appareil…',
   'devsync.fingerprint': 'Empreinte de l’appairage : {emojis} — la même sur tous les appareils appairés ensemble.',
   'devsync.networkDirect': 'Réseau : {open}/{total} relais joints, recherche directe des appareils.',
   'devsync.networkRelays': 'Réseau : {open}/{total} relais joints ; les messages passent aussi par eux (chiffrés).',

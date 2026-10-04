@@ -839,6 +839,8 @@ export const en = {
   'devsync.cmdScan': 'Pair this device: scan an invitation QR code',
   'devsync.cmdInvite': 'Add a device: show an invitation QR code',
   'devsync.done': 'Synchronisation asked to the devices online.',
+  'devsync.searching': 'Looking for your other devices…',
+  'devsync.waitingRequest': 'Waiting for the new device…',
   'devsync.fingerprint': 'Fingerprint of the pairing: {emojis} — the same on every device paired together.',
   'devsync.networkDirect': 'Network: {open}/{total} relays reached, looking for the devices directly.',
   'devsync.networkRelays': 'Network: {open}/{total} relays reached; messages also go through them (encrypted).',

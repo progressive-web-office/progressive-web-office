@@ -25,8 +25,11 @@ test('warns before synchronising devices, then pairs this one and shows invitati
   await dialog.getByRole('button', { name: 'Create a pairing' }).click();
   await expect(dialog.getByText('No other device yet.')).toBeVisible();
   await expect(dialog.locator('img.devsync-qr')).toHaveCount(0);
+  // Turning while it looks for the other devices.
+  await expect(dialog.getByText('Looking for your other devices…')).toBeVisible();
   await dialog.getByRole('button', { name: 'Show an invitation QR code' }).click();
   await expect(dialog.locator('img.devsync-qr')).toBeVisible();
+  await expect(dialog.getByText('Waiting for the new device…')).toBeVisible();
   await expect(dialog.getByText(/Valid until .*, for one device\./)).toBeVisible();
   await dialog.getByRole('button', { name: 'Sync now' }).click();
   await expect(dialog.getByText(/No other device is online/)).toBeVisible();

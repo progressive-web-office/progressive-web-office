@@ -1511,6 +1511,8 @@ body.distraction-free .ai-panel { display: none !important; }
 .devsync-emojis { font-size: 2rem; letter-spacing: 0.3em; margin: 6px 0; }
 .devsync-steps { margin: 4px 0 8px; padding-left: 1.4rem; }
 .devsync-now { margin: 4px 0; }
+.devsync-searching { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.devsync-searching[hidden] { display: none; }
 .devsync-request { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin: 8px 0; }
 
 /* GIT-013: who can see a repository, and who works on it. */

@@ -841,6 +841,8 @@ export const zh: Record<MessageKey, string> = {
   'devsync.cmdScan': '配对此设备：扫描邀请二维码',
   'devsync.cmdInvite': '添加设备：显示邀请二维码',
   'devsync.done': '已请求在线设备同步。',
+  'devsync.searching': '正在寻找您的其他设备…',
+  'devsync.waitingRequest': '正在等待新设备…',
   'devsync.fingerprint': '配对指纹：{emojis} — 在所有一起配对的设备上都相同。',
   'devsync.networkDirect': '网络：已连接 {open}/{total} 个中继，正在直接寻找设备。',
   'devsync.networkRelays': '网络：已连接 {open}/{total} 个中继；消息也会通过它们传输（已加密）。',

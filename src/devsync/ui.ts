@@ -64,7 +64,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         leaving.delete(leave);
         void render();
       });
-      body.replaceChildren(h('p', {}, t('devsync.joining')), h('p', { class: 'devsync-emojis', 'aria-label': t('devsync.emojis') }, asked.emojis), h('p', { class: 'hint' }, t('devsync.waitingAccept')), h('div', { class: 'dialog-actions start' }, cancel));
+      body.replaceChildren(h('p', {}, t('devsync.joining')), h('p', { class: 'devsync-emojis', 'aria-label': t('devsync.emojis') }, asked.emojis), h('p', { class: 'devsync-searching', role: 'status' }, h('span', { class: 'spinner', 'aria-hidden': 'true' }), ` ${t('devsync.waitingAccept')}`), h('div', { class: 'dialog-actions start' }, cancel));
       const expired = new Promise<'expired'>((r) => setTimeout(() => r('expired'), Math.max(0, inv.expires - Date.now())));
       const answer = await Promise.race([asked.answer, expired]);
       // The answer is in: the invitation is no longer needed.
@@ -93,6 +93,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       };
       leaving.add(leave);
       const requests = h('div', { class: 'devsync-requests', 'aria-live': 'polite' });
+      const waiting = h('p', { class: 'devsync-searching', role: 'status' }, h('span', { class: 'spinner', 'aria-hidden': 'true' }), ` ${t('devsync.waitingRequest')}`);
       const end = (message: string, delay = 0): void => {
         setTimeout(leave, delay);
         leaving.delete(leave);
@@ -113,6 +114,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
             h('div', { class: 'dialog-actions start' }, button(t('devsync.accept'), () => r.accept(), { className: 'primary' }), button(t('devsync.refuse'), () => (r.refuse(), row.remove()))),
           );
           requests.append(row);
+          waiting.hidden = true;
         },
         // Leave a moment later, for the answer to reach the new device.
         (name) => end(t('devsync.added', { name }), 3000),
@@ -124,6 +126,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         // What to do on the new device, said where the user looks.
         h('p', {}, t('devsync.inviteSteps')),
         h('ol', { class: 'devsync-steps' }, h('li', {}, t('devsync.inviteStep1')), h('li', {}, t('devsync.inviteStep2')), h('li', {}, t('devsync.inviteStep3'))),
+        waiting,
         requests,
       );
     };
@@ -219,8 +222,11 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
           );
       }
       const peers = h('ul', { class: 'devsync-peers' });
+      // UI-019: turning while this device looks for the others, until one is online.
+      const searching = h('p', { class: 'devsync-searching', role: 'status' }, h('span', { class: 'spinner', 'aria-hidden': 'true' }), ` ${t('devsync.searching')}`);
       const showPeers = (): void => {
         const online = new Set((currentSync()?.peers ?? []).map((p) => p.device));
+        searching.hidden = !currentSync() || online.size > 0;
         const known = Object.entries(loadSyncState().peers);
         peers.replaceChildren(
           ...(known.length
@@ -284,6 +290,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         nameRow,
         h('h3', {}, t('devsync.devices')),
         peers,
+        searching,
         network,
         fingerprint,
         h('p', { class: 'hint' }, last ? t('devsync.lastSync', { when: new Date(last).toLocaleString() }) : t('devsync.neverSynced')),
