@@ -115,6 +115,98 @@ group is not a commitment.
 - ✅ Related notes (shared tags and links) beside the open note (FOLDER-019)
 - ✅ A graph of the links between the notes of a folder (FOLDER-018)
 - ✅ Note identifiers (timestamps) and links by identifier (FOLDER-024)
+- ✅ Folders of thousands of notes indexed in the background, only the
+  changed notes read again (FOLDER-025)
+- ✅ Properties of a note: its front matter as a card — tags, links, dates,
+  yes/no, numbers — to change, to read, or as YAML (NOTE-001)
+
+A knowledge base kept in plain Markdown files, on the device, readable by
+any other tool. Planned, the most useful first:
+
+**Links and navigation**
+
+- Autocompletion of `[[` with the names and aliases of the notes, and of
+  `[[Note#` with its headings; links to a heading and to a paragraph
+  (`[[Note#^id]]`)
+- Embedded notes `![[Note]]`, a section `![[Note#Heading]]`, an image at a
+  width `![[image.png|300]]`, a page of a PDF — read-only, without loops
+- A preview of the linked note when hovering a link
+- Outline of the note: its headings, to jump to and to move sections
+- Bookmarks of notes, headings and searches, in groups
+- Links that stay readable in other Markdown tools (reference definitions
+  at the end of the note), as an option
+
+**Backlinks**
+
+- Backlinks at the bottom of the note, or beside it, or hidden — a setting,
+  and a command for one note
+- Linked and unlinked mentions (the name or an alias written without a
+  link), each made a link in one click
+- Settings: the whole paragraph or one line of context, sort by name or
+  date, collapsed, a filter
+
+**Graph**
+
+- An interactive graph drawn by the browser (not a diagram): zoom, pan,
+  click to open, thousands of notes
+- The graph of the open note with a depth (1 to 5); the whole folder
+- Filters (a search, tags as nodes, attachments, orphans, links to missing
+  notes) and groups coloured by a search (`tag:#project`, `path:journal`)
+
+**Properties and views**
+
+- One type per property for the whole folder; a list of all properties with
+  their use, renamed everywhere at once
+- Search operators: `tag:`, `path:`, `file:`, `line:`, `section:`,
+  `task:`, `[status:done]`, `OR`, `-`, `/regex/`; a live search written in a
+  note
+- Views of notes kept as a file (YAML) — a table whose cells change the
+  properties, cards, a list, a board by status, a calendar by date —
+  filtered, sorted and grouped, with formulas computed without running code
+- Properties linking notes to each other, and totals over them
+
+**Daily notes and calendar**
+
+- Today's note opened (created when missing), named `YYYY-MM-DD` by default,
+  the format, the folder and the template chosen; a format with `/` makes
+  sub-folders
+- A month calendar beside the notes: a dot for each day with a note, a click
+  opens or creates it; previous and next day
+- Weekly, monthly, quarterly and yearly notes, each with its format, folder
+  and template
+- Dates written in words (`@today`, `@next friday`) made links to their day
+
+**Templates**
+
+- A folder of templates; a template inserted or used for each new note, for
+  a folder, for the daily notes
+- Fields: `{{title}}`, `{{date}}`, `{{time}}`, `{{date:YYYY-MM-DD}}`,
+  `{{date+7d}}`, the cursor, a value asked; the template's properties merged
+  into the note's — never code run
+
+**Tasks and boards**
+
+- Every `- [ ]` of the folder in one list, ticked in place, by note
+- Due, scheduled and done dates, priority, recurrence; lists of tasks written
+  as a query in a note
+- A board of cards kept as Markdown (headings for columns, items for cards),
+  or a view of notes by their `status`
+- A day planner: tasks with times on a timeline
+
+**More**
+
+- A canvas: notes, texts, files and groups placed and linked on a board,
+  saved in an open JSON format
+- A hand-drawn whiteboard kept in the folder
+- Flashcards written in the notes (`question::answer`), reviewed at spaced
+  intervals, the schedule kept in the front matter
+- A mind map of the headings and lists of a note
+- Editing lists as an outline (move, indent, fold with the keyboard)
+- A tidy-up of notes: front matter, headings and spacing made regular
+- Import of notes exported by other applications (HTML, Markdown, ENEX)
+- Related notes found by meaning, computed on the device only
+- Nothing of these runs code from a note: extensions stay content packs and
+  sandboxed plugins (see Plugins)
 
 ### Working on several documents
 
