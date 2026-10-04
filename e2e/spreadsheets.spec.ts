@@ -163,3 +163,46 @@ test('changes the width of columns: dragged at the header, fitted, typed; kept i
   expect(await colWidth(2)).toBe(140);
   expect(errors).toEqual([]);
 });
+
+test('fills a series with the fill handle, by a double click and with Ctrl+D (SHEET-027)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'fill.csv', 'Item 1,1,x\nItem 2,3,x\n,,x\n,,x\n,,x\n', 'text/csv');
+  // Columns A and B: drag the handle of A1:B2 down to row 5.
+  await page.locator('td[data-r="0"][data-c="0"]').click();
+  await page.locator('td[data-r="1"][data-c="1"]').click({ modifiers: ['Shift'] });
+  const handle = page.locator('.fill-handle');
+  await expect(handle).toHaveCount(1);
+  const box = (await handle.boundingBox())!;
+  const target = (await page.locator('td[data-r="4"][data-c="1"]').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(target.x + 10, target.y + 10, { steps: 5 });
+  await expect(page.locator('td.fill-preview')).not.toHaveCount(0);
+  await page.mouse.up();
+  await expect(page.locator('td[data-r="4"][data-c="0"]')).toHaveText('Item 5');
+  await expect(page.locator('td[data-r="4"][data-c="1"]')).toHaveText('9');
+  await expect(page.locator('td.fill-preview')).toHaveCount(0);
+
+  // Column D: a formula filled down by a double click, as far as column C goes.
+  await page.locator('td[data-r="0"][data-c="3"]').click();
+  await page.keyboard.type('=B1*2');
+  await page.keyboard.press('Enter');
+  await page.locator('td[data-r="0"][data-c="3"]').click();
+  await page.locator('.fill-handle').dblclick();
+  await expect(page.locator('td[data-r="4"][data-c="3"]')).toHaveText('18');
+  await page.locator('td[data-r="4"][data-c="3"]').click();
+  await expect(page.getByLabel('Cell content')).toHaveValue('=B5*2');
+
+  // Ctrl+D copies the first row over the selection, without a series.
+  await page.locator('td[data-r="0"][data-c="4"]').click();
+  await page.keyboard.type('Item 1');
+  await page.keyboard.press('Enter');
+  await page.locator('td[data-r="0"][data-c="4"]').click();
+  await page.locator('td[data-r="2"][data-c="4"]').click({ modifiers: ['Shift'] });
+  await page.keyboard.press('Control+d');
+  await expect(page.locator('td[data-r="2"][data-c="4"]')).toHaveText('Item 1');
+  // Undone in one step.
+  await page.keyboard.press('Control+z');
+  await expect(page.locator('td[data-r="2"][data-c="4"]')).toHaveText('');
+  expect(errors).toEqual([]);
+});

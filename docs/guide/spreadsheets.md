@@ -33,8 +33,31 @@ Select a cell and start typing, or type in the formula bar (**fx**).
 | <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>X</kbd> / <kbd>V</kbd> | copy / cut / paste (tab-separated text, compatible with other spreadsheets) |
 | <kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd> | undo / redo |
 | <kbd>Ctrl</kbd>+<kbd>Home</kbd> | go to A1 |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> / <kbd>R</kbd> | fill down / right: the first row (column) of the selection copied over the rest |
 
 The status bar shows the count, sum and average of the selected cells.
+
+## Filling a series
+
+The small square at the bottom right of the selection is the **fill
+handle**. Drag it down, up, right or left: the cells it covers continue
+the selection.
+
+| Selection | Filled with |
+|-----------|-------------|
+| `1`, `3` | `5`, `7`, `9`… (the step of the selection; a trend when the steps differ) |
+| `7` alone | `7`, `7`… (a single number is copied) |
+| `2026-01-30` alone | the next days |
+| `Item 1`, `Week 08` | `Item 2`, `Week 09`… |
+| `Monday`, `Jan`, `janvier`, `Q1` | the next days, months or quarters, round again after the last |
+| `=A1*$C$1` | the formula, its relative references moved (`=A2*$C$1`…) |
+| anything else | repeated |
+
+Each column (filling down) or row (filling right) goes on by itself, and the
+formatting of the cells comes along. **Double-click** the handle to fill
+down as far as the column beside goes. The command palette also has **Fill
+a series into the empty cells of the selection**: select the start of the
+series and the empty cells after it.
 
 ## Formulas
 

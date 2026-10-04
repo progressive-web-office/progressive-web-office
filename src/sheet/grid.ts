@@ -17,6 +17,7 @@ import { fillWithMath, typesetMath } from '../math/inline';
 import { partsWorkbook, workbookParts, type CollabAdapter, type PeerCursor } from '../collab/parts';
 import { addSheet, applyCellStyle, clearCellStyle, clearRange, copyRange, deleteCells, deleteSheet, guessHeader, insertCells, pasteText, renameSheet, sortRange, type Range } from './ops';
 import { chooseSort } from './sort-dialog';
+import { fillDownEnd, fillRange, fillTarget } from './fill';
 import { columnValues, displayText, hiddenRows, RowMap, setColumnFilter, toggleFilter } from './filter';
 
 const ROW_H = 24;
@@ -83,6 +84,8 @@ export class SheetEditor implements EditorView {
   private undoStack: { si: number; wb: Workbook }[] = [];
   private redoStack: { si: number; wb: Workbook }[] = [];
   private dragging = false;
+  /** SHEET-027: the selection being filled by dragging its handle, and the range it will fill. */
+  private filling?: { from: Range; to: Range };
   /** Where the other participants are (COLLAB-003). */
   private peers: PeerCursor[] = [];
 
@@ -397,6 +400,9 @@ export class SheetEditor implements EditorView {
     for (let col = r.c1; col <= r.c2; col++) this.table.querySelector(`th[data-col="${col}"]`)?.classList.add('hl');
     const active = this.td(this.focusCell.row, this.focusCell.col);
     active?.classList.add('active');
+    // SHEET-027: the fill handle, at the bottom right of the selection.
+    this.table.querySelector('.fill-handle')?.remove();
+    if (!this.readOnly) this.td(r.r2, r.c2)?.append(h('span', { class: 'fill-handle', title: t('sheet.fillHandle'), 'aria-hidden': 'true' }));
     if (active) this.viewport.setAttribute('aria-activedescendant', (active.id = `cell-${this.focusCell.row}-${this.focusCell.col}`));
     this.nameBox.textContent = refName(this.focusCell.row, this.focusCell.col);
     const cell = getCell(this.wb.sheets[this.si]!, [this.focusCell.row, this.focusCell.col]);
@@ -915,6 +921,10 @@ export class SheetEditor implements EditorView {
       } else if (e.key === 'Home') {
         e.preventDefault();
         this.select(0, 0);
+      } else if ((k === 'd' || k === 'r') && !e.shiftKey && !e.altKey) {
+        // SHEET-027: fill down / right from the first row / column of the selection.
+        e.preventDefault();
+        this.fillSelection(k === 'd' ? 'down' : 'right');
       } else if (k === 'b' || k === 'i' || k === 'u') {
         // SHEET-014: character formatting of the selection.
         e.preventDefault();
@@ -1157,6 +1167,13 @@ export class SheetEditor implements EditorView {
         void this.filterColumn(Number(filterBtn.dataset.filterCol));
         return;
       }
+      if (t.classList.contains('fill-handle')) {
+        e.preventDefault();
+        this.commitEdit();
+        const from = this.range();
+        this.filling = { from, to: from };
+        return;
+      }
       const td = t.closest('td');
       if (td?.dataset.r) {
         e.preventDefault();
@@ -1184,6 +1201,14 @@ export class SheetEditor implements EditorView {
       }
     });
     this.viewport.addEventListener('mousemove', (e) => {
+      if (this.filling && e.buttons & 1) {
+        const td = (e.target as HTMLElement).closest('td');
+        if (td?.dataset.r) {
+          this.filling.to = fillTarget(this.filling.from, Number(td.dataset.r), Number(td.dataset.c));
+          this.renderFillPreview();
+        }
+        return;
+      }
       if (!this.dragging || !(e.buttons & 1)) return;
       const td = (e.target as HTMLElement).closest('td');
       if (td?.dataset.r) {
@@ -1191,8 +1216,22 @@ export class SheetEditor implements EditorView {
         this.renderSelection();
       }
     });
-    window.addEventListener('mouseup', () => (this.dragging = false));
+    window.addEventListener('mouseup', () => {
+      this.dragging = false;
+      if (!this.filling) return;
+      const { from, to } = this.filling;
+      this.filling = undefined;
+      this.renderFillPreview();
+      this.fill(from, to);
+    });
     this.viewport.addEventListener('dblclick', (e) => {
+      // SHEET-027: a double click on the handle fills down as far as the data beside.
+      if ((e.target as HTMLElement).classList.contains('fill-handle')) {
+        const from = this.range();
+        const end = fillDownEnd(this.wb, this.si, from);
+        if (end > from.r2) this.fill(from, { ...from, r2: end });
+        return;
+      }
       if ((e.target as HTMLElement).closest('td')) this.startEdit();
     });
     this.viewport.addEventListener('copy', (e) => this.onCopy(e, false));
@@ -1222,6 +1261,72 @@ export class SheetEditor implements EditorView {
         this.viewport.focus();
       }
     });
+  }
+
+  // --- SHEET-027: filling ---------------------------------------------------------
+
+  /** Fill `to` from `from`, continuing series, and select what was filled. */
+  private fill(from: Range, to: Range, series = true): void {
+    if (this.readOnly) return;
+    this.snapshot();
+    if (!fillRange(this.wb, this.si, from, to, { series })) {
+      this.undoStack.pop();
+      return;
+    }
+    this.anchor = { row: to.r1, col: to.c1 };
+    this.focusCell = { row: to.r2, col: to.c2 };
+    this.changed();
+  }
+
+  /** Ctrl+D / Ctrl+R: the first row (column) of the selection copied down (right) over the rest. */
+  private fillSelection(direction: 'down' | 'right'): void {
+    this.commitEdit();
+    const r = this.range();
+    if (direction === 'down' ? r.r1 === r.r2 : r.c1 === r.c2) return;
+    const from = direction === 'down' ? { ...r, r2: r.r1 } : { ...r, c2: r.c1 };
+    this.fill(from, r, false);
+  }
+
+  /** Fill a series from the selection: its filled cells are the start, the empty ones below (or right) are filled. */
+  private fillSeries(): void {
+    this.commitEdit();
+    const r = this.range();
+    const sheet = this.wb.sheets[this.si]!;
+    const rowFilled = (row: number): boolean => {
+      for (let c = r.c1; c <= r.c2; c++) if (sheet.cells.has(cellKey(row, c))) return true;
+      return false;
+    };
+    const colFilled = (col: number): boolean => {
+      for (let row = r.r1; row <= r.r2; row++) if (sheet.cells.has(cellKey(row, col))) return true;
+      return false;
+    };
+    if (r.r2 > r.r1 || r.c1 === r.c2) {
+      let last = r.r1;
+      while (last < r.r2 && rowFilled(last + 1)) last++;
+      if (last < r.r2) this.fill({ ...r, r2: last }, r);
+    } else {
+      let last = r.c1;
+      while (last < r.c2 && colFilled(last + 1)) last++;
+      if (last < r.c2) this.fill({ ...r, c2: last }, r);
+    }
+  }
+
+  private renderFillPreview(): void {
+    for (const td of Array.from(this.table.querySelectorAll<HTMLElement>('td.fill-preview'))) td.classList.remove('fill-preview');
+    if (!this.filling) return;
+    const { to } = this.filling;
+    for (let row = Math.max(to.r1, this.firstRow); row <= Math.min(to.r2, this.lastRow); row++) {
+      for (let col = to.c1; col <= to.c2; col++) this.td(row, col)?.classList.add('fill-preview');
+    }
+  }
+
+  commands(): import('../app/palette').PaletteCommand[] {
+    const where = t('sheet.label');
+    return [
+      { label: t('sheet.fillDown'), keys: ['Ctrl+D'], where, run: () => this.fillSelection('down') },
+      { label: t('sheet.fillRight'), keys: ['Ctrl+R'], where, run: () => this.fillSelection('right') },
+      { label: t('sheet.fillSeries'), where, run: () => this.fillSeries() },
+    ];
   }
 
   private onCopy(e: ClipboardEvent, cut: boolean): void {

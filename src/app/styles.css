@@ -340,6 +340,10 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 .grid td.err { color: var(--danger); text-align: center; }
 .grid td.sel { background: var(--sel); }
 .grid td.active { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* SHEET-027: the fill handle at the bottom right of the selection, and the cells it will fill. */
+.grid td:has(> .fill-handle):not(.frz-r):not(.frz-c) { position: relative; }
+.grid .fill-handle { position: absolute; right: 0; bottom: 0; width: 7px; height: 7px; background: var(--accent); border: 1px solid var(--bg, #fff); cursor: crosshair; z-index: 2; }
+.grid td.fill-preview { outline: 1px dashed var(--accent); outline-offset: -1px; }
 .cell-input {
   position: absolute; z-index: 4; padding: 0 5px; border: 2px solid var(--accent);
   font: inherit; font-size: 0.9rem; background: var(--surface); color: var(--text); box-sizing: border-box;

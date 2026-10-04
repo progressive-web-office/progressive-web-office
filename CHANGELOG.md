@@ -101,6 +101,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The fill handle of spreadsheets (SHEET-027): drag the corner of the
+  selection to continue a series — numbers, dates, "Item 1", days, months,
+  formulas with their references moved — double-click it to fill down as
+  far as the data beside, or press Ctrl+D / Ctrl+R to copy down or right.
+
 - Every built-in template can now be made from the interface: a button to
   rename a sheet (✎), a **+ Title** button for title slides, and in the
   document Insert group a line break (↵) and a grid of special characters
