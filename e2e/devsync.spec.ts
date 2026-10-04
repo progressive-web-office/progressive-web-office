@@ -177,3 +177,43 @@ test('a paired device saves a document in the browser, synchronised; recent docu
   await expect(dialog.getByText('Synchronised documents: 1.')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('the trash of the synchronised documents: a file restored, another deleted for good (DEVSYNC-009)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pwo.collab.transport', 'local'));
+  const errors = await openApp(page);
+  await page.evaluate(async () => {
+    localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'd1', name: 'Laptop', understood: true, auto: false, peers: {}, base: {}, known: {}, deleted: {}, pairing: { room: 'room-of-the-trash', secret: 'the-key-of-the-documents-trash', since: 1 } }));
+    let dir = await navigator.storage.getDirectory();
+    for (const name of ['Documents', '.pwo-trash', '2026-10-03', 'notes']) dir = await dir.getDirectoryHandle(name, { create: true });
+    for (const name of ['old plan.md', 'draft.md']) {
+      const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+      await w.write(`# ${name}`);
+      await w.close();
+    }
+  });
+  await page.keyboard.press('Control+Shift+P');
+  await page.getByRole('combobox', { name: 'Commands' }).fill('show an invitation');
+  await page.keyboard.press('Enter');
+  await page.getByRole('dialog', { name: 'Sync my devices' }).getByRole('button', { name: 'Open the trash' }).click();
+  const trash = page.getByRole('dialog', { name: 'Trash of the synchronised documents' });
+  await expect(trash.locator('li.file')).toHaveCount(2);
+  await trash.locator('li.file', { hasText: 'notes/old plan.md' }).getByRole('button', { name: 'Restore' }).click();
+  await expect(trash.getByText('Restored as notes/old plan.md.')).toBeVisible();
+  page.once('dialog', (d) => void d.accept());
+  await trash.locator('li.file', { hasText: 'notes/draft.md' }).getByRole('button', { name: 'Delete for good' }).click();
+  await expect(trash.getByText('The trash is empty.')).toBeVisible();
+  const files = await page.evaluate(async () => {
+    const out: string[] = [];
+    const visit = async (dir: FileSystemDirectoryHandle, path: string): Promise<void> => {
+      for await (const [name, handle] of (dir as unknown as { entries(): AsyncIterable<[string, FileSystemHandle]> }).entries()) {
+        if (handle.kind === 'directory') await visit(handle as FileSystemDirectoryHandle, `${path}${name}/`);
+        else out.push(`${path}${name}`);
+      }
+    };
+    await visit(await (await navigator.storage.getDirectory()).getDirectoryHandle('Documents'), '');
+    return out.sort();
+  });
+  expect(files).toEqual(['notes/old plan.md']);
+  await trash.getByRole('button', { name: 'Close' }).click();
+  expect(errors).toEqual([]);
+});

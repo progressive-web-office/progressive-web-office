@@ -3,7 +3,7 @@ import type { CollabRoom } from '@scelles/collab';
 import { MemoryProvider } from '../src/fs';
 import { DeviceSync } from '../src/devsync/session';
 import { loadSyncState, type DeviceSyncState } from '../src/devsync/state';
-import { safePath } from '../src/devsync/engine';
+import { listTrash, restoreFromTrash, safePath } from '../src/devsync/engine';
 
 /** Two rooms joined to each other, delivering messages asynchronously. */
 function roomPair(): [CollabRoom, CollabRoom, () => void] {
@@ -70,6 +70,18 @@ describe('DEVSYNC-002, DEVSYNC-003 two devices of one person', () => {
     expect(await names(laptop.provider)).toContain('Documents/b.md');
     expect((await names(laptop.provider)).filter((n) => !n.startsWith('.pwo-trash'))).not.toContain('Documents/a.md');
     expect((await names(laptop.provider)).some((n) => /^\.pwo-trash\/\d{4}-\d{2}-\d{2}\/Documents\/a\.md$/.test(n))).toBe(true);
+
+    // DEVSYNC-009: restored from the trash on the laptop, it comes back on the phone too.
+    const [trashed] = await listTrash(laptop.provider);
+    expect(trashed?.original).toBe('Documents/a.md');
+    await restoreFromTrash(laptop.provider, trashed!.path);
+    await s1.syncNow();
+    await settle(s1, s2);
+    expect(await (await phone.provider.read('Documents/a.md')).text()).toBe('A');
+    // And it stays on the laptop after the phone synchronises in turn.
+    await s2.syncNow();
+    await settle(s1, s2);
+    expect(await (await laptop.provider.read('Documents/a.md')).text()).toBe('A');
 
     // Changed on both: both versions kept, on both devices.
     await laptop.provider.write('Documents/shared.md', new Blob(['laptop']));

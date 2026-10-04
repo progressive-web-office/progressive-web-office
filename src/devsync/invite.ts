@@ -50,20 +50,23 @@ interface Request { name: string; key: string }
 /** The pairing, encrypted (AES-GCM) with the key both derive (ECDH, then HKDF). */
 interface Answer { ok: boolean; key?: string; iv?: string; data?: string }
 
-const b64u = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const unb64u = (s: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+export const b64u = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+export const unb64u = (s: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 const ECDH = { name: 'ECDH', namedCurve: 'P-256' } as const;
 
-/** The AES key shared by two devices: ECDH between their keys, then HKDF bound to the invitation. */
-async function sharedKey(mine: CryptoKey, theirs: string, inv: Invitation): Promise<CryptoKey> {
+/** The AES key shared by two devices: ECDH between their keys, then HKDF with a salt and a purpose. */
+export async function ecdhAesKey(mine: CryptoKey, theirs: string, salt: string, info: string): Promise<CryptoKey> {
   const pub = await crypto.subtle.importKey('raw', unb64u(theirs), ECDH, false, []);
   const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: pub }, mine, 256);
   const hkdf = await crypto.subtle.importKey('raw', bits, 'HKDF', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new TextEncoder().encode(inv.secret), info: new TextEncoder().encode('pwo-pair key') }, hkdf, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new TextEncoder().encode(salt), info: new TextEncoder().encode(info) }, hkdf, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 
-const newKeyPair = (): Promise<CryptoKeyPair> => crypto.subtle.generateKey(ECDH, false, ['deriveBits']) as Promise<CryptoKeyPair>;
-const publicKey = async (pair: CryptoKeyPair): Promise<string> => b64u(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
+/** The AES key of an invitation: bound to its secret. */
+const sharedKey = (mine: CryptoKey, theirs: string, inv: Invitation): Promise<CryptoKey> => ecdhAesKey(mine, theirs, inv.secret, 'pwo-pair key');
+
+export const newKeyPair = (): Promise<CryptoKeyPair> => crypto.subtle.generateKey(ECDH, false, ['deriveBits']) as Promise<CryptoKeyPair>;
+export const publicKey = async (pair: CryptoKeyPair): Promise<string> => b64u(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
 
 export interface JoinRequest {
   peer: string;

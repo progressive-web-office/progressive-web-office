@@ -307,6 +307,17 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         count.textContent = t('devsync.count', { n });
       };
       void recount();
+      // DEVSYNC-009: the trash, to restore a document.
+      const trashButton = button(t('devsync.trashOpen'), async () => {
+        const files = currentSync()?.files;
+        if (!files) return;
+        const { showTrash } = await import('./trash-ui');
+        await showTrash(host, files, () => {
+          void recount();
+          const live = currentSync();
+          if (live && loadSyncState().auto && live.sync.peerCount()) void live.sync.syncNow();
+        });
+      }, { icon: '🗑' });
       // DEVSYNC-007: recent documents (files of the disk, kept here) copied among the synchronised ones.
       const addRecent = button(t('devsync.addRecent'), async () => {
         const files = currentSync()?.files;
@@ -347,7 +358,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         h('p', { class: 'hint' }, t('devsync.addDeviceHint', { minutes: INVITE_MINUTES })),
         inviteArea,
         h('p', { class: 'hint' }, t('devsync.codeSecret')),
-        h('p', { class: 'hint' }, t('devsync.trashHint', { folder: `${SYNC_FOLDER}/${TRASH}`, days: TOMBSTONE_DAYS })),
+        h('p', { class: 'hint' }, t('devsync.trashHint', { folder: `${SYNC_FOLDER}/${TRASH}`, days: TOMBSTONE_DAYS }), ' ', trashButton),
         h('details', {}, h('summary', {}, t('devsync.reminder')), warnings()),
         h('div', { class: 'dialog-actions start' }, revoke, leave),
       );

@@ -89,6 +89,18 @@ How the documents are merged:
 
 Hidden files and the trash are never synchronised.
 
+### The trash
+
+**🗑 Open the trash** in the window lists what each synchronisation put in
+the trash of this device, by day: documents deleted on another device, and
+versions replaced by a newer one.
+
+- **↩ Restore** puts a document back where it was (as `name (2).md` when the
+  name is taken again). The other devices get it back at the next
+  synchronisation.
+- **🗑 Delete for good** removes it now, on this device only; the trash of
+  the other devices keeps its own copy until its 30 days are over.
+
 ## When the devices do not see each other
 
 - **Open the application on both devices**, each on **🔁 Sync my devices**

@@ -124,3 +124,54 @@ export async function emptyOldTrash(provider: StorageProvider, now = Date.now())
   }
   return removed;
 }
+
+/** DEVSYNC-009: a file in the trash, where it came from, and the day it went there. */
+export interface TrashItem {
+  /** Its path in the trash: `.pwo-trash/2026-10-03/notes/a.md`. */
+  path: string;
+  /** Where it was: `notes/a.md`. */
+  original: string;
+  day: string;
+  size?: number;
+}
+
+/** The files of the trash, the most recent days first. */
+export async function listTrash(provider: StorageProvider): Promise<TrashItem[]> {
+  const out: TrashItem[] = [];
+  try {
+    for await (const e of walk(provider, TRASH, { skip: () => false, maxDepth: 32, maxEntries: 10_000 })) {
+      const m = new RegExp(`^${TRASH}/(\\d{4}-\\d{2}-\\d{2})/(.+)$`).exec(e.path);
+      if (m) out.push({ path: e.path, original: m[2]!, day: m[1]!, ...(e.size !== undefined ? { size: e.size } : {}) });
+    }
+  } catch {
+    return [];
+  }
+  return out.sort((a, b) => (a.day === b.day ? a.original.localeCompare(b.original) : a.day < b.day ? 1 : -1));
+}
+
+/** Put a file of the trash back where it was (next to it when that name is taken); where it went. */
+export async function restoreFromTrash(provider: StorageProvider, path: string): Promise<string> {
+  const m = new RegExp(`^${TRASH}/\\d{4}-\\d{2}-\\d{2}/(.+)$`).exec(path);
+  const original = m ? safePath(m[1]) : undefined;
+  if (!original) throw new Error('not in the trash');
+  const target = await freePath(provider, original);
+  await provider.move(path, target);
+  await removeEmptyDays(provider);
+  return target;
+}
+
+/** Remove a file of the trash for good. */
+export async function deleteFromTrash(provider: StorageProvider, path: string): Promise<void> {
+  if (!new RegExp(`^${TRASH}/\\d{4}-\\d{2}-\\d{2}/.+$`).test(path) || path.split('/').includes('..')) throw new Error('not in the trash');
+  await provider.remove(path);
+  await removeEmptyDays(provider);
+}
+
+/** The days of the trash left with no file. */
+async function removeEmptyDays(provider: StorageProvider): Promise<void> {
+  for (const d of await provider.list(TRASH).catch(() => [])) {
+    if (d.kind !== 'directory') continue;
+    const any = await walk(provider, d.path, { skip: () => false, maxDepth: 32, maxEntries: 1 }).next();
+    if (any.done) await provider.remove(d.path, { recursive: true }).catch(() => undefined);
+  }
+}

@@ -101,6 +101,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The trash of synchronised documents in a window (DEVSYNC-009): **🗑 Open
+  the trash** in *Sync my devices* lists deleted and replaced documents by
+  day, to restore one (the other devices get it back) or delete it for good.
+
 - Slide layouts and alignment guides (PRES-015, PRES-016): **+ Layout ▾**
   adds a section header, two contents, comparison, title only or blank
   slide; dragged shapes snap to the edges and centres of the other shapes

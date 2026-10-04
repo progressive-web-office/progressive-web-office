@@ -563,6 +563,7 @@ integration is ever needed.
 | DEVSYNC-006 | S | 0.2.0 | When the user adds a device, the paired device shall show a one-time invitation (a QR code and a link to the application, valid 5 minutes, without the key); the new device opening it shall show verification emojis drawn from the invitation and its own ephemeral public key, and the paired device shall send the key, encrypted for that public key alone, only when the user accepts that device after comparing the emojis; the command palette shall offer to sync now, to show an invitation and to scan one. |
 | DEVSYNC-007 | S | 0.2.0 | On a paired device, saving a document shall offer to keep it in the browser, synchronised (Browser storage › Documents, then open as the folder), or as a file; the window shall say that only the documents of the browser are synchronised, count them, open them, and copy recent documents among them. |
 | DEVSYNC-008 | S | 0.2.0 | A new name given to a device shall be told at once to the paired devices online, and to the others when they next meet. |
+| DEVSYNC-009 | S | 0.2.0 | The system shall list the files of the synchronisation trash of this device by day, restore one where it was (next to it when the name is taken) so that the other devices get it again, and delete one for good after confirmation. |
 
 ## 9r. Versions and history (VER)
 

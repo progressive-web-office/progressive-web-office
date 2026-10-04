@@ -1643,3 +1643,11 @@ th.colhead { position: relative; }
 .symbol-groups h3 { font-size: 0.9rem; margin: 8px 0 4px; }
 .symbol-grid { display: flex; flex-wrap: wrap; gap: 4px; }
 .symbol-cell { min-width: 2.2em; font-size: 1.1rem; padding: 2px 6px; }
+
+/* DEVSYNC-009: the trash of the synchronised documents. */
+.devsync-trash-list { list-style: none; padding: 0; margin: 8px 0; max-height: 50vh; overflow: auto; display: grid; gap: 4px; }
+.devsync-trash-list li.day { margin-top: 8px; font-weight: 600; color: var(--muted); font-size: 0.85rem; }
+.devsync-trash-list li.file { display: flex; gap: 8px; align-items: center; }
+.devsync-trash-list li.file .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.devsync-trash-list li.file .size { color: var(--muted); font-size: 0.85rem; }
+.devsync-trash-list li.empty { color: var(--muted); font-style: italic; }
