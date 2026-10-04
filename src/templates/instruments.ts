@@ -59,9 +59,15 @@ ${SLIDER_ESM}
     label = traitlets.Unicode("").tag(sync=True)
 
 
+class Grid(ipywidgets.GridBox):
+    # A short text for the grid: some instruments have no \`value\` to show in it.
+    def __repr__(self):
+        return f"<Grid of {len(self.children)} widgets>"
+
+
 def grid(children, columns=3):
     """Widgets side by side, \`columns\` per row."""
-    return ipywidgets.GridBox(
+    return Grid(
         list(children),
         layout=ipywidgets.Layout(grid_template_columns=f"repeat({columns}, max-content)", grid_gap="12px"),
     )`;
