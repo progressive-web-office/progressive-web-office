@@ -366,6 +366,27 @@ committed), Progressive Web Office **never overwrites** it. You can instead:
 - **Save as a copy next to it** — your version is committed under a new name
   (`report-copy-<date>.docx`).
 
+## Git on your own computer or network
+
+Git does not need GitHub or GitLab: a folder of your computer, or of a
+shared drive of the local network, can be a **Git working copy** (made with
+`git clone` or `git init`).
+
+- **Open a folder** → *A folder of this device* and choose the working copy:
+  the panel shows **⎇ branch** at the top (the `.git` folder itself is
+  hidden). Documents are saved **in place**, as plain files; commit them with
+  your own Git tool (command line, VS Code, GitHub Desktop, GitKraken…).
+  Git, not the application, keeps the versions: `git log`, `git diff` and
+  `git checkout` work on them as on any file. Prefer the text formats (`.md`,
+  `.tex`, `.csv`, `.fodt`…) when you want readable diffs (see
+  [GIT-010](#commit-changes)).
+- **New documents right there**: in the folder panel, 📝, 📊 and 📽️ create a
+  text document, a spreadsheet or a presentation in the selected folder
+  (in the format family of the settings) and open it; a drawing is in the
+  right-click menu. In a **repository opened as a folder** (see below), the
+  same buttons create the file **as a commit**, and each **Save** is a
+  commit too.
+
 ## Repositories used, and where documents come from
 
 **Repositories used.** Every repository you open a file from, or commit to,

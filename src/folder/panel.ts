@@ -9,6 +9,7 @@ import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault, noteName } from './vault';
 import { newNoteId, newNoteText, noteId } from '../document/wiki-links';
+import { officeNewFiles } from './new-files';
 import { loadTagColours, setTagColour, TAG_COLOURS, type TagColour } from './tags';
 
 /** Files the app opens, by extension. */
@@ -129,6 +130,8 @@ export class FolderPanel {
             return new Blob([newNoteText(id, stem.slice(stem.startsWith(id) ? id.length : 0).trim() || id)]);
           },
         },
+        // GIT-015: documents made right here (in a repository, saving is a commit).
+        ...officeNewFiles(),
       ],
       prompt: hooks.prompt,
       confirm: hooks.confirm,

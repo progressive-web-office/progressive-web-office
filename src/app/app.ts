@@ -1737,6 +1737,9 @@ export class App {
     const [{ FolderPanel }, { FolderIndex }, { rememberFolder }, { DirectoryHandleProvider }, { ArchiveProvider }, { GitRepoProvider }] = await Promise.all([import('../folder/panel'), import('../folder/search'), import('../storage/recent'), import('../fs'), import('../archive/provider'), import('../git/provider')]);
     this.folder?.element.remove();
     if (this.current) delete this.current.folderPath;
+    // GIT-014: a folder that is a Git working copy, its branch shown.
+    const { workingCopy } = await import('../git/working-copy');
+    const wc = folder instanceof GitRepoProvider || folder instanceof ArchiveProvider ? undefined : await workingCopy(folder);
     const index = new FolderIndex(folder, async (name, bytes) => {
       const format = detectFormat(name, bytes);
       if (!format || formatKind(format) !== 'document') return undefined;
@@ -1771,7 +1774,9 @@ export class App {
               button(t('git.infoMenu'), () => void this.showRepoInfo(folder), { text: folder.repo.visibility === 'internal' ? '🏢' : (folder.repo.visibility ?? (folder.repo.private ? 'private' : 'public')) === 'private' ? '🔒' : '🌐', className: 'icon', title: t('git.infoMenu') }),
             ],
           }
-        : {}),
+        : wc
+          ? { actions: [button(t('gitwc.button', { branch: wc.branch ?? 'Git' }), () => this.showNotice(t('gitwc.info', { branch: wc.branch ?? '—' })), { text: `⎇ ${wc.branch ?? 'Git'}`, className: 'folder-git', title: t('gitwc.title') })] }
+          : {}),
     });
     this.root.append(this.folder.element);
     this.root.classList.add('with-folder');

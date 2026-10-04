@@ -1884,4 +1884,7 @@ export const zh: Record<MessageKey, string> = {
   'origin.detach': '解除关联',
   'origin.detached': '文档已不再关联到 {place}。',
   'origin.noAccount': '此文档来自 {place}；添加该处的账户即可保存回去。',
+  'gitwc.button': 'Git 工作副本，分支 {branch}',
+  'gitwc.title': '此文件夹是 Git 工作副本',
+  'gitwc.info': '此文件夹是 Git 工作副本（分支 {branch}）：文档就地保存，由 Git 保留版本。',
 };

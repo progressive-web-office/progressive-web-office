@@ -10,6 +10,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Git working copies on disk** (GIT-014): a folder that is a Git working
+  copy shows its branch in the folder panel; documents are saved in place
+  for your own Git tool to version.
+- **New documents in a folder or a repository** (GIT-015): the folder panel
+  creates a text document, a spreadsheet, a presentation or a drawing in the
+  format family chosen — in a repository opened as a folder, as a commit.
 - **Repositories and servers used** (FILE-028): the repositories opened or
   committed to and the WebDAV / Nextcloud folders used are listed on the
   start screen, to open them again in one click (a repository even for

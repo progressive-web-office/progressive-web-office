@@ -29,7 +29,8 @@ The panel's toolbar manages the folder:
 
 | Button | Action |
 |--------|--------|
-| ＋ | new document, in the selected folder, opened right away |
+| ＋ | new Markdown note, in the selected folder, opened right away |
+| 📝 📊 📽️ | new text document, spreadsheet or presentation (OpenDocument or Microsoft Office, as chosen in the settings), opened right away; a new drawing (.svg) is in the right-click menu |
 | 📁＋ | new folder |
 | 📥 | import files of this device into the selected folder |
 | ✎ | rename the selected file or folder (<kbd>F2</kbd>) |

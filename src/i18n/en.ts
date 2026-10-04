@@ -1882,6 +1882,9 @@ export const en = {
   'origin.detach': 'Detach',
   'origin.detached': 'The document is no longer tied to {place}.',
   'origin.noAccount': 'This document comes from {place}; add an account for it to save it back there.',
+  'gitwc.button': 'Git working copy, branch {branch}',
+  'gitwc.title': 'This folder is a Git working copy',
+  'gitwc.info': 'This folder is a Git working copy (branch {branch}): documents are saved in place; Git keeps their versions.',
 } as const;
 
 export type MessageKey = keyof typeof en;

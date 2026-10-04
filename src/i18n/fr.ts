@@ -1884,4 +1884,7 @@ export const fr: Record<MessageKey, string> = {
   'origin.detach': 'Détacher',
   'origin.detached': 'Le document n’est plus lié à {place}.',
   'origin.noAccount': 'Ce document vient de {place} ; ajoutez-y un compte pour pouvoir y réenregistrer.',
+  'gitwc.button': 'Copie de travail Git, branche {branch}',
+  'gitwc.title': 'Ce dossier est une copie de travail Git',
+  'gitwc.info': 'Ce dossier est une copie de travail Git (branche {branch}) : les documents sont enregistrés sur place ; Git en garde les versions.',
 };

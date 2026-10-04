@@ -157,6 +157,13 @@ test('opens a repository as a folder, each change being a commit (FOLDER-007)', 
   await page.getByRole('menu').getByRole('menuitem', { name: 'Rename (F2)' }).click();
   await expect.poll(() => [...files.keys()].sort()).toEqual(['README.md', 'docs/roadmap.md']);
   expect(commits.at(-1)).toBe('docs: rename docs/plan.md to docs/roadmap.md');
+
+  // GIT-015: a new text document made right in the repository, opened at once.
+  page.once('dialog', (d) => void d.accept('Report.odt'));
+  await panel.getByRole('button', { name: 'New document (.odt)' }).click();
+  await expect.poll(() => [...files.keys()].find((f) => f.endsWith('Report.odt'))).toBeTruthy();
+  expect(commits.at(-1)).toMatch(/Report\.odt/);
+  await expect(page.locator('.doc-page')).toBeVisible();
   expect(errors).toEqual([]);
 });
 

@@ -62,7 +62,7 @@ test('creates, renames and deletes documents in the folder (FOLDER-004)', async 
   const files = () => page.evaluate(() => [...(window as unknown as { __folder: Map<string, string> }).__folder.keys()].sort());
   await panel.getByRole('button', { name: 'notes', exact: true }).click();
   page.once('dialog', (d) => void d.accept('Plan.md'));
-  await panel.getByRole('button', { name: 'New document' }).click();
+  await panel.getByRole('button', { name: 'New document', exact: true }).click();
   await expect(page.locator('.doc-page h1')).toHaveText('Untitled');
   await expect.poll(files).toEqual(['notes/Plan.md', 'notes/a.md']);
   // Renaming the open document follows it.
@@ -119,7 +119,7 @@ test('keeps documents in the browser storage (FOLDER-006)', async ({ page }) => 
   const panel = page.getByRole('complementary', { name: 'Folder' });
   await expect(panel.getByRole('heading', { name: '📁 Browser storage' })).toBeVisible();
   page.once('dialog', (d) => void d.accept('Draft.md'));
-  await panel.getByRole('button', { name: 'New document' }).click();
+  await panel.getByRole('button', { name: 'New document', exact: true }).click();
   await expect(page.locator('.doc-page h1')).toHaveText('Untitled');
   // Still there after a reload.
   await page.reload();
@@ -349,4 +349,14 @@ test('makes one document per row of a table of the folder by mail merge (DOC-036
   await expect.poll(async () => (await files())['letters/Letter – merge/Curie.md']).toContain('Dear Marie Curie, your mark is 18.');
   expect((await files())['letters/Letter – merge/Noether.md']).toContain('Dear Emmy Noether, your mark is 19.');
   await expect(panel.getByRole('button', { name: 'Letter – merge', exact: true })).toBeVisible();
+});
+
+test('a Git working copy shows its branch; documents are saved in place (GIT-014)', async ({ page }) => {
+  await fakeFolder(page, { '.git/HEAD': 'ref: refs/heads/main\n', '.git/config': '[core]\n', 'notes.md': '# Notes\n' });
+  await openLocalFolder(page);
+  const panel = page.getByRole('complementary', { name: 'Folder' });
+  await expect(panel.getByRole('button', { name: 'Git working copy, branch main' })).toHaveText('⎇ main');
+  await expect(panel.getByRole('button', { name: '.git' })).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Git working copy, branch main' }).click();
+  await expect(page.getByRole('alert')).toContainText('Git keeps their versions');
 });
