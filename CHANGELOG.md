@@ -55,6 +55,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- The properties of a note lost a key holding a space (`see also:`): it
+  was taken as part of the property before it (NOTE-001).
+
 - A folder of thousands of notes froze the browser (FOLDER-025): each note
   opened read every note of the folder again, one after the other, and
   searched every note for each link — 17 s with the page frozen, two
@@ -155,8 +158,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 - Daily notes from a calendar (FOLDER-027): the month of the folder with a
   dot on each day that has its note, a click opening or creating it, and
-  📅 for today's note — named `YYYY-MM-DD` by default, or in the format, the
-  folder and from the template you set; also *Calendar of the notes* and
+  📅 for today's note — named `YYYY-MM-DD` by default in `Daily notes`,
+  with a front matter of properties (timestamp, year, type, tags #daily…),
+  or in the format, the folder and from the template you set; also *Calendar of the notes* and
   *Today's note* in the command palette, even with no folder open.
 
 - Backlinks at the bottom of the note's page (FOLDER-026), or in the side

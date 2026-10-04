@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { dailyPath, dailyText, dateOfNote, DEFAULT_DAILY, fillTemplate, formatDate, isoWeek, loadDailySettings, saveDailySettings } from '../src/folder/daily';
+import { dailyPath, dailyText, dateOfNote, DEFAULT_DAILY, DEFAULT_DAILY_TEMPLATE, fillTemplate, formatDate, isoWeek, loadDailySettings, saveDailySettings } from '../src/folder/daily';
 
 // FOLDER-027: daily notes.
 
@@ -18,25 +18,31 @@ describe('FOLDER-027 daily notes', () => {
   });
 
   it('names the note of a day, in its folder, a / making sub-folders', () => {
-    expect(dailyPath(day, DEFAULT_DAILY)).toBe('2026-10-04.md');
+    expect(dailyPath(day, DEFAULT_DAILY)).toBe('Daily notes/2026-10-04.md');
+    expect(dailyPath(day, { ...DEFAULT_DAILY, folder: '' })).toBe('2026-10-04.md');
     expect(dailyPath(day, { ...DEFAULT_DAILY, folder: '/Journal/', format: 'YYYY/MM/YYYY-MM-DD' })).toBe('Journal/2026/10/2026-10-04.md');
   });
 
   it('finds the day of a note again by its name', () => {
-    expect(dateOfNote('2026-10-04.md', DEFAULT_DAILY)).toBe('2026-10-04');
+    expect(dateOfNote('Daily notes/2026-10-04.md', DEFAULT_DAILY)).toBe('2026-10-04');
+    expect(dateOfNote('2026-10-04.md', DEFAULT_DAILY)).toBeUndefined();
+    expect(dateOfNote('2026-10-04.md', { ...DEFAULT_DAILY, folder: '' })).toBe('2026-10-04');
     expect(dateOfNote('notes/2026-10-04.md', DEFAULT_DAILY)).toBeUndefined();
-    expect(dateOfNote('Project.md', DEFAULT_DAILY)).toBeUndefined();
-    expect(dateOfNote('2026-02-30.md', DEFAULT_DAILY)).toBeUndefined();
+    expect(dateOfNote('Daily notes/Project.md', DEFAULT_DAILY)).toBeUndefined();
+    expect(dateOfNote('Daily notes/2026-02-30.md', DEFAULT_DAILY)).toBeUndefined();
     const journal = { ...DEFAULT_DAILY, folder: 'Journal', format: 'YYYY/MM/[Day] DD.MM.YYYY' };
     expect(dateOfNote(dailyPath(day, journal), journal)).toBe('2026-10-04');
     const named = { ...DEFAULT_DAILY, format: 'dddd D MMMM YYYY' };
     expect(dateOfNote('dimanche 4 octobre 2026.md', named)).toBeUndefined(); // no month number: not a day it can read
-    expect(dateOfNote('4.10.26.md', { ...DEFAULT_DAILY, format: 'D.M.YY' })).toBe('2026-10-04');
+    expect(dateOfNote('4.10.26.md', { ...DEFAULT_DAILY, folder: '', format: 'D.M.YY' })).toBe('2026-10-04');
   });
 
   it('fills the template of a new daily note', () => {
     expect(fillTemplate('---\ndate: {{date:YYYY-MM-DD}}\n---\n# {{title}}\n\nAt {{time}}', day, '2026-10-04', DEFAULT_DAILY)).toMatch(/^---\ndate: 2026-10-04\n---\n# 2026-10-04\n\nAt \d\d:\d\d$/);
-    expect(dailyText(day, { ...DEFAULT_DAILY, format: 'YYYY/MM/DD' }, undefined)).toBe('# 04\n\n');
+    // Without a template: the properties built in, the day and the year filled.
+    const text = dailyText(day, DEFAULT_DAILY, undefined);
+    expect(text).toMatch(/^---\ntimestamp: "2026-10-04T\d\d:\d\d"\nyear: "\[\[2026\]\]"\nMOC:\ntype: "\[\[Daily note\]\]"\ntitle:\ndescription:\ntags:\n {2}- "#daily"\nsee also:\npreviously:\nevents:\nreferences:\nsubsequently:\n---\n\n$/);
+    expect(DEFAULT_DAILY_TEMPLATE).toContain('{{date:YYYY}}');
     expect(dailyText(day, DEFAULT_DAILY, '# {{ date }}')).toBe('# 2026-10-04');
   });
 
@@ -44,5 +50,8 @@ describe('FOLDER-027 daily notes', () => {
     expect(loadDailySettings()).toEqual(DEFAULT_DAILY);
     saveDailySettings({ format: 'DD.MM.YYYY', folder: ' Journal/ ', template: 'Templates/Day.md' });
     expect(loadDailySettings()).toEqual({ format: 'DD.MM.YYYY', folder: 'Journal', template: 'Templates/Day.md' });
+    // The root of the folder, when chosen, stays the root.
+    saveDailySettings({ ...DEFAULT_DAILY, folder: '' });
+    expect(loadDailySettings().folder).toBe('');
   });
 });

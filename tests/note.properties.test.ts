@@ -72,6 +72,18 @@ describe('NOTE-001 note properties', () => {
     expect(extra).toContain('status: []');
   });
 
+  it('reads keys holding spaces, each in its place (NOTE-001)', () => {
+    const f = parseFrontMatter('---\ntags:\n  - "#daily"\nsee also:\nprevious day: "[[2026-10-03]]"\nreferences:\n---\nBody\n');
+    const list = readProperties(f.meta, f.extra).filter((p) => p.key);
+    expect(list.map((p) => [p.key, p.value])).toEqual([
+      ['tags', { kind: 'list', items: ['#daily'] }],
+      ['see also', { kind: 'text', text: '' }],
+      ['previous day', { kind: 'text', text: '[[2026-10-03]]' }],
+      ['references', { kind: 'text', text: '' }],
+    ]);
+    expect(writeProperties(list).extra).toBe(f.extra);
+  });
+
   it('types the scalars', () => {
     expect(typed('true')).toEqual({ kind: 'bool', value: true });
     expect(typed('-3.5')).toEqual({ kind: 'number', value: -3.5 });

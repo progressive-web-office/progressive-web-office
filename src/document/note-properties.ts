@@ -57,7 +57,8 @@ export function typed(raw: string): PropertyValue {
 function entries(extra: string): { key: string; lines: string[] }[] {
   const out: { key: string; lines: string[] }[] = [];
   for (const line of extra.split('\n')) {
-    const key = /^([A-Za-z_][\w-]*):(?:\s|$)/.exec(line)?.[1];
+    // A key may hold spaces (`see also:`), not start with one, nor be a list item or a comment.
+    const key = /^([A-Za-z_][\w -]*?):(?:\s|$)/.exec(line)?.[1];
     if (key) out.push({ key, lines: [line] });
     // A comment of its own (not indented) stays in its place, between the keys.
     else if (line.startsWith('#') || !out.length) out.push({ key: '', lines: [line] });

@@ -1,7 +1,8 @@
 /**
  * FOLDER-027: daily notes — one note per day, named after its date in a
  * format the user chooses (`YYYY-MM-DD` by default; a `/` in it makes
- * sub-folders), in a folder, made from a template — found again by their
+ * sub-folders), in a folder (`Daily notes` by default), made from a
+ * template (a front matter of properties by default) — found again by their
  * name to show them on a calendar.
  */
 
@@ -10,19 +11,41 @@ export interface DailySettings {
   format: string;
   /** Folder of the daily notes, from the root of the open folder ('' for the root). */
   folder: string;
-  /** A note used as the template of the new daily notes ('' for none). */
+  /** A note used as the template of the new daily notes ('' for the one built in). */
   template: string;
 }
 
 const KEY = 'pwo.notes.daily';
-export const DEFAULT_DAILY: DailySettings = { format: 'YYYY-MM-DD', folder: '', template: '' };
+export const DEFAULT_DAILY: DailySettings = { format: 'YYYY-MM-DD', folder: 'Daily notes', template: '' };
+
+/** The template of daily notes when none is chosen: their properties, the day and the year filled. */
+export const DEFAULT_DAILY_TEMPLATE = `---
+timestamp: "{{date:YYYY-MM-DD}}T{{time}}"
+year: "[[{{date:YYYY}}]]"
+MOC:
+type: "[[Daily note]]"
+title:
+description:
+tags:
+  - "#daily"
+see also:
+previously:
+events:
+references:
+subsequently:
+---
+
+`;
+
+/** Where "Create the template" puts it, to change it as a note. */
+export const DAILY_TEMPLATE_PATH = 'Templates/Daily note.md';
 
 export function loadDailySettings(): DailySettings {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<DailySettings>;
     return {
       format: typeof saved.format === 'string' && saved.format.trim() ? saved.format : DEFAULT_DAILY.format,
-      folder: typeof saved.folder === 'string' ? cleanFolder(saved.folder) : '',
+      folder: typeof saved.folder === 'string' ? cleanFolder(saved.folder) : DEFAULT_DAILY.folder,
       template: typeof saved.template === 'string' ? saved.template : '',
     };
   } catch {
@@ -147,10 +170,10 @@ export function fillTemplate(template: string, date: Date, title: string, settin
   );
 }
 
-/** The text of a new daily note: its template filled, or its title. */
+/** The text of a new daily note: its template — the one built in when none is given — filled. */
 export function dailyText(date: Date, settings: DailySettings, template: string | undefined, lang?: string): string {
   const title = formatDate(date, settings.format, lang).split('/').pop()!;
-  return template ? fillTemplate(template, date, title, settings, lang) : `# ${title}\n\n`;
+  return fillTemplate(template ?? DEFAULT_DAILY_TEMPLATE, date, title, settings, lang);
 }
 
 /** Local `YYYY-MM-DD` of a date. */

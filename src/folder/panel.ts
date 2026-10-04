@@ -11,7 +11,7 @@ import { isNote, NoteVault, noteName } from './vault';
 import { newNoteId, newNoteText, noteId } from '../document/wiki-links';
 import { officeNewFiles } from './new-files';
 import { DailyCalendar } from './calendar';
-import { dailyPath, dailyText, loadDailySettings } from './daily';
+import { DAILY_TEMPLATE_PATH, DEFAULT_DAILY_TEMPLATE, dailyPath, dailyText, loadDailySettings, saveDailySettings } from './daily';
 import { linkMention, loadBacklinkSettings, mentions, saveBacklinkSettings, type BacklinkSettings } from './backlinks';
 import { loadTagColours, setTagColour, TAG_COLOURS, type TagColour } from './tags';
 
@@ -189,6 +189,7 @@ export class FolderPanel {
       notes: () => this.entries.filter((e) => e.kind === 'file' && isNote(e.path)).map((e) => e.path),
       current: () => this.current,
       openDay: (date) => void this.openDaily(date),
+      ...(provider.capabilities.write ? { createTemplate: () => void this.createDailyTemplate() } : {}),
     });
     this.calendarSection = h('details', { class: 'folder-calendar-section', open: calendarOpen() }, h('summary', {}, t('daily.calendar')), this.calendar.element) as HTMLDetailsElement;
     this.calendarSection.addEventListener('toggle', () => {
@@ -532,6 +533,21 @@ export class FolderPanel {
     }
     this.calendar.showMonthOf(date);
     this.hooks.open(existing?.path ?? path);
+  }
+
+  /** FOLDER-027: the template of daily notes as a note of the folder (kept if it exists), used from now on, opened. */
+  private async createDailyTemplate(): Promise<void> {
+    try {
+      if (!this.entries.some((e) => e.path === DAILY_TEMPLATE_PATH)) {
+        await this.provider.write(DAILY_TEMPLATE_PATH, new Blob([DEFAULT_DAILY_TEMPLATE]));
+        await this.refresh();
+      }
+      saveDailySettings({ ...loadDailySettings(), template: DAILY_TEMPLATE_PATH });
+      this.calendar.render();
+      this.hooks.open(DAILY_TEMPLATE_PATH);
+    } catch (err) {
+      this.hooks.error((err as Error).message);
+    }
   }
 
   /** FOLDER-026: the notes writing the name of this one (or an alias) without a link. */

@@ -13,9 +13,15 @@ test("opens today's note from the command palette, in the browser's storage when
   await expect(page.getByRole('option', { name: /Today's note/ })).toBeVisible();
   await commands.fill("today's note");
   await commands.press('Enter');
-  await expect(page.locator('.ProseMirror h1')).toHaveText('2026-10-04');
+  // In "Daily notes", with the properties built in.
+  await expect(page.locator('.doc-name')).toHaveText('2026-10-04.md');
+  const card = page.getByRole('region', { name: 'Properties' });
+  await expect(card.getByRole('button', { name: 'Daily note', exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: '2026', exact: true })).toBeVisible();
+  await expect(card.locator('.note-chip.tag')).toContainText(['#daily']);
   const panel = page.getByRole('complementary', { name: 'Folder' });
   await expect(panel.getByRole('heading', { name: '📁 Browser storage' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Daily notes', exact: true })).toBeVisible();
   await expect(panel.locator('.daily-calendar .daily-day.today.has-note')).toHaveText('4');
   expect(errors).toEqual([]);
 });

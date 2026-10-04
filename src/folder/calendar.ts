@@ -14,6 +14,8 @@ export interface CalendarHooks {
   current(): string | undefined;
   /** Open the note of a day, created first when there is none. */
   openDay(date: Date): void;
+  /** Write the template of daily notes as a note, to change it, and use it. */
+  createTemplate?(): void;
 }
 
 const lang = (): string | undefined => document.documentElement.lang || undefined;
@@ -108,7 +110,10 @@ export class DailyCalendar {
       field(t('daily.format'), settings.format, (v) => ({ format: v.trim() || 'YYYY-MM-DD' }), 'YYYY-MM-DD'),
       h('p', { class: 'hint' }, t('daily.formatHint')),
       field(t('daily.folder'), settings.folder, (v) => ({ folder: v }), t('daily.root')),
-      field(t('daily.template'), settings.template, (v) => ({ template: v.trim() }), 'Templates/Daily.md'),
+      field(t('daily.template'), settings.template, (v) => ({ template: v.trim() }), t('daily.builtIn')),
+      this.hooks.createTemplate && !settings.template
+        ? h('p', { class: 'hint' }, t('daily.builtInHint'), ' ', button(t('daily.createTemplate'), () => this.hooks.createTemplate?.(), { className: 'daily-create-template' }))
+        : '',
       h('p', { class: 'hint daily-example' }, t('daily.example', { path: example, title: formatDate(new Date(), settings.format, lang()).split('/').pop()! })),
     );
   }
