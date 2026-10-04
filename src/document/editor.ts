@@ -26,6 +26,7 @@ import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdo
 import { bytesToBase64, writeMarkdown } from './markdown-writer';
 import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
 import { Rulers } from './rulers';
+import { loadPaper, PAPERS, savePaper, type PaperPreference } from '../app/paper';
 import { LENGTH_UNITS, loadLengthUnit, loadRulerSides, RULERS_EVENT, saveLengthUnit, saveRulerSides, UNIT_EVENT, type LengthUnit, type RulerSides } from './units';
 import { writeLatex } from './latex-writer';
 import { readLatex } from './latex-reader';
@@ -1630,6 +1631,8 @@ export class DocumentEditor implements EditorView {
         h('option', { value: 'ruler-h' }, `${mark(this.element.classList.contains('show-ruler-h'))}${t('ruler.horizontal')}`),
         h('option', { value: 'ruler-v' }, `${mark(this.element.classList.contains('show-ruler-v'))}${t('ruler.vertical')}`),
         h('optgroup', { label: t('unit.label') }, ...LENGTH_UNITS.map((u) => h('option', { value: `unit-${u}` }, `${mark(loadLengthUnit() === u)}${t(`unit.${u}`)}`))),
+        // UI-023: the paper on screen.
+        h('optgroup', { label: t('paper.label') }, ...PAPERS.map((p) => h('option', { value: `paper-${p}` }, `${mark(loadPaper() === p)}${t(`paper.${p}`)}`))),
         // COLOR-002: the colours as a printer would print them.
         h('option', { value: 'proof' }, `${mark(this.element.classList.contains('soft-proof'))}${t('color.proof')}`),
         h('option', { value: 'readability' }, `${mark(this.writing.readability)}${t('wview.readability')}`),
@@ -1658,6 +1661,7 @@ export class DocumentEditor implements EditorView {
       if (value === 'ruler-h') saveRulerSides({ ...sides, horizontal: !sides.horizontal });
       if (value === 'ruler-v') saveRulerSides({ ...sides, vertical: !sides.vertical });
       if (value.startsWith('unit-')) saveLengthUnit(value.slice(5) as LengthUnit);
+      if (value.startsWith('paper-')) savePaper(value.slice(6) as PaperPreference);
       if (value === 'proof') this.element.classList.toggle('soft-proof');
       if (value === 'hyphenate') {
         const on = !this.element.classList.contains('hyphenate');

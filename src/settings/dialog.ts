@@ -8,6 +8,7 @@ import { button, h } from '../app/dom';
 import { inExam } from '../exam/mode';
 import { getLocale, LOCALES, setLocale, t, type Locale, type MessageKey } from '../i18n';
 import { applyTheme, loadTheme, saveTheme, THEMES, type ThemePreference } from '../app/theme';
+import { loadPaper, PAPERS, savePaper, type PaperPreference } from '../app/paper';
 import { commentAuthor, saveAuthor } from '../app/author';
 import { FORMAT_FAMILIES, loadFormatFamily, saveFormatFamily, type FormatFamily } from '../core/format-preference';
 import { loadReading, saveReading, type ReadingSettings } from '../review/settings';
@@ -70,6 +71,7 @@ function generalPanel(hooks: SettingsHooks): HTMLElement[] {
   const name = h('input', { type: 'text', autocomplete: 'name', value: commentAuthor() });
   name.addEventListener('change', () => saveAuthor(name.value));
   const themes: Record<ThemePreference, MessageKey> = { system: 'theme.system', light: 'theme.light', dark: 'theme.dark' };
+  const papers: Record<PaperPreference, MessageKey> = { auto: 'paper.auto', light: 'paper.light', dark: 'paper.dark' };
   const families: Record<FormatFamily, MessageKey> = { open: 'formats.open', microsoft: 'formats.microsoft' };
   return [
     field(t('app.language'), select(LOCALES.map((l) => [l.code, l.label]), getLocale(), (l) => {
@@ -81,6 +83,8 @@ function generalPanel(hooks: SettingsHooks): HTMLElement[] {
       applyTheme(th);
       hooks.theme?.(th);
     })),
+    // UI-023: the paper of documents on screen.
+    field(t('paper.label'), select(PAPERS.map((p) => [p, t(papers[p])]), loadPaper(), savePaper), t('paper.hint')),
     field(t('settings.name'), name, t('settings.nameHint')),
     // UI-020: tools in menus, or all in sight.
     field(t('settings.toolbars'), select([['compact', t('settings.toolbarCompact')], ['full', t('settings.toolbarFull')]], loadToolbarMode(), saveToolbarMode), t('settings.toolbarsHint')),

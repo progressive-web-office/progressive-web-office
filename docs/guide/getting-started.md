@@ -50,8 +50,17 @@ start screen — the choice is remembered in this browser.
 
 The theme button in the toolbar cycles between **◐ System** (default: follows
 the light or dark setting of your device), **☀ Light** and **☾ Dark**. The
-choice is remembered on this device. Document pages and slides keep a white
-background in every theme, as on paper.
+choice is remembered on this device. Slides keep their own background in
+every theme.
+
+**The paper of documents** — *View › Paper of documents* in a text document,
+or *Settings › General* — is **As the theme** (default: white paper with a
+light theme, dark paper with a dark theme), **Light** (dark text on white) or
+**Dark** (light text on black, for reading at night). On dark paper the text
+keeps its colours turned towards light ones (red stays red, a highlight stays
+yellow) and the pictures, drawings and diagrams keep their own colours. Only
+the screen changes: printing, the PDF and the saved files keep the colours of
+the document.
 
 ## Recent files and recovered drafts
 

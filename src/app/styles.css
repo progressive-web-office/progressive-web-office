@@ -246,7 +246,7 @@ button.primary { background: var(--accent); color: var(--accent-contrast); borde
   background:
     var(--page-mark) left calc(-1 * var(--page-left, 80px)) top 0 / calc(var(--page-left, 80px) - 10px) var(--text-h, 960px) repeat-y content-box padding-box,
     var(--page-mark) right calc(-1 * var(--page-right, 80px)) top 0 / calc(var(--page-right, 80px) - 10px) var(--text-h, 960px) repeat-y content-box padding-box,
-    #fff;
+    var(--paper-white);
   position: relative;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.08);
   white-space: pre-wrap; overflow-wrap: break-word;
@@ -973,7 +973,7 @@ button.qr-zoom img { display: block; margin: 0; }
 /* Footnotes (DOC-022) */
 .doc-page .pm-footnote { cursor: pointer; color: var(--accent); padding: 0 1px; }
 .doc-page .pm-footnote:hover { background: var(--sel); border-radius: 2px; }
-.doc-notes { max-width: 816px; margin: 0 auto 24px; padding: 12px 80px 16px; box-sizing: border-box; background: #fff; color: #1c2430; font-size: 9pt; border-top: 1px solid #c7d0dc; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.doc-notes { max-width: 816px; margin: 0 auto 24px; padding: 12px 80px 16px; box-sizing: border-box; background: var(--paper-white); color: #1c2430; font-size: 9pt; border-top: 1px solid #c7d0dc; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
 .doc-notes[hidden] { display: none; }
 .doc-notes ol { margin: 0; padding-left: 1.6em; }
 .doc-notes li { cursor: pointer; margin: 2px 0; }
@@ -998,7 +998,7 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .print-document nav.toc .toc-empty { display: none; }
 
 /* Header and footer preview (DOC-024) */
-.doc-furniture { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: var(--page-w, 816px); max-width: 100%; margin: 0 auto; box-sizing: border-box; padding: 10px 80px; background: #fff; color: #6b7686; font-family: Calibri, Carlito, sans-serif; font-size: 9pt; cursor: pointer; min-height: 2.4em; }
+.doc-furniture { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: var(--page-w, 816px); max-width: 100%; margin: 0 auto; box-sizing: border-box; padding: 10px 80px; background: var(--paper-white); color: #6b7686; font-family: Calibri, Carlito, sans-serif; font-size: 9pt; cursor: pointer; min-height: 2.4em; }
 .doc-furniture[hidden] { display: none; }
 .doc-furniture.header { border-bottom: 1px dashed #d6dce5; box-shadow: 0 -1px 3px rgba(0,0,0,.1); }
 .doc-furniture.footer { border-top: 1px dashed #d6dce5; box-shadow: 0 2px 3px rgba(0,0,0,.1); margin-bottom: 24px; }
@@ -1196,6 +1196,17 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .doc-editor.hyphenate .doc-page p, .print-document.hyphenate p { hyphens: auto; -webkit-hyphens: auto; hyphenate-limit-chars: 6 3 3; }
 .smallcaps { font-variant-caps: small-caps; }
 
+/* UI-023: the paper of documents on screen. Dark: the page inverted (its own
+   colours turned round in hue, so that red stays red), the pictures turned back. */
+:root { --paper-filter: none; --paper-white: #fff; }
+:root[data-paper='dark'], :root[data-theme='dark']:not([data-paper='light']) { --paper-filter: invert(1) hue-rotate(180deg); --paper-white: #e9e9e9; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-paper='light']) { --paper-filter: invert(1) hue-rotate(180deg); --paper-white: #e9e9e9; }
+}
+.doc-page, .doc-furniture, .doc-notes { filter: var(--paper-filter); }
+:is(.doc-page, .doc-furniture, .doc-notes) :is(img, video, canvas, iframe) { filter: var(--paper-filter); }
+@media print { .doc-page, .doc-furniture, .doc-notes, :is(.doc-page, .doc-furniture, .doc-notes) :is(img, video, canvas, iframe) { filter: none !important; } }
+
 /* DOC-047: rulers around the page. */
 .doc-sheet { width: var(--page-w, 816px); max-width: 100%; margin: 0 auto; }
 .doc-sheet .doc-page { width: 100%; margin: 0; }
@@ -1266,7 +1277,7 @@ body.distraction-free .ai-panel { display: none !important; }
   width: calc(var(--pages) * var(--rv-w, 816px) + (var(--pages) - 1) * 24px); height: var(--rv-h, 1056px);
   padding: var(--rv-pad, 72px 80px);
   column-count: var(--pages); column-gap: var(--rv-colgap, 184px); column-fill: auto;
-  background: repeating-linear-gradient(to right, #fff 0 var(--rv-w, 816px), transparent var(--rv-w, 816px) calc(var(--rv-w, 816px) + 24px));
+  background: repeating-linear-gradient(to right, var(--paper-white) 0 var(--rv-w, 816px), transparent var(--rv-w, 816px) calc(var(--rv-w, 816px) + 24px));
   box-shadow: none;
 }
 .doc-editor.paged .doc-page hr.page-break { break-after: column; }

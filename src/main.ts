@@ -1,6 +1,7 @@
 import './app/styles.css';
 import { initLocale } from './i18n';
 import { applyTheme, loadTheme } from './app/theme';
+import { applyPaper, loadPaper } from './app/paper';
 import { App } from './app/app';
 import { installPwa } from './app/pwa';
 import { followKeyboard } from './app/keyboard';
@@ -12,6 +13,7 @@ import { inExam, installExamGuards, type ExamEventKind } from './exam/mode';
 let sayRefused: (kind: ExamEventKind) => void = () => {};
 installExamGuards((kind) => sayRefused(kind));
 applyTheme(loadTheme());
+applyPaper(loadPaper());
 // UI-022: the floating buttons stay above the on-screen keyboard.
 followKeyboard();
 initLocale();

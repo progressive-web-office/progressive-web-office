@@ -131,6 +131,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Dark paper** for documents (UI-023): *View › Paper of documents* (or
+  the settings) shows a text document as the theme of the application (by
+  default), on white paper, or as light text on dark paper for reading at
+  night — the colours of the text kept recognisable, pictures, drawings and
+  diagrams in their own colours. On screen only: printing, the PDF and the
+  files keep the document's colours.
+
 - **PDF typeset in the browser** (PDF-020): *Save as › PDF (.pdf), typeset*
   writes a text document as a PDF at once, without the print dialog — by
   Typst, compiled to WebAssembly and downloaded once (about 11 MB, after you
