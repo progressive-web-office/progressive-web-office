@@ -63,11 +63,13 @@ when it is installed, shown in **Settings → Plugins**, revocable.
 ## Distribution: a registry of Git repositories
 
 ```
-progweboffice/                    ← the GitHub organisation of the project: github.com/progweboffice
+progressive-web-office/          ← the GitHub organisation of the project
+├── .github                       ← organisation profile, shared community files
+├── progressive-web-office        ← the application (this repository)
 ├── registry                      ← one repository: registry.json, reviewed by pull requests
 ├── templates-school-fr           ← one repository per plugin, versioned by tags
 ├── symbols-hydraulics-iso1219
-└── connector-moodle …
+└── panel-periodic-table …
 ```
 
 - **`registry.json`** lists the plugins: id, name, description, kind,
@@ -96,8 +98,8 @@ clean.
 1. **Content packs**: the manifest format, the registry format, **Settings →
    Plugins** (browse a registry, install, update, remove), packs of
    templates and symbols. Needs the `registry` repository in the
-   `progweboffice` organisation, and a first pack (e.g.
-   `progweboffice/templates-fr`).
+   `progressive-web-office` organisation, and a first pack (e.g.
+   `progressive-web-office/templates-fr`).
 2. **Code plugins**: the sandbox, the API, permissions; a first plugin
    (e.g. the draw.io importer, DRAW-010).
 3. **Built-in plugins**: Grist, Zotero, instruments, IEC libraries moved
@@ -105,7 +107,7 @@ clean.
 
 ## To decide
 
-- The registry: `progweboffice/registry` in the
-  [organisation of the project](https://github.com/progweboffice) (created).
+- The registry: `progressive-web-office/registry` in the
+  [organisation of the project](https://github.com/progressive-web-office) (created).
 - Whether code plugins come in the first version, or content packs only.
 - The licences accepted, and who reviews the registry's pull requests.
