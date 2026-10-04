@@ -564,6 +564,7 @@ integration is ever needed.
 | DEVSYNC-007 | S | 0.2.0 | On a paired device, saving a document shall offer to keep it in the browser, synchronised (Browser storage › Documents, then open as the folder), or as a file; the window shall say that only the documents of the browser are synchronised, count them, open them, and copy recent documents among them. |
 | DEVSYNC-008 | S | 0.2.0 | A new name given to a device shall be told at once to the paired devices online, and to the others when they next meet. |
 | DEVSYNC-009 | S | 0.2.0 | The system shall list the files of the synchronisation trash of this device by day, restore one where it was (next to it when the name is taken) so that the other devices get it again, and delete one for good after confirmation. |
+| DEVSYNC-010 | S | 0.2.0 | When the user revokes one paired device, the system shall make a new pairing and give it to each other device online that accepts (after asking its user), encrypted for a fresh public key of that device (ECDH P-256, AES-GCM), never to the revoked device; stop the exchange with a device answered for twice; tell which devices got it; and forget the revoked device on all of them. |
 
 ## 9r. Versions and history (VER)
 

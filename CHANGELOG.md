@@ -101,6 +101,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Revoking one device only (DEVSYNC-010): **⛔ Revoke** next to a device makes
+  a new key and gives it, encrypted for each, to the other devices online
+  that accept; the revoked device no longer synchronises.
+
 - The trash of synchronised documents in a window (DEVSYNC-009): **🗑 Open
   the trash** in *Sync my devices* lists deleted and replaced documents by
   day, to restore one (the other devices get it back) or delete it for good.

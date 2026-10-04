@@ -101,6 +101,23 @@ versions replaced by a newer one.
 - **🗑 Delete for good** removes it now, on this device only; the trash of
   the other devices keeps its own copy until its 30 days are over.
 
+### Revoking one device
+
+A device sold, lost or no longer used: **⛔ Revoke** next to its name, in the
+list of devices, on a device you keep.
+
+1. This device makes a **new key** and offers it to your other devices
+   **online now** (have them open on *Sync my devices*).
+2. Each of them asks: *“Laptop” is revoking the device “Old tablet”…*
+   Accept only if it is you, revoking from that device.
+3. The key goes to each device that accepted, encrypted for it alone; all of
+   them then meet with the new key. The revoked device keeps its documents,
+   but no longer gets any change.
+
+The window says which devices got the new key. A device that was offline,
+or that refused, needs a **new invitation**. To revoke every other device at
+once, use **New key (unpair the other devices)** instead.
+
 ## When the devices do not see each other
 
 - **Open the application on both devices**, each on **🔁 Sync my devices**
@@ -159,9 +176,18 @@ versions replaced by a newer one.
   at the unlocked device, malware, a malicious browser extension — can read
   your documents and the key. Protect your devices with a lock screen.
 - **A lost or stolen device** keeps the key and the documents it already
-  has. On a device you keep, use **New key (unpair the other devices)**,
-  then invite again the devices you still use: the lost one no longer gets
-  new changes, but what it already holds cannot be taken back.
+  has. On a device you keep, **⛔ Revoke** it (or use **New key** and invite
+  again the devices you still use): it no longer gets new changes, but what
+  it already holds cannot be taken back.
+- **Revoking one device** gives the new key over the old meeting place, which
+  the revoked device can still enter. The key goes encrypted for a fresh
+  public key of each device that accepted, so the revoked device cannot read
+  it by listening; and two different answers for one device stop the
+  exchange with it. A revoked device that is **online and controlled by an
+  attacker during the revocation** could still try to pass for one of your
+  devices: the question shown on each device is there for that — refuse it
+  if you are not revoking — and it is safest to revoke while the device is
+  switched off or offline, or to use **New key** and invite again.
 - The relays see **that** devices meet — the name of the meeting place (a
   random value), their network addresses, when and how much they exchange —
   but not what.

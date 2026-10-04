@@ -217,3 +217,48 @@ test('the trash of the synchronised documents: a file restored, another deleted 
   await trash.getByRole('button', { name: 'Close' }).click();
   expect(errors).toEqual([]);
 });
+
+test('revoking one device only: a new key for the devices online, after they accept (DEVSYNC-010)', async ({ browser }) => {
+  const context = await browser.newContext();
+  await context.addInitScript(() => localStorage.setItem('pwo.collab.transport', 'local'));
+  const pairing = { room: 'room-of-the-revocation', secret: 'the-key-of-the-documents-revoked', since: 1 };
+  const laptop = await context.newPage();
+  await openApp(laptop);
+  await laptop.evaluate((p) => localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'laptop-1', name: 'Laptop', understood: true, auto: false, peers: { 'tablet-9': { name: 'Old tablet', lastSeen: 1 } }, base: {}, known: {}, deleted: {}, pairing: p })), pairing);
+  const phone = await context.newPage();
+  await phone.addInitScript(() => {
+    const own = (k: string): string => (k === 'pwo.devsync' ? 'pwo.devsync.phone' : k);
+    const { getItem, setItem } = Storage.prototype;
+    Storage.prototype.getItem = function (k: string) { return getItem.call(this, own(k)); };
+    Storage.prototype.setItem = function (k: string, v: string) { setItem.call(this, own(k), v); };
+  });
+  await openApp(phone);
+  await phone.evaluate((p) => localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'phone-2', name: 'Phone', understood: true, auto: false, peers: { 'tablet-9': { name: 'Old tablet', lastSeen: 1 } }, base: {}, known: {}, deleted: {}, pairing: p })), pairing);
+  for (const page of [laptop, phone]) await page.getByRole('button', { name: 'Sync my devices' }).click();
+  const host = laptop.getByRole('dialog', { name: 'Sync my devices' });
+  const other = phone.getByRole('dialog', { name: 'Sync my devices' });
+  await expect(host.getByText('🟢 Phone')).toBeVisible();
+
+  // On the phone, the question is accepted (the user revokes from the laptop).
+  let asked = '';
+  phone.on('dialog', (d) => {
+    asked ||= d.message();
+    void d.accept();
+  });
+  laptop.once('dialog', (d) => void d.accept());
+  await host.getByRole('button', { name: 'Revoke Old tablet only' }).click();
+  await expect(host.getByText(/Old tablet is revoked; this device uses a new key\. New key given to: Phone\./)).toBeVisible({ timeout: 15_000 });
+  expect(asked).toContain('“Laptop” is revoking the device “Old tablet”');
+  await expect(other.getByText(/now uses the new key of your devices/)).toBeVisible();
+
+  const state = (page: typeof laptop) => page.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}'));
+  const [a, b] = [await state(laptop), await state(phone)];
+  expect(a.pairing.secret).not.toBe(pairing.secret);
+  expect(b.pairing).toMatchObject({ room: a.pairing.room, secret: a.pairing.secret });
+  expect(Object.values(a.peers).map((p) => (p as { name: string }).name)).not.toContain('Old tablet');
+  // They meet again with the new key.
+  await expect(host.getByText('🟢 Phone')).toBeVisible();
+  await expect(host.locator('.devsync-peers').getByText('Old tablet')).toHaveCount(0);
+  expect(Object.keys(b.peers)).not.toContain('tablet-9');
+  await context.close();
+});

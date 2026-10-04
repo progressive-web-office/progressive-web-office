@@ -13,7 +13,7 @@ import { b64u, ecdhAesKey, newKeyPair, publicKey, unb64u } from './invite';
 import type { Pairing } from './state';
 
 /** Asked to a device: will it take the new key? */
-interface Ask { id: string; from: string; revoked: string }
+interface Ask { id: string; from: string; revoked: string; device: string }
 /** Its answer: a fresh public key, or a refusal. */
 interface KeyMsg { id: string; key?: string; refused?: boolean }
 /** The new pairing, encrypted for that key. */
@@ -35,17 +35,17 @@ const ID_RE = /^[\w-]{8,64}$/;
  * new pairing given to it (`received`). `oldSecret` is the key of the room,
  * mixed into the encryption.
  */
-export function serveRekey(room: CollabRoom, oldSecret: () => string, accept: (from: string, revoked: string) => Promise<boolean>, received: (pairing: Pairing) => void): void {
+export function serveRekey(room: CollabRoom, oldSecret: () => string, accept: (from: string, revoked: string) => Promise<boolean>, received: (pairing: Pairing, revokedDevice: string) => void): void {
   const { ask, key, give } = actions(room);
-  const pending = new Map<string, { pair: CryptoKeyPair; peer: string }>();
+  const pending = new Map<string, { pair: CryptoKeyPair; peer: string; device: string }>();
   const asked = new Set<string>();
   ask[1]((data, peer) => {
-    if (!data || typeof data.id !== 'string' || !ID_RE.test(data.id) || asked.has(data.id) || typeof data.from !== 'string' || typeof data.revoked !== 'string') return;
+    if (!data || typeof data.id !== 'string' || !ID_RE.test(data.id) || asked.has(data.id) || typeof data.from !== 'string' || typeof data.revoked !== 'string' || typeof data.device !== 'string') return;
     asked.add(data.id);
     void (async () => {
       if (!(await accept(data.from.slice(0, 80), data.revoked.slice(0, 80)))) return void key[0]({ id: data.id, refused: true }, peer);
       const pair = await newKeyPair();
-      pending.set(data.id, { pair, peer });
+      pending.set(data.id, { pair, peer, device: data.device.slice(0, 64) });
       await key[0]({ id: data.id, key: await publicKey(pair) }, peer);
     })();
   });
@@ -58,7 +58,7 @@ export function serveRekey(room: CollabRoom, oldSecret: () => string, accept: (f
         const aes = await ecdhAesKey(wait.pair.privateKey, data.key, `${oldSecret()}|${data.id}`, INFO);
         const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64u(data.iv) }, aes, unb64u(data.data));
         const p = JSON.parse(new TextDecoder().decode(plain)) as { room?: unknown; secret?: unknown };
-        if (typeof p.room === 'string' && typeof p.secret === 'string' && /^[\w-]{8,64}$/.test(p.room) && /^[\w-]{24,128}$/.test(p.secret)) received({ room: p.room, secret: p.secret, since: Date.now() });
+        if (typeof p.room === 'string' && typeof p.secret === 'string' && /^[\w-]{8,64}$/.test(p.room) && /^[\w-]{24,128}$/.test(p.secret)) received({ room: p.room, secret: p.secret, since: Date.now() }, wait.device);
       } catch {
         /* not readable: ignored */
       }
@@ -78,7 +78,7 @@ export interface RekeyResult {
  * The revoking device: gives the new pairing to these peers (never to the
  * revoked one, left out of `peers` by the caller).
  */
-export function giveNewKey(room: CollabRoom, peers: string[], opts: { from: string; revoked: string; pairing: Pairing; oldSecret: string; timeoutMs?: number; settleMs?: number }): Promise<RekeyResult> {
+export function giveNewKey(room: CollabRoom, peers: string[], opts: { from: string; revoked: string; device: string; pairing: Pairing; oldSecret: string; timeoutMs?: number; settleMs?: number }): Promise<RekeyResult> {
   const { ask, key, give } = actions(room);
   const result: RekeyResult = { given: [], refused: [], failed: [] };
   const ids = new Map<string, string>(peers.map((p) => [crypto.randomUUID(), p]));
@@ -141,6 +141,6 @@ export function giveNewKey(room: CollabRoom, peers: string[], opts: { from: stri
       resolve(result);
       return;
     }
-    for (const [id, peer] of ids) void ask[0]({ id, from: opts.from, revoked: opts.revoked }, peer);
+    for (const [id, peer] of ids) void ask[0]({ id, from: opts.from, revoked: opts.revoked, device: opts.device }, peer);
   });
 }

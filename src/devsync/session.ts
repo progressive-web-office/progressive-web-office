@@ -23,6 +23,8 @@ export interface SyncEvents {
   synced?(result: ApplyResult & { peer: string }): void;
   status?(text: 'scanning' | 'merging' | 'idle'): void;
   error?(message: string): void;
+  /** DEVSYNC-010: this device moved to a new pairing (a device was revoked). */
+  rekeyed?(): void;
 }
 
 const MAX_FILE = 50 * 1024 * 1024;

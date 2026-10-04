@@ -1651,3 +1651,4 @@ th.colhead { position: relative; }
 .devsync-trash-list li.file .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .devsync-trash-list li.file .size { color: var(--muted); font-size: 0.85rem; }
 .devsync-trash-list li.empty { color: var(--muted); font-style: italic; }
+.devsync-peers .devsync-revoke-one { padding: 1px 8px; font-size: 0.85rem; }

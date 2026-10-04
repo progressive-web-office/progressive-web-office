@@ -191,8 +191,8 @@ group is not a commitment.
   encrypted (paired devices, revocable): the documents of the browser found
   on every device — with clear warnings: synchronisation is not a backup, a
   document deleted on one device is deleted on all (a trash kept 30 days)
-  (DEVSYNC-001..005), the trash in the window (DEVSYNC-009); next: revoking
-  one device only, recent files and templates synchronised too
+  (DEVSYNC-001..005), the trash in the window (DEVSYNC-009), revoking one
+  device only (DEVSYNC-010); next: recent files and templates synchronised too
 - ✅ Real backups, distinct from synchronisation: dated, encrypted archives of
   all the documents kept in the browser, to a folder or a WebDAV / Nextcloud
   account, with reminders, kept for days and weeks, restored file by file or

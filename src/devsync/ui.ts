@@ -242,7 +242,17 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         const known = Object.entries(loadSyncState().peers);
         peers.replaceChildren(
           ...(known.length
-            ? known.map(([device, p]) => h('li', {}, `${online.has(device) ? '🟢' : '⚪'} ${p.name}`, h('span', { class: 'hint' }, ` — ${online.has(device) ? t('devsync.online') : t('devsync.lastSeen', { when: new Date(p.lastSeen).toLocaleString() })}`)))
+            ? known.map(([device, p]) =>
+                h(
+                  'li',
+                  {},
+                  `${online.has(device) ? '🟢' : '⚪'} ${p.name}`,
+                  h('span', { class: 'hint' }, ` — ${online.has(device) ? t('devsync.online') : t('devsync.lastSeen', { when: new Date(p.lastSeen).toLocaleString() })}`),
+                  ' ',
+                  // DEVSYNC-010: revoke this device only.
+                  button(t('devsync.revokeOne', { name: p.name }), () => void revokeOne(device, p.name), { icon: '⛔', className: 'devsync-revoke-one', text: t('devsync.revokeOneShort') }),
+                ),
+              )
             : [h('li', { class: 'hint' }, t('devsync.noPeer'))]),
         );
       };
@@ -279,6 +289,21 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         if (!live.sync.peerCount()) return say(t('devsync.waiting'));
         await live.sync.syncNow();
       }, { className: 'primary' });
+      const revokeOne = async (device: string, name: string): Promise<void> => {
+        if (!window.confirm(t('devsync.revokeOneConfirm', { name }))) return;
+        error.hidden = true;
+        say(t('devsync.revoking', { name }));
+        const live = currentSync() ?? (await start(false));
+        if (!live) return say('');
+        try {
+          const r = await live.revoke(device);
+          const missing = [...r.refused, ...r.failed];
+          await render();
+          setStatus(status, [t('devsync.revoked', { name }), r.given.length ? t('devsync.revokedGiven', { names: r.given.join(', ') }) : '', missing.length ? t('devsync.revokedMissing', { names: missing.join(', ') }) : '', t('devsync.revokedOffline')].filter(Boolean).join(' '));
+        } catch (err) {
+          fail((err as Error).message);
+        }
+      };
       const revoke = button(t('devsync.revoke'), () => {
         if (!window.confirm(t('devsync.revokeConfirm'))) return;
         stopSync();
@@ -371,6 +396,10 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
           showPeers();
         },
         error: (m) => fail(m),
+        // DEVSYNC-010: moved to the new key of the devices.
+        rekeyed: () => {
+          void render().then(() => setStatus(status, t('devsync.rekeyed')));
+        },
       });
     };
     let unlisten: (() => void) | undefined;
