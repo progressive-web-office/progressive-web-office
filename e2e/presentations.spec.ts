@@ -103,3 +103,36 @@ test('the background of a slide and the vertical alignment of a text box can be 
   await expect(page.locator('.stage .shape').first()).toHaveAttribute('data-anchor', 'bottom');
   expect(errors).toEqual([]);
 });
+
+test('presenter view: notes, next slide and timer in a second window, driving the slideshow (PRES-014)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New presentation' }).click();
+  await page.getByLabel('Speaker notes').fill('Greet everyone');
+  await page.getByRole('button', { name: 'New slide' }).click();
+  await page.locator('.slide-thumb').first().click();
+
+  const [console_] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: /^Presenter view/ }).click()]);
+  const show = page.locator('.slideshow');
+  await expect(show).toHaveAttribute('aria-label', 'Slide 1 of 2');
+  await expect(console_.locator('.presenter-position')).toHaveText('Slide 1 of 2');
+  await expect(console_.locator('.presenter-notes')).toHaveText('Greet everyone');
+  await expect(console_.locator('.presenter-current .slide')).toHaveCount(1);
+  await expect(console_.locator('.presenter-next .slide')).toHaveCount(1);
+  await expect(console_.locator('.presenter-elapsed')).toHaveText(/^00:0\d$/);
+
+  // The console moves the slideshow.
+  await console_.getByRole('button', { name: 'Next slide' }).click();
+  await expect(show).toHaveAttribute('aria-label', 'Slide 2 of 2');
+  await expect(console_.locator('.presenter-notes')).toHaveText('No notes for this slide.');
+  await expect(console_.locator('.presenter-next')).toHaveText('End of the slideshow');
+  // And the slideshow moves the console.
+  await show.press('ArrowLeft');
+  await expect(console_.locator('.presenter-position')).toHaveText('Slide 1 of 2');
+
+  // Ending the slideshow closes the console.
+  const closed = console_.waitForEvent('close');
+  await show.press('Escape');
+  await closed;
+  await expect(show).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

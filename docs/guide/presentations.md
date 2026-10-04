@@ -23,6 +23,7 @@ Presentation** (`.odp`) files.
 | ↑ ↓ | move the current slide |
 | 🗑 | delete the current slide |
 | **▶ Present** (<kbd>F5</kbd>) | start the slideshow from the current slide |
+| **🎤** | presenter view: the slideshow, and a console for you in a second window |
 
 **Slide size and orientation.** The two lists next to the slide buttons set
 the size of all the slides (widescreen 16:9, standard 4:3, A4 or Letter
@@ -61,6 +62,24 @@ files.
 | <kbd>Esc</kbd> | exit |
 
 The slideshow uses the full screen when the browser allows it.
+
+### Presenter view
+
+**🎤 Presenter view** starts the slideshow and opens a second window, the
+console, for you: drag it to the screen facing you (a laptop with a
+projector), and the slideshow to the projector.
+
+- The **current slide**, the **next slide** (or *End of the slideshow*), and
+  the **speaker notes** of the current slide, in large letters (**A−** /
+  **A+**).
+- The **time spent** since the start (**⏸** to pause, **↺** to restart) and
+  the time of day.
+- **◀ ▶** and the same keys as the slideshow move both; moving in the
+  slideshow moves the console too. **✕**, <kbd>Esc</kbd> or closing the
+  console ends the slideshow.
+
+If the browser blocks the second window, the console opens in this window
+alone, to rehearse; allow pop-ups for the site to present on two screens.
 
 ## What is preserved
 

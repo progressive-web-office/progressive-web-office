@@ -1,4 +1,5 @@
 /** Presentation editor view (PRES-004..PRES-010). */
+import { openPresenter, type PresenterConsole } from './presenter';
 import { colorMoreButton } from '../color/more';
 import { beforeMutation, slideTools, type AgentTool } from '../ai/tools';
 import { contentHeightPx, contentWidthPx, mmToPx, type PrintSettings } from '../print/settings';
@@ -717,6 +718,7 @@ export class SlideEditor implements EditorView {
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': t('slides.label') },
       b(t('slides.present'), t('slides.presentText'), () => this.startShow()),
+      b(t('presenter.button'), '🎤', () => this.startShow(true)),
       h('span', { class: 'sep' }),
       b(t('slides.newSlide'), t('slides.newSlideText'), () => this.addSlide()),
       b(t('slides.newTitleSlide'), t('slides.newTitleSlideText'), () => this.addSlide('title')),
@@ -757,11 +759,26 @@ export class SlideEditor implements EditorView {
 
   // --- slideshow (PRES-007) --------------------------------------------------------------
 
-  private startShow(): void {
+  private startShow(presenter = false): void {
     this.finishEditing();
     let index = this.current;
+    // PRES-014: the presenter's console, in a window of its own (or alone, to rehearse).
+    let console_: PresenterConsole | undefined;
+    if (presenter) {
+      console_ = openPresenter({
+        count: this.pres.slides.length,
+        size: { width: this.pres.width, height: this.pres.height },
+        render: (i) => renderSlide(this.pres.slides[i]!, this.pres, (k) => this.resolve(k)),
+        notes: (i) => this.pres.slides[i]?.notes ?? '',
+        go: (i) => go(i - index),
+        end: () => exit(),
+      });
+    }
+    const audience = !console_ || console_.separate;
     const show = h('div', { class: 'slideshow', tabindex: '0', role: 'dialog', 'aria-modal': 'true' });
     const draw = (): void => {
+      console_?.show(index);
+      if (!audience) return;
       const slide = renderSlide(this.pres.slides[index]!, this.pres, (k) => this.resolve(k));
       const vw = window.innerWidth || this.pres.width;
       const vh = window.innerHeight || this.pres.height;
@@ -772,7 +789,11 @@ export class SlideEditor implements EditorView {
       void typesetMath(frame);
       show.setAttribute('aria-label', t('slides.position', { n: index + 1, total: this.pres.slides.length }));
     };
+    let ended = false;
     const exit = (): void => {
+      if (ended) return;
+      ended = true;
+      console_?.close();
       show.remove();
       if (document.fullscreenElement) void document.exitFullscreen?.();
       this.goTo(index);
@@ -804,11 +825,16 @@ export class SlideEditor implements EditorView {
     const onFs = (): void => {
       if (!document.fullscreenElement && show.isConnected) exit();
     };
+    if (!audience) {
+      // Rehearsing: the console alone.
+      draw();
+      return;
+    }
     document.addEventListener('fullscreenchange', onFs, { once: true });
     window.addEventListener('resize', () => show.isConnected && draw());
     document.body.append(show);
     draw();
-    show.focus();
+    if (!console_) show.focus();
     void show.requestFullscreen?.().catch(() => undefined);
   }
 }

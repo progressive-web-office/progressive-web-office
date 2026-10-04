@@ -101,6 +101,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Presenter view (PRES-014): **🎤** starts the slideshow with a console in a
+  second window — current and next slide, speaker notes, timer and clock —
+  moving with the slideshow; alone in the window to rehearse when pop-ups
+  are blocked.
+
 - Conditional formatting in spreadsheets (SHEET-029): **🎨 Conditional
   formatting…** colours cells compared with a value, containing a text,
   duplicated or unique, above or below the average, among the highest or

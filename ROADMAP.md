@@ -223,7 +223,7 @@ group is not a commitment.
 
 ### Presentations
 
-- Layouts, bullets, presenter mode, alignment guides
+- ✅ Presenter view (PRES-014); next: layouts, bullets, alignment guides
 
 ### Teaching
 
