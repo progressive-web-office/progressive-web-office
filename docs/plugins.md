@@ -63,7 +63,7 @@ when it is installed, shown in **Settings → Plugins**, revocable.
 ## Distribution: a registry of Git repositories
 
 ```
-pwo-plugins/                      ← a GitHub organisation (or Codeberg, GitLab…)
+progweboffice/                    ← the GitHub organisation of the project: github.com/progweboffice
 ├── registry                      ← one repository: registry.json, reviewed by pull requests
 ├── templates-school-fr           ← one repository per plugin, versioned by tags
 ├── symbols-hydraulics-iso1219
@@ -95,8 +95,9 @@ clean.
 
 1. **Content packs**: the manifest format, the registry format, **Settings →
    Plugins** (browse a registry, install, update, remove), packs of
-   templates and symbols. Needs the organisation and its `registry`
-   repository.
+   templates and symbols. Needs the `registry` repository in the
+   `progweboffice` organisation, and a first pack (e.g.
+   `progweboffice/templates-fr`).
 2. **Code plugins**: the sandbox, the API, permissions; a first plugin
    (e.g. the draw.io importer, DRAW-010).
 3. **Built-in plugins**: Grist, Zotero, instruments, IEC libraries moved
@@ -104,6 +105,7 @@ clean.
 
 ## To decide
 
-- The organisation and the registry (for instance `pwo-plugins/registry`).
+- The registry: `progweboffice/registry` in the
+  [organisation of the project](https://github.com/progweboffice) (created).
 - Whether code plugins come in the first version, or content packs only.
 - The licences accepted, and who reviews the registry's pull requests.
