@@ -3,6 +3,7 @@
  * to sanitise pasted HTML (DOC-008): anything outside the supported subset is
  * reduced to text, and unsafe URLs/elements are dropped.
  */
+import { ALL_LANGS } from './code-langs';
 import { columnsCss } from './columns';
 import {
   cleanFormat,
@@ -22,7 +23,6 @@ import {
   type Align,
   type Block,
   type CodeCellRun,
-  type CodeLang,
   type DiagramLang,
   type ListInfo,
   type ListNode,
@@ -512,10 +512,9 @@ export function codeCellElement(run: CodeCellRun, doc: Document, resolveImage: (
   return cell;
 }
 
-const CODE_LANGS: readonly CodeLang[] = ['python', 'javascript', 'julia', 'lua', 'sql', 'r', 'cpp'];
 
 function codeCellFromDom(el: HTMLElement, lookupImage: (img: HTMLImageElement) => string | undefined): CodeCellRun | undefined {
-  const lang = CODE_LANGS.find((l) => l === el.dataset.lang);
+  const lang = ALL_LANGS.find((l) => l === el.dataset.lang);
   if (!lang) return undefined;
   const run: CodeCellRun = { cell: el.querySelector('.code-cell-source')?.textContent ?? '', lang, ...(el.dataset.header !== undefined ? { header: el.dataset.header } : {}) };
   // A run in progress shows its status there: not part of the document.

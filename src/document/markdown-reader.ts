@@ -3,6 +3,7 @@
  * markdown-it. Raw HTML is kept as literal text (MD-003), except `<u>` and
  * `<br>` which map to underline and line breaks.
  */
+import { CELL_LANGS } from './code-langs';
 import { parseGeometryOptions } from './geometry';
 import { parseInputMarkdown } from './inputs';
 import { parseFill, parseSpaceLine } from './springs';
@@ -41,7 +42,6 @@ import {
   PAGE_NUMBER_FORMATS,
   type Block,
   type CodeCellRun,
-  type CodeLang,
   type ImageRun,
   type Paragraph,
   type ParagraphStyle,
@@ -225,11 +225,11 @@ function getParser(): MarkdownIt {
   return parser;
 }
 
-export const CELL_LANGS: Record<string, CodeLang> = { python: 'python', py: 'python', javascript: 'javascript', js: 'javascript', julia: 'julia', lua: 'lua', sql: 'sql', r: 'r', c: 'cpp', cpp: 'cpp', 'c++': 'cpp' };
+export { CELL_LANGS };
 
 /** `python {run}` -> language and attribute flags. */
 function parseFenceInfo(info: string): { lang: string; flags: string[] } {
-  const m = /^\s*([\w+-]*)\s*(?:\{([^}]*)\})?/.exec(info);
+  const m = /^\s*([\w+#.-]*)\s*(?:\{([^}]*)\})?/.exec(info);
   return { lang: (m?.[1] ?? '').toLowerCase(), flags: (m?.[2] ?? '').trim().split(/\s+/).map((f) => f.replace(/^\./, '')).filter(Boolean) };
 }
 
@@ -509,8 +509,8 @@ export function readMarkdown(source: string, opts: MarkdownReadOptions = {}): Ri
       case 'code_block': {
         const info = tok.type === 'fence' ? parseFenceInfo(tok.info) : undefined;
         const content = tok.content.replace(/\n$/, '');
-        // CODE-006: executable cells and the output that follows them.
-        const lang = info?.flags.includes('run') ? CELL_LANGS[info.lang] : undefined;
+        // CODE-006: executable cells and the output that follows them; CODE-020: `{cell}` for code shown only.
+        const lang = info?.flags.includes('run') || info?.flags.includes('cell') ? CELL_LANGS[info.lang] : undefined;
         if (lang) {
           const p = newParagraph();
           p.runs = [{ cell: content, lang, ...(info!.flags.includes('hide') ? { hidden: true } : {}) }];

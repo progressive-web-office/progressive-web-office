@@ -71,8 +71,8 @@ export function createCellEditor(parent: HTMLElement, opts: { doc: string; lang:
 }
 
 async function loadLanguage(lang: CodeLang, complete?: SmartComplete): Promise<Extension> {
-  if (lang === 'julia') return cellLanguage(lang);
-  if (lang === 'lua' || lang === 'r' || lang === 'sql' || lang === 'cpp') {
+  // CODE-018, CODE-020: the other languages — their grammar, their words and those of the code.
+  if (lang !== 'python' && lang !== 'javascript') {
     const [language, words] = await Promise.all([lang === 'sql' ? import('@codemirror/lang-sql').then((m) => m.sql()) : lang === 'cpp' ? import('@codemirror/lang-cpp').then((m) => m.cpp()) : cellLanguage(lang), import('./lang-words')]);
     return [language, completionSupport(), words.wordCompletion(lang)];
   }

@@ -302,3 +302,52 @@ test('colours the code of cells, shown and edited, and completes every language 
   await expect(page.locator('.cm-tooltip-autocomplete')).toContainText('ipairs');
   expect(errors).toEqual([]);
 });
+
+test('inserts cells of languages not run here: in colour, with completion, without Run (CODE-020)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'shells.md', 'Intro\n');
+  await page.locator('.doc-page p').first().click();
+  await page.getByRole('button', { name: 'Insert code cell' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Insert code cell' });
+  await expect(dialog.locator('optgroup')).toHaveCount(2);
+  await dialog.getByLabel('Language').selectOption('bash');
+  await expect(dialog.locator('.hint')).toContainText('Bash does not run in the browser');
+  const editor = dialog.locator('.cm-content');
+  await editor.click();
+  await page.keyboard.type('# files\nfor f in *.md; do\n  gre');
+  await expect(page.locator('.cm-tooltip-autocomplete')).toContainText('grep');
+  await page.keyboard.press('Escape');
+  await expect(editor.locator('.tok-keyword').first()).toBeVisible();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('p -c TODO "$f"\ndone');
+  await dialog.getByRole('button', { name: 'Insert' }).click();
+  const cell = page.locator('.doc-page .code-cell');
+  await expect(cell.locator('.code-cell-lang')).toHaveText('Bash');
+  await expect(cell.locator('.code-cell-source .tok-comment')).toHaveText('# files');
+  await expect(cell.getByRole('button', { name: 'Run cell' })).toHaveCount(0);
+  await expect(cell.getByRole('button', { name: 'Edit code' })).toBeVisible();
+
+  // ``` and a language, then Enter: a PowerShell cell.
+  await page.locator('.doc-page p').first().click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('```ps1');
+  await page.keyboard.press('Enter');
+  const ps = page.getByRole('dialog', { name: 'Insert code cell' });
+  await expect(ps.getByLabel('Language')).toHaveValue('powershell');
+  await ps.locator('.cm-content').click();
+  await page.keyboard.type('Get-Ch');
+  await expect(page.locator('.cm-tooltip-autocomplete li[aria-selected]')).toHaveText('Get-ChildItem');
+  // The list takes keys a moment after it opens (its interaction delay), not to be accepted by mistake.
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Enter');
+  await ps.getByRole('button', { name: 'Insert' }).click();
+  await expect(page.locator('.doc-page .code-cell .code-cell-lang')).toHaveText(['PowerShell', 'Bash']);
+  await page.screenshot({ path: 'test-results/code-cells-any-language.png' });
+
+  const md = (await saveAs(page, 'Markdown (.md)')).data.toString();
+  expect(md).toContain('```powershell {cell}\nGet-ChildItem\n```');
+  // The editor keeps the indentation of the line before.
+  expect(md).toMatch(/```bash \{cell\}\n# files\nfor f in \*\.md; do\n {2}grep -c TODO "\$f"\n\s*done\n```/);
+  expect(errors).toEqual([]);
+});

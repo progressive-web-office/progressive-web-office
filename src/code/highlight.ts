@@ -34,6 +34,7 @@ export function cellLanguage(lang: CodeLang): Promise<Language> {
         const { StreamLanguage } = await import('@codemirror/language');
         return StreamLanguage.define((await mode) as Parameters<typeof StreamLanguage.define>[0]);
       };
+      const clike = (name: 'java' | 'csharp' | 'kotlin' | 'scala' | 'dart' | 'objectiveC') => legacy(import('@codemirror/legacy-modes/mode/clike').then((m) => m[name]));
       switch (lang) {
         case 'python':
           return (await import('@codemirror/lang-python')).pythonLanguage;
@@ -47,6 +48,100 @@ export function cellLanguage(lang: CodeLang): Promise<Language> {
           return legacy(import('@codemirror/legacy-modes/mode/lua').then((m) => m.lua));
         case 'r':
           return legacy(import('@codemirror/legacy-modes/mode/r').then((m) => m.r));
+        // CODE-020: languages shown and edited only.
+        case 'typescript':
+          return (await import('@codemirror/lang-javascript')).typescriptLanguage;
+        case 'java':
+          return (await import('@codemirror/lang-java')).javaLanguage;
+        case 'go':
+          return (await import('@codemirror/lang-go')).goLanguage;
+        case 'rust':
+          return (await import('@codemirror/lang-rust')).rustLanguage;
+        case 'php':
+          return (await import('@codemirror/lang-php')).php({ plain: true }).language;
+        case 'html':
+          return (await import('@codemirror/lang-html')).htmlLanguage;
+        case 'css':
+          return (await import('@codemirror/lang-css')).cssLanguage;
+        case 'xml':
+          return (await import('@codemirror/lang-xml')).xmlLanguage;
+        case 'json':
+          return (await import('@codemirror/lang-json')).jsonLanguage;
+        case 'yaml':
+          return (await import('@codemirror/lang-yaml')).yamlLanguage;
+        case 'csharp':
+        case 'kotlin':
+        case 'scala':
+        case 'dart':
+          return clike(lang);
+        case 'objc':
+          return clike('objectiveC');
+        case 'bash':
+          return legacy(import('@codemirror/legacy-modes/mode/shell').then((m) => m.shell));
+        case 'powershell':
+          return legacy(import('@codemirror/legacy-modes/mode/powershell').then((m) => m.powerShell));
+        case 'vb':
+          return legacy(import('@codemirror/legacy-modes/mode/vb').then((m) => m.vb));
+        case 'fortran':
+          return legacy(import('@codemirror/legacy-modes/mode/fortran').then((m) => m.fortran));
+        case 'pascal':
+          return legacy(import('@codemirror/legacy-modes/mode/pascal').then((m) => m.pascal));
+        case 'asm':
+          return legacy(import('@codemirror/legacy-modes/mode/gas').then((m) => m.gas));
+        case 'ada':
+          return legacy(import('./ada-mode').then((m) => m.ada));
+        case 'swift':
+          return legacy(import('@codemirror/legacy-modes/mode/swift').then((m) => m.swift));
+        case 'cobol':
+          return legacy(import('@codemirror/legacy-modes/mode/cobol').then((m) => m.cobol));
+        case 'ruby':
+          return legacy(import('@codemirror/legacy-modes/mode/ruby').then((m) => m.ruby));
+        case 'perl':
+          return legacy(import('@codemirror/legacy-modes/mode/perl').then((m) => m.perl));
+        case 'matlab':
+          return legacy(import('@codemirror/legacy-modes/mode/octave').then((m) => m.octave));
+        case 'haskell':
+          return legacy(import('@codemirror/legacy-modes/mode/haskell').then((m) => m.haskell));
+        case 'ocaml':
+          return legacy(import('@codemirror/legacy-modes/mode/mllike').then((m) => m.oCaml));
+        case 'fsharp':
+          return legacy(import('@codemirror/legacy-modes/mode/mllike').then((m) => m.fSharp));
+        case 'erlang':
+          return legacy(import('@codemirror/legacy-modes/mode/erlang').then((m) => m.erlang));
+        case 'clojure':
+          return legacy(import('@codemirror/legacy-modes/mode/clojure').then((m) => m.clojure));
+        case 'lisp':
+          return legacy(import('@codemirror/legacy-modes/mode/commonlisp').then((m) => m.commonLisp));
+        case 'scheme':
+          return legacy(import('@codemirror/legacy-modes/mode/scheme').then((m) => m.scheme));
+        case 'groovy':
+          return legacy(import('@codemirror/legacy-modes/mode/groovy').then((m) => m.groovy));
+        case 'tcl':
+          return legacy(import('@codemirror/legacy-modes/mode/tcl').then((m) => m.tcl));
+        case 'vhdl':
+          return legacy(import('@codemirror/legacy-modes/mode/vhdl').then((m) => m.vhdl));
+        case 'verilog':
+          return legacy(import('@codemirror/legacy-modes/mode/verilog').then((m) => m.verilog));
+        case 'modelica':
+          return legacy(import('@codemirror/legacy-modes/mode/modelica').then((m) => m.modelica));
+        case 'mathematica':
+          return legacy(import('@codemirror/legacy-modes/mode/mathematica').then((m) => m.mathematica));
+        case 'sas':
+          return legacy(import('@codemirror/legacy-modes/mode/sas').then((m) => m.sas));
+        case 'toml':
+          return legacy(import('@codemirror/legacy-modes/mode/toml').then((m) => m.toml));
+        case 'latex':
+          return legacy(import('@codemirror/legacy-modes/mode/stex').then((m) => m.stex));
+        case 'dockerfile':
+          return legacy(import('@codemirror/legacy-modes/mode/dockerfile').then((m) => m.dockerFile));
+        case 'cmake':
+          return legacy(import('@codemirror/legacy-modes/mode/cmake').then((m) => m.cmake));
+        case 'nginx':
+          return legacy(import('@codemirror/legacy-modes/mode/nginx').then((m) => m.nginx));
+        case 'protobuf':
+          return legacy(import('@codemirror/legacy-modes/mode/protobuf').then((m) => m.protobuf));
+        case 'diff':
+          return legacy(import('@codemirror/legacy-modes/mode/diff').then((m) => m.diff));
         default:
           return (await import('@codemirror/lang-javascript')).javascriptLanguage;
       }

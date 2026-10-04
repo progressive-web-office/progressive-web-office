@@ -22,6 +22,7 @@ import { sizeInput, type SizeInput } from '../app/size-input';
 import type { EditorView, SaveVariant, SyncableDocument, ViewContext } from '../app/views';
 import { blocksToDom, domToBlocks, isSafeUrl, markdownInline, sanitizeHtml, type ImageInfo } from './html';
 import { writeDocumentAsync, type TextFormat } from './io';
+import { isRunLang } from './code-langs';
 import { CELL_LANGS as FENCE_LANGS, decodeDataUri, readMarkdown } from './markdown-reader';
 import { bytesToBase64, writeMarkdown } from './markdown-writer';
 import { SourcePane, sourceLangOf, type SourceLang } from './source-mode';
@@ -805,7 +806,7 @@ export class DocumentEditor implements EditorView {
     const { $from, empty } = this.view.state.selection;
     const para = $from.parent;
     if (!empty || this.readOnly || para.type !== schema.nodes.paragraph) return false;
-    const m = para.attrs.style === 'code' ? /^\s*([\w+#.-]+)\s*(\{run\})?\s*$/.exec(para.textContent) : /^```\s*([\w+#.-]+)\s*(\{run\})?\s*$/.exec(para.textContent);
+    const m = para.attrs.style === 'code' ? /^\s*([\w+#.-]+)\s*(\{(?:run|cell)\})?\s*$/.exec(para.textContent) : /^```\s*([\w+#.-]+)\s*(\{(?:run|cell)\})?\s*$/.exec(para.textContent);
     const lang = m && FENCE_LANGS[m[1]!.toLowerCase()];
     if (!lang) return false;
     this.view.dispatch(this.view.state.tr.delete($from.start(), $from.end()).setNodeMarkup($from.before(), undefined, { ...para.attrs, style: 'normal' }));
@@ -987,7 +988,8 @@ export class DocumentEditor implements EditorView {
     };
     const entries: MenuEntry[] = [];
     if (cell?.type === schema.nodes.code_cell && cellPos !== undefined) {
-      const julia = cell.attrs.lang === 'julia';
+      // CODE-020: a language not run here (and Julia, run by its notebooks) has no Run.
+      const julia = !isRunLang(cell.attrs.lang as string);
       entries.push(
         { title: t('ctx.cell') },
         ...(julia || !editable ? [] : [{ label: t('code.run'), icon: '▶', run: () => this.onCellAction('run', cellPos, cell) }, { label: t('code.runAll'), icon: '⏩', run: () => this.onCellAction('run-all', cellPos, cell) }]),
@@ -1154,7 +1156,7 @@ export class DocumentEditor implements EditorView {
 
   private onCellAction(action: string, pos: number, node: PmNode): void {
     if (this.readOnly) return;
-    if ((action === 'run' || action === 'run-all') && node.attrs.lang === 'julia') return void window.alert(t('kslate.runHint'));
+    if ((action === 'run' || action === 'run-all') && !isRunLang(node.attrs.lang as string)) return void (node.attrs.lang === 'julia' && window.alert(t('kslate.runHint')));
     if (action === 'run') void this.runCells([pos]);
     else if (action === 'run-all') void this.runCells(this.cellPositions());
     else if (action === 'stop') this.runner?.stop();
@@ -1176,8 +1178,8 @@ export class DocumentEditor implements EditorView {
   private cellPositions(): number[] {
     const out: number[] = [];
     this.view.state.doc.descendants((n, pos) => {
-      // DOC-038: Julia cells run in KaimonSlate, not here.
-      if (n.type === schema.nodes.code_cell && n.attrs.lang !== 'julia') out.push(pos);
+      // DOC-038: Julia cells run in KaimonSlate, not here; CODE-020: nor the languages shown only.
+      if (n.type === schema.nodes.code_cell && isRunLang(n.attrs.lang as string)) out.push(pos);
     });
     return out;
   }
@@ -1186,11 +1188,11 @@ export class DocumentEditor implements EditorView {
   private async editCell(pos?: number, node?: PmNode, lang?: CodeLang): Promise<void> {
     if (this.readOnly) return;
     const { editCell } = await import('../code/ui');
-    const current = node?.attrs as { cell: string; lang: 'python' | 'javascript'; output: unknown } | undefined;
+    const current = node?.attrs as { cell: string; lang: CodeLang; output: unknown; header: string | null } | undefined;
     // CODE-011: completion loads jedi the first time, longer than a keystroke waits: it starts now.
     if (this.runner?.started) void this.runner.complete('import sys\nsys.', 1, 4, 120_000);
     // CODE-011: the interpreter of the document's cells completes with what it knows, once running.
-    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell } : lang ? { lang, code: '' } : undefined, (code, line, column, onLate) => this.runner?.complete(code, line, column, 2500, onLate) ?? Promise.resolve(null), !current);
+    const value = await editCell(this.element, current ? { lang: current.lang, code: current.cell, ...(current.header !== null && current.header !== undefined ? { fixedLang: true } : {}) } : lang ? { lang, code: '' } : undefined, (code, line, column, onLate) => this.runner?.complete(code, line, column, 2500, onLate) ?? Promise.resolve(null), !current);
     if (!value) return;
     // Changing the code makes the previous output stale.
     const unchanged = current && current.cell === value.code && current.lang === value.lang;
@@ -1200,7 +1202,7 @@ export class DocumentEditor implements EditorView {
     else this.command(insertOnOwnLine(schema.nodes.code_cell!.create(attrs)));
     this.refocus();
     // CODE-014: the cells using what it defined (before or now) are out of date.
-    if (!unchanged && current && pos !== undefined) void this.markDependents(pos, { lang: current.lang, code: current.cell });
+    if (!unchanged && current && pos !== undefined && isRunLang(current.lang)) void this.markDependents(pos, { lang: current.lang, code: current.cell });
   }
 
   // --- reactive cells (CODE-014) -----------------------------------------------
@@ -1213,7 +1215,7 @@ export class DocumentEditor implements EditorView {
   private allCells(): { pos: number; node: PmNode }[] {
     const out: { pos: number; node: PmNode }[] = [];
     this.view.state.doc.descendants((node, pos) => {
-      if (node.type === schema.nodes.code_cell && node.attrs.lang !== 'julia') out.push({ pos, node });
+      if (node.type === schema.nodes.code_cell && isRunLang(node.attrs.lang as string)) out.push({ pos, node });
     });
     return out;
   }

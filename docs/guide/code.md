@@ -325,6 +325,22 @@ other runtimes, webR is not kept by the application for offline use: the
 browser's cache usually keeps it, but the first run of a session may need the
 network.
 
+## Any other language
+
+Cells can hold code of languages that do not run in the browser (CODE-020):
+**Bash**, **PowerShell**, **Julia**, Java, C#, Visual Basic, Rust, Fortran,
+Go, Pascal / Delphi, PHP, assembly, Ada, Swift, Objective-C, COBOL, Kotlin,
+TypeScript, MATLAB / Octave, VHDL, Verilog, Modelica… and formats such as
+HTML, JSON, YAML, TOML or LaTeX. Choose the language under *Shown and
+edited only* in the cell’s window, or type ```` ``` ```` and its name (`sh`, `ps1`,
+`jl`, `cs`…) then <kbd>Enter</kbd>.
+
+Their code is shown in colour and written with **completion** — the
+keywords and usual commands of the language (`grep`, `Get-ChildItem`,
+`println`…) and the words already in the code — but has no ▶ Run: run it
+in a terminal or the language's own tools. In Markdown such a cell is kept
+as ```` ```bash {cell} ````; other Markdown tools show it as a code block.
+
 ## Projects: several files
 
 A code file opened **from an open folder** runs with the other files of its

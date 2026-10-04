@@ -1,4 +1,5 @@
 /** Markdown writer (MD-002): CommonMark + GFM tables/strikethrough. */
+import { isRunLang } from './code-langs';
 import { geometryOptions } from './geometry';
 import { inputMarkdown } from './inputs';
 import { fillText, spaceText } from './springs';
@@ -224,9 +225,14 @@ class MarkdownWriter {
     return anchor + inline || '<br>';
   }
 
-  /** CODE-006: the cell as a `{run}` fence, then its last output and figures. */
+  /**
+   * CODE-006: the cell as a `{run}` fence — `{cell}` for code shown only
+   * (CODE-020; Julia stays `{run}`, run by its notebooks) — then its last
+   * output and figures.
+   */
   private cell(run: CodeCellRun): string {
-    const parts = [fenced(run.cell, `${run.lang} {run${run.hidden ? ' hide' : ''}}`)];
+    const kind = isRunLang(run.lang) || run.lang === 'julia' ? 'run' : 'cell';
+    const parts = [fenced(run.cell, `${run.lang} {${kind}${run.hidden ? ' hide' : ''}}`)];
     const text = run.output?.text.replace(/\n$/, '');
     if (text) parts.push(fenced(text, `text {output${run.output?.error ? ' error' : ''}}`));
     const images = (run.output?.images ?? []).filter((key) => this.doc.resources.has(key));

@@ -3,8 +3,9 @@ import type { SmartComplete } from './completion';
 import { t } from '../i18n';
 import { button, h } from '../app/dom';
 import type { CodeLang } from '../document/model';
+import { isRunLang, LANG_LABEL, RUN_LANGS, SHOW_LANGS } from '../document/code-langs';
 
-export const LANG_LABEL: Record<CodeLang, string> = { python: 'Python', javascript: 'JavaScript', julia: 'Julia', lua: 'Lua', sql: 'SQL', r: 'R', cpp: 'C/C++' };
+export { LANG_LABEL };
 
 /** Add the Run / Edit bar to every cell under `root` that has none. */
 export function decorateCells(root: HTMLElement): void {
@@ -21,12 +22,15 @@ export function decorateCells(root: HTMLElement): void {
       h(
         'span',
         { class: 'code-cell-bar', contenteditable: 'false' },
-        h('span', { class: 'code-cell-lang' }, LANG_LABEL[lang] ?? lang, cell.classList.contains('code-hidden') ? h('span', { class: 'code-cell-hidden-note' }, ` · ${t('code.hiddenNote')}`) : ''),
+        h('span', { class: 'code-cell-lang', ...(isRunLang(lang) ? {} : { title: t('code.showOnly') }) }, LANG_LABEL[lang] ?? lang, cell.classList.contains('code-hidden') ? h('span', { class: 'code-cell-hidden-note' }, ` · ${t('code.hiddenNote')}`) : ''),
         action('toggle-code', cell.classList.contains('code-hidden') ? '👁' : '🙈', t(cell.classList.contains('code-hidden') ? 'code.showCode' : 'code.hideCode')),
         // DOC-038: a Julia cell of a KaimonSlate notebook shows its header (id, tags); it runs in KaimonSlate.
-        ...(lang === 'julia'
-          ? [h('span', { class: 'code-cell-header', title: t('kslate.runHint') }, `#%% ${cell.dataset.header ?? 'code'}`)]
-          : [
+        ...(lang === 'julia' && cell.dataset.header !== undefined
+          ? [h('span', { class: 'code-cell-header', title: t('kslate.runHint') }, `#%% ${cell.dataset.header}`)]
+          : // CODE-020: code of a language not run here: shown and edited only.
+            !isRunLang(lang)
+            ? []
+            : [
               action('run', '▶', t('code.run')),
               action('run-all', '⏩', t('code.runAll')),
               action('stop', '■', t('code.stop')),
@@ -59,6 +63,8 @@ export function setCellStatus(cell: HTMLElement, text: string): void {
 export interface CellValue {
   lang: CodeLang;
   code: string;
+  /** The language cannot change (a cell of a KaimonSlate notebook). */
+  fixedLang?: boolean;
 }
 
 function modal(host: HTMLElement, titleId: string): { dialog: HTMLDialogElement; show(): void; close(): void } {
@@ -86,11 +92,26 @@ export async function editCell(host: HTMLElement, initial?: CellValue, complete?
   const { createCellEditor } = await import('./cell-editor');
   return new Promise((resolve) => {
     const m = modal(host, 'code-title');
-    const lang = h('select', { 'aria-label': t('code.language') }, ...((initial?.lang === 'julia' ? ['julia'] : ['python', 'javascript', 'sql', 'r', 'lua', 'cpp']) as CodeLang[]).map((l) => h('option', { value: l }, LANG_LABEL[l])));
+    // CODE-020: the languages run here, then those shown and edited only, by name.
+    const option = (l: CodeLang) => h('option', { value: l }, LANG_LABEL[l]);
+    const byName = (a: CodeLang, b: CodeLang) => LANG_LABEL[a].localeCompare(LANG_LABEL[b]);
+    const lang = h(
+      'select',
+      { 'aria-label': t('code.language') },
+      ...(initial?.fixedLang
+        ? [option(initial.lang)]
+        : [h('optgroup', { label: t('code.groupRun') }, ...RUN_LANGS.map(option)), h('optgroup', { label: t('code.groupShow') }, ...[...SHOW_LANGS].sort(byName).map(option))]),
+    );
     lang.value = initial?.lang ?? 'python';
+    const hint = h('p', { class: 'hint' });
+    const showHint = (): void => void (hint.textContent = isRunLang(lang.value) ? t('code.hint') : t('code.hintShowOnly', { lang: LANG_LABEL[lang.value as CodeLang] }));
+    showHint();
     const source = h('div', { class: 'code-source' });
     const editor = createCellEditor(source, { doc: initial?.code ?? '', lang: lang.value as CodeLang, label: t('code.source'), ...(complete ? { complete } : {}) });
-    lang.addEventListener('change', () => editor.setLanguage(lang.value as CodeLang));
+    lang.addEventListener('change', () => {
+      editor.setLanguage(lang.value as CodeLang);
+      showHint();
+    });
     const finish = (ok: boolean): void => {
       const code = editor.value().replace(/\s+$/, '');
       editor.destroy();
@@ -101,7 +122,7 @@ export async function editCell(host: HTMLElement, initial?: CellValue, complete?
       h('h2', { id: 'code-title' }, isNew ? t('code.insertTitle') : t('code.editTitle')),
       h('label', { class: 'code-lang-label' }, `${t('code.language')} `, lang),
       source,
-      h('p', { class: 'hint' }, t('code.hint')),
+      hint,
       h(
         'div',
         { class: 'dialog-actions' },

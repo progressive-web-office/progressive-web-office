@@ -139,6 +139,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Code cells in any language (CODE-020): Bash, PowerShell, Julia, the most
+  used languages of the TIOBE index (Java, C#, Visual Basic, Rust, Fortran,
+  Go, Delphi, PHP, assembly, Ada, Swift, COBOL…) and formats such as JSON,
+  YAML or LaTeX — shown in colour and written with completion, without Run;
+  kept in Markdown as ```` ```bash {cell} ````.
+
 - How PWO and DigitalSignalix work together (docs/digitalsignalix.md): one
   format for PWO plugins and the apps of the screens, sending slides to the
   screens, provenance, the exports planned (PLUG-009, PLUG-010,
