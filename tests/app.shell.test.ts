@@ -20,7 +20,8 @@ describe('UI-001 start screen', () => {
   it('links to the documentation and the source code', () => {
     new App(root);
     const links = Array.from(root.querySelectorAll<HTMLElement>('.start .start-links .start-link'));
-    expect(links.map((a) => a.textContent)).toEqual(['Documentation', 'Source code (GNU AGPL-3.0)', 'About']);
+    expect(links.map((a) => a.textContent)).toEqual(['Documentation', 'Where are my documents?', 'Source code (GNU AGPL-3.0)', 'About']);
+    expect((links[1] as HTMLAnchorElement).href).toBe(new URL('docs/guide/where.html', document.baseURI).href);
     expect((links[0] as HTMLAnchorElement).href).toBe(new URL('docs/', document.baseURI).href);
     // And in the header: the documentation (?) and About (ℹ).
     expect(root.querySelector<HTMLAnchorElement>('.header-actions a[aria-label="Documentation"]')!.href).toBe(new URL('docs/', document.baseURI).href);
