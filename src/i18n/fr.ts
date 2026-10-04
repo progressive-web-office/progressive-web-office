@@ -1862,4 +1862,11 @@ export const fr: Record<MessageKey, string> = {
   'start.newPainting': 'Nouvelle peinture',
   'start.untitledDrawing': 'Dessin sans titre.svg',
   'start.untitledPainting': 'Image sans titre.png',
+  'draw.netlist': 'Netlist (SPICE)',
+  'draw.netlistTitle': 'Télécharger le circuit en netlist SPICE, pour le simuler',
+  'draw.bom': 'Nomenclature',
+  'draw.bomTitle': 'Télécharger la liste des composants (CSV, pour un tableur)',
+  'draw.bom.quantity': 'Quantité',
+  'draw.bom.references': 'Repères',
+  'draw.bom.component': 'Composant',
 };

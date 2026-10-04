@@ -1862,4 +1862,11 @@ export const zh: Record<MessageKey, string> = {
   'start.newPainting': '新建绘画',
   'start.untitledDrawing': '未命名绘图.svg',
   'start.untitledPainting': '未命名图片.png',
+  'draw.netlist': '网表（SPICE）',
+  'draw.netlistTitle': '下载 SPICE 网表以进行仿真',
+  'draw.bom': '物料清单',
+  'draw.bomTitle': '下载元件清单（CSV，可用电子表格打开）',
+  'draw.bom.quantity': '数量',
+  'draw.bom.references': '标号',
+  'draw.bom.component': '元件',
 };

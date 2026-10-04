@@ -212,7 +212,7 @@ group is not a commitment.
   electronic (IEC 60617), logic gates, control block diagrams, pneumatic and
   hydraulic (ISO 1219), flowcharts (ISO 5807) — pins on the grid, orthogonal
   wires that stay connected, junction dots, references (R1, C1…) and values
-  with units; next: netlist (SPICE) and bill of materials (DRAW-009)
+  with units; netlist (SPICE) and bill of materials (DRAW-009)
 - ✅ Drawings inserted in text documents and slides, editable in place, with
   a PNG version for DOCX and LaTeX (DRAW-007); next: PNG version in PPTX
 - ✅ Bitmap painting (DRAW-008): pencil, brush, eraser, fill, shapes, text,

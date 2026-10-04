@@ -1860,6 +1860,13 @@ export const en = {
   'start.newPainting': 'New painting',
   'start.untitledDrawing': 'Untitled drawing.svg',
   'start.untitledPainting': 'Untitled picture.png',
+  'draw.netlist': 'Netlist (SPICE)',
+  'draw.netlistTitle': 'Download the circuit as a SPICE netlist, to simulate it',
+  'draw.bom': 'Bill of materials',
+  'draw.bomTitle': 'Download the list of components (CSV, for a spreadsheet)',
+  'draw.bom.quantity': 'Quantity',
+  'draw.bom.references': 'References',
+  'draw.bom.component': 'Component',
 } as const;
 
 export type MessageKey = keyof typeof en;

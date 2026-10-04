@@ -75,6 +75,23 @@ a **value**, both written beside it. Values are written the usual way:
 on a battery `12 V`. In flowcharts and blocks the value is the text written
 inside the shape.
 
+## Netlist and bill of materials
+
+When the drawing holds electrical symbols, two more buttons appear at the
+bottom of the editor:
+
+- **Netlist (SPICE)** downloads `schematic.cir`, ready for a SPICE simulator
+  (ngspice, LTspice, Qucs-S…). Wires joined end to end or in a T form one
+  net; wires that only cross do not. The earth symbol is net `0`; a
+  **Terminal** whose value is set names its net (`VOUT`…), the others are
+  numbered `N1`, `N2`… Values are written the SPICE way (`4.7 kΩ` → `4.7k`,
+  `1 MΩ` → `1Meg`); a diode or transistor without a value gets a default
+  model. Parts SPICE does not know (lamps, switches, meters…) are listed as
+  comments.
+- **Bill of materials** downloads a CSV file to open as a spreadsheet: one
+  line per kind of component and value, with the quantity and the
+  references (`2, R1 R2, Resistor, 470 Ω`).
+
 ## Keyboard
 
 | Keys | Action |

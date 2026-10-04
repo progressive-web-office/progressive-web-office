@@ -201,6 +201,7 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
       if (focused) objects.querySelector<HTMLElement>(`[data-id="${CSS.escape(focused)}"]`)?.focus();
       undoBtn.disabled = !undo.length;
       redoBtn.disabled = !redo.length;
+      netlistBtn.hidden = bomBtn.hidden = !electrical();
       status.textContent = selected.length ? t('draw.selected', { n: selected.length, name: one ? shapeName(one) : '' }) : '';
     };
     const domBox = (id: string): [number, number, number, number] | undefined => {
@@ -609,6 +610,18 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
     };
     const exportSvg = (): void => save(new Blob([toSvg(d)], { type: 'image/svg+xml' }), 'drawing.svg');
     const exportAsPng = async (): Promise<void> => save(await exportPng(d, 2), 'drawing.png');
+    // DRAW-009: the netlist and the parts of an electrical schematic.
+    const electrical = (): boolean => d.shapes.some((s) => s.kind === 'symbol' && symbolDef(s.sym)?.category === 'electrical');
+    const exportNetlist = async (): Promise<void> => {
+      const { spiceNetlist } = await import('./netlist');
+      save(new Blob([spiceNetlist(d, d.alt || t('draw.title'))], { type: 'text/plain' }), 'schematic.cir');
+    };
+    const exportBom = async (): Promise<void> => {
+      const { billOfMaterials, bomCsv } = await import('./netlist');
+      save(new Blob([bomCsv(billOfMaterials(d), [t('draw.bom.quantity'), t('draw.bom.references'), t('draw.bom.component'), t('draw.value')])], { type: 'text/csv' }), 'bill-of-materials.csv');
+    };
+    const netlistBtn = button(t('draw.netlist'), () => void exportNetlist(), { title: t('draw.netlistTitle') });
+    const bomBtn = button(t('draw.bom'), () => void exportBom(), { title: t('draw.bomTitle') });
 
     const dialog = h('dialog', { class: 'dialog draw-dialog', 'aria-labelledby': 'draw-title' });
     const finish = (value: Drawing | null): void => {
@@ -671,6 +684,8 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
         button(t('draw.fit'), fit, { title: t('draw.fitTitle') }),
         button(t('draw.exportSvg'), exportSvg),
         button(t('draw.exportPng'), () => void exportAsPng()),
+        netlistBtn,
+        bomBtn,
       ),
       h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(null)), button(t('draw.done'), () => finish(d), { className: 'primary' })),
     );

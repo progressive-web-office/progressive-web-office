@@ -77,6 +77,17 @@ test('draws a schematic with symbols and wires, inserted in a document and edite
   await expect(dialog.getByLabel('Value')).toBeHidden();
 
   if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/drawing.png' });
+  // DRAW-009: the netlist and the bill of materials.
+  const net = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Netlist (SPICE)' }).click();
+  const netFile = await net;
+  expect(netFile.suggestedFilename()).toBe('schematic.cir');
+  const text = (await import('node:fs')).readFileSync((await netFile.path())!, 'utf8');
+  expect(text).toMatch(/^R1 N\d+ N\d+ 4\.7k$/m);
+  expect(text).toMatch(/^C1 N\d+ N\d+ 1u$/m);
+  const bom = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Bill of materials' }).click();
+  expect((await import('node:fs')).readFileSync((await (await bom).path())!, 'utf8')).toContain('1,R1,Resistor,4.7 kΩ');
   await dialog.getByLabel('Description').fill('An RC circuit');
   await dialog.getByRole('button', { name: 'Done' }).click();
   await expect(dialog).toBeHidden();

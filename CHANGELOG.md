@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Netlist and bill of materials** of electrical schematics (DRAW-009): a
+  SPICE netlist (nets joined at T junctions, earth as 0, named terminals,
+  SPICE values and default models) and a CSV bill of materials grouped by
+  component and value.
 - **Bitmap painting** (DRAW-008): pencil, brush, eraser, fill bucket, lines,
   rectangles and ellipses (filled or not), text, colour picker, selection
   moved with the mouse or the arrows, copy, cut and paste, canvas resized,
