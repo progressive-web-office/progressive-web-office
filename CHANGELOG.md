@@ -21,7 +21,22 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   🎨 Drawings, 💡 Examples, ⭐ My templates, 🗃️ a repository, ☁️ a cloud
   folder).
 
+### Security
+
+- **Sync my devices**: a device is now added by a **one-time invitation**
+  (a QR code valid 5 minutes, for one device) **accepted on a paired
+  device** after comparing four emojis; the QR code no longer holds the key
+  of the documents, which is sent only to the device accepted, encrypted for
+  a public key of its own (DEVSYNC-006). The guide explains the limits (the key kept in each
+  browser, a lost device, what the relays see).
+
 ### Fixed
+
+- QRShare did not recognise the pairing QR code of **Sync my devices**
+  (`pwo-sync:…`, not a link): the invitation is now a link to the
+  application, which opens ready to pair. The command palette has *Sync my
+  devices now*, *Add a device: show an invitation QR code* and *Pair this
+  device: scan an invitation QR code*.
 
 - A private repository added as a source of templates (**Templates and
   examples → ＋ Source…**) could not be read without an account of its site:

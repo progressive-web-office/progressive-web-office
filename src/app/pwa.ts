@@ -34,6 +34,13 @@ export function installPwa(app: App): void {
 
 /** Rebuild a document carried in the URL fragment (SHARE-010). */
 async function openLinkedDocument(app: App): Promise<void> {
+  if (location.hash.startsWith('#pwo-pair=')) {
+    // DEVSYNC-006: an invitation to pair this device, out of the address at once (history, bookmarks).
+    const invitation = location.hash;
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+    await app.openDeviceSync({ invitation });
+    return;
+  }
   if (location.hash.startsWith('#collab=')) {
     // COLLAB-001: an invitation to a real-time session.
     const { decodeCollabLink } = await import('../collab/link');

@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { openApp } from './helpers';
 
-// DEVSYNC-001..DEVSYNC-005: one's own devices, peer to peer.
+// DEVSYNC-001..DEVSYNC-006: one's own devices, peer to peer.
 
-test('warns before synchronising devices, then pairs this one with a secret code (DEVSYNC-001, DEVSYNC-005)', async ({ page }) => {
+test('warns before synchronising devices, then pairs this one and shows invitations (DEVSYNC-001, DEVSYNC-005, DEVSYNC-006)', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('pwo.collab.transport', 'local'));
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'Sync my devices' }).click();
@@ -16,24 +16,26 @@ test('warns before synchronising devices, then pairs this one with a secret code
   await expect(dialog.getByText('Tick the box to say you understand the warnings.')).toBeVisible();
   await dialog.getByLabel(/I understand/).check();
   await dialog.getByRole('button', { name: 'Continue' }).click();
-  // A wrong code is refused.
-  await dialog.getByLabel('Pairing code').fill('hello');
+  // A wrong link is refused.
+  await dialog.getByLabel('Invitation link').fill('hello');
   await dialog.getByRole('button', { name: 'Pair', exact: true }).click();
-  await expect(dialog.getByText(/This is not a pairing code/)).toBeVisible();
-  // The first device creates the pairing: a code and a QR code for the others.
+  await expect(dialog.getByText(/This is not an invitation link/)).toBeVisible();
+  // The first device creates the pairing, then shows one-time invitations: no key in sight.
   await dialog.getByLabel('Name of this device').fill('Test laptop');
   await dialog.getByRole('button', { name: 'Create a pairing' }).click();
-  const code = dialog.locator('.devsync-code-text');
-  await expect(code).toHaveText(/^pwo-sync:[\w-]{8,}\.[\w-]{24,}$/);
-  await expect(dialog.locator('img.devsync-qr')).toBeVisible();
   await expect(dialog.getByText('No other device yet.')).toBeVisible();
+  await expect(dialog.locator('img.devsync-qr')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Show an invitation QR code' }).click();
+  await expect(dialog.locator('img.devsync-qr')).toBeVisible();
+  await expect(dialog.getByText(/Valid until .*, for one device\./)).toBeVisible();
   await dialog.getByRole('button', { name: 'Sync now' }).click();
   await expect(dialog.getByText(/No other device is online/)).toBeVisible();
-  const first = await code.textContent();
-  // A new code revokes the old one.
+  const key = async (): Promise<string> => page.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').pairing?.secret);
+  const first = await key();
+  // A new key unpairs the other devices.
   page.once('dialog', (d) => void d.accept());
-  await dialog.getByRole('button', { name: /New code/ }).click();
-  await expect(code).not.toHaveText(first!);
+  await dialog.getByRole('button', { name: /New key/ }).click();
+  await expect.poll(key).not.toBe(first);
   // Stopping keeps the documents, and forgets the pairing.
   page.once('dialog', (d) => void d.accept());
   await dialog.getByRole('button', { name: 'Stop synchronising this device' }).click();
@@ -42,4 +44,71 @@ test('warns before synchronising devices, then pairs this one with a secret code
   expect(state.name).toBe('Test laptop');
   expect(state.pairing).toBeUndefined();
   expect(errors).toEqual([]);
+});
+
+test('a new device joins by an invitation link, accepted on the paired device after comparing the emojis (DEVSYNC-006)', async ({ browser }) => {
+  const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
+  await context.addInitScript(() => {
+    localStorage.setItem('pwo.collab.transport', 'local');
+    localStorage.setItem('pwo.toolbar', 'full');
+  });
+  // The paired device shows an invitation.
+  const laptop = await context.newPage();
+  await openApp(laptop);
+  await laptop.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}');
+    localStorage.setItem('pwo.devsync', JSON.stringify({ ...s, name: 'Laptop', understood: true, pairing: { room: 'room-of-the-test', secret: 'the-key-of-the-documents-in-test', since: 1 } }));
+  });
+  await laptop.getByRole('button', { name: 'Sync my devices' }).click();
+  const host = laptop.getByRole('dialog', { name: 'Sync my devices' });
+  await host.getByRole('button', { name: 'Show an invitation QR code' }).click();
+  await host.getByRole('button', { name: 'Copy the link' }).click();
+  const link = await laptop.evaluate(() => navigator.clipboard.readText());
+  expect(link).toMatch(/#pwo-pair=/);
+  expect(link).not.toContain('the-key-of-the-documents-in-test');
+  // The new device opens the link: the invitation leaves its address at once.
+  const phone = await context.newPage();
+  // Another device: its own synchronisation state (the pages of one browser share their storage).
+  await phone.addInitScript(() => {
+    const own = (k: string): string => (k === 'pwo.devsync' ? 'pwo.devsync.phone' : k);
+    const { getItem, setItem } = Storage.prototype;
+    Storage.prototype.getItem = function (k: string) { return getItem.call(this, own(k)); };
+    Storage.prototype.setItem = function (k: string, v: string) { setItem.call(this, own(k), v); };
+  });
+  await phone.goto(link);
+  const join = phone.getByRole('dialog', { name: 'Sync my devices' });
+  await expect(phone).not.toHaveURL(/pwo-pair/);
+  await join.getByLabel(/I understand/).check();
+  await join.getByRole('button', { name: 'Continue' }).click();
+  const emojis = join.locator('.devsync-emojis');
+  await expect(emojis).toBeVisible();
+  // The same emojis on the paired device, where the user accepts.
+  await expect(host.getByText(/asks to join/)).toBeVisible();
+  await expect(host.locator('.devsync-emojis')).toHaveText((await emojis.textContent())!);
+  await host.getByRole('button', { name: 'Accept' }).click();
+  await expect(host.getByText(/is paired\./)).toBeVisible();
+  await expect(join.getByText('No other device yet.').or(join.getByText(/Laptop/))).toBeVisible();
+  const secret = await phone.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').pairing?.secret);
+  expect(await phone.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').name)).not.toBe('Laptop');
+  expect(secret).toBe('the-key-of-the-documents-in-test');
+  await context.close();
+});
+
+test('the command palette syncs the devices, shows an invitation or scans one (DEVSYNC-006)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pwo.collab.transport', 'local'));
+  await openApp(page);
+  await page.evaluate(() => localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'd1', name: 'Laptop', understood: true, auto: false, peers: {}, base: {}, known: {}, deleted: {}, pairing: { room: 'room-of-the-palette', secret: 'the-key-of-the-documents-palette', since: 1 } })));
+  const palette = page.getByRole('dialog', { name: 'Commands' });
+  await page.keyboard.press('Control+Shift+P');
+  await palette.getByRole('combobox').fill('scan an invitation');
+  await expect(palette.getByRole('option').first()).toContainText('Pair this device: scan an invitation QR code');
+  await palette.getByRole('combobox').fill('sync my devices now');
+  await expect(palette.getByRole('option').first()).toContainText('Sync my devices now');
+  await page.keyboard.press('Enter');
+  await expect(page.getByText(/No other device is online/)).toBeVisible();
+  await page.keyboard.press('Control+Shift+P');
+  await palette.getByRole('combobox').fill('show an invitation');
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Sync my devices' });
+  await expect(dialog.locator('img.devsync-qr')).toBeVisible();
 });

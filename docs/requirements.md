@@ -547,10 +547,11 @@ integration is ever needed.
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
 | DEVSYNC-001 | S | 0.2.0 | Before synchronising, the system shall explain and have the user acknowledge that synchronisation is not a backup, that a document deleted on one device is deleted on every device (kept in a trash for 30 days), and that it is for one person's own devices, not collaboration. |
-| DEVSYNC-002 | S | 0.2.0 | The system shall pair the user's devices with a code (and its QR code) holding a random secret, devices finding each other through relays and exchanging everything end-to-end encrypted with that secret; it shall list the paired devices, online or last seen, and make a new code revoking the others, or stop synchronising a device, its documents kept. |
+| DEVSYNC-002 | S | 0.2.0 | The system shall pair the user's devices with a random key, devices finding each other through relays and exchanging everything end-to-end encrypted with that key; it shall list the paired devices, online or last seen, and make a new key unpairing the others, or stop synchronising a device, its documents kept. |
 | DEVSYNC-003 | S | 0.2.0 | When the user asks, or by itself while the application is open when chosen, the system shall merge the documents of the browser's storage with each paired device online: copying documents new or changed on one, keeping a document changed on both twice (the newest under its name, the other as a conflict copy named alike on every device), and passing on deletions of documents unchanged since; hidden files and the trash are never synchronised. |
 | DEVSYNC-004 | S | 0.2.0 | A document deleted, or replaced by another device's version, shall go to the device's trash, kept 30 days. |
 | DEVSYNC-005 | S | 0.2.0 | The system shall check every path received from another device and serve only the synchronised documents. |
+| DEVSYNC-006 | S | 0.2.0 | When the user adds a device, the paired device shall show a one-time invitation (a QR code and a link to the application, valid 5 minutes, without the key); the new device opening it shall show verification emojis drawn from the invitation and its own ephemeral public key, and the paired device shall send the key, encrypted for that public key alone, only when the user accepts that device after comparing the emojis; the command palette shall offer to sync now, to show an invitation and to scan one. |
 
 ## 9r. Versions and history (VER)
 

@@ -33,7 +33,7 @@ export interface DeviceSyncState {
 const KEY = 'pwo.devsync';
 export const TOMBSTONE_DAYS = 30;
 
-function randomId(bytes: number): string {
+export function randomId(bytes: number): string {
   const buf = crypto.getRandomValues(new Uint8Array(bytes));
   return btoa(String.fromCharCode(...buf)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }

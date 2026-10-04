@@ -1,16 +1,32 @@
 /**
- * DEVSYNC-001..DEVSYNC-005: the window of the synchronisation between one's
+ * DEVSYNC-001..DEVSYNC-006: the window of the synchronisation between one's
  * own devices — its warnings first (not a backup, deletions reach every
- * device, not collaboration), then pairing by a code or a QR code, the
- * devices, "Sync now", synchronising by itself, the trash, and revoking.
+ * device, not collaboration), then pairing by a one-time invitation (a QR
+ * code accepted on the paired device), the devices, "Sync now",
+ * synchronising by itself, the trash, and revoking.
  */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import { listen, startSync, stopSync, currentSync, SYNC_FOLDER } from './live';
 import { TRASH } from './plan';
-import { loadSyncState, newPairing, pairingCode, parsePairingCode, saveSyncState, unpaired, TOMBSTONE_DAYS } from './state';
+import { INVITE_MINUTES, hostInvitation, invitationUrl, joinInvitation, newInvitation, parseInvitation, type Invitation } from './invite';
+import { loadSyncState, newPairing, parsePairingCode, saveSyncState, unpaired, TOMBSTONE_DAYS } from './state';
 
-export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openTrash?(): void } = {}): Promise<void> {
+export interface SyncDialogOptions {
+  openBackup?(): void;
+  openTrash?(): void;
+  /** DEVSYNC-006: scan an invitation QR code (QRShare's scanner). */
+  scan?(): void;
+  /** An invitation link this device was opened with: joined once the warnings are read. */
+  invitation?: string;
+  /** Show an invitation at once (a paired device). */
+  invite?: boolean;
+}
+
+/** The address of the application, where an invitation link leads. */
+const appBase = (): string => new URL(location.pathname, location.origin).href;
+
+export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Promise<void> {
   return new Promise((resolve) => {
     const body = h('div', { class: 'devsync-body' });
     const status = h('p', { class: 'hint', role: 'status', 'aria-live': 'polite' });
@@ -26,6 +42,85 @@ export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openT
         h('p', {}, t('devsync.what')),
         h('ul', {}, h('li', {}, t('devsync.notBackup')), h('li', {}, t('devsync.deletions', { days: TOMBSTONE_DAYS })), h('li', {}, t('devsync.notCollab')), h('li', {}, t('devsync.security'))),
       );
+    let pendingInvitation = opts.invitation;
+    let inviteOnOpen = !!opts.invite;
+    // The rooms of the invitations, left when the window closes.
+    const leaving = new Set<() => void>();
+    const leaveAll = (): void => {
+      for (const leave of leaving) leave();
+      leaving.clear();
+    };
+    /** DEVSYNC-006: the new device asks to join, shows its emojis, and waits for the paired device to accept. */
+    const join = async (inv: Invitation): Promise<void> => {
+      error.hidden = true;
+      const { connectRoom } = await import('../collab/ui');
+      const transport = await connectRoom(inv.room, inv.secret);
+      const leave = (): void => transport.leave();
+      leaving.add(leave);
+      const asked = await joinInvitation(transport.room, inv, loadSyncState().name);
+      const cancel = button(t('common.cancel'), () => {
+        leave();
+        leaving.delete(leave);
+        void render();
+      });
+      body.replaceChildren(h('p', {}, t('devsync.joining')), h('p', { class: 'devsync-emojis', 'aria-label': t('devsync.emojis') }, asked.emojis), h('p', { class: 'hint' }, t('devsync.waitingAccept')), h('div', { class: 'dialog-actions start' }, cancel));
+      const expired = new Promise<'expired'>((r) => setTimeout(() => r('expired'), Math.max(0, inv.expires - Date.now())));
+      const answer = await Promise.race([asked.answer, expired]);
+      // The answer is in: the invitation is no longer needed.
+      setTimeout(leave, 1000);
+      leaving.delete(leave);
+      if (answer === 'expired') return void (await render(), fail(t('devsync.expired')));
+      if (!answer) return void (await render(), fail(t('devsync.refused')));
+      saveSyncState({ ...loadSyncState(), pairing: answer });
+      status.textContent = t('devsync.joined');
+      await start();
+    };
+    /** DEVSYNC-006: a paired device shows a one-time invitation and lets the user accept the device that comes. */
+    const invite = async (area: HTMLElement): Promise<void> => {
+      const pairing = loadSyncState().pairing;
+      if (!pairing) return;
+      const inv = newInvitation();
+      const url = invitationUrl(appBase(), inv);
+      const [{ connectRoom }, { zoomableQr }] = await Promise.all([import('../collab/ui'), import('../app/qr')]);
+      const transport = await connectRoom(inv.room, inv.secret);
+      let stopHost = (): void => {};
+      const leave = (): void => {
+        stopHost();
+        transport.leave();
+      };
+      leaving.add(leave);
+      const requests = h('div', { class: 'devsync-requests', 'aria-live': 'polite' });
+      const end = (message: string, delay = 0): void => {
+        setTimeout(leave, delay);
+        leaving.delete(leave);
+        clearTimeout(timer);
+        area.replaceChildren(h('p', { class: 'hint' }, message), button(t('devsync.invite'), () => void invite(area)));
+      };
+      const timer = setTimeout(() => end(t('devsync.inviteExpired')), Math.max(0, inv.expires - Date.now()));
+      stopHost = hostInvitation(
+        transport.room,
+        inv,
+        pairing,
+        (r) => {
+          const row = h(
+            'div',
+            { class: 'devsync-request' },
+            h('p', {}, t('devsync.request', { name: r.name })),
+            h('p', { class: 'devsync-emojis', 'aria-label': t('devsync.emojis') }, r.emojis),
+            h('div', { class: 'dialog-actions start' }, button(t('devsync.accept'), () => r.accept(), { className: 'primary' }), button(t('devsync.refuse'), () => (r.refuse(), row.remove()))),
+          );
+          requests.append(row);
+        },
+        // Leave a moment later, for the answer to reach the new device.
+        (name) => end(t('devsync.added', { name }), 3000),
+      );
+      const copy = button(t('devsync.copy'), () => void navigator.clipboard?.writeText(url).then(() => (status.textContent = t('devsync.copied'))));
+      area.replaceChildren(
+        h('div', { class: 'devsync-code' }, zoomableQr(() => host, url, t('devsync.code'), 180, 'devsync-qr'), copy),
+        h('p', { class: 'hint' }, t('devsync.inviteValid', { time: new Date(inv.expires).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })),
+        requests,
+      );
+    };
     const render = async (): Promise<void> => {
       error.hidden = true;
       const state = loadSyncState();
@@ -43,8 +138,12 @@ export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openT
       name.addEventListener('change', () => saveSyncState({ ...loadSyncState(), name: name.value.trim() || state.name }));
       const nameRow = h('label', { class: 'git-row' }, t('devsync.deviceName'), ' ', name);
       if (!state.pairing) {
-        const code = h('input', { type: 'text', 'aria-label': t('devsync.code'), placeholder: 'pwo-sync:…', spellcheck: 'false', autocomplete: 'off' });
-        const join = button(t('devsync.join'), async () => {
+        const code = h('input', { type: 'text', 'aria-label': t('devsync.code'), placeholder: 'https://…#pwo-pair=…', spellcheck: 'false', autocomplete: 'off' });
+        const go = button(t('devsync.join'), async () => {
+          const inv = parseInvitation(code.value);
+          if (inv === 'expired') return fail(t('devsync.expired'));
+          if (inv) return join(inv).catch((err: Error) => fail(err.message));
+          // A code of the first version (the key itself), still understood.
           const pairing = parsePairingCode(code.value);
           if (!pairing) return fail(t('devsync.badCode'));
           saveSyncState({ ...loadSyncState(), pairing });
@@ -61,13 +160,24 @@ export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openT
           create,
           h('h3', {}, t('devsync.otherDevice')),
           h('p', { class: 'hint' }, t('devsync.otherDeviceHint')),
-          h('div', { class: 'git-row' }, code, ' ', join),
+          opts.scan ? h('div', { class: 'dialog-actions start' }, button(t('devsync.scan'), () => opts.scan?.(), { className: 'primary', title: t('devsync.scanTitle') })) : '',
+          h('div', { class: 'git-row' }, code, ' ', go),
           h('details', {}, h('summary', {}, t('devsync.reminder')), warnings()),
         );
+        // Opened by an invitation link: join at once.
+        if (pendingInvitation) {
+          const inv = parseInvitation(pendingInvitation);
+          pendingInvitation = undefined;
+          if (inv === 'expired') fail(t('devsync.expired'));
+          else if (inv) await join(inv).catch((err: Error) => fail(err.message));
+          else fail(t('devsync.badCode'));
+        }
         return;
       }
-      const codeText = pairingCode(state.pairing);
-      const { zoomableQr } = await import('../app/qr');
+      if (pendingInvitation) {
+        pendingInvitation = undefined;
+        fail(t('devsync.alreadyPaired'));
+      }
       const peers = h('ul', { class: 'devsync-peers' });
       const showPeers = (): void => {
         const online = new Set((currentSync()?.peers ?? []).map((p) => p.device));
@@ -88,7 +198,6 @@ export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openT
         if (!live.sync.peerCount()) return void (status.textContent = t('devsync.waiting'));
         await live.sync.syncNow();
       }, { className: 'primary' });
-      const copy = button(t('devsync.copy'), () => void navigator.clipboard?.writeText(codeText).then(() => (status.textContent = t('devsync.copied'))));
       const revoke = button(t('devsync.revoke'), () => {
         if (!window.confirm(t('devsync.revokeConfirm'))) return;
         stopSync();
@@ -101,6 +210,11 @@ export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openT
         saveSyncState(unpaired(loadSyncState()));
         void render();
       });
+      const inviteArea = h('div', { class: 'devsync-invite' }, button(t('devsync.invite'), () => void invite(inviteArea).catch((err: Error) => fail(err.message))));
+      if (inviteOnOpen) {
+        inviteOnOpen = false;
+        void invite(inviteArea).catch((err: Error) => fail(err.message));
+      }
       const last = loadSyncState().lastSync;
       body.replaceChildren(
         nameRow,
@@ -110,8 +224,8 @@ export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openT
         h('div', { class: 'dialog-actions start' }, now),
         h('label', {}, auto, ` ${t('devsync.auto')}`),
         h('h3', {}, t('devsync.addDevice')),
-        h('p', { class: 'hint' }, t('devsync.addDeviceHint')),
-        h('div', { class: 'devsync-code' }, zoomableQr(() => host, codeText, t('devsync.code'), 160, 'devsync-qr'), h('code', { class: 'devsync-code-text' }, codeText), copy),
+        h('p', { class: 'hint' }, t('devsync.addDeviceHint', { minutes: INVITE_MINUTES })),
+        inviteArea,
         h('p', { class: 'hint' }, t('devsync.codeSecret')),
         h('p', { class: 'hint' }, t('devsync.trashHint', { folder: `${SYNC_FOLDER}/${TRASH}`, days: TOMBSTONE_DAYS })),
         h('details', {}, h('summary', {}, t('devsync.reminder')), warnings()),
@@ -145,6 +259,7 @@ export function syncDialog(host: HTMLElement, opts: { openBackup?(): void; openT
     const dialog = h('dialog', { class: 'dialog devsync-dialog', 'aria-labelledby': 'devsync-title' }, form);
     const finish = (): void => {
       unlisten?.();
+      leaveAll();
       dialog.close();
       dialog.remove();
       resolve();

@@ -1340,9 +1340,32 @@ export class App {
 
   // --- one's own devices (DEVSYNC-001..DEVSYNC-005) -----------------------------------
 
-  private async openDeviceSync(): Promise<void> {
+  /** DEVSYNC-006: `invitation`, a link this application was opened with; `invite`, show an invitation at once. */
+  async openDeviceSync(opts: { invitation?: string; invite?: boolean } = {}): Promise<void> {
     const { syncDialog } = await import('../devsync/ui');
-    await syncDialog(this.root, { openBackup: () => void this.openBackup() });
+    await syncDialog(this.root, { openBackup: () => void this.openBackup(), scan: () => void this.receiveFromDevice(), ...opts });
+  }
+
+  /** DEVSYNC-002: "Sync my devices now" of the command palette; the window when this device is not paired yet. */
+  private async syncDevicesNow(): Promise<void> {
+    const { loadSyncState } = await import('../devsync/state');
+    const state = loadSyncState();
+    if (!state.pairing || !state.understood) return this.openDeviceSync();
+    const { startSync, listen } = await import('../devsync/live');
+    try {
+      const live = await startSync();
+      if (!live) return this.showError(t('devsync.noStorage'));
+      if (!live.sync.peerCount()) return this.showNotice(t('devsync.waiting'));
+      const stop = listen({
+        synced: (r) => this.showNotice(t('devsync.synced', { peer: r.peer, n: r.fetched.length, d: r.trashed.length, c: r.conflicts.length, f: r.failed.length })),
+        error: (m) => this.showError(m),
+      });
+      setTimeout(stop, 120_000);
+      this.showNotice(t('devsync.done'));
+      await live.sync.syncNow();
+    } catch (err) {
+      this.showError((err as Error).message);
+    }
   }
 
   private deviceSyncResumed = false;
@@ -2455,7 +2478,15 @@ export class App {
       // UI-018: the view's own commands, such as the review mode, even when no button shows them.
       const labels = new Set(shown.map((c) => c.label));
       const extra = (this.current?.view.commands?.() ?? []).filter((c) => !labels.has(c.label));
-      await openPalette(this.root, [...extra, ...shown]);
+      // DEVSYNC-006: one's own devices, without going through their window.
+      const where = t('devsync.title');
+      const keywords = 'sync synchronise devices appareils synchroniser téléphone phone qr scan invitation 同步 设备 扫描';
+      const devices = [
+        { label: t('devsync.cmdNow'), where, keywords, run: () => void this.syncDevicesNow() },
+        { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
+        { label: t('devsync.cmdScan'), where, keywords, run: () => void this.receiveFromDevice() },
+      ].filter((c) => !labels.has(c.label));
+      await openPalette(this.root, [...extra, ...shown, ...devices]);
     } finally {
       this.paletteOpen = false;
     }

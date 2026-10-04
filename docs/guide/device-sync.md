@@ -25,13 +25,24 @@ The window shows these warnings first, and asks you to acknowledge them:
 ## Pairing
 
 1. On the first device: **🔁 Sync my devices** (in *Share*, or the command
-   palette), name the device, then **Create a pairing**. A **pairing code**
-   (`pwo-sync:…`) and its QR code are shown.
-2. On each other device: **🔁 Sync my devices**, then type, paste or scan the
-   code and **Pair**.
+   palette), name the device, then **Create a pairing**. This makes the
+   **key** of your documents, which stays on your devices.
+2. To add another device, on a device already paired: **Add a device ›
+   Show an invitation QR code** (or, in the command palette, *Add a device:
+   show an invitation QR code*). The invitation is valid **5 minutes**, for
+   **one device**.
+3. On the new device, scan the QR code — with **Scan the invitation QR
+   code…** (the scanner of [QRShare](./sharing.md)), the camera of the phone,
+   or any QR reader: it is a link to the application, which opens ready to
+   pair. You can also copy the link (**Copy the link**) and paste it in
+   **Invitation link**. Read and acknowledge the warnings: the new device
+   then shows **four emojis**.
+4. The paired device shows *“… asks to join”* with four emojis. **Accept
+   only if they are the same as on the new device.** Only then does it send
+   the key, encrypted, to the new device, which starts synchronising.
 
-The code holds a secret of 144 bits. **Anyone who gets it can read your
-documents**: show it only to your own devices.
+The command palette (**⌘ Commands**, `Ctrl+Shift+P`) also has *Sync my
+devices now* and *Pair this device: scan an invitation QR code*.
 
 ## Synchronising
 
@@ -53,14 +64,60 @@ Hidden files and the trash are never synchronised.
 
 ## Security
 
-Devices find each other through public relays (or those of the
-*Collaboration* settings), which see neither the documents nor their names:
-everything is **end-to-end encrypted** with the pairing's secret, and goes
-directly between the browsers when the network allows it (otherwise,
-encrypted, through the relays or the TURN server of the settings). Paths
-received from another device are checked before anything is written.
+**What protects your documents**
 
-**New code (revoke the others)** makes a new pairing: the devices paired
-with the old code stop synchronising with this one until they are paired
-again. **Stop synchronising this device** forgets the pairing; the
-documents stay on every device.
+- The invitation (QR code or link) **never contains the key of your
+  documents**: only a meeting place and a secret valid 5 minutes, for one
+  device.
+- The new device comes with a **public key of its own**, made for this
+  pairing (ECDH P-256). The key of your documents is sent **encrypted for
+  that public key alone** (AES-GCM): even someone who has the invitation and
+  reads the messages passing through the relays cannot read it.
+- **Nothing gets in without your approval** on a device already paired. A
+  photographed QR code, or a link left in a history, is expired or already
+  used.
+- The **emojis** are drawn from the invitation and the public key of the
+  device asking: another device asking with the same invitation, or someone
+  slipping their own key in between, would show different emojis.
+- The invitation is in the part of the link after `#`, which browsers do not
+  send to servers; the application removes it from the address as soon as
+  it opens.
+- Devices find each other through public relays (or those of the
+  *Collaboration* settings), which see neither the documents nor their
+  names: everything is **end-to-end encrypted** with the key, and goes
+  directly between the browsers when the network allows it (otherwise,
+  encrypted, through the relays or the TURN server of the settings). Paths
+  received from another device are checked before anything is written.
+
+**Its limits — know them**
+
+- **Accepting without comparing the emojis** defeats the check: anyone who
+  scanned or photographed the QR code during those 5 minutes can ask to
+  join, under any device name they like. The name proves nothing; the
+  emojis do. Four emojis out of 64 make a wrong match unlikely (1 in 16
+  million), not impossible: when in doubt, **Refuse** and show a new
+  invitation.
+- **The key is kept in each paired browser** (its local storage), not
+  protected by a password. Whoever can use that browser profile — someone
+  at the unlocked device, malware, a malicious browser extension — can read
+  your documents and the key. Protect your devices with a lock screen.
+- **A lost or stolen device** keeps the key and the documents it already
+  has. On a device you keep, use **New key (unpair the other devices)**,
+  then invite again the devices you still use: the lost one no longer gets
+  new changes, but what it already holds cannot be taken back.
+- The relays see **that** devices meet — the name of the meeting place (a
+  random value), their network addresses, when and how much they exchange —
+  but not what.
+- The invitation link may stay in the history of QRShare, of the camera
+  app or of the browser that opened it. Expired or used, it no longer gives
+  anything.
+- Codes of the first version (`pwo-sync:…`, the key itself) are still
+  understood in **Invitation link**, for devices not updated yet: they give
+  the key to whoever has them, without any approval. Do not share them;
+  after pairing that way, prefer making a new key and inviting again.
+- This synchronisation has not been audited by security specialists. For
+  confidential documents, also weigh [backups](./backup.md) kept offline and
+  encrypted.
+
+**Stop synchronising this device** forgets the pairing; the documents stay
+on every device.

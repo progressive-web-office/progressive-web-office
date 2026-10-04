@@ -1507,6 +1507,9 @@ body.distraction-free .ai-panel { display: none !important; }
 .devsync-peers { list-style: none; padding: 0; margin: 4px 0; }
 .devsync-code { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .devsync-code-text { word-break: break-all; font-size: 0.8rem; max-width: 18rem; }
+/* DEVSYNC-006: the emojis compared on both devices, and the devices asking to join. */
+.devsync-emojis { font-size: 2rem; letter-spacing: 0.3em; margin: 6px 0; }
+.devsync-request { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; margin: 8px 0; }
 
 /* GIT-013: who can see a repository, and who works on it. */
 .git-repo-info { margin: 6px 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); }
