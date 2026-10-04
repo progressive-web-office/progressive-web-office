@@ -18,6 +18,8 @@ for (const [name, min] of EXAMPLES) {
     test.setTimeout(600_000);
     test.skip(!(await usePyodidePackages(page)) || !process.env.CI, 'needs the network (CI) for the Python packages');
     const errors = await openApp(page);
+    const log: string[] = [];
+    page.on('console', (m) => log.push(`${m.type()}: ${m.text()}`));
     await page.getByRole('button', { name: 'Templates and examples' }).click();
     await pickTemplate(page, name);
     const cells = page.locator('.doc-page .code-cell');
@@ -29,7 +31,16 @@ for (const [name, min] of EXAMPLES) {
     const pending = page.locator('.doc-page .code-cell-output.pending');
     await expect(pending.first()).toBeVisible({ timeout: 60_000 });
     const failed = cells.locator('.code-cell-output.error');
-    await expect.poll(async () => (await failed.count()) > 0 || (await pending.count()) === 0, { timeout: 540_000, intervals: [2_000] }).toBe(true);
+    const done = async (): Promise<boolean> => (await failed.count()) > 0 || (await pending.count()) === 0;
+    const deadline = Date.now() + 480_000;
+    while (!(await done()) && Date.now() < deadline) await page.waitForTimeout(2_000);
+    if (!(await done())) {
+      // Stuck: what each cell shows, the windows open, the console — to fix the example.
+      console.log(`[${name}] stuck. Cells:\n${(await cells.locator('.code-cell-output').allTextContents()).map((t, i) => `  ${i}: ${t.slice(0, 300)}`).join('\n')}`);
+      console.log(`[${name}] dialogs: ${JSON.stringify(await page.locator('dialog[open]').allTextContents())}`);
+      console.log(`[${name}] console:\n${log.slice(-60).join('\n')}`);
+    }
+    expect(await done()).toBe(true);
     const problems = await failed.allTextContents();
     // The whole message in the CI log, to fix the example.
     for (const p of problems) console.log(`[${name}] cell error:\n${p}`);
