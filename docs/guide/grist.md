@@ -53,7 +53,7 @@ goes through another server. Two conditions apply:
 1. **HTTPS**: the application only connects to `https://` addresses.
 2. **CORS**: by default, a browser blocks a web page from calling an API on
    another domain unless the server allows that page's origin. Allow the
-   origin of the application — `https://s-celles.github.io` for the public
+   origin of the application — `https://progressive-web-office.github.io` for the public
    version, or your own address if you host it — on the `/api/` paths.
 
 The simplest way is to add the headers in the reverse proxy in front of
@@ -61,7 +61,7 @@ Grist. With **nginx**:
 
 ```nginx
 location /api/ {
-    set $pwo "https://s-celles.github.io";
+    set $pwo "https://progressive-web-office.github.io";
     if ($request_method = OPTIONS) {
         add_header Access-Control-Allow-Origin $pwo always;
         add_header Access-Control-Allow-Methods "GET, POST, PATCH, DELETE, OPTIONS" always;
@@ -85,9 +85,9 @@ grist.example.org {
         method OPTIONS
         path /api/*
     }
-    header @api Access-Control-Allow-Origin "https://s-celles.github.io"
+    header @api Access-Control-Allow-Origin "https://progressive-web-office.github.io"
     handle @preflight {
-        header Access-Control-Allow-Origin "https://s-celles.github.io"
+        header Access-Control-Allow-Origin "https://progressive-web-office.github.io"
         header Access-Control-Allow-Methods "GET, POST, PATCH, DELETE, OPTIONS"
         header Access-Control-Allow-Headers "Authorization, Content-Type"
         respond 204

@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress';
 
 // The app is published one level above the documentation (see pages.yml).
-const APP_URL = process.env.DOCS_URL ? process.env.DOCS_URL.replace(/\/docs\/?$/, '/') : 'https://s-celles.github.io/progressive-web-office/';
+const APP_URL = process.env.DOCS_URL ? process.env.DOCS_URL.replace(/\/docs\/?$/, '/') : 'https://progressive-web-office.github.io/progressive-web-office/';
 
 export default defineConfig({
   title: 'Progressive Web Office (PWO)',
@@ -78,7 +78,7 @@ export default defineConfig({
         ],
       },
     ],
-    socialLinks: [{ icon: 'github', link: 'https://github.com/s-celles/progressive-web-office' }],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/progressive-web-office/progressive-web-office' }],
     search: { provider: 'local' },
   },
 });

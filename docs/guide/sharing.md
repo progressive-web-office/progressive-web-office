@@ -91,7 +91,7 @@ downloaded and gives a link and its QR code.
 On the start screen, click **Receive from another device…**: QRShare opens its
 scanner, which recognises what it is shown — a static QR code (an invitation
 or document link, opened as such), animated QR codes or CIMBAR codes. Once
-the file is received, click **Open in s-celles.github.io** (the address of
+the file is received, click **Open in progressive-web-office.github.io** (the address of
 Progressive Web Office) in QRShare: the file opens in a new Progressive Web
 Office window.
 

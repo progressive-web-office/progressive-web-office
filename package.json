@@ -8,7 +8,7 @@
   "author": "Sébastien Celles (https://github.com/s-celles)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/s-celles/progressive-web-office.git"
+    "url": "https://github.com/progressive-web-office/progressive-web-office.git"
   },
   "scripts": {
     "dev": "vite",

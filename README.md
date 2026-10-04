@@ -4,11 +4,11 @@ An office suite that runs entirely in your browser. No account, no server,
 and it can even exchange documents without a network.
 
 [![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE.md)
-[![CI](https://github.com/s-celles/progressive-web-office/actions/workflows/ci.yml/badge.svg)](https://github.com/s-celles/progressive-web-office/actions/workflows/ci.yml)
-[![Deploy](https://github.com/s-celles/progressive-web-office/actions/workflows/pages.yml/badge.svg)](https://github.com/s-celles/progressive-web-office/actions/workflows/pages.yml)
+[![CI](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/ci.yml/badge.svg)](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/ci.yml)
+[![Deploy](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/pages.yml/badge.svg)](https://github.com/progressive-web-office/progressive-web-office/actions/workflows/pages.yml)
 
-**Try it: <https://s-celles.github.io/pwo>** (short link to <https://s-celles.github.io/progressive-web-office/>)
-· Documentation: <https://s-celles.github.io/progressive-web-office/docs/>
+**Try it: <https://progressive-web-office.github.io/progressive-web-office/>**
+· Documentation: <https://progressive-web-office.github.io/progressive-web-office/docs/>
 
 ![A lab report with an equation, a table and a footnote, edited in Progressive Web Office](docs/public/screenshots/document.png)
 
@@ -194,7 +194,7 @@ The application **goes online only when you use a feature that needs it**:
 
 ## Install and use
 
-- **Online**: open <https://s-celles.github.io/pwo> (short for <https://s-celles.github.io/progressive-web-office/>).
+- **Online**: open <https://progressive-web-office.github.io/progressive-web-office/>.
   After the first visit the application also works offline.
 - **Install**: Chrome and Edge on a computer show *Install* in the address
   bar; on Android, *Add to Home screen* or *Install app*; on iOS and iPadOS,

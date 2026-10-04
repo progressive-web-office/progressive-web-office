@@ -212,7 +212,7 @@ the browser:
   ```ini
   [cors]
   ENABLED = true
-  ALLOW_DOMAIN = https://s-celles.github.io
+  ALLOW_DOMAIN = https://progressive-web-office.github.io
   METHODS = GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS
   HEADERS = Content-Type,Authorization
   ```

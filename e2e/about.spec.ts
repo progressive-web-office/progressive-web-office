@@ -10,7 +10,7 @@ test('shows the About window from the header (UI-012)', async ({ page }) => {
   await expect(about.getByRole('link', { name: 'Sébastien Celles' })).toHaveAttribute('href', 'https://github.com/s-celles');
   await expect(about.getByRole('img', { name: /QR code of the app address http:\/\/localhost:4173\// })).toBeVisible();
   await expect(about.getByRole('link', { name: 'Documentation' })).toHaveAttribute('href', 'http://localhost:4173/docs/');
-  await expect(about.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/s-celles/progressive-web-office');
+  await expect(about.getByRole('link', { name: 'Source code' })).toHaveAttribute('href', 'https://github.com/progressive-web-office/progressive-web-office');
   await expect(about.getByRole('link', { name: /^[0-9a-f]{7}$/ })).toHaveAttribute('href', /\/commit\/[0-9a-f]{40}$/);
   // UI-017: the components and their versions.
   await about.getByText(/^Open-source components \(\d+\)$/).click();

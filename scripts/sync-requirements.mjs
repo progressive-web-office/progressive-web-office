@@ -9,7 +9,7 @@ const body = spec
   .replace(/^# .*\n/, '# Requirements specification\n')
   // Escape EARS placeholders such as <response> (Vue would parse them as tags).
   .replace(/<(trigger|state|condition|feature|response)>/g, '&lt;$1&gt;')
-  .replace('see `ROADMAP.md`', 'see the [roadmap](https://github.com/s-celles/progressive-web-office/blob/main/ROADMAP.md)');
+  .replace('see `ROADMAP.md`', 'see the [roadmap](https://github.com/progressive-web-office/progressive-web-office/blob/main/ROADMAP.md)');
 await writeFile(
   dst,
   '---\ndescription: EARS requirements with MoSCoW priorities and roadmap milestones.\n---\n\n' +

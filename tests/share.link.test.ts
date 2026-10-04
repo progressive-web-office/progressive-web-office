@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodeDocumentLink, encodeDocumentLink, LINK_WARN_LENGTH } from '../src/share/link';
 
-const BASE = 'https://s-celles.github.io/progressive-web-office/';
+const BASE = 'https://progressive-web-office.github.io/progressive-web-office/';
 
 describe('SHARE-009 documents in a link', () => {
   it('puts the document in the fragment, compressed, and reads it back', () => {

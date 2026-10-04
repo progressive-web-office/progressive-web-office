@@ -8,6 +8,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ## [Unreleased]
 
+### Changed
+
+- The project moved to the **progressive-web-office** organisation: the
+  source is at <https://github.com/progressive-web-office/progressive-web-office>
+  and the application at
+  <https://progressive-web-office.github.io/progressive-web-office/>.
+
 ### Fixed
 
 - Code cells running side by side no longer open several "Download code
@@ -1061,13 +1068,13 @@ First minor release: everything since 0.0.13, summed up in the README.
   `llms-full.txt`.
 - Governance: MIT license, security policy (GHSA), Contributor Covenant 3.0.
 
-[Unreleased]: https://github.com/s-celles/progressive-web-office/compare/main...HEAD
-[0.0.9]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.8]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.7]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.6]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.5]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.4]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.3]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.2]: https://github.com/s-celles/progressive-web-office/commits/main
-[0.0.1]: https://github.com/s-celles/progressive-web-office/commits/main
+[Unreleased]: https://github.com/progressive-web-office/progressive-web-office/compare/main...HEAD
+[0.0.9]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.8]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.7]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.6]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.5]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.4]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.3]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.2]: https://github.com/progressive-web-office/progressive-web-office/commits/main
+[0.0.1]: https://github.com/progressive-web-office/progressive-web-office/commits/main

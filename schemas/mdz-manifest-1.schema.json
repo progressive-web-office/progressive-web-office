@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://s-celles.github.io/progressive-web-office/docs/schemas/mdz-manifest-1.schema.json",
+  "$id": "https://progressive-web-office.github.io/progressive-web-office/docs/schemas/mdz-manifest-1.schema.json",
   "title": "MDZ manifest, version 1.x",
   "description": "manifest.json of an MDZ package (ZIP archive with index.md, manifest.json and assets/), following the MDZ specification v1.1.0 by wflixu (https://github.com/wflixu/mdz). Unknown properties are allowed for forward compatibility; custom extensions should use 'x-' prefixed keys.",
   "type": "object",

@@ -59,7 +59,7 @@ server. Two conditions apply:
 
 1. **HTTPS**.
 2. **CORS**: the server must allow the origin of the application —
-   `https://s-celles.github.io` for the public version, or your own address
+   `https://progressive-web-office.github.io` for the public version, or your own address
    if you host it — on the WebDAV paths. Nextcloud does not do this by
    default, so it needs a change by the administrator.
 
@@ -67,7 +67,7 @@ With an **nginx** reverse proxy in front of Nextcloud:
 
 ```nginx
 location /remote.php/dav/ {
-    set $pwo "https://s-celles.github.io";
+    set $pwo "https://progressive-web-office.github.io";
     if ($request_method = OPTIONS) {
         add_header Access-Control-Allow-Origin $pwo always;
         add_header Access-Control-Allow-Methods "GET, PUT, PROPFIND, OPTIONS" always;

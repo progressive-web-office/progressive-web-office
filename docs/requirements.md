@@ -11,7 +11,7 @@ description: EARS requirements with MoSCoW priorities and roadmap milestones.
 - Status: Draft v1 (2026-10-01, last updated 2026-10-03)
 - Notation: [EARS](https://alistairmavin.com/ears/) (Easy Approach to Requirements Syntax)
 - Prioritisation: MoSCoW — **M**ust / **S**hould / **C**ould / **W**on't (this time)
-- Milestones: see the [roadmap](https://github.com/s-celles/progressive-web-office/blob/main/ROADMAP.md) (0.0.x = development phases; 0.1.0 = first minor release)
+- Milestones: see the [roadmap](https://github.com/progressive-web-office/progressive-web-office/blob/main/ROADMAP.md) (0.0.x = development phases; 0.1.0 = first minor release)
 
 EARS templates used:
 

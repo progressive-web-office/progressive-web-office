@@ -45,7 +45,7 @@ With a local server, your documents never leave your computer or network.
 The browser only lets a web page call a server that accepts it (CORS):
 
 - **Ollama**: start it with the address of this application allowed, for
-  example `OLLAMA_ORIGINS=https://s-celles.github.io ollama serve`.
+  example `OLLAMA_ORIGINS=https://progressive-web-office.github.io ollama serve`.
 - **LM Studio**: enable *CORS* in the local server settings.
 
 Servers on `localhost` / `127.0.0.1` can use plain HTTP; any other address
