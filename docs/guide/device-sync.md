@@ -63,7 +63,14 @@ Only the documents **kept in the browser** are synchronised — *Open a
 folder › Browser storage*, its `Documents` folder; the window says how many,
 and **📁 Open these documents** opens them. The **recent files** of a device
 are files of its own disk (or of a cloud, a repository): they stay there. To
-find a document on your other devices, save it in the browser storage.
+find a document on your other devices, save it in the browser storage:
+
+- once a device is paired, **Save** asks where: **In the browser —
+  synchronised with my devices**, or **A file on this device**. Saved in the
+  browser, the document goes to *Browser storage › Documents*, which opens
+  as the folder: the next saves go there too;
+- **➕ Add recent documents…** in the window copies documents of the recent
+  list there — a document saved as a file before pairing, for instance.
 
 **Sync now** merges this device with the paired devices online; with
 **Synchronise by itself while the application is open**, it happens when a

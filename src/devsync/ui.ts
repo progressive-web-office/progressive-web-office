@@ -295,14 +295,36 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       // What is synchronised: the documents of the browser, not the files of the disk.
       const what = h('p', { class: 'hint devsync-what' }, t('devsync.whatSynced'));
       const count = h('span', {});
-      void (async () => {
+      const recount = async (): Promise<void> => {
         const files = currentSync()?.files;
         if (!files) return;
         const { listFiles } = await import('../fs');
         const n = (await listFiles(files).catch(() => [])).filter((p) => !p.split('/').some((s) => s.startsWith('.'))).length;
         count.textContent = t('devsync.count', { n });
-      })();
-      const docs = h('div', { class: 'devsync-docs' }, h('p', {}, count, ' ', opts.openFolder ? button(t('devsync.openDocs'), () => (finish(), opts.openFolder?.()), { icon: '📁' }) : ''), what);
+      };
+      void recount();
+      // DEVSYNC-007: recent documents (files of the disk, kept here) copied among the synchronised ones.
+      const addRecent = button(t('devsync.addRecent'), async () => {
+        const files = currentSync()?.files;
+        if (!files) return;
+        const { listRecent, getRecent } = await import('../storage/recent');
+        const recent = await listRecent();
+        if (!recent.length) return void (status.textContent = t('devsync.addRecentNone'));
+        const picked = await pickRecent(host, recent.map((r) => r.name));
+        if (!picked?.length) return;
+        let n = 0;
+        for (const i of picked) {
+          const file = await getRecent(recent[i]!.id);
+          if (!file) continue;
+          await files.write(recent[i]!.name.replace(/[\\/]/g, '-'), file);
+          n++;
+        }
+        status.textContent = t('devsync.addRecentDone', { n });
+        await recount();
+        const live = currentSync();
+        if (live && loadSyncState().auto && live.sync.peerCount()) void live.sync.syncNow();
+      }, { icon: '➕', title: t('devsync.addRecentTitle') });
+      const docs = h('div', { class: 'devsync-docs' }, h('p', {}, count, ' ', opts.openFolder ? button(t('devsync.openDocs'), () => (finish(), opts.openFolder?.()), { icon: '📁' }) : '', ' ', addRecent), what);
       const last = loadSyncState().lastSync;
       body.replaceChildren(
         switchTo,
@@ -372,5 +394,35 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       if (loadSyncState().pairing && loadSyncState().understood) await start();
       else await render();
     })();
+  });
+}
+
+/** DEVSYNC-007: the recent documents to copy among the synchronised ones (their indexes), or null. */
+function pickRecent(host: HTMLElement, names: string[]): Promise<number[] | null> {
+  return new Promise((resolve) => {
+    const boxes = names.map(() => h('input', { type: 'checkbox' }));
+    const dialog = h('dialog', { class: 'dialog devsync-recent-dialog', 'aria-label': t('devsync.addRecent') });
+    const finish = (v: number[] | null): void => {
+      dialog.close();
+      dialog.remove();
+      resolve(v);
+    };
+    dialog.append(
+      h('h2', {}, t('devsync.addRecent')),
+      h('ul', { class: 'devsync-recent' }, ...names.map((n, i) => h('li', {}, h('label', {}, boxes[i]!, ` ${n}`)))),
+      h(
+        'div',
+        { class: 'dialog-actions' },
+        button(t('common.cancel'), () => finish(null)),
+        button(t('common.ok'), () => finish(boxes.flatMap((b, i) => (b.checked ? [i] : []))), { className: 'primary' }),
+      ),
+    );
+    dialog.addEventListener('cancel', (e) => {
+      e.preventDefault();
+      finish(null);
+    });
+    host.append(dialog);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
   });
 }

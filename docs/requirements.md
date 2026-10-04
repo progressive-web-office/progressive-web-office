@@ -554,6 +554,7 @@ integration is ever needed.
 | DEVSYNC-004 | S | 0.2.0 | A document deleted, or replaced by another device's version, shall go to the device's trash, kept 30 days. |
 | DEVSYNC-005 | S | 0.2.0 | The system shall check every path received from another device and serve only the synchronised documents. |
 | DEVSYNC-006 | S | 0.2.0 | When the user adds a device, the paired device shall show a one-time invitation (a QR code and a link to the application, valid 5 minutes, without the key); the new device opening it shall show verification emojis drawn from the invitation and its own ephemeral public key, and the paired device shall send the key, encrypted for that public key alone, only when the user accepts that device after comparing the emojis; the command palette shall offer to sync now, to show an invitation and to scan one. |
+| DEVSYNC-007 | S | 0.2.0 | On a paired device, saving a document shall offer to keep it in the browser, synchronised (Browser storage › Documents, then open as the folder), or as a file; the window shall say that only the documents of the browser are synchronised, count them, open them, and copy recent documents among them. |
 
 ## 9r. Versions and history (VER)
 

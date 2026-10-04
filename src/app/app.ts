@@ -852,6 +852,15 @@ export class App {
   }
 
   async save(format?: DocumentFormat): Promise<void> {
+    try {
+      return await this.saveAs(format);
+    } catch (err) {
+      if (err instanceof SaveCancelled) return;
+      throw err;
+    }
+  }
+
+  private async saveAs(format?: DocumentFormat): Promise<void> {
     const doc = this.current;
     if (!doc?.view.save) return;
     // FILE-017: a read-only document is not saved in place; "Save as" makes a copy.
@@ -861,6 +870,8 @@ export class App {
     if (!format && doc.dav) return this.saveToCloud();
     // Save writes back into the folder; "Save as" writes a new file elsewhere, not into the folder.
     if (!format && doc.folderPath && this.folder?.provider.capabilities.write) return this.saveToFolder();
+    // DEVSYNC-007: a paired device offers to keep the document in the browser, synchronised.
+    if (!format && (await this.wantsSyncedSave())) return this.saveToSynced();
     const target = format ?? doc.format;
     try {
       const bytes = await this.withBusy(async () => doc.view.save!(target));
@@ -1358,6 +1369,51 @@ export class App {
   async openDeviceSync(opts: { invitation?: string; invite?: boolean } = {}): Promise<void> {
     const { syncDialog } = await import('../devsync/ui');
     await syncDialog(this.root, { openBackup: () => void this.openBackup(), scan: () => void this.receiveFromDevice(), openFolder: () => void this.openBrowserStorage(), ...opts });
+  }
+
+  /** DEVSYNC-007: on a paired device, where a document is saved: in the browser (synchronised) or as a file. */
+  private async wantsSyncedSave(): Promise<boolean> {
+    const { loadSyncState } = await import('../devsync/state');
+    const state = loadSyncState();
+    if (!state.pairing || !state.understood) return false;
+    const synced = t('devsync.saveSynced');
+    const choice = await this.choose(t('devsync.saveWhere'), t('devsync.saveWhereMessage'), [synced, t('devsync.saveFile')], synced, t('file.save'));
+    if (!choice) throw new SaveCancelled();
+    return choice === synced;
+  }
+
+  /** DEVSYNC-007: the document saved in Browser storage › Documents, the folder then open, so that the next saves go there too. */
+  private async saveToSynced(): Promise<void> {
+    const doc = this.current;
+    if (!doc?.view.save) return;
+    const { privateStorage, basename: base } = await import('../fs');
+    const folder = await privateStorage('Documents', t('folder.browserStorage')).catch(() => null);
+    if (!folder) return this.showError(t('devsync.noStorage'));
+    const own = doc.kind === 'file';
+    const name = base(own ? doc.name : replaceExtension(doc.name, fileExtension(doc.format)));
+    try {
+      const exists = await folder.list('').then((entries) => entries.some((e) => e.name === name), () => false);
+      if (exists && !window.confirm(t('devsync.replaceSynced', { name }))) return;
+      const bytes = await this.withBusy(async () => doc.view.save!(doc.format));
+      await folder.write(name, new Blob([bytes as BlobPart]));
+      const dirty = this.current;
+      if (!(await this.setFolder(folder))) return;
+      if (dirty) {
+        dirty.folderPath = name;
+        dirty.name = name;
+      }
+      this.folder?.setCurrent(name);
+      this.keepVersion(doc, bytes);
+      this.dirty = false;
+      this.discardDraft();
+      this.renderHeader();
+      this.showNotice(t('devsync.savedSynced', { name }));
+      // Synchronised at once with the devices online, when synchronising by itself.
+      const [{ currentSync }, { loadSyncState }] = await Promise.all([import('../devsync/live'), import('../devsync/state')]);
+      if (loadSyncState().auto && currentSync()?.sync.peerCount()) void currentSync()!.sync.syncNow();
+    } catch (err) {
+      this.showError(t('error.save', { message: (err as Error).message }));
+    }
   }
 
   /** The documents kept in this browser (and synchronised between one's devices), as the folder. */
@@ -2773,3 +2829,6 @@ async function fetchPicture(url: string): Promise<Uint8Array | undefined> {
     return undefined;
   }
 }
+
+/** The user closed the question of where to save. */
+class SaveCancelled extends Error {}

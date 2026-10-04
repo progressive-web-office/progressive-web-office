@@ -1581,3 +1581,6 @@ body.distraction-free .ai-panel { display: none !important; }
 th.colhead { position: relative; }
 .col-resizer { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 2; touch-action: none; }
 .col-resizer:hover, .col-resizer:active { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.devsync-recent { list-style: none; padding: 0; max-height: 50vh; overflow: auto; }
+.devsync-recent li { margin: 4px 0; }

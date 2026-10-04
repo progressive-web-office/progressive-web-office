@@ -25,7 +25,7 @@ test('warns before synchronising devices, then pairs this one and shows invitati
   await dialog.getByRole('button', { name: 'Create a pairing' }).click();
   await expect(dialog.getByText('No other device yet.')).toBeVisible();
   // What is synchronised is said, with the documents to open.
-  await expect(dialog.getByText(/^\d+ documents synchronised\./)).toBeVisible();
+  await expect(dialog.getByText(/^Synchronised documents: \d+\./)).toBeVisible();
   await expect(dialog.getByText(/The recent files of a device are files of its own disk/)).toBeVisible();
   await expect(dialog.locator('img.devsync-qr')).toHaveCount(0);
   // Turning while it looks for the other devices.
@@ -147,4 +147,33 @@ test('the command palette syncs the devices, shows an invitation or scans one (D
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog', { name: 'Sync my devices' });
   await expect(dialog.locator('img.devsync-qr')).toBeVisible();
+});
+
+test('a paired device saves a document in the browser, synchronised; recent documents can be added (DEVSYNC-007)', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pwo.collab.transport', 'local'));
+  const errors = await openApp(page);
+  await page.evaluate(() => localStorage.setItem('pwo.devsync', JSON.stringify({ device: 'd1', name: 'Laptop', understood: true, auto: false, peers: {}, base: {}, known: {}, deleted: {}, pairing: { room: 'room-of-the-save', secret: 'the-key-of-the-documents-save', since: 1 } })));
+  await page.getByRole('button', { name: 'New document' }).click();
+  await page.locator('.ProseMirror').click();
+  await page.keyboard.type('An article');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  const where = page.getByRole('dialog', { name: 'Save where?' });
+  await where.getByLabel('In the browser — synchronised with my devices').check();
+  await where.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/saved in the browser: it reaches your other devices/)).toBeVisible();
+  // In Browser storage › Documents, the folder now open.
+  const names = await page.evaluate(async () => {
+    const dir = await (await navigator.storage.getDirectory()).getDirectoryHandle('Documents');
+    const out: string[] = [];
+    for await (const [name] of (dir as unknown as { entries(): AsyncIterable<[string, unknown]> }).entries()) out.push(name);
+    return out;
+  });
+  expect(names.some((n) => /\.(odt|docx)$/.test(n))).toBe(true);
+  // The sync window counts it.
+  await page.keyboard.press('Control+Shift+P');
+  await page.getByRole('combobox', { name: 'Commands' }).fill('show an invitation');
+  await page.keyboard.press('Enter');
+  const dialog = page.getByRole('dialog', { name: 'Sync my devices' });
+  await expect(dialog.getByText('Synchronised documents: 1.')).toBeVisible();
+  expect(errors).toEqual([]);
 });

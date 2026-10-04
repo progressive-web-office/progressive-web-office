@@ -47,6 +47,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 - **Sync my devices** says what it synchronises — the documents kept in
   the browser, not the recent files of the disk — how many, and opens them.
+  A document saved as a file was never synchronised: once a device is
+  paired, **Save** asks whether to keep it in the browser (synchronised) or
+  as a file, and **Add recent documents…** copies recent ones among the
+  synchronised documents (DEVSYNC-007).
 - **The width of the columns of a spreadsheet** can be changed: dragged at
   the edge of a column header (a double click fits the content), or typed
   (**Column width…**) for the columns selected; an empty column keeps its
