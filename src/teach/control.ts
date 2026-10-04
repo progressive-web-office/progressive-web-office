@@ -440,3 +440,174 @@ export function nyquistSvg(points: FrequencyPoint[], labels: PlotLabels): string
     '</svg>',
   ].join('');
 }
+
+// --- time response and poles (TEACH-006) -------------------------------------------
+
+/** The closed loop with unity negative feedback: G / (1 + G). */
+export const closedLoop = (g: Rational): Rational => ({ num: g.num, den: add(g.den, g.num) });
+
+export interface StepResponse {
+  t: number[];
+  y: number[];
+  /** The value it settles at (stable systems only). */
+  final?: number;
+  /** Overshoot in percent, rise time (10 % → 90 %) and settling time (within 5 %), when it settles. */
+  overshoot?: number;
+  riseTime?: number;
+  settlingTime?: number;
+}
+
+/**
+ * The response to a unit step, by integrating the system in controllable
+ * canonical form (Runge–Kutta 4). The duration follows the slowest pole.
+ */
+export function stepResponse(tf: Rational, duration?: number, steps = 800): StepResponse {
+  const den = trim(tf.den);
+  const num = trim(tf.num);
+  const n = den.length - 1;
+  if (num.length - 1 > n) throw new Error('more zeros than poles: no step response');
+  const lead = den[n]!;
+  const a = den.map((x) => x / lead);
+  const b = num.map((x) => x / lead);
+  const d = n === num.length - 1 ? b[n]! : 0;
+  // The numerator left once the direct term is taken out.
+  const c = Array.from({ length: n }, (_, i) => (b[i] ?? 0) - d * a[i]!);
+  const poles = roots(den);
+  const stable = poles.every((p) => p.re < -1e-9);
+  const slowest = Math.min(...poles.map((p) => Math.abs(p.re)).filter((x) => x > 1e-9), Infinity);
+  const tEnd = duration ?? (Number.isFinite(slowest) ? Math.min(1e4, (stable ? 7 : 4) / slowest) : 10);
+  const h = tEnd / steps;
+  const deriv = (x: number[]): number[] => x.map((_, i) => (i < n - 1 ? x[i + 1]! : 1 - a.slice(0, n).reduce((s, ai, k) => s + ai * x[k]!, 0)));
+  let x = new Array<number>(n).fill(0);
+  const out = (x: number[]): number => c.reduce((s, ci, k) => s + ci * x[k]!, 0) + d;
+  const t: number[] = [0];
+  const y: number[] = [n ? out(x) : d];
+  for (let k = 1; k <= steps; k++) {
+    if (n) {
+      const k1 = deriv(x);
+      const k2 = deriv(x.map((v, i) => v + (h / 2) * k1[i]!));
+      const k3 = deriv(x.map((v, i) => v + (h / 2) * k2[i]!));
+      const k4 = deriv(x.map((v, i) => v + h * k3[i]!));
+      x = x.map((v, i) => v + (h / 6) * (k1[i]! + 2 * k2[i]! + 2 * k3[i]! + k4[i]!));
+    }
+    t.push(k * h);
+    y.push(n ? out(x) : d);
+  }
+  const result: StepResponse = { t, y };
+  if (stable && a[0] !== 0) {
+    const final = (num[0] ?? 0) / den[0]!;
+    result.final = final;
+    if (Math.abs(final) > 1e-12) {
+      const peak = final > 0 ? Math.max(...y) : Math.min(...y);
+      result.overshoot = Math.max(0, ((peak - final) / final) * 100);
+      const cross = (level: number): number | undefined => {
+        const i = y.findIndex((v) => (final > 0 ? v >= level : v <= level));
+        if (i <= 0) return i === 0 ? 0 : undefined;
+        return t[i - 1]! + ((level - y[i - 1]!) / (y[i]! - y[i - 1]!)) * h;
+      };
+      const t10 = cross(0.1 * final);
+      const t90 = cross(0.9 * final);
+      if (t10 !== undefined && t90 !== undefined) result.riseTime = t90 - t10;
+      let last = -1;
+      y.forEach((v, i) => {
+        if (Math.abs(v - final) > 0.05 * Math.abs(final)) last = i;
+      });
+      if (last < y.length - 1) result.settlingTime = last < 0 ? 0 : t[last + 1]!;
+    }
+  }
+  return result;
+}
+
+export interface StepLabels {
+  title: string;
+  time: string;
+  output: string;
+  final: (v: string) => string;
+  overshoot: (v: string) => string;
+  rise: (v: string) => string;
+  settling: (v: string) => string;
+}
+
+/** The step response, with its final value, overshoot, rise and settling times. */
+export function stepSvg(r: StepResponse, labels: StepLabels): string {
+  const W = 640;
+  const H = 360;
+  const panel: Panel = { x: 70, y: 40, w: 540, h: 260 };
+  const tEnd = r.t[r.t.length - 1]!;
+  const finite = r.y.filter(Number.isFinite);
+  let lo = Math.min(0, ...finite);
+  let hi = Math.max(0, ...finite, r.final ?? 0);
+  if (hi - lo < 1e-9) hi = lo + 1;
+  const span = hi - lo;
+  lo -= span * 0.05;
+  hi += span * 0.08;
+  const X = (t: number): number => panel.x + (t / tEnd) * panel.w;
+  const yAxis = linAxis(panel, lo, hi, niceStep(hi - lo, 6), '', labels.output);
+  const tStep = niceStep(tEnd, 8);
+  let grid = '';
+  for (let v = 0; v <= tEnd + 1e-9; v += tStep) {
+    grid += `<line x1="${X(v)}" y1="${panel.y}" x2="${X(v)}" y2="${panel.y + panel.h}" stroke="#ddd"/>`;
+    grid += `<text x="${X(v)}" y="${panel.y + panel.h + 14}" text-anchor="middle" font-size="11">${fmt(v)}</text>`;
+  }
+  const clamp = (v: number): number => Math.max(lo, Math.min(hi, v));
+  const d = r.t.map((t, i) => `${i ? 'L' : 'M'}${X(t).toFixed(1)} ${yAxis.Y(clamp(r.y[i]!)).toFixed(1)}`).join('');
+  const notes: string[] = [];
+  let marks = '';
+  if (r.final !== undefined) {
+    marks += `<line x1="${panel.x}" y1="${yAxis.Y(r.final)}" x2="${panel.x + panel.w}" y2="${yAxis.Y(r.final)}" stroke="#2e7d32" stroke-dasharray="5 4"/>`;
+    notes.push(labels.final(fmt(r.final)));
+    if (r.overshoot !== undefined) notes.push(labels.overshoot(r.overshoot.toFixed(1)));
+    if (r.riseTime !== undefined) notes.push(labels.rise(fmt(r.riseTime)));
+    if (r.settlingTime !== undefined) {
+      notes.push(labels.settling(fmt(r.settlingTime)));
+      marks += `<line x1="${X(r.settlingTime)}" y1="${panel.y}" x2="${X(r.settlingTime)}" y2="${panel.y + panel.h}" stroke="#c62828" stroke-dasharray="4 3"/>`;
+    }
+  }
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="sans-serif" role="img" aria-label="${esc(labels.title)}">`,
+    `<rect width="${W}" height="${H}" fill="#fff"/>`,
+    `<text x="${W / 2}" y="22" text-anchor="middle" font-size="14" font-weight="bold">${esc(labels.title)}</text>`,
+    grid,
+    yAxis.svg,
+    `<rect x="${panel.x}" y="${panel.y}" width="${panel.w}" height="${panel.h}" fill="none" stroke="#444"/>`,
+    marks,
+    `<path d="${d}" fill="none" stroke="#1565c0" stroke-width="2"/>`,
+    `<text x="${panel.x + panel.w / 2}" y="${panel.y + panel.h + 30}" text-anchor="middle" font-size="11">${esc(labels.time)}</text>`,
+    `<text x="${panel.x + panel.w / 2}" y="${H - 8}" text-anchor="middle" font-size="11">${esc(notes.join(' · '))}</text>`,
+    '</svg>',
+  ].join('');
+}
+
+/** The poles (×) and zeros (○) in the complex plane, the stable half shaded. */
+export function poleZeroSvg(tf: Rational, labels: { title: string; real: string; imaginary: string }): string {
+  const S = 480;
+  const panel: Panel = { x: 60, y: 40, w: 390, h: 390 };
+  const poles = roots(tf.den);
+  const zeros = roots(tf.num);
+  const all = [...poles, ...zeros];
+  const r = Math.max(1, ...all.map((z) => Math.max(Math.abs(z.re), Math.abs(z.im)))) * 1.25;
+  const X = (re: number): number => panel.x + panel.w / 2 + (re / r) * (panel.w / 2);
+  const Y = (im: number): number => panel.y + panel.h / 2 - (im / r) * (panel.h / 2);
+  const step = niceStep(2 * r, 6);
+  let grid = `<rect x="${panel.x}" y="${panel.y}" width="${panel.w / 2}" height="${panel.h}" fill="#eef6ee"/>`;
+  for (let v = Math.ceil(-r / step) * step; v <= r + 1e-9; v += step) {
+    grid += `<line x1="${X(v)}" y1="${panel.y}" x2="${X(v)}" y2="${panel.y + panel.h}" stroke="${Math.abs(v) < 1e-9 ? '#666' : '#e2e2e2'}"/>`;
+    grid += `<line x1="${panel.x}" y1="${Y(v)}" x2="${panel.x + panel.w}" y2="${Y(v)}" stroke="${Math.abs(v) < 1e-9 ? '#666' : '#e2e2e2'}"/>`;
+    grid += `<text x="${X(v)}" y="${panel.y + panel.h + 14}" text-anchor="middle" font-size="11">${fmt(v)}</text>`;
+    grid += `<text x="${panel.x - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11">${fmt(v)}</text>`;
+  }
+  const marks =
+    poles.map((p) => `<path d="M${X(p.re) - 6} ${Y(p.im) - 6}l12 12m0 -12l-12 12" stroke="#c62828" stroke-width="2.5"/>`).join('') +
+    zeros.map((z) => `<circle cx="${X(z.re)}" cy="${Y(z.im)}" r="6" fill="none" stroke="#1565c0" stroke-width="2.5"/>`).join('');
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S + 20}" viewBox="0 0 ${S} ${S + 20}" font-family="sans-serif" role="img" aria-label="${esc(labels.title)}">`,
+    `<rect width="${S}" height="${S + 20}" fill="#fff"/>`,
+    `<text x="${S / 2}" y="22" text-anchor="middle" font-size="14" font-weight="bold">${esc(labels.title)}</text>`,
+    grid,
+    `<rect x="${panel.x}" y="${panel.y}" width="${panel.w}" height="${panel.h}" fill="none" stroke="#444"/>`,
+    marks,
+    `<text x="${panel.x + panel.w / 2}" y="${panel.y + panel.h + 32}" text-anchor="middle" font-size="11">${esc(labels.real)}</text>`,
+    `<text transform="translate(${panel.x - 44} ${panel.y + panel.h / 2}) rotate(-90)" text-anchor="middle" font-size="11">${esc(labels.imaginary)}</text>`,
+    '</svg>',
+  ].join('');
+}

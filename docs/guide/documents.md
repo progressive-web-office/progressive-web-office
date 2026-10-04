@@ -634,6 +634,12 @@ transfer function, written as on the board:
   them); set **From** / **To** as powers of ten to choose them.
 - **The gain and phase margins** are worked out, said under the formula and
   marked on the Bode diagram.
+- **Step response**: the output for a unit step, with its final value, its
+  overshoot, its rise time (10 → 90 %) and its settling time (within 5 %);
+  the duration follows the slowest pole, or is set in seconds.
+- **Poles and zeros**: poles as ×, zeros as ○, the stable half-plane shaded.
+- **Closed loop with unity feedback** draws G/(1+G) instead of G — the step
+  response of a corrected loop, its poles.
 
 The plots go in as SVG pictures, with a description for screen readers.
 

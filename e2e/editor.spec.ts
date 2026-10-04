@@ -722,3 +722,20 @@ test('inserts Bode and Nyquist plots of a transfer function (TEACH-004)', async 
   await expect(images.first()).toHaveAttribute('alt', /^Bode diagram .* of H\(s\) = K\/\(s\(s\+1\)\^2\)$/);
   await expect(images.nth(1)).toHaveAttribute('alt', /^Nyquist diagram/);
 });
+
+test('inserts the step response of the closed loop and its poles (TEACH-006)', async ({ page }) => {
+  await newDocument(page);
+  await page.getByRole('button', { name: 'Bode / Nyquist plots…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Bode and Nyquist plots' });
+  await dialog.getByLabel('Transfer function H(s)').fill('1/(s(s+1))');
+  await dialog.getByLabel('Closed loop with unity feedback: G/(1+G)').check();
+  await dialog.getByLabel('Plot').selectOption('step');
+  await expect(dialog.locator('.control-preview svg')).toContainText('overshoot 16.3 %');
+  await dialog.getByLabel('Plot').selectOption('poles');
+  await expect(dialog.locator('.control-preview svg path')).toHaveCount(2);
+  await dialog.getByLabel('Plot').selectOption('all');
+  await expect(dialog.locator('.control-preview svg')).toHaveCount(4);
+  await dialog.getByRole('button', { name: 'Insert' }).click();
+  const images = page.locator('.ProseMirror').getByRole('img', { name: /closed loop of G\(s\) = 1\/\(s\(s\+1\)\)/ });
+  await expect(images).toHaveCount(4);
+});

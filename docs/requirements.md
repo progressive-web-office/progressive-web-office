@@ -536,6 +536,7 @@ integration is ever needed.
 | TEACH-003 | S | 0.2.0 | The system shall find the questions of a text document written with form fields (a list of answers starting with check boxes, ticked for the right ones; a text field holding the expected answer; a drop-down list set on the right choice), grouped by heading, and export them as Moodle XML, GIFT and an AMC (Auto Multiple Choice) LaTeX source. |
 | TEACH-004 | S | 0.2.0 | The system shall draw the Bode diagram (gain in dB, continuous phase in degrees, log frequency) and the Nyquist diagram of a transfer function written as a rational expression in s or p with named values, over decades chosen from its poles and zeros or by the user, work out the gain and phase margins, and insert the plots as described SVG pictures. |
 | TEACH-005 | S | 0.2.0 | Where the exam mode is on (started with a teacher's code of at least 4 characters, kept hashed), the system shall reach no network but its own files (no AI, collaboration, synchronisation, repositories, servers or downloads), refuse pastes of what was not copied in the application and files dropped from outside, log with their time the window or full screen left, the pastes and connections refused and wrong codes, show a banner, and end only with the code, showing the log. |
+| TEACH-006 | S | 0.2.0 | The system shall draw the step response of a transfer function or of its closed loop with unity feedback (final value, overshoot, 10–90 % rise time, 5 % settling time) and its poles and zeros, and insert them as described SVG pictures. |
 
 ## 9o. Colour (COLOR)
 

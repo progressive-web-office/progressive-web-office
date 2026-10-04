@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { autoRange, bodeSvg, frequencyResponse, margins, nyquistSvg, parseTransfer, roots, type PlotLabels } from '../src/teach/control';
+import { autoRange, bodeSvg, closedLoop, frequencyResponse, margins, nyquistSvg, parseTransfer, poleZeroSvg, roots, stepResponse, stepSvg, type PlotLabels } from '../src/teach/control';
 
 const labels: PlotLabels = { title: 'H(s) = <test>', frequency: 'ω (rad/s)', magnitude: '|H| (dB)', phase: 'φ', real: 'Re', imaginary: 'Im', gainMargin: (d, w) => `GM ${d} dB at ${w}`, phaseMargin: (d, w) => `PM ${d}° at ${w}` };
 
@@ -49,5 +49,42 @@ describe('TEACH-004 Bode and Nyquist', () => {
     const ny = new DOMParser().parseFromString(nyquistSvg(pts, labels), 'image/svg+xml');
     expect(ny.querySelector('parsererror')).toBeNull();
     expect(ny.querySelector('path[stroke-dasharray]')?.getAttribute('d')).toMatch(/^M/);
+  });
+});
+
+describe('TEACH-006 step response and poles', () => {
+  const at = (r: ReturnType<typeof stepResponse>, time: number) => r.y[r.t.findIndex((x) => x >= time - 1e-9)]!;
+  it('integrates a first order and gives its times', () => {
+    const r = stepResponse(parseTransfer('2/(1+s)'), 10, 1000);
+    expect(at(r, 1)).toBeCloseTo(2 * (1 - Math.exp(-1)), 4);
+    expect(r.final).toBe(2);
+    expect(r.overshoot).toBeCloseTo(0, 3);
+    expect(r.riseTime).toBeCloseTo(Math.log(9), 2);
+    expect(r.settlingTime).toBeCloseTo(-Math.log(0.05), 1);
+  });
+
+  it('closes the loop and finds the overshoot of a second order', () => {
+    const t = closedLoop(parseTransfer('1/(s(s+1))'));
+    expect(t).toEqual({ num: [1], den: [1, 1, 1] });
+    const r = stepResponse(t);
+    const zeta = 0.5;
+    expect(r.overshoot).toBeCloseTo(100 * Math.exp((-Math.PI * zeta) / Math.sqrt(1 - zeta * zeta)), 0);
+    expect(r.final).toBe(1);
+    // A zero over the poles' degree: a direct term at t = 0.
+    expect(stepResponse(parseTransfer('(s+2)/(s+1)')).y[0]).toBeCloseTo(1, 9);
+    expect(() => stepResponse(parseTransfer('s^2/(s+1)'))).toThrow(/more zeros/);
+    // An integrator does not settle.
+    expect(stepResponse(parseTransfer('1/s')).final).toBeUndefined();
+  });
+
+  it('draws the step response and the poles and zeros', () => {
+    const r = stepResponse(parseTransfer('1/(s^2+s+1)'));
+    const svg = stepSvg(r, { title: 'Step <1>', time: 't (s)', output: 'y', final: (v) => `final ${v}`, overshoot: (v) => `overshoot ${v} %`, rise: (v) => `rise ${v}`, settling: (v) => `settling ${v}` });
+    expect(svg).toContain('Step &lt;1&gt;');
+    expect(svg).toContain('overshoot 16.3 %');
+    expect(new DOMParser().parseFromString(svg, 'image/svg+xml').querySelector('parsererror')).toBeNull();
+    const pz = new DOMParser().parseFromString(poleZeroSvg(parseTransfer('(s+3)/(s^2+2s+5)'), { title: 'PZ', real: 'Re', imaginary: 'Im' }), 'image/svg+xml');
+    expect(pz.querySelectorAll('circle')).toHaveLength(1);
+    expect(pz.querySelectorAll('path')).toHaveLength(2);
   });
 });

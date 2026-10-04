@@ -1,7 +1,7 @@
 /** TEACH-004: the "Bode and Nyquist plots" dialog — a transfer function, the plots seen before they go in. */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
-import { autoRange, bodeSvg, frequencyResponse, margins, nyquistSvg, parseTransfer, type PlotLabels } from './control';
+import { autoRange, bodeSvg, closedLoop, frequencyResponse, margins, nyquistSvg, parseTransfer, poleZeroSvg, stepResponse, stepSvg, type PlotLabels } from './control';
 
 export interface ControlPlot {
   svg: string;
@@ -23,7 +23,10 @@ export function chooseControlPlots(host: HTMLElement): Promise<ControlPlot[] | n
   return new Promise((resolve) => {
     const expr = h('input', { type: 'text', value: '10/((s+1)(s+10))', spellcheck: 'false', autocomplete: 'off' });
     const values = h('input', { type: 'text', placeholder: 'K = 2, tau = 0.5', spellcheck: 'false', autocomplete: 'off' });
-    const kind = h('select', {}, ...(['bode', 'nyquist', 'both'] as const).map((k) => h('option', { value: k }, t(`control.kind.${k}`))));
+    const kind = h('select', {}, ...(['bode', 'nyquist', 'both', 'step', 'poles', 'all'] as const).map((k) => h('option', { value: k }, t(`control.kind.${k}`))));
+    // TEACH-006: the closed loop with unity feedback, G/(1+G).
+    const closed = h('input', { type: 'checkbox' });
+    const duration = h('input', { type: 'number', min: '0', step: 'any', placeholder: t('control.auto') });
     const from = h('input', { type: 'number', step: '1', placeholder: t('control.auto') });
     const to = h('input', { type: 'number', step: '1', placeholder: t('control.auto') });
     const showMargins = h('input', { type: 'checkbox', checked: true });
@@ -43,17 +46,30 @@ export function chooseControlPlots(host: HTMLElement): Promise<ControlPlot[] | n
     });
     const draw = (): void => {
       try {
-        const tf = parseTransfer(expr.value, parseValues(values.value));
+        const open = parseTransfer(expr.value, parseValues(values.value));
+        const tf = closed.checked ? closedLoop(open) : open;
         const auto = autoRange(tf);
         const lo = from.value.trim() === '' ? auto[0] : Math.round(Number(from.value));
         const hi = to.value.trim() === '' ? auto[1] : Math.round(Number(to.value));
         if (!(hi > lo) || hi - lo > 12) throw new Error(t('control.badRange'));
         const pts = frequencyResponse(tf, [lo, hi]);
         const m = margins(pts);
-        const name = `H(s) = ${expr.value.replace(/^\s*[A-Za-z]\s*\(\s*[sp]\s*\)\s*=\s*/, '')}`;
+        const g = expr.value.replace(/^\s*[A-Za-z]\s*\(\s*[sp]\s*\)\s*=\s*/, '');
+        const name = closed.checked ? t('control.closedName', { g }) : `H(s) = ${g}`;
+        const k = kind.value;
+        const want = (x: string): boolean => k === x || k === 'all' || (k === 'both' && (x === 'bode' || x === 'nyquist'));
         plots = [];
-        if (kind.value !== 'nyquist') plots.push({ svg: bodeSvg(pts, [lo, hi], m, labels(t('control.bodeTitle', { h: name })), showMargins.checked), alt: t('control.bodeAlt', { h: name }) });
-        if (kind.value !== 'bode') plots.push({ svg: nyquistSvg(pts, labels(t('control.nyquistTitle', { h: name }))), alt: t('control.nyquistAlt', { h: name }) });
+        if (want('bode')) plots.push({ svg: bodeSvg(pts, [lo, hi], m, labels(t('control.bodeTitle', { h: name })), showMargins.checked), alt: t('control.bodeAlt', { h: name }) });
+        if (want('step')) {
+          const tEnd = duration.value.trim() === '' ? undefined : Number(duration.value);
+          const r = stepResponse(tf, tEnd && tEnd > 0 ? tEnd : undefined);
+          plots.push({
+            svg: stepSvg(r, { title: t('control.stepTitle', { h: name }), time: t('control.time'), output: t('control.output'), final: (v) => t('control.final', { v }), overshoot: (v) => t('control.overshoot', { v }), rise: (v) => t('control.rise', { v }), settling: (v) => t('control.settling', { v }) }),
+            alt: t('control.stepAlt', { h: name }),
+          });
+        }
+        if (want('poles')) plots.push({ svg: poleZeroSvg(tf, { title: t('control.polesTitle', { h: name }), real: t('control.real'), imaginary: t('control.imaginary') }), alt: t('control.polesAlt', { h: name }) });
+        if (want('nyquist')) plots.push({ svg: nyquistSvg(pts, labels(t('control.nyquistTitle', { h: name }))), alt: t('control.nyquistAlt', { h: name }) });
         // The pictures are built here from numbers, the text in them escaped.
         preview.innerHTML = plots.map((p) => p.svg).join('');
         info.textContent = [
@@ -70,7 +86,8 @@ export function chooseControlPlots(host: HTMLElement): Promise<ControlPlot[] | n
       }
     };
     for (const el of [expr, values, from, to]) el.addEventListener('input', draw);
-    for (const el of [kind, showMargins]) el.addEventListener('change', draw);
+    for (const el of [kind, showMargins, closed]) el.addEventListener('change', draw);
+    duration.addEventListener('input', draw);
     const dialog = h('dialog', { class: 'dialog control-dialog', 'aria-labelledby': 'control-title' });
     const finish = (v: ControlPlot[] | null): void => {
       dialog.close();
@@ -83,7 +100,8 @@ export function chooseControlPlots(host: HTMLElement): Promise<ControlPlot[] | n
       field(t('control.expression'), expr),
       h('p', { class: 'hint' }, t('control.hint')),
       h('div', { class: 'control-row' }, field(t('control.values'), values), field(t('control.plot'), kind)),
-      h('div', { class: 'control-row' }, field(t('control.from'), from), field(t('control.to'), to), h('label', { class: 'check' }, showMargins, ` ${t('control.margins')}`)),
+      h('label', { class: 'check' }, closed, ` ${t('control.closed')}`),
+      h('div', { class: 'control-row' }, field(t('control.from'), from), field(t('control.to'), to), field(t('control.duration'), duration), h('label', { class: 'check' }, showMargins, ` ${t('control.margins')}`)),
       problem,
       info,
       preview,

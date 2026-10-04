@@ -101,6 +101,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Step response and poles and zeros (TEACH-006), next to the Bode and
+  Nyquist plots: final value, overshoot, rise and settling times, open loop
+  or closed loop with unity feedback.
+
 - Exam mode (TEACH-005): **🔒 Exam mode…** in the settings locks this browser
   for a test — no network, no AI, no pasting from outside, a log of leaving
   the window — until the teacher's code is typed. A deterrent, not a lockdown

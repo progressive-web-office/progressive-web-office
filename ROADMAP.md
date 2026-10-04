@@ -235,7 +235,8 @@ group is not a commitment.
 - Hand out and collect work in class over QRShare / peer-to-peer
   collaboration, without a learning platform
 - ✅ Bode / Nyquist plots from a transfer function, with the margins
-  (TEACH-004); next: block diagrams
+  (TEACH-004), step response and poles, open or closed loop (TEACH-006);
+  block diagrams are drawn with the symbols of the drawing editor
 - ✅ Exam mode: no network, no AI, no outside paste, a log, ended with the
   teacher's code (TEACH-005); next: a kiosk build for Safe Exam Browser
 
