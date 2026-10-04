@@ -55,6 +55,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- A message of the application was partly hidden under the folder panel.
+
 - The properties of a note lost a key holding a space (`see also:`): it
   was taken as part of the property before it (NOTE-001).
 
@@ -141,6 +143,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   is asked once per site, one at a time (CODE-016).
 
 ### Added
+
+- The calendars and address books of a CalDAV / CardDAV server (Nextcloud…)
+  kept in step with the event and contact notes, both ways (CAL-006,
+  CONTACT-005): found from a Nextcloud / WebDAV account, synchronised when
+  asked and when the calendar or the contacts open; what the server holds
+  besides the fields of the notes (reminders, photos…) is kept, and an item
+  changed on both sides is kept as a copy tagged #conflict.
 
 - Contacts (CONTACT-001..CONTACT-004): people kept as notes of `People`
   (e-mails, phones, organisation, birthday…), searched by name, e-mail,

@@ -1044,7 +1044,7 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 
 /* --- Folder mode (FOLDER-001..FOLDER-003) -------------------------------------- */
 :root { --folder-w: min(280px, 85vw); }
-.app.with-folder .app-main, .app.with-folder .app-status { margin-left: var(--folder-w); }
+.app.with-folder .app-main, .app.with-folder .app-status, .app.with-folder .app-alert { margin-left: var(--folder-w); }
 .app:not(.with-folder) .folder-panel { display: none; }
 .folder-panel {
   position: fixed; left: 0; top: var(--header-h); bottom: 0; width: var(--folder-w); z-index: 19;
@@ -1070,7 +1070,7 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .folder-reopen .folder-forget { flex: none; width: 2.25rem; height: 2.25rem; padding: 0; }
 .card.folder { border-left-color: var(--doc); }
 @media (max-width: 700px) {
-  .app.with-folder .app-main, .app.with-folder .app-status { margin-left: 0; }
+  .app.with-folder .app-main, .app.with-folder .app-status, .app.with-folder .app-alert { margin-left: 0; }
   .folder-panel { box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2); }
 }
 @media print { .folder-panel { display: none !important; } .app.with-folder .app-main { margin-left: 0; } }
@@ -1887,3 +1887,13 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
 .contact-card ul { list-style: none; margin: 0; padding: 0; }
 .calendar-event.birthday { cursor: pointer; }
 @media (max-width: 700px) { .contacts-body { grid-template-columns: 1fr; grid-template-rows: minmax(8em, 35%) 1fr; } }
+
+/* CAL-006, CONTACT-005: the calendars and address books of servers. */
+.pim-servers { width: min(34em, 96vw); }
+.pim-account { border-top: 1px solid var(--border); padding: 6px 0; }
+.pim-account h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; font-size: 0.95rem; }
+.pim-collection { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+.pim-colour { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; }
+.syncing .calendar-sync, .syncing .contacts-sync { animation: pim-spin 1s linear infinite; }
+@keyframes pim-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .syncing .calendar-sync, .syncing .contacts-sync { animation: none; opacity: 0.5; } }

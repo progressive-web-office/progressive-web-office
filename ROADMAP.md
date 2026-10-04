@@ -175,8 +175,10 @@ any other tool. Planned, the most useful first:
   dragged to move, repeating, linked from the daily notes — and iCalendar
   files (CAL-001..CAL-005)
 - ✅ Contacts kept as notes — searched, linked from the notes and the
-  events, birthdays in the calendar — and vCard files (CONTACT-001..004);
-  next: CalDAV / CardDAV synchronisation (CAL-006, CONTACT-005)
+  events, birthdays in the calendar — and vCard files (CONTACT-001..004)
+- ✅ Calendars and address books of CalDAV / CardDAV servers (Nextcloud…)
+  kept in step with the notes, both ways, conflicts kept as copies
+  (CAL-006, CONTACT-005)
 - Weekly, monthly, quarterly and yearly notes, each with its format, folder
   and template
 - Dates written in words (`@today`, `@next friday`) made links to their day

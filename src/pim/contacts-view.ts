@@ -23,7 +23,13 @@ export interface ContactsHost {
   error(message: string): void;
   download(name: string, text: string, type: string): void;
   statusChanged?(): void;
+  /** A message for the user (the result of a synchronisation). */
+  notify?(message: string): void;
+  /** Add a Nextcloud / WebDAV account. */
+  addAccount?(): Promise<void>;
 }
+
+const KIND = 'addressbook';
 
 const fold = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const initials = (name: string): string =>
@@ -64,6 +70,8 @@ export class ContactsView implements EditorView {
         { class: 'contacts-bar' },
         this.search,
         button(t('people.new'), () => this.edit(), { icon: '＋', className: 'primary' }),
+        button(t('pimsync.sync'), () => void this.syncServers(), { text: '⟳', className: 'icon contacts-sync' }),
+        button(t('pimsync.servers'), () => void import('./servers').then(({ chooseCollections }) => chooseCollections(this.element, KIND, () => this.host.addAccount?.() ?? Promise.resolve())).then((saved) => (saved ? this.syncServers() : undefined)), { text: '☁', className: 'icon' }),
         button(t('people.import'), () => this.importVcf(), { text: '⇪', className: 'icon' }),
         button(t('people.export'), () => this.host.download(`${t('people.title')}.vcf`, writeContacts(this.contacts.map((c) => c.item)), 'text/vcard'), { text: '⇩', className: 'icon' }),
       ),
@@ -72,7 +80,7 @@ export class ContactsView implements EditorView {
   }
 
   mounted(): void {
-    void this.reload();
+    void this.reload().then(() => this.syncServers(true));
   }
 
   status(): string {
@@ -320,6 +328,37 @@ export class ContactsView implements EditorView {
     dialog.showModal();
     (stored ? name : given).focus();
   }
+
+  /** CAL-006, CONTACT-005: the chosen collections of the servers synchronised with the notes; none chosen: choose them. */
+  private async syncServers(auto = false): Promise<void> {
+    if (this.syncing) return;
+    const { loadChosen, synchroniseKind, chooseCollections, reportText, syncErrorMessage } = await import('./servers');
+    if (!loadChosen().some((c) => c.kind === KIND)) {
+      if (auto) return;
+      if (await chooseCollections(this.element, KIND, () => this.host.addAccount?.() ?? Promise.resolve())) await this.syncServers();
+      return;
+    }
+    this.syncing = true;
+    this.element.classList.add('syncing');
+    try {
+      const names = new Set(this.host.noteNames().map((n) => n.toLowerCase()));
+      const report = await synchroniseKind(this.host.provider, KIND, (name) => names.has(name.toLowerCase()));
+      if (report) {
+        if (!auto || report.received || report.sent || report.conflicts.length || report.errors.length) this.host.notify?.(reportText(report));
+        if (report.received || report.removedHere || report.sent) {
+          await this.reload();
+          this.host.changed([]);
+        }
+      }
+    } catch (err) {
+      this.host.notify?.(syncErrorMessage(err));
+    } finally {
+      this.syncing = false;
+      this.element.classList.remove('syncing');
+    }
+  }
+
+  private syncing = false;
 
   /** CONTACT-003: the contacts of a .vcf file as person notes. */
   private importVcf(): void {

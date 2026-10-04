@@ -111,6 +111,40 @@ What you know of her, met where, about what.
   address book) as notes; **⇩** exports the contacts as a `.vcf` file
   (CONTACT-003).
 
+## Servers: CalDAV and CardDAV
+
+The calendars and address books of a server — Nextcloud, or any CalDAV /
+CardDAV server — are kept in step with the notes, both ways (CAL-006,
+CONTACT-005):
+
+1. Add the account once, as for [files](./cloud.md): the address of the
+   server, your user name and an **app password**.
+2. **☁** in the calendar (or the contacts) → **Find**: the calendars of
+   events (or the address books) of the account; tick those to keep, then
+   **Save**.
+3. **⟳** synchronises them now; they are also synchronised each time the
+   calendar or the contacts open.
+
+What happens:
+
+- An event of the server becomes a note of `Events` (its `calendar` the
+  name of its calendar), a contact a note of `People`; a new note of the
+  folder goes to the calendar named by its `calendar` — else the first one
+  ticked — and a new contact to the first address book.
+- A change on one side reaches the other at the next synchronisation. What
+  the server holds besides the fields of the note — reminders, organiser,
+  the answers of attendees, a photo, the labels of phones — is kept.
+- Changed on **both** sides: the note takes the server's version, and yours
+  is kept as a copy tagged `#conflict`, named "… (conflict)", which is not
+  sent: keep what you want, then remove the copy.
+- Removed on one side and unchanged on the other: removed there too.
+- What was seen at the last synchronisation is kept in `.pwo/sync.json` of
+  the folder.
+
+The server must allow the application's address (CORS) on its DAV paths,
+with the methods `PROPFIND`, `REPORT`, `PUT` and `DELETE`: see [server
+setup](./cloud.md#server-setup).
+
 ## Folders
 
 Events go to `Events` and contacts to `People`, at the root of the folder

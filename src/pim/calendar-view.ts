@@ -27,7 +27,13 @@ export interface CalendarHost {
   download(name: string, text: string, type: string): void;
   /** The number of events changed (the status bar). */
   statusChanged?(): void;
+  /** A message for the user (the result of a synchronisation). */
+  notify?(message: string): void;
+  /** Add a Nextcloud / WebDAV account. */
+  addAccount?(): Promise<void>;
 }
+
+const KIND = 'calendar';
 
 export type CalendarMode = 'month' | 'week' | 'day' | 'agenda';
 const MODES: CalendarMode[] = ['month', 'week', 'day', 'agenda'];
@@ -86,7 +92,8 @@ export class CalendarView implements EditorView {
   }
 
   mounted(): void {
-    void this.reload();
+    // The servers' calendars, once the folder's events are shown.
+    void this.reload().then(() => this.syncServers(true));
   }
 
   status(): string {
@@ -205,6 +212,8 @@ export class CalendarView implements EditorView {
       h('h2', { class: 'calendar-title', 'aria-live': 'polite' }, this.title()),
       modes,
       button(t('cal.new'), () => this.edit(undefined, this.mode === 'month' ? new Date(this.cursor) : this.cursor), { icon: '＋', className: 'primary' }),
+      button(t('pimsync.sync'), () => void this.syncServers(), { text: '⟳', className: 'icon calendar-sync' }),
+      button(t('pimsync.servers'), () => void import('./servers').then(({ chooseCollections }) => chooseCollections(this.element, KIND, () => this.host.addAccount?.() ?? Promise.resolve())).then((saved) => (saved ? this.syncServers() : undefined)), { text: '☁', className: 'icon' }),
       button(t('cal.import'), () => this.importIcs(), { text: '⇪', className: 'icon' }),
       button(t('cal.export'), () => this.exportIcs(), { text: '⇩', className: 'icon' }),
     );
@@ -570,6 +579,37 @@ export class CalendarView implements EditorView {
     dialog.showModal();
     title.focus();
   }
+
+  /** CAL-006, CONTACT-005: the chosen collections of the servers synchronised with the notes; none chosen: choose them. */
+  private async syncServers(auto = false): Promise<void> {
+    if (this.syncing) return;
+    const { loadChosen, synchroniseKind, chooseCollections, reportText, syncErrorMessage } = await import('./servers');
+    if (!loadChosen().some((c) => c.kind === KIND)) {
+      if (auto) return;
+      if (await chooseCollections(this.element, KIND, () => this.host.addAccount?.() ?? Promise.resolve())) await this.syncServers();
+      return;
+    }
+    this.syncing = true;
+    this.element.classList.add('syncing');
+    try {
+      const names = new Set(this.host.noteNames().map((n) => n.toLowerCase()));
+      const report = await synchroniseKind(this.host.provider, KIND, (name) => names.has(name.toLowerCase()));
+      if (report) {
+        if (!auto || report.received || report.sent || report.conflicts.length || report.errors.length) this.host.notify?.(reportText(report));
+        if (report.received || report.removedHere || report.sent) {
+          await this.reload();
+          this.host.changed([]);
+        }
+      }
+    } catch (err) {
+      this.host.notify?.(syncErrorMessage(err));
+    } finally {
+      this.syncing = false;
+      this.element.classList.remove('syncing');
+    }
+  }
+
+  private syncing = false;
 
   /** CAL-003: the events of a .ics file as notes of the events folder. */
   private importIcs(): void {

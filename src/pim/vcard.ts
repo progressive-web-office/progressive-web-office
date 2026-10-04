@@ -127,3 +127,41 @@ export function writeContact(c: Contact): string {
 
 /** An address book file holding these contacts. */
 export const writeContacts = (contacts: Contact[]): string => contacts.map(writeContact).join('\r\n') + '\r\n';
+
+/**
+ * CONTACT-005: a contact written back into the vCard it was read from: the
+ * fields it changed replaced, the others — photo, labels, the types of
+ * unchanged e-mails and phones, other properties — kept.
+ */
+export function mergeContact(raw: string, c: Contact): string {
+  const lines = raw.replace(/\r?\n[ \t]/g, '').split(/\r?\n/).filter((l) => l.length);
+  const before = readContacts(raw)[0];
+  const same = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  // A field unchanged keeps its lines; a changed one is written again from the contact.
+  const fields: [string[], boolean][] = [
+    [['FN'], same(before?.name, c.name)],
+    [['N'], same(before?.givenName, c.givenName) && same(before?.familyName, c.familyName)],
+    [['EMAIL'], same(before?.emails, c.emails)],
+    [['TEL'], same(before?.phones?.map((p) => p.replace(/\s/g, '')), c.phones?.map((p) => p.replace(/\s/g, '')))],
+    [['ORG'], same(before?.organization, c.organization)],
+    [['TITLE', 'ROLE'], same(before?.role, c.role)],
+    [['BDAY'], same(before?.birthday, c.birthday)],
+    [['ADR'], same(before?.address, c.address)],
+    [['URL'], same(before?.website, c.website)],
+    [['NOTE'], same(before?.note, c.note)],
+    [['CATEGORIES'], same(before?.categories, c.categories)],
+  ];
+  const changed = new Set(fields.filter(([, kept]) => !kept).flatMap(([names]) => names));
+  const name = (l: string): string => (/^[^:;]+/.exec(l)?.[0] ?? '').replace(/^[^.]+\./, '').toUpperCase();
+  const ours = writeContact(c)
+    .replace(/\r?\n[ \t]/g, '')
+    .split(/\r?\n/)
+    .filter((l) => changed.has(name(l)) || (name(l) === 'TITLE' && changed.has('ROLE')));
+  const out: string[] = [];
+  for (const l of lines) {
+    if (changed.has(name(l))) continue;
+    if (/^END:VCARD$/i.test(l)) out.push(...ours);
+    out.push(l);
+  }
+  return out.map(fold).join('\r\n') + '\r\n';
+}

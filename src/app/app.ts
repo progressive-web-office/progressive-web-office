@@ -1546,6 +1546,12 @@ export class App {
       },
       error: (message) => this.showError(message),
       statusChanged: () => this.renderStatus(),
+      // CAL-006, CONTACT-005: the servers' calendars and address books.
+      notify: (message) => this.showNotice(message),
+      addAccount: async () => {
+        const { browseCloud } = await import('../webdav/ui');
+        await browseCloud(this.root, 'open');
+      },
       download: (name, text, type) => void saveFile(new TextEncoder().encode(text), name, 'text', { mimeType: type, extension: name.slice(name.lastIndexOf('.') + 1) }),
     });
     folder.setCurrent(undefined);
@@ -1570,6 +1576,12 @@ export class App {
       },
       error: (message) => this.showError(message),
       statusChanged: () => this.renderStatus(),
+      // CAL-006, CONTACT-005: the servers' calendars and address books.
+      notify: (message) => this.showNotice(message),
+      addAccount: async () => {
+        const { browseCloud } = await import('../webdav/ui');
+        await browseCloud(this.root, 'open');
+      },
       download: (name, text, type) => void saveFile(new TextEncoder().encode(text), name, 'text', { mimeType: type, extension: name.slice(name.lastIndexOf('.') + 1) }),
     });
     folder.setCurrent(undefined);

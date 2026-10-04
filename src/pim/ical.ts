@@ -308,3 +308,49 @@ export function occurrences(e: Pick<CalEvent, 'start' | 'end' | 'recurrence' | '
   }
   return out;
 }
+
+// --- writing back to a server --------------------------------------------------
+
+/** The unfolded lines of a text. */
+const unfolded = (text: string): string[] => text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/).filter((l) => l.length);
+const nameOf = (line: string): string => (/^[^:;]+/.exec(line)?.[0] ?? '').toUpperCase();
+
+/**
+ * CAL-006: an event written back into the calendar text it was read from:
+ * its fields replaced, what the calendar holds besides them kept — time
+ * zones, alarms, organiser, other properties, and the attendees' lines
+ * (with their answers) while the attendees are the same.
+ */
+export function mergeEvent(raw: string, e: CalEvent, stamp = new Date()): string {
+  const lines = unfolded(raw);
+  const before = readCalendar(raw).find((x) => x.uid === e.uid);
+  const sameAttendees = JSON.stringify(before?.attendees ?? []) === JSON.stringify(e.attendees ?? []);
+  const known = new Set(['DTSTAMP', 'DTSTART', 'DTEND', 'DURATION', 'SUMMARY', 'LOCATION', 'DESCRIPTION', 'URL', 'RRULE', 'EXDATE', 'CATEGORIES', ...(sameAttendees ? [] : ['ATTENDEE'])]);
+  const ours = unfolded(writeEvent(e, stamp)).filter((l) => !/^(BEGIN|END):VEVENT$/.test(l) && nameOf(l) !== 'UID' && (sameAttendees ? nameOf(l) !== 'ATTENDEE' : true));
+  const out: string[] = [];
+  let inEvent = false;
+  let depth = 0;
+  let done = false;
+  for (const line of lines) {
+    const n = nameOf(line);
+    if (!inEvent && line.toUpperCase() === 'BEGIN:VEVENT' && !done) {
+      inEvent = true;
+      out.push(line);
+      continue;
+    }
+    if (inEvent) {
+      if (n === 'BEGIN') depth++;
+      if (n === 'END' && depth > 0) depth--;
+      else if (n === 'END' && line.toUpperCase() === 'END:VEVENT') {
+        inEvent = false;
+        done = true;
+      }
+      if (depth === 0 && known.has(n)) continue;
+      out.push(line);
+      if (n === 'UID' && depth === 0) out.push(...ours);
+      continue;
+    }
+    out.push(line);
+  }
+  return out.map(fold).join('\r\n') + '\r\n';
+}

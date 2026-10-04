@@ -60,8 +60,11 @@ server. Two conditions apply:
 1. **HTTPS**.
 2. **CORS**: the server must allow the origin of the application —
    `https://progressive-web-office.github.io` for the public version, or your own address
-   if you host it — on the WebDAV paths. Nextcloud does not do this by
-   default, so it needs a change by the administrator.
+   if you host it — on the WebDAV paths (`/remote.php/dav/`, which also
+   holds the calendars and address books synchronised with the
+   [calendar and the contacts](./calendar.md#servers-caldav-and-carddav)).
+   Nextcloud does not do this by default, so it needs a change by the
+   administrator.
 
 With an **nginx** reverse proxy in front of Nextcloud:
 
@@ -70,7 +73,7 @@ location /remote.php/dav/ {
     set $pwo "https://progressive-web-office.github.io";
     if ($request_method = OPTIONS) {
         add_header Access-Control-Allow-Origin $pwo always;
-        add_header Access-Control-Allow-Methods "GET, PUT, PROPFIND, OPTIONS" always;
+        add_header Access-Control-Allow-Methods "GET, PUT, DELETE, MOVE, MKCOL, PROPFIND, REPORT, OPTIONS" always;
         add_header Access-Control-Allow-Headers "Authorization, Content-Type, Depth, If-Match, If-None-Match" always;
         add_header Access-Control-Max-Age 86400 always;
         return 204;
