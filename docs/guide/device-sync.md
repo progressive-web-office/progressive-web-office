@@ -26,7 +26,8 @@ The window shows these warnings first, and asks you to acknowledge them:
 
 ![Sync my devices: the fingerprint of the pairing, and an invitation QR code valid five minutes, with what to do on the new device](/screenshots/device-sync.png)
 
-1. On the first device: **🔁 Sync my devices** (in *Share*, or the command
+1. On the first device: **🔁 Sync** (its own button at the top, with a green dot while another
+   device is online; or the command
    palette), name the device, then **Create a pairing**. This makes the
    **key** of your documents, which stays on your devices.
 2. To add another device, on a device already paired: **Add a device ›
@@ -88,6 +89,24 @@ How the documents are merged:
   other's trash; changed there since, it is kept (and comes back).
 
 Hidden files and the trash are never synchronised.
+
+### Documents and history
+
+**🗄️ In this browser** on the start screen (or *Documents and history* in
+the sync window, or *Documents of this browser* in the command palette)
+lists the documents of this browser and, for each, where it stands:
+
+| | |
+|---|---|
+| ✅ | the same on every device met |
+| ⬆️ | here, but not yet on a device, or different there (changed since) |
+| ⬇️ | on another device, **not here yet** — synchronise to get it |
+
+It says when each device was last met: what it shows is as of then. Below,
+the **history of the synchronisations**, newest first, with their date and
+time, the device met and what came of it (received, to the trash, conflict
+copies, failed); *Details* lists the documents. **🔁 Sync now**,
+**🗑 Trash (n)** and **Open as a folder** are at the top.
 
 ### The trash
 

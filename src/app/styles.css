@@ -1674,3 +1674,17 @@ th.colhead { position: relative; }
 .exam-log li:not(.exam-start) { color: var(--danger); }
 .exam-counts { font-weight: 600; }
 .card.browser-docs { border-left-color: var(--doc); }
+
+/* DEVSYNC-011: the documents of this browser and the history of synchronisations. */
+.browser-docs-dialog { max-width: min(820px, calc(100vw - 32px)); }
+.browser-docs-scroll { max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+.browser-docs { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.browser-docs th, .browser-docs td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.browser-docs th { position: sticky; top: 0; background: var(--surface); }
+.browser-docs .doc-remote .remote-name { color: var(--muted); font-style: italic; }
+.sync-history { max-height: 30vh; overflow: auto; padding-left: 1.5rem; font-size: 0.9rem; }
+.sync-history time { font-variant-numeric: tabular-nums; color: var(--muted); }
+.sync-button { position: relative; }
+.sync-button.online::after { content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #2e7d32; box-shadow: 0 0 0 2px var(--bg); }
+/* Icons of the other buttons (button(…, { icon })), drawn before their name. */
+button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-link):not(.folder-file)::before { content: attr(data-icon) ' '; content: attr(data-icon) ' ' / ''; }

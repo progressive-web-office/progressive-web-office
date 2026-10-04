@@ -105,6 +105,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Documents of this browser and history of synchronisations (DEVSYNC-011):
+  each document with its state on the other devices (✅ the same, ⬆️ only
+  here, ⬇️ there and not here yet), the trash, and a timestamped history of
+  the synchronisations; **🔁 Sync** is now a button of its own in the header,
+  marked while another device is online. Button icons are now shown.
+
 - Step response and poles and zeros (TEACH-006), next to the Bode and
   Nyquist plots: final value, overshoot, rise and settling times, open loop
   or closed loop with unity feedback.

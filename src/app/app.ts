@@ -1276,7 +1276,7 @@ export class App {
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open', icon: '📂' }),
           button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
           // FILE-031: the documents saved in this browser, as a folder to look through.
-          button(t('start.browserDocs'), () => void this.openBrowserStorage(), { className: 'card browser-docs', icon: '🗄️', title: t('start.browserDocsTitle') }),
+          button(t('start.browserDocs'), () => void this.openBrowserDocuments(), { className: 'card browser-docs', icon: '🗄️', title: t('start.browserDocsTitle') }),
           exam ? null : button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
           exam ? null : button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
           exam ? null : button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
@@ -1377,7 +1377,7 @@ export class App {
   /** DEVSYNC-006: `invitation`, a link this application was opened with; `invite`, show an invitation at once. */
   async openDeviceSync(opts: { invitation?: string; invite?: boolean } = {}): Promise<void> {
     const { syncDialog } = await import('../devsync/ui');
-    await syncDialog(this.root, { openBackup: () => void this.openBackup(), scan: () => void this.receiveFromDevice(), openFolder: () => void this.openBrowserStorage(), ...opts });
+    await syncDialog(this.root, { openBackup: () => void this.openBackup(), scan: () => void this.receiveFromDevice(), openFolder: () => void this.openBrowserStorage(), openDocuments: () => void this.openBrowserDocuments(), ...opts });
   }
 
   /** DEVSYNC-007: on a paired device, where a document is saved: in the browser (synchronised) or as a file. */
@@ -1425,6 +1425,50 @@ export class App {
     } catch (err) {
       this.showError(t('error.save', { message: (err as Error).message }));
     }
+  }
+
+  private syncButton(): HTMLElement {
+    const devices = button(t('devsync.button'), () => void this.openDeviceSync(), { text: t('devsync.short'), icon: '🔁', className: 'sync-button', title: t('devsync.buttonTitle') });
+    devices.dataset.keywords = 'sync synchronise devices appareils synchroniser synchronisation téléphone phone laptop 同步 设备';
+    void import('../devsync/live').then(({ currentSync, listen }) => {
+      const show = (online: number): void => {
+        devices.classList.toggle('online', online > 0);
+        devices.title = online ? t('devsync.buttonOnline', { n: online }) : t('devsync.buttonTitle');
+      };
+      show(currentSync()?.peers.length ?? 0);
+      this.unlistenSync?.();
+      this.unlistenSync = listen({ peers: (p) => show(p.length) });
+    });
+    return devices;
+  }
+
+  private unlistenSync?: () => void;
+
+  /** DEVSYNC-011: the documents of this browser, their state on the paired devices, the trash and the history. */
+  async openBrowserDocuments(): Promise<void> {
+    const { privateStorage } = await import('../fs');
+    const files = await privateStorage('Documents', t('folder.browserStorage')).catch(() => null);
+    if (!files) return this.showError(t('devsync.noStorage'));
+    const [{ showBrowserDocuments }, { loadSyncState }, live] = await Promise.all([import('../devsync/documents-ui'), import('../devsync/state'), import('../devsync/live')]);
+    const state = loadSyncState();
+    const paired = !!state.pairing && state.understood && !inExam();
+    await showBrowserDocuments(this.root, {
+      files,
+      open: (path) => void this.openBrowserDocument(path),
+      openFolder: () => void this.openBrowserStorage(),
+      ...(paired
+        ? {
+            syncNow: async () => {
+              const running = live.currentSync() ?? (await live.startSync(files).catch(() => undefined));
+              if (!running) return t('devsync.noStorage');
+              if (!running.sync.peerCount()) return t('devsync.waiting');
+              await running.sync.syncNow();
+              return t('docs.syncing');
+            },
+            listen: (done: () => void) => live.listen({ synced: done }),
+          }
+        : {}),
+    });
   }
 
   /** FILE-031: a document of the browser's storage, opened from its folder (a recent file). */
@@ -1614,12 +1658,10 @@ export class App {
     }
     if (doc?.view.syncable && doc.kind === 'document' && !doc.readOnly) shareTools.push(button(t('sync.open'), () => void this.syncOffline(), { title: t('sync.openTitle'), text: '🔄', className: 'icon' }));
     shareTools.push(button(t('remote.title'), () => void this.createServerLink(), { text: '🔗', className: 'icon', title: t('remote.menuTitle') }));
-    // DEVSYNC-001: one's own devices, peer to peer.
-    const devices = button(t('devsync.button'), () => void this.openDeviceSync(), { text: '🔁', className: 'icon', title: t('devsync.buttonTitle') });
-    devices.dataset.keywords = 'sync synchronise devices appareils synchroniser téléphone phone laptop 同步 设备';
-    shareTools.push(devices);
     // TEACH-005: nothing to share, send or synchronise in exam mode.
     if (!exam) actions.append(toolGroup(t('group.share'), '📤', shareTools));
+    // DEVSYNC-001: one's own devices, peer to peer — a button of its own, always in sight, lit when another device is online.
+    if (!exam) actions.append(this.syncButton());
     // BACKUP-004: the last backup, always in sight.
     actions.append(this.backupButton());
     // SET-001: the settings window.
@@ -2586,6 +2628,7 @@ export class App {
         { label: t('devsync.cmdNow'), where, keywords, run: () => void this.syncDevicesNow() },
         { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
         { label: t('devsync.cmdScan'), where, keywords, run: () => void this.receiveFromDevice() },
+        { label: t('docs.title'), where, keywords: `${keywords} documents history historique trash corbeille 历史`, run: () => void this.openBrowserDocuments() },
       ].filter((c) => !labels.has(c.label));
       // TEACH-005: the exam mode, from the palette too.
       const exam = inExam() ? [] : [{ label: t('exam.startButton'), where: t('settings.title'), keywords: 'exam test examen contrôle kiosk kiosque 考试', run: async () => {

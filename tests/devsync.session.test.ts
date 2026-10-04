@@ -61,6 +61,11 @@ describe('DEVSYNC-002, DEVSYNC-003 two devices of one person', () => {
     await s1.syncNow();
     await settle(s1, s2);
     expect(await names(laptop.provider)).toEqual(['Documents/a.md', 'Documents/b.md', 'Documents/shared.md']);
+    // DEVSYNC-011: each knows what the other holds now, and logs what was done.
+    expect(Object.keys(laptop.state().remotes![phone.state().device]!.files).sort()).toEqual(['Documents/a.md', 'Documents/b.md', 'Documents/shared.md']);
+    expect(Object.keys(phone.state().remotes![laptop.state().device]!.files).sort()).toEqual(['Documents/a.md', 'Documents/b.md', 'Documents/shared.md']);
+    expect(phone.state().history!.at(-1)).toMatchObject({ name: 'Laptop', fetched: ['Documents/a.md', 'Documents/shared.md'] });
+    expect(laptop.state().history!.at(-1)).toMatchObject({ name: 'Phone', fetched: ['Documents/b.md'] });
     expect(await names(phone.provider)).toEqual(['Documents/a.md', 'Documents/b.md', 'Documents/shared.md']);
 
     // Deleted on the phone: deleted on the laptop too, kept in its trash.

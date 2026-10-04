@@ -28,6 +28,41 @@ export interface DeviceSyncState {
   known: Record<string, string>;
   deleted: Record<string, number>;
   lastSync?: number;
+  /** DEVSYNC-011: the files each device had when last met (to tell what is not here yet). */
+  remotes?: Record<string, RemoteSnapshot>;
+  /** DEVSYNC-011: what each synchronisation did, the newest last. */
+  history?: SyncRecord[];
+}
+
+export interface RemoteSnapshot {
+  name: string;
+  /** When its list was received. */
+  at: number;
+  /** Content hash by path. */
+  files: Record<string, string>;
+  deleted?: Record<string, number>;
+}
+
+export interface SyncRecord {
+  at: number;
+  /** The device met. */
+  device: string;
+  name: string;
+  fetched: string[];
+  trashed: string[];
+  conflicts: string[];
+  failed: string[];
+}
+
+/** Synchronisations kept in the history, and paths kept per kind in one. */
+export const MAX_HISTORY = 200;
+const MAX_PATHS = 50;
+
+/** A synchronisation added to the history (the oldest dropped). */
+export function withRecord(state: DeviceSyncState, record: SyncRecord): DeviceSyncState {
+  const cut = (paths: string[]): string[] => paths.slice(0, MAX_PATHS);
+  const clean = { ...record, fetched: cut(record.fetched), trashed: cut(record.trashed), conflicts: cut(record.conflicts), failed: cut(record.failed) };
+  return { ...state, history: [...(state.history ?? []), clean].slice(-MAX_HISTORY) };
 }
 
 const KEY = 'pwo.devsync';
@@ -79,6 +114,8 @@ export function loadSyncState(): DeviceSyncState {
     deleted: raw.deleted && typeof raw.deleted === 'object' ? raw.deleted : {},
     ...(raw.pairing && typeof raw.pairing.room === 'string' && typeof raw.pairing.secret === 'string' ? { pairing: raw.pairing } : {}),
     ...(typeof raw.lastSync === 'number' ? { lastSync: raw.lastSync } : {}),
+    ...(raw.remotes && typeof raw.remotes === 'object' ? { remotes: raw.remotes } : {}),
+    ...(Array.isArray(raw.history) ? { history: raw.history } : {}),
   };
   if (!raw.device) saveSyncState(state);
   return state;
@@ -106,6 +143,6 @@ export function parsePairingCode(text: string, now = Date.now()): Pairing | unde
 
 /** Forget the pairing of this device; its documents stay. */
 export function unpaired(state: DeviceSyncState): DeviceSyncState {
-  const { pairing: _p, lastSync: _l, ...rest } = state;
+  const { pairing: _p, lastSync: _l, remotes: _r, ...rest } = state;
   return { ...rest, peers: {}, base: {}, deleted: {}, auto: false };
 }

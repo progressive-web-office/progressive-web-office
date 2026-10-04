@@ -23,6 +23,8 @@ export interface SyncDialogOptions {
   invite?: boolean;
   /** Open the synchronised documents (Browser storage › Documents) as the folder. */
   openFolder?(): void;
+  /** DEVSYNC-011: the documents of this browser, their state and the history. */
+  openDocuments?(): void;
 }
 
 /** The address of the application, where an invitation link leads. */
@@ -364,7 +366,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         const live = currentSync();
         if (live && loadSyncState().auto && live.sync.peerCount()) void live.sync.syncNow();
       }, { icon: '➕', title: t('devsync.addRecentTitle') });
-      const docs = h('div', { class: 'devsync-docs' }, h('p', {}, count, ' ', opts.openFolder ? button(t('devsync.openDocs'), () => (finish(), opts.openFolder?.()), { icon: '📁' }) : '', ' ', addRecent), what);
+      const docs = h('div', { class: 'devsync-docs' }, h('p', {}, count, ' ', opts.openFolder ? button(t('devsync.openDocs'), () => (finish(), opts.openFolder?.()), { icon: '📁' }) : '', ' ', opts.openDocuments ? button(t('docs.openButton'), () => (finish(), opts.openDocuments?.()), { icon: '🗄️' }) : '', ' ', addRecent), what);
       const last = loadSyncState().lastSync;
       body.replaceChildren(
         switchTo,

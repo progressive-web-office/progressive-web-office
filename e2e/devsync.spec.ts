@@ -291,9 +291,15 @@ test('a document saved in the browser is found again: recent files and the "In t
   await page.locator('.recent-list li', { hasText: 'Browser storage' }).getByRole('button').first().click();
   await expect(page.locator('.ProseMirror')).toContainText('Scientific article, revised');
 
-  // The card lists the documents of the browser, as a folder.
+  // The card shows the documents of the browser, their state, the trash and the history.
   await page.reload();
   await page.getByRole('button', { name: 'In this browser' }).click();
+  const docs = page.getByRole('dialog', { name: '🗄️ Documents of this browser' });
+  await expect(docs.locator('tbody tr')).toHaveCount(1);
+  await expect(docs).toContainText('No device met yet.');
+  await expect(docs.getByRole('button', { name: 'Trash (0)' })).toBeVisible();
+  await expect(docs).toContainText('No synchronisation yet.');
+  await docs.getByRole('button', { name: 'Open as a folder' }).click();
   await expect(page.locator('.folder-panel')).toContainText(/\.(odt|docx)/);
   expect(errors).toEqual([]);
 });

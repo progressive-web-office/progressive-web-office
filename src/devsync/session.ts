@@ -8,13 +8,14 @@ import type { CollabRoom } from '@scelles/collab';
 import type { StorageProvider } from '../fs';
 import { applyPlan, emptyOldTrash, safePath, scan, type ApplyResult } from './engine';
 import { planSync, type SyncManifest } from './plan';
-import type { DeviceSyncState } from './state';
+import { withRecord, type DeviceSyncState } from './state';
 
 type Send<T> = (data: T, target?: string) => unknown;
 type Receive<T> = (fn: (data: T, peer: string) => void) => void;
 
 interface Hello { device: string; name: string }
-interface ManifestMsg { manifest: SyncManifest; reply: boolean }
+/** `final`: the files after the merge, only to know what the other holds now (DEVSYNC-011). */
+interface ManifestMsg { manifest: SyncManifest; reply: boolean; final?: boolean }
 interface GetMsg { id: string; path: string }
 interface FileMsg { id: string; data?: string; error?: string }
 
@@ -91,7 +92,9 @@ export class DeviceSync {
     });
     receiveManifest((data, peer) => {
       const manifest = cleanManifest(data?.manifest);
-      if (manifest) this.enqueue(() => this.merge(manifest, peer, !!data.reply));
+      if (!manifest) return;
+      if (data.final === true) this.remember(manifest);
+      else this.enqueue(() => this.merge(manifest, peer, !!data.reply));
     });
     receiveGet((data, peer) => void this.serve(data, peer));
     receiveFile((data) => {
@@ -147,10 +150,21 @@ export class DeviceSync {
     // What both devices now hold is the base of the next merge.
     const after = await scan(this.files, { ...scanned.state });
     const base = Object.fromEntries(after.hashes);
-    this.state.set({ ...after.state, base, lastSync: Date.now() });
+    // DEVSYNC-011: what the other device holds, and what this synchronisation did.
+    const now = Date.now();
+    const remotes = { ...(after.state.remotes ?? {}), [remote.device]: { name: remote.name, at: now, files: Object.fromEntries(Object.entries(remote.files).map(([p, f]) => [p, f.hash])), deleted: remote.deleted } };
+    this.state.set(withRecord({ ...after.state, base, lastSync: now, remotes }, { at: now, device: remote.device, name: remote.name, ...result }));
     this.events.synced?.({ ...result, peer: remote.name });
     if (reply) await this.sendManifest({ manifest: after.manifest, reply: false }, peer);
+    // DEVSYNC-011: the last word, so that the other device knows what this one now holds.
+    else await this.sendManifest({ manifest: after.manifest, reply: false, final: true }, peer);
     this.events.status?.('idle');
+  }
+
+  /** DEVSYNC-011: the files another device holds now. */
+  private remember(remote: SyncManifest): void {
+    const s = this.state.get();
+    this.state.set({ ...s, remotes: { ...(s.remotes ?? {}), [remote.device]: { name: remote.name, at: Date.now(), files: Object.fromEntries(Object.entries(remote.files).map(([p, f]) => [p, f.hash])), deleted: remote.deleted } } });
   }
 
   private fetch(path: string, peer: string): Promise<Uint8Array> {
