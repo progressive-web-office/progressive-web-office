@@ -2107,6 +2107,8 @@ export class DocumentEditor implements EditorView {
     this.readOnly = readOnly;
     this.element.classList.toggle('read-only', readOnly);
     this.view.setProps({});
+    // NOTE-001: the properties of the note, to read only (or to change again).
+    this.renderFurniture();
   }
 
   /** UI-018: the review mode in the palette, even when the toolbar is hidden (read-only). */

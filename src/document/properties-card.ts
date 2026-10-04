@@ -86,7 +86,8 @@ export class PropertiesCard {
     const modes = h(
       'div',
       { class: 'note-properties-modes', role: 'group', 'aria-label': t('props.mode') },
-      ...MODES.map((m) =>
+      // A document that cannot be changed: to read, or its YAML (not changed either).
+      ...MODES.filter((m) => !readOnly || m !== 'edit').map((m) =>
         button(t(`props.mode.${m}` as MessageKey), () => {
           this.mode = m;
           savePropertiesMode(m);
