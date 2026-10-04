@@ -17,6 +17,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- The "Instrument panel" example failed in Python: the marimo stand-in of
+  the sandbox raised `NotImplementedError` when a library probed
+  `marimo._runtime` (it now raises `ImportError`, as for a missing module).
 - Code cells running side by side no longer open several "Download code
   for this document?" windows at once, one hiding the other: the question
   is asked once per site, one at a time (CODE-016).
