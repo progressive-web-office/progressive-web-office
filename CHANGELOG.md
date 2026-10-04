@@ -16,6 +16,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   the About window, the links of the documentation, the README and the
   policies point there. The brand files (logo, icons, banners, brand guide)
   are in `public/brand/`, published at `/brand/`.
+  The former address `…github.io/progressive-web-office/` leads to the new
+  one, links to documents included; the documents of the browser stay, the
+  site being the same.
 
 - **A new logo and new application icons**: three fanned sheets — the
   document, the spreadsheet and the presentation — on a square navy icon,
