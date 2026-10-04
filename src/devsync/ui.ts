@@ -152,7 +152,11 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         return;
       }
       const name = h('input', { type: 'text', value: state.name, maxlength: '60', 'aria-label': t('devsync.deviceName') });
-      name.addEventListener('change', () => saveSyncState({ ...loadSyncState(), name: name.value.trim() || state.name }));
+      name.addEventListener('change', () => {
+        saveSyncState({ ...loadSyncState(), name: name.value.trim() || state.name });
+        // DEVSYNC-008: the new name told at once to the devices online (the others hear it when they meet).
+        currentSync()?.sync.announce();
+      });
       const nameRow = h('div', {}, h('label', { class: 'git-row' }, t('devsync.deviceName'), ' ', name), h('p', { class: 'hint' }, t('devsync.nameHint')));
       // The model of a phone, when the browser tells it, rather than "Android · Chrome".
       if (state.name === defaultName()) {

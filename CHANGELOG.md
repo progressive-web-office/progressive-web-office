@@ -45,6 +45,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- **Sync my devices**: a device renamed is shown under its new name on the
+  other devices at once (when online), not only at their next meeting
+  (DEVSYNC-008).
 - **Sync my devices** says what it synchronises — the documents kept in
   the browser, not the recent files of the disk — how many, and opens them.
   A document saved as a file was never synchronised: once a device is

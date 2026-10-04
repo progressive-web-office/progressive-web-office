@@ -92,4 +92,21 @@ describe('DEVSYNC-002, DEVSYNC-003 two devices of one person', () => {
     expect(safePath('.pwo-trash/x')).toBeUndefined();
     expect(safePath('Documents/ok.md')).toBe('Documents/ok.md');
   });
+
+  it('tells a new name of the device to the others (DEVSYNC-008)', async () => {
+    const [ra, rb, join] = roomPair();
+    const a = device('Laptop', {});
+    const b = device('Phone', {});
+    const sa = new DeviceSync(ra, a.provider, a.store);
+    const sb = new DeviceSync(rb, b.provider, b.store);
+    join();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(Object.values(b.state().peers).map((p) => p.name)).toEqual(['Laptop']);
+    a.store.set({ ...a.state(), name: 'Office laptop' });
+    sa.announce();
+    await new Promise((r) => setTimeout(r, 30));
+    expect(Object.values(b.state().peers).map((p) => p.name)).toEqual(['Office laptop']);
+    sb.close();
+    sa.close();
+  });
 });

@@ -48,7 +48,8 @@ The window shows these warnings first, and asks you to acknowledge them:
 The command palette (**⌘ Commands**, `Ctrl+Shift+P`) also has *Sync my
 devices now* and *Pair this device: scan an invitation QR code*.
 
-The name of a device is yours to choose: a web page cannot read the name of
+The name of a device is yours to choose — changed in the window, it is
+told at once to your devices online, and to the others when they next meet: a web page cannot read the name of
 the computer. On a phone, the browser may tell its model (*Pixel 7 ·
 Chrome*), used as a first name; elsewhere it is the system and the browser
 (*Windows · Chrome*).
