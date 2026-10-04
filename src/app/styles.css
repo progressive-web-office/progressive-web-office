@@ -1181,6 +1181,11 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 .palette-list kbd { padding: 0 5px; border: 1px solid var(--border, #bbb); border-bottom-width: 2px; border-radius: 4px; font: 0.8em ui-monospace, monospace; white-space: nowrap; }
 .palette-list li small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .palette-list li.active { background: var(--sel); outline: 1px solid var(--accent); }
+.palette-list li.palette-file { display: flex; flex-direction: column; align-items: stretch; gap: 1px; }
+.palette-file .palette-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-path { display: flex; min-width: 0; color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.palette-path-head { flex: 0 1 auto; min-width: 2.5em; overflow: hidden; text-overflow: ellipsis; }
+.palette-path-tail { flex: 0 0 auto; margin-left: 0.3em; max-width: 65%; overflow: hidden; text-overflow: ellipsis; }
 
 /* FILE-025: versions kept in the browser. */
 .versions-dialog { width: min(40rem, calc(100vw - 32px)); }

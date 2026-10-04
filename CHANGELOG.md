@@ -151,7 +151,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 - **Go to file…** (FILE-032, `Ctrl+Shift+O` or the command palette): a
   document kept in the browser, or of the folder open, opened by typing part
-  of its name or of its folder; the latest first.
+  of its name or of its folder; the latest first, each under its folders —
+  their start and end always shown, the middle cut when the path is long.
 
 - The front matter of a Markdown note shown as a card of properties above its
   page (NOTE-001): tags as coloured chips, `[[links]]` to follow, dates,

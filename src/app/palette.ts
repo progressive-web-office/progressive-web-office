@@ -16,6 +16,8 @@ export interface PaletteCommand {
   where: string;
   /** UI-022: its menu or kind (Insert, Share, Table…), shown before the name: "Insert: Table". */
   category?: string;
+  /** FILE-032: the folders of a file, shown under its name, cut in the middle when long. */
+  path?: string[];
   run(): void;
 }
 
@@ -125,6 +127,27 @@ export interface PaletteOptions {
   flat?: number;
 }
 
+/**
+ * FILE-032: a file, its name and, under it, its folders — the first ones and
+ * the last ones always shown, the middle ones cut when there is no room.
+ */
+function fileItem(c: PaletteCommand, i: number, active: boolean): HTMLElement {
+  const path = c.path ?? [];
+  const last = path.length > 1 ? path.slice(-1) : [];
+  const first = path.slice(0, path.length - last.length);
+  return h(
+    'li',
+    { role: 'option', id: `palette-${i}`, 'aria-selected': String(active), class: `palette-file${active ? ' active' : ''}`, title: [...path, c.label].join(' › ') },
+    h('span', { class: 'palette-name' }, c.label),
+    h(
+      'span',
+      { class: 'palette-path' },
+      h('span', { class: 'palette-path-head' }, first.join(' › ')),
+      last.length ? h('span', { class: 'palette-path-tail' }, `› ${last.join(' › ')}`) : '',
+    ),
+  );
+}
+
 /** Show the palette; resolves when it is closed. */
 export function openPalette(host: HTMLElement, commands: PaletteCommand[], opts: PaletteOptions = {}): Promise<void> {
   const label = opts.label ?? t('palette.label');
@@ -146,7 +169,7 @@ export function openPalette(host: HTMLElement, commands: PaletteCommand[], opts:
         const cat = c.category ?? c.where;
         if (browsing && cat !== category) items.push(h('li', { class: 'palette-group', role: 'presentation' }, cat || t('palette.other')));
         category = cat;
-        const li = h(
+        const li = c.path ? fileItem(c, i, i === active) : h(
           'li',
           { role: 'option', id: `palette-${i}`, 'aria-selected': String(i === active), class: i === active ? 'active' : '' },
           h('span', { class: 'palette-name' }, ...(c.category && !browsing && !fold(c.label).startsWith(fold(c.category)) ? [h('span', { class: 'palette-category' }, `${c.category}${t('palette.categorySep')}`)] : []), c.label),

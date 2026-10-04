@@ -1502,11 +1502,13 @@ export class App {
       });
       files.sort((a, b) => b.modified - a.modified || a.path.localeCompare(b.path));
       const commands = files.map((f) => {
-        const dir = f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '';
+        const dirs = f.path.split('/').slice(0, -1);
         return {
           label: basename(f.path),
           keywords: f.path,
-          where: dir ? `${f.source.label} › ${dir}` : f.source.label,
+          where: [f.source.label, ...dirs].join(' › '),
+          // The tree of folders down to it, its start and its end always shown.
+          path: [f.source.label, ...dirs],
           run: () => void (f.source.id === BROWSER_FOLDER_ID ? this.openBrowserDocument(f.path) : this.openFromFolder(f.path)),
         };
       });

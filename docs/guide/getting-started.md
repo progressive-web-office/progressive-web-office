@@ -71,8 +71,9 @@ storage*: it reopens from there, as it is now, not as an old copy. The card
 
 To open one quickly, **Go to file…** (`Ctrl+Shift+O`, or from the command
 palette `Ctrl+Shift+P`) lists the documents kept in the browser — and those
-of the folder open — the latest first: type part of the name or of the
-folder, then `Enter`.
+of the folder open — the latest first, each under its folders (the first and
+the last ones always shown, the middle cut when the path is long): type part
+of the name or of the folder, then `Enter`.
 
 Files you open are added to **Recent files** on the start screen (up to 12,
 files under 100 MB), with their format, size and the date and time they were
