@@ -1480,6 +1480,43 @@ export class App {
     if (this.folder?.provider.id === BROWSER_FOLDER_ID) await this.openFromFolder(path);
   }
 
+  /**
+   * FILE-032: "Go to file" — a document kept in this browser, or of the folder
+   * open, found by typing part of its name or its path, the latest first.
+   */
+  async goToFile(): Promise<void> {
+    if (this.paletteOpen || this.root.querySelector('dialog[open]')) return;
+    this.paletteOpen = true;
+    try {
+      const [{ privateStorage, walk }, { OPENABLE }, { openPalette }] = await Promise.all([import('../fs'), import('../folder/panel'), import('./palette')]);
+      const browser = await privateStorage('Documents', t('folder.browserStorage')).catch(() => null);
+      const sources = [...(browser ? [browser] : []), ...(this.folder && this.folder.provider.id !== BROWSER_FOLDER_ID ? [this.folder.provider] : [])];
+      if (!sources.length) return this.showError(t('devsync.noStorage'));
+      const files: { path: string; modified: number; source: (typeof sources)[number] }[] = [];
+      await this.withBusy(async () => {
+        for (const source of sources) {
+          for await (const e of walk(source, '', { maxDepth: 32, maxEntries: 50_000 })) {
+            if (e.kind === 'file' && OPENABLE.test(e.path)) files.push({ path: e.path, modified: e.lastModified ?? 0, source });
+          }
+        }
+      });
+      files.sort((a, b) => b.modified - a.modified || a.path.localeCompare(b.path));
+      const commands = files.map((f) => {
+        const dir = f.path.includes('/') ? f.path.slice(0, f.path.lastIndexOf('/')) : '';
+        return {
+          label: basename(f.path),
+          keywords: f.path,
+          where: dir ? `${f.source.label} › ${dir}` : f.source.label,
+          run: () => void (f.source.id === BROWSER_FOLDER_ID ? this.openBrowserDocument(f.path) : this.openFromFolder(f.path)),
+        };
+      });
+      this.paletteOpen = false;
+      await openPalette(this.root, commands, { label: t('goto.title'), placeholder: t('goto.placeholder'), none: files.length ? t('goto.none') : t('goto.empty'), flat: 50 });
+    } finally {
+      this.paletteOpen = false;
+    }
+  }
+
   /** The documents kept in this browser (and synchronised between one's devices), as the folder. */
   async openBrowserStorage(): Promise<void> {
     const { privateStorage } = await import('../fs');
@@ -2655,6 +2692,7 @@ export class App {
         { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
         { label: t('devsync.cmdScan'), where, keywords, run: () => void this.receiveFromDevice() },
         { label: t('docs.title'), where, keywords: `${keywords} documents history historique trash corbeille 历史`, run: () => void this.openBrowserDocuments() },
+        { label: t('goto.title'), where: t('folder.browserStorage'), keys: ['Ctrl+Shift+O'], keywords: 'go to file open quick aller ouvrir fichier rapide 转到 打开 文件', run: () => void setTimeout(() => void this.goToFile()) },
       ].filter((c) => !labels.has(c.label));
       // TEACH-005: the exam mode, from the palette too.
       const exam = inExam() ? [] : [{ label: t('exam.startButton'), where: t('settings.title'), keywords: 'exam test examen contrôle kiosk kiosque 考试', run: async () => {
@@ -2906,6 +2944,10 @@ export class App {
       if (key === 's') {
         e.preventDefault();
         void this.save();
+      } else if (key === 'o' && e.shiftKey) {
+        // FILE-032: a document of the browser's storage, by its name.
+        e.preventDefault();
+        void this.goToFile();
       } else if (key === 'o') {
         e.preventDefault();
         void this.pickAndOpen();

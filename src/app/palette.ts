@@ -116,19 +116,29 @@ export function groupByCategory<T extends PaletteCommand>(commands: T[]): T[] {
   return order.flatMap((cat) => groups.get(cat)!.sort((a, b) => a.label.localeCompare(b.label)));
 }
 
+export interface PaletteOptions {
+  /** Its name and the hint of its field (the commands', by default). */
+  label?: string;
+  placeholder?: string;
+  none?: string;
+  /** With nothing typed, the first ones in their order (the files, the latest first), not by category. */
+  flat?: number;
+}
+
 /** Show the palette; resolves when it is closed. */
-export function openPalette(host: HTMLElement, commands: PaletteCommand[]): Promise<void> {
+export function openPalette(host: HTMLElement, commands: PaletteCommand[], opts: PaletteOptions = {}): Promise<void> {
+  const label = opts.label ?? t('palette.label');
   return new Promise((resolve) => {
     const before = document.activeElement as HTMLElement | null;
-    const input = h('input', { type: 'search', class: 'palette-input', role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'palette-list', 'aria-label': t('palette.label'), placeholder: t('palette.placeholder'), autocomplete: 'off' });
-    const list = h('ul', { id: 'palette-list', role: 'listbox', class: 'palette-list', 'aria-label': t('palette.label') });
-    const dialog = h('dialog', { class: 'dialog palette', 'aria-label': t('palette.label') }, input, list);
+    const input = h('input', { type: 'search', class: 'palette-input', role: 'combobox', 'aria-expanded': 'true', 'aria-controls': 'palette-list', 'aria-label': label, placeholder: opts.placeholder ?? t('palette.placeholder'), autocomplete: 'off' });
+    const list = h('ul', { id: 'palette-list', role: 'listbox', class: 'palette-list', 'aria-label': label });
+    const dialog = h('dialog', { class: 'dialog palette', 'aria-label': label }, input, list);
     let shown: PaletteCommand[] = [];
     let active = 0;
     const render = (): void => {
-      const browsing = !input.value.trim();
+      const browsing = !input.value.trim() && !opts.flat;
       // UI-022: with nothing typed, every command, by category.
-      shown = browsing ? groupByCategory(commands) : filterCommands(commands, input.value).slice(0, 80);
+      shown = browsing ? groupByCategory(commands) : !input.value.trim() ? commands.slice(0, opts.flat) : filterCommands(commands, input.value).slice(0, 80);
       active = Math.min(active, Math.max(0, shown.length - 1));
       const items: HTMLElement[] = [];
       let category: string | undefined;
@@ -147,7 +157,7 @@ export function openPalette(host: HTMLElement, commands: PaletteCommand[]): Prom
         li.addEventListener('click', () => run(i));
         items.push(li);
       });
-      list.replaceChildren(...(shown.length ? items : [h('li', { class: 'hint' }, t('palette.none'))]));
+      list.replaceChildren(...(shown.length ? items : [h('li', { class: 'hint' }, opts.none ?? t('palette.none'))]));
       if (shown.length) input.setAttribute('aria-activedescendant', `palette-${active}`);
       else input.removeAttribute('aria-activedescendant');
       list.querySelector('.active')?.scrollIntoView({ block: 'nearest' });
