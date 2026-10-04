@@ -46,6 +46,7 @@ export default defineConfig({
           { text: 'Forms', link: '/guide/forms' },
           { text: 'Reading and reviewing', link: '/guide/review' },
           { text: 'Settings', link: '/guide/settings' },
+          { text: 'Exam mode', link: '/guide/exam' },
           { text: 'Printing', link: '/guide/printing' },
           { text: 'Folders and master documents', link: '/guide/folders' },
           { text: 'ZIP archives and source files', link: '/guide/archives' },

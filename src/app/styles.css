@@ -1661,3 +1661,15 @@ th.colhead { position: relative; }
 .control-dialog .error { color: var(--danger); }
 .control-preview { display: grid; gap: 8px; max-height: 50vh; overflow: auto; background: #fff; border: 1px solid var(--border); border-radius: 4px; }
 .control-preview svg { width: 100%; height: auto; }
+
+/* TEACH-005: the exam mode banner, always in sight. */
+.exam-banner { position: sticky; top: 0; z-index: 2000; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 12px; background: #4a3b00; color: #ffe08a; font-size: 0.9rem; }
+.exam-banner .hint { color: #f3d98a; }
+.exam-banner button { background: #6a5500; color: #fff3c4; border-color: #8a7000; }
+.exam-banner .exam-status { flex: 1; font-weight: 600; }
+.exam-dialog .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.exam-dialog .error { color: var(--danger); }
+.exam-log { max-height: 45vh; overflow: auto; padding-left: 1.5rem; font-size: 0.9rem; }
+.exam-log time { font-variant-numeric: tabular-nums; color: var(--muted); }
+.exam-log li:not(.exam-start) { color: var(--danger); }
+.exam-counts { font-weight: 600; }

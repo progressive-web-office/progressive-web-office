@@ -4,6 +4,8 @@
  * different sites, at once: the question is asked once per site, and one
  * question at a time (stacked dialogs would hide each other).
  */
+import { inExam } from '../exam/mode';
+
 export class DownloadConsent {
   private readonly allowed = new Set<string>();
   private readonly asking = new Map<string, Promise<boolean>>();
@@ -14,6 +16,8 @@ export class DownloadConsent {
   }
 
   ask(origin: string, question: ((origin: string) => Promise<boolean>) | undefined): Promise<boolean> {
+    // TEACH-005: nothing downloaded in exam mode.
+    if (inExam()) return Promise.resolve(false);
     if (this.allowed.has(origin)) return Promise.resolve(true);
     const pending = this.asking.get(origin);
     if (pending) return pending;

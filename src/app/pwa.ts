@@ -1,6 +1,7 @@
 /** Service worker registration, update prompt (PLT-005) and file handling (PLT-006). */
 import { t } from '../i18n';
 import type { App } from './app';
+import { inExam } from '../exam/mode';
 import type { WindowLike } from '../share/handoff';
 
 interface LaunchParams {
@@ -34,6 +35,12 @@ export function installPwa(app: App): void {
 
 /** Rebuild a document carried in the URL fragment (SHARE-010). */
 async function openLinkedDocument(app: App): Promise<void> {
+  // TEACH-005: no pairing, session or document from elsewhere in exam mode.
+  if (inExam() && /^#(pwo-pair|collab|url|doc)=/.test(location.hash)) {
+    history.replaceState(null, '', `${location.pathname}${location.search}`);
+    app.notifyError(t('exam.linkBlocked'));
+    return;
+  }
   if (location.hash.startsWith('#pwo-pair=')) {
     // DEVSYNC-006: an invitation to pair this device, out of the address at once (history, bookmarks).
     const invitation = location.hash;
@@ -111,7 +118,7 @@ async function openSharedFile(app: App): Promise<void> {
  */
 async function openHandedOffFile(app: App): Promise<void> {
   const params = new URLSearchParams(location.search);
-  if (params.get('handoff') !== 'qrshare') return;
+  if (params.get('handoff') !== 'qrshare' || inExam()) return;
   params.delete('handoff');
   const query = params.toString();
   history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash}`);

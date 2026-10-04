@@ -8,6 +8,7 @@ once.
 ## General
 
 - **Language** of the interface (English, French, Chinese).
+- **🔒 Exam mode…**: lock this browser for a test (see [Exam mode](./exam.md)).
 - **Theme**: as the system, light or dark.
 - **Your name**: it signs your comments, PDF annotations and tracked
   changes, and shows you to the other participants of a collaboration (and

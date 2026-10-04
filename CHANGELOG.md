@@ -101,6 +101,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Exam mode (TEACH-005): **🔒 Exam mode…** in the settings locks this browser
+  for a test — no network, no AI, no pasting from outside, a log of leaving
+  the window — until the teacher's code is typed. A deterrent, not a lockdown
+  browser: the guide says how to combine it with a kiosk.
+
 - Bode and Nyquist plots (TEACH-004): **📈** draws the frequency response of
   a transfer function such as `K/(s(1+s)^2)`, with its gain and phase
   margins, and inserts the plots as SVG pictures.

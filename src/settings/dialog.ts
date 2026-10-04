@@ -5,6 +5,7 @@
  */
 import { originsEnabled, placesEnabled, setOriginsEnabled, setPlacesEnabled } from '../storage/places';
 import { button, h } from '../app/dom';
+import { inExam } from '../exam/mode';
 import { getLocale, LOCALES, setLocale, t, type Locale, type MessageKey } from '../i18n';
 import { applyTheme, loadTheme, saveTheme, THEMES, type ThemePreference } from '../app/theme';
 import { commentAuthor, saveAuthor } from '../app/author';
@@ -55,6 +56,15 @@ function check(value: boolean, onChange: (v: boolean) => void): HTMLInputElement
   return el;
 }
 
+/** TEACH-005: the exam mode, started from here (left from its banner). */
+function examField(): HTMLElement {
+  const start = button(t('exam.startButton'), async () => {
+    const { chooseStartExam } = await import('../exam/ui');
+    if (await chooseStartExam(document.body)) location.reload();
+  }, { icon: '🔒' });
+  return h('div', { class: 'settings-field' }, start, h('p', { class: 'hint' }, t('exam.startHint')));
+}
+
 function generalPanel(hooks: SettingsHooks): HTMLElement[] {
   const name = h('input', { type: 'text', autocomplete: 'name', value: commentAuthor() });
   name.addEventListener('change', () => saveAuthor(name.value));
@@ -77,6 +87,7 @@ function generalPanel(hooks: SettingsHooks): HTMLElement[] {
     // FILE-028, FILE-029.
     field(t('settings.rememberPlaces'), check(placesEnabled(), setPlacesEnabled), t('settings.rememberPlacesHint')),
     field(t('settings.trackOrigin'), check(originsEnabled(), setOriginsEnabled), t('settings.trackOriginHint')),
+    ...(inExam() ? [] : [examField()]),
   ];
 }
 

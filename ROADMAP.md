@@ -236,8 +236,8 @@ group is not a commitment.
   collaboration, without a learning platform
 - ✅ Bode / Nyquist plots from a transfer function, with the margins
   (TEACH-004); next: block diagrams
-- Kiosk / exam mode: a locked instance with no network, no AI and no
-  external copy-paste
+- ✅ Exam mode: no network, no AI, no outside paste, a log, ended with the
+  teacher's code (TEACH-005); next: a kiosk build for Safe Exam Browser
 
 ### PDF and trust
 

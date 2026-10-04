@@ -1,4 +1,5 @@
 /** Application shell: start screen, header toolbar, file open/save flow. */
+import { inExam } from '../exam/mode';
 import { backupDue, loadBackupSettings } from '../backup/settings';
 import { NEW_HOME, movedFrom } from './move';
 import { backupAge as backupAgeText, lastBackupText as backupLastText } from '../backup/text';
@@ -740,7 +741,8 @@ export class App {
       if (!opened.has(s.id)) opened.set(s.id, sourcesModule.openSource(s, (base, repo) => this.askReadToken(base, repo)));
       return opened.get(s.id)!;
     };
-    const sources = {
+    // TEACH-005: no repository or cloud folder of templates in exam mode.
+    const sources = inExam() ? undefined : {
       list: sourcesModule.loadSources(),
       load: async (s: import('../templates/sources').TemplateSource) => {
         const { provider: p, dir } = await open(s);
@@ -810,7 +812,8 @@ export class App {
   private async addTemplateSource(): Promise<import('../templates/sources').TemplateSource | null> {
     const [{ addSource, openSource }, { loadDavAccounts, davLabel }] = await Promise.all([import('../templates/sources'), import('../webdav/ui')]);
     const places = loadPlaces();
-    const accounts = loadDavAccounts();
+    // TEACH-005: only local folders in exam mode.
+    const accounts = inExam() ? [] : loadDavAccounts();
     const address = t('tpl.sourceAddress');
     const options = [...places.map((p) => `${p.kind === 'git' ? '⎇' : '☁'} ${p.label}`), ...accounts.map((a) => `☁ ${davLabel(a)}`), address];
     const choice = await this.choose(t('tpl.sourceAdd'), t('tpl.sourceAddMessage'), options, options[0]!, t('common.ok'));
@@ -1239,6 +1242,7 @@ export class App {
   }
 
   private showStart(): void {
+    const exam = inExam();
     document.title = t('app.name');
     delete this.main.dataset.kind;
     const recent = h('section', { class: 'recent', 'aria-label': t('start.recent') });
@@ -1268,10 +1272,10 @@ export class App {
           button(t('start.newPainting'), () => void this.newPicture('painting'), { className: 'card painting', icon: '🎨', title: t('paint.newTitle') }),
           button(t('start.open'), () => void this.pickAndOpen(), { className: 'card open', icon: '📂' }),
           button(t('folder.open'), () => void this.openFolder(), { className: 'card folder', icon: '📁', title: t('folder.openTitle') }),
-          button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
-          button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
-          button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
-          button(t('grist.open'), () => void this.openFromGrist(), { className: 'card grist', icon: '🗃️', title: t('grist.openTitle') }),
+          exam ? null : button(t('git.open'), () => void this.openFromRepository(), { className: 'card repo', icon: '🗂️', title: t('git.openTitle') }),
+          exam ? null : button(t('share.receive'), () => void this.receiveFromDevice(), { className: 'card share', icon: '📲', title: t('share.receiveTitle') }),
+          exam ? null : button(t('dav.open'), () => void this.openFromCloud(), { className: 'card cloud', icon: '☁️', title: t('dav.openCardTitle') }),
+          exam ? null : button(t('grist.open'), () => void this.openFromGrist(), { className: 'card grist', icon: '🗃️', title: t('grist.openTitle') }),
           button(t('backup.button'), () => void this.openBackup(), { className: 'card backup', icon: '💾', title: t('backup.title') }),
         ),
         h('p', { class: 'hint' }, t('start.tip')),
@@ -1450,7 +1454,7 @@ export class App {
 
   /** Synchronising by itself: join the paired devices when the application opens. */
   private async resumeDeviceSync(): Promise<void> {
-    if (this.deviceSyncResumed) return;
+    if (this.deviceSyncResumed || inExam()) return;
     this.deviceSyncResumed = true;
     const { loadSyncState } = await import('../devsync/state');
     const state = loadSyncState();
@@ -1559,15 +1563,16 @@ export class App {
     if (this.folder) actions.append(button(t('folder.panel'), () => this.toggleFolderPanel(), { text: '📁', className: 'icon', title: t('folder.toggleTitle', { name: this.folder.provider.label }), pressed: this.root.classList.contains('with-folder') }));
     if (doc?.view.masterDocument?.()?.blocks.some((b) => b.type === 'include')) fileTools.push(button(t('master.export'), () => void this.exportAssembled(), { title: t('master.exportTitle') }));
     actions.append(button(t('file.open'), () => void this.pickAndOpen(), { title: t('file.openTitle') }));
-    fileTools.push(button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }));
+    const exam = inExam();
+    if (!exam) fileTools.push(button(t('git.open'), () => void this.openFromRepository(), { title: t('git.openTitle'), text: '⎇', className: 'icon' }));
     // FORM-002: the answers of filled forms, gathered in a spreadsheet.
     fileTools.push(button(t('form.compile'), () => void this.compileForms(), { title: t('form.compileTitle'), text: '📋', className: 'icon' }));
     if (doc?.view.save) {
       actions.append(button(t('file.save'), () => void this.save(), { className: 'keep', title: doc.source ? t('git.commitTitle') : doc.grist ? t('grist.saveTitle') : doc.dav ? t('dav.saveBackTitle', { path: doc.dav.path }) : t('file.saveTitle', { format: doc.format.toUpperCase() }) }));
       // FILE-025: the versions kept in this browser.
       fileTools.push(button(t('versions.button'), () => void this.showVersions(), { title: t('versions.title'), text: '🕘', className: 'icon' }));
-      if (!doc.source && !doc.grist) fileTools.push(button(t('dav.saveToCloud'), () => void this.saveToCloud(true), { title: t('dav.saveToCloudTitle'), text: '☁', className: 'icon' }));
-      if (!doc.source && !doc.grist) fileTools.push(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
+      if (!doc.source && !doc.grist && !exam) fileTools.push(button(t('dav.saveToCloud'), () => void this.saveToCloud(true), { title: t('dav.saveToCloudTitle'), text: '☁', className: 'icon' }));
+      if (!doc.source && !doc.grist && !exam) fileTools.push(button(t('git.commitButton'), () => void this.commitToRepository(), { title: t('git.commitTitle') }));
       const select = h(
         'select',
         { 'aria-label': t('file.saveAsFormat'), title: t('file.saveAsTitle') },
@@ -1589,7 +1594,7 @@ export class App {
     }
     if (doc?.view.setReadOnly && !doc.locked) fileTools.push(button(t('ro.toggle'), () => this.setReadOnly(!doc.readOnly), { title: doc.readOnly ? t('ro.allowTitle') : t('ro.lockTitle'), text: doc.readOnly ? '🔒' : '🔓', className: 'icon', pressed: !!doc.readOnly }));
     actions.append(toolGroup(t('group.file'), '🗂', fileTools));
-    if (doc?.view.agentTools) actions.append(button(t('ai.open'), () => this.toggleAssistant(), { title: t('ai.openTitle'), text: '✨', className: 'icon', pressed: this.root.classList.contains('with-ai') }));
+    if (doc?.view.agentTools && !exam) actions.append(button(t('ai.open'), () => this.toggleAssistant(), { title: t('ai.openTitle'), text: '✨', className: 'icon', pressed: this.root.classList.contains('with-ai') }));
     if (doc?.view.save) shareTools.push(button(t('share.send'), () => void this.sendToDevice(), { title: t('share.sendTitle'), text: '📲', className: 'icon' }));
     if (doc?.view.collab && (doc.kind === 'document' || doc.kind === 'spreadsheet')) {
       shareTools.push(button(t('collab.start'), () => (this.collab ? this.leaveCollaboration() : void this.startCollaboration()), { title: this.collab ? t('collab.leaveTitle') : t('collab.startTitle'), text: '👥', className: 'icon', pressed: !!this.collab }));
@@ -1600,7 +1605,8 @@ export class App {
     const devices = button(t('devsync.button'), () => void this.openDeviceSync(), { text: '🔁', className: 'icon', title: t('devsync.buttonTitle') });
     devices.dataset.keywords = 'sync synchronise devices appareils synchroniser téléphone phone laptop 同步 设备';
     shareTools.push(devices);
-    actions.append(toolGroup(t('group.share'), '📤', shareTools));
+    // TEACH-005: nothing to share, send or synchronise in exam mode.
+    if (!exam) actions.append(toolGroup(t('group.share'), '📤', shareTools));
     // BACKUP-004: the last backup, always in sight.
     actions.append(this.backupButton());
     // SET-001: the settings window.
@@ -1777,11 +1783,11 @@ export class App {
     const cloud = accounts.map((a) => `☁ ${davLabel(a)}`);
     // FOLDER-007: a branch of a GitHub or GitLab repository, each change a commit.
     const { loadAccounts } = await import('../git/accounts');
-    const gitAccounts = loadAccounts();
+    const gitAccounts = inExam() ? [] : loadAccounts();
     const git = gitAccounts.map((a) => `⎇ ${a.label} (${a.provider === 'github' ? 'GitHub' : a.provider === 'gitea' ? 'Gitea / Forgejo' : 'GitLab'})`);
     // GIT-008: any repository, by its address, adding its account if needed.
     const byAddress = t('folder.gitAddress');
-    const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud, ...git, byAddress], local);
+    const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud, ...git, ...(inExam() ? [] : [byAddress])], local);
     if (!choice) return;
     let folder;
     try {
@@ -2560,12 +2566,17 @@ export class App {
       // DEVSYNC-006: one's own devices, without going through their window.
       const where = t('devsync.title');
       const keywords = 'sync synchronise devices appareils synchroniser téléphone phone qr scan invitation 同步 设备 扫描';
-      const devices = [
+      const devices = inExam() ? [] : [
         { label: t('devsync.cmdNow'), where, keywords, run: () => void this.syncDevicesNow() },
         { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
         { label: t('devsync.cmdScan'), where, keywords, run: () => void this.receiveFromDevice() },
       ].filter((c) => !labels.has(c.label));
-      await openPalette(this.root, [...extra, ...shown, ...devices]);
+      // TEACH-005: the exam mode, from the palette too.
+      const exam = inExam() ? [] : [{ label: t('exam.startButton'), where: t('settings.title'), keywords: 'exam test examen contrôle kiosk kiosque 考试', run: async () => {
+        const { chooseStartExam } = await import('../exam/ui');
+        if (await chooseStartExam(this.root)) location.reload();
+      } }];
+      await openPalette(this.root, [...extra, ...shown, ...devices, ...exam]);
     } finally {
       this.paletteOpen = false;
     }
