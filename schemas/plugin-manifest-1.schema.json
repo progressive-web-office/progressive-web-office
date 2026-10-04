@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://progressive-web-office.github.io/schemas/plugin-manifest-1.schema.json",
+  "title": "Plugin manifest, version 1",
+  "description": "manifest.json of a plugin of Progressive Web Office (PLUG-009), also an app of DigitalSignalix screens: a content pack or sandboxed code, the hosts it runs on (targets), its settings, the data it reads and its permissions. Unknown properties are allowed for forward compatibility: a host ignores what it does not know.",
+  "type": "object",
+  "required": ["manifestVersion", "id", "name", "version", "license", "kind", "targets"],
+  "properties": {
+    "manifestVersion": {
+      "description": "Version of this format.",
+      "const": 1
+    },
+    "id": {
+      "description": "Identifier, unique within a registry: lowercase letters and digits, words joined by '-'. A host mirroring several registries names a plugin 'registry/id'.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "name": {
+      "description": "Name shown to the user.",
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "description": "One sentence on what it does.",
+      "type": "string"
+    },
+    "locales": {
+      "description": "Name and description in other languages, by BCP 47 language tag.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$" },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "version": {
+      "$ref": "#/$defs/semver"
+    },
+    "license": {
+      "description": "SPDX licence expression, e.g. 'MIT' or 'Apache-2.0 OR MIT'.",
+      "type": "string",
+      "minLength": 1
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "email": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "homepage": { "type": "string", "format": "uri" },
+    "repository": { "type": "string", "format": "uri" },
+    "kind": {
+      "description": "'pack': content without code (templates, symbols, snippets…), listed in 'contents'; 'code': a page run in a sandboxed iframe, given by 'entry'.",
+      "enum": ["pack", "code"]
+    },
+    "targets": {
+      "description": "Hosts it runs on: 'pwo' (Progressive Web Office), 'signage' (DigitalSignalix screens). A host installs only plugins naming it, and ignores the targets it does not know.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+    },
+    "engines": {
+      "description": "Host versions it works with, as SemVer ranges, by target.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "entry": {
+      "description": "Code plugin: its HTML page, a path relative to the plugin.",
+      "$ref": "#/$defs/path"
+    },
+    "contents": {
+      "description": "Content pack: its files by kind, paths relative to the pack (a file, a folder ending with '/', or a list of them).",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "anyOf": [
+          { "$ref": "#/$defs/path" },
+          { "type": "array", "items": { "$ref": "#/$defs/path" } }
+        ]
+      }
+    },
+    "api": {
+      "description": "Code plugin: the major version of the message protocol it speaks (plugin-message-1.schema.json for version 1).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "settings": {
+      "description": "A JSON Schema (draft 2020-12) of its settings: the host draws the form, keeps the values and hands them over.",
+      "type": "object"
+    },
+    "data": {
+      "description": "The data files it reads, by name.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "mediaTypes"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$" },
+          "description": { "type": "string" },
+          "mediaTypes": {
+            "description": "Media types it accepts, e.g. text/csv, application/vnd.oasis.opendocument.spreadsheet.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9.+-]+$" }
+          },
+          "table": {
+            "description": "Handed over as a table (columns and rows) rather than bytes.",
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "permissions": {
+      "$ref": "#/$defs/permissions"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "code" } }, "required": ["kind"] },
+      "then": { "required": ["entry", "api"] }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "pack" } }, "required": ["kind"] },
+      "then": { "required": ["contents"] }
+    }
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "semver": {
+      "description": "Semantic Versioning 2.0.0.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "path": {
+      "description": "A path relative to the plugin, with '/' between folders, never going up.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\\\\]+$"
+    },
+    "permissions": {
+      "description": "What it may do, asked when it is installed, shown in the settings and revocable. A permission a host does not know is not granted.",
+      "type": "object",
+      "properties": {
+        "network": {
+          "description": "Hosts it may reach, always through its host (the 'fetch' message), never directly.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^(\\*\\.)?[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(:\\d{1,5})?$" }
+        },
+        "document": {
+          "description": "PWO only: the open document, not at all, read, or read and changed.",
+          "enum": ["none", "read", "write"]
+        },
+        "ui": {
+          "description": "PWO only: places in the interface, e.g. 'panel', 'command'.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -13,7 +13,8 @@ spreadsheets, documents.
 ::: info Status
 Agreed between the two projects; nothing is implemented yet. PWO's side is
 drafted as requirements PLUG-009, PLUG-010, PRES-017..PRES-022 and
-SIGN-001..SIGN-005 in the [requirements](./requirements.md).
+SIGN-001..SIGN-005 in the [requirements](./requirements.md); the contract
+between the projects is the [JSON Schemas](#json-schemas) PWO publishes.
 :::
 
 ## Position
@@ -69,7 +70,7 @@ GET  /v1/me                                   → { "name", "role" }   (checks t
 GET  /v1/presentations                        → [{ "id", "name" }]
 HEAD /v1/assets/{sha256}                      → 200 or 404
 POST /v1/assets?kind=image&name=slide-03.png  ← the bytes, Content-Type: image/png
-                                              → { "sha256": "…" }
+                                              → { "sha256": "<hex>" }
 PUT  /v1/presentations/{id}                   ← the presentation below
 ```
 
@@ -78,10 +79,15 @@ PUT  /v1/presentations/{id}                   ← the presentation below
   "id": "menu-week-41",
   "name": "Menu, week 41",
   "slides": [
-    { "id": "s-7f3a", "source": { "file": "4e1d…64 hexadecimal digits" }, "duration": 10 },
-    { "id": "s-91c0", "source": { "file": "b72a…" }, "duration": 15 }
+    { "id": "s-7f3a", "source": { "file": "39bb64571e015b946d402b243c505fd662c9cc7bc18e6f86240324c82b47c899" }, "duration": 10 },
+    { "id": "s-91c0", "source": { "file": "984679c446550e3918d30d68db95ba6ec2463afa1591691fe2154bb921da4c38" }, "duration": 15 }
   ],
-  "provenance": { "…": "below" }
+  "provenance": {
+    "provenanceVersion": 1,
+    "tool": { "name": "Progressive Web Office", "version": "0.3.0+20261104", "commit": "1a5c7cd", "url": "https://progressive-web-office.github.io/" },
+    "source": { "name": "menu-week-41.odp", "mediaType": "application/vnd.oasis.opendocument.presentation", "sha256": "49559d218a6d99503364926b093c005e702446fb4bd48844e499283af81fd443" },
+    "created": "2026-10-04T09:30:00Z"
+  }
 }
 ```
 
@@ -100,7 +106,7 @@ header `Provenance` (the same JSON, base64url-encoded, its `slide` set):
   "source": {
     "name": "menu-week-41.odp",
     "mediaType": "application/vnd.oasis.opendocument.presentation",
-    "sha256": "0c9e…",
+    "sha256": "49559d218a6d99503364926b093c005e702446fb4bd48844e499283af81fd443",
     "origin": "https://cloud.example.org/remote.php/dav/files/ada/menus/menu-week-41.odp"
   },
   "slide": 3,
@@ -164,21 +170,36 @@ saved where the Manager reads them — a Nextcloud / WebDAV folder PWO already
 writes to (DAV-003). The Manager fetches them and gives them to the apps as
 tables (`table: true` in the manifest); screens never fetch.
 
+## JSON Schemas
+
+The formats shared by the projects, as JSON Schemas (draft 2020-12): the
+examples of this page and of [Plugins](./plugins.md#formats-version-1-plug-009-plug-010)
+are tested against them.
+
+- [`plugin-manifest-1.schema.json`](https://progressive-web-office.github.io/schemas/plugin-manifest-1.schema.json) — `manifest.json`
+- [`plugin-registry-1.schema.json`](https://progressive-web-office.github.io/schemas/plugin-registry-1.schema.json) — `registry.json`
+- [`plugin-message-1.schema.json`](https://progressive-web-office.github.io/schemas/plugin-message-1.schema.json) — the messages of code plugins
+- [`provenance-1.schema.json`](https://progressive-web-office.github.io/schemas/provenance-1.schema.json) — the provenance record
+
+The presentation sent by `PUT /v1/presentations/{id}` is DigitalSignalix's
+format; its `provenance` follows `provenance-1.schema.json`.
+
+## Answers of DigitalSignalix
+
+1. **Endpoints:** accepted — `GET /v1/me`, `GET /v1/presentations`,
+   `HEAD /v1/assets/{sha256}`, a `name` in the presentation and the
+   `Provenance` header (DigitalSignalix AUTHOR-001 to AUTHOR-004).
+2. **Names of packages:** `id` stays unique within a registry; a Manager
+   mirroring several registries names a package by its registry and its id,
+   `registry/id` (APP-010).
+3. **Tables from spreadsheets:** the Manager reads CSV, and ODS and XLSX
+   itself (APP-014); PWO saves the spreadsheet as it is, no CSV copy needed.
+4. **Encoder settings for the Raspberry Pi 3:** to be measured on the
+   DigitalSignalix bench before PRES-022.
+5. **First shared package:** a menu board reading a spreadsheet, with the
+   targets `signage` and `pwo`.
+
 ## Open points
 
-1. **Endpoints PWO needs**, besides those of the draft:
-   - `GET /v1/me`, to check a token when the Manager is added;
-   - `GET /v1/presentations`, to choose the presentation to replace;
-   - `HEAD /v1/assets/{sha256}`, so that only new images are sent;
-   - a `name` in the presentation;
-   - the `Provenance` header on assets.
-2. **The `id` of a pack is unique within a registry.** Is a registry prefix
-   (`registry-name/menu-board`) needed when the Manager mirrors several
-   registries?
-3. **Tables from spreadsheets:** does the Manager read ODS and XLSX itself
-   to build them, or does it accept CSV only, with PWO saving a CSV copy
-   next to the spreadsheet?
-4. **Encoder settings for the Raspberry Pi 3**, to be measured on the bench
-   before PRES-022.
-5. **The first shared pack**, to prove the formats: a menu board reading a
-   spreadsheet, with both targets.
+- The encoder settings of PRES-022, once measured on the bench.
+- The menu board: where its repository and its registry live.

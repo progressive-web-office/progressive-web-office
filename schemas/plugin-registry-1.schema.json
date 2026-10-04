@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://progressive-web-office.github.io/schemas/plugin-registry-1.schema.json",
+  "title": "Plugin registry, version 1",
+  "description": "registry.json of a registry of plugins of Progressive Web Office and apps of DigitalSignalix screens (PLUG-002, PLUG-009): each plugin with its versions, the SHA-256 of every file, its permissions and its revocations. Unknown properties are allowed for forward compatibility: a host ignores what it does not know.",
+  "type": "object",
+  "required": ["registryVersion", "plugins"],
+  "properties": {
+    "registryVersion": {
+      "description": "Version of this format.",
+      "const": 1
+    },
+    "name": {
+      "description": "Name of the registry, shown to the user.",
+      "type": "string"
+    },
+    "updated": {
+      "description": "When the registry last changed (RFC 3339).",
+      "type": "string",
+      "format": "date-time"
+    },
+    "plugins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/plugin" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "sha256": {
+      "description": "SHA-256, in lowercase hexadecimal.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "plugin": {
+      "description": "A plugin and its versions; its fields repeat those of its latest manifest, to list it without downloading it.",
+      "type": "object",
+      "required": ["id", "name", "kind", "targets", "license", "versions"],
+      "properties": {
+        "id": { "$ref": "plugin-manifest-1.schema.json#/properties/id" },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "kind": { "$ref": "plugin-manifest-1.schema.json#/properties/kind" },
+        "targets": { "$ref": "plugin-manifest-1.schema.json#/properties/targets" },
+        "license": { "type": "string", "minLength": 1 },
+        "repository": { "type": "string", "format": "uri" },
+        "homepage": { "type": "string", "format": "uri" },
+        "versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/version" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "version": {
+      "description": "A version: where its files are, the hash of each, and whether it was revoked.",
+      "type": "object",
+      "required": ["version", "base", "files"],
+      "properties": {
+        "version": { "$ref": "plugin-manifest-1.schema.json#/$defs/semver" },
+        "published": { "type": "string", "format": "date-time" },
+        "base": {
+          "description": "Address the paths of 'files' are relative to, ending with '/'.",
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://.*/$"
+        },
+        "files": {
+          "description": "Every file of the version, manifest.json included, with its SHA-256; a host checks each before use.",
+          "type": "object",
+          "required": ["manifest.json"],
+          "propertyNames": { "$ref": "plugin-manifest-1.schema.json#/$defs/path" },
+          "additionalProperties": { "$ref": "#/$defs/sha256" }
+        },
+        "permissions": {
+          "description": "The permissions of its manifest, to decide before downloading it.",
+          "$ref": "plugin-manifest-1.schema.json#/$defs/permissions"
+        },
+        "engines": { "$ref": "plugin-manifest-1.schema.json#/properties/engines" },
+        "revoked": {
+          "description": "The version is withdrawn: a host disables it at the next check.",
+          "type": "object",
+          "required": ["date", "reason"],
+          "properties": {
+            "date": { "type": "string", "format": "date-time" },
+            "reason": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

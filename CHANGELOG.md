@@ -139,6 +139,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- How PWO and DigitalSignalix work together (docs/digitalsignalix.md): one
+  format for PWO plugins and the apps of the screens, sending slides to the
+  screens, provenance, the exports planned (PLUG-009, PLUG-010,
+  PRES-017..PRES-022, SIGN-001..SIGN-005). The formats are published as JSON
+  Schemas (draft 2020-12) at `https://progressive-web-office.github.io/schemas/`:
+  `plugin-manifest-1`, `plugin-registry-1`, `plugin-message-1` and
+  `provenance-1`, the examples of the documentation tested against them.
+
 - Daily notes from a calendar (FOLDER-027): the month of the folder with a
   dot on each day that has its note, a click opening or creating it, and
   📅 for today's note — named `YYYY-MM-DD` by default, or in the format, the

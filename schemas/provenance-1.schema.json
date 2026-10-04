@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://progressive-web-office.github.io/schemas/provenance-1.schema.json",
+  "title": "Provenance record, version 1",
+  "description": "Where a file sent by Progressive Web Office comes from (SIGN-003): the tool and its version, the source document and its digest, the slide, the export, the author and the time. Sent with a presentation to a DigitalSignalix Manager, and with each asset in the 'Provenance' header (base64url-encoded). Unknown properties are allowed for forward compatibility: a receiver ignores what it does not know.",
+  "type": "object",
+  "required": ["provenanceVersion", "tool", "source", "created"],
+  "properties": {
+    "provenanceVersion": {
+      "description": "Version of this format.",
+      "const": 1
+    },
+    "tool": {
+      "description": "The program that made the file.",
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": {
+          "description": "As shown in its About window, e.g. '0.3.0+20261104' (the date of the build as SemVer build metadata).",
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "description": "The commit it was built from (short or full).",
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "url": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": true
+    },
+    "source": {
+      "description": "The document the file was made from.",
+      "type": "object",
+      "required": ["name", "mediaType", "sha256"],
+      "properties": {
+        "name": { "description": "Its file name.", "type": "string", "minLength": 1 },
+        "mediaType": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9.+-]+$" },
+        "sha256": {
+          "description": "SHA-256 of the document as saved, in lowercase hexadecimal.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "origin": {
+          "description": "Where it was opened from, only for a network place (FILE-029): a repository, a WebDAV / Nextcloud folder.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": true
+    },
+    "slide": {
+      "description": "The slide the file shows, from 1 (for an asset).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "export": {
+      "description": "What was made.",
+      "type": "object",
+      "required": ["mediaType"],
+      "properties": {
+        "mediaType": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9.+-]+$" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "author": {
+      "description": "The user's name, only when given in the settings and left checked when sending.",
+      "type": "string",
+      "minLength": 1
+    },
+    "created": {
+      "description": "When the file was made, in UTC (RFC 3339).",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    }
+  },
+  "additionalProperties": true
+}

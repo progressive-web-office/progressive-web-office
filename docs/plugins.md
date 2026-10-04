@@ -107,7 +107,8 @@ Semantic Versioning; licences are SPDX expressions.
 }
 ```
 
-- `id`: lowercase letters, digits and `-`, unique within a registry.
+- `id`: lowercase letters, digits and `-`, unique within a registry; a
+  host mirroring several registries names a plugin `registry/id`.
 - `kind`: `pack` (content, no code) or `code`.
 - `targets`: `pwo`, `signage`; a host ignores the targets it does not know.
 - `engines`: the host versions it works with (SemVer ranges), per target.
@@ -150,9 +151,9 @@ Semantic Versioning; licences are SPDX expressions.
           "published": "2026-10-01T12:00:00Z",
           "base": "https://cdn.jsdelivr.net/gh/example/menu-board@v1.2.0/",
           "files": {
-            "manifest.json": "3f1c…64 hexadecimal digits",
-            "index.html": "9a0b…",
-            "app.js": "c2d4…"
+            "manifest.json": "4d30723a24a2040477e10f01fc72a5ced9c6ea0a3a38aecc03f7d2b8eb80d5af",
+            "index.html": "464a80ae50d8392d5b5e2c39115ad0b1246389202fa725d2227c20aabc365c60",
+            "app.js": "47246e4d687bfce540ca4d7af3c998e219ef920ce8fa282c1fd5d160577dfec6"
           },
           "permissions": { "network": [], "document": "none", "ui": [] },
           "engines": { "pwo": ">=0.3.0", "signage": ">=1.0.0" }
@@ -161,7 +162,10 @@ Semantic Versioning; licences are SPDX expressions.
           "version": "1.1.0",
           "published": "2026-09-01T12:00:00Z",
           "base": "https://cdn.jsdelivr.net/gh/example/menu-board@v1.1.0/",
-          "files": { "manifest.json": "…", "index.html": "…" },
+          "files": {
+            "manifest.json": "e08c5b948da2b3d428b270ae19296739f0fd3444a282513cbc9131c58904e634",
+            "index.html": "e00762d9676e3080a5f3230c01ceb5450e10cffadc44d84468d5b1ea9567e369"
+          },
           "revoked": { "date": "2026-09-20T08:00:00Z", "reason": "Shows the settings of another screen." }
         }
       ]
@@ -180,10 +184,10 @@ with `revoked` is disabled at the next check.
 A code plugin runs in an iframe with `sandbox="allow-scripts"` (no same
 origin) and a content security policy forbidding network access
 (`connect-src 'none'`). It talks to its host with `postMessage`, every
-message in one envelope:
+message in one envelope — here the first message of a plugin:
 
 ```json
-{ "type": "pwo-plugin", "version": 1, "action": "init", "id": 7 }
+{ "type": "pwo-plugin", "version": 1, "action": "ready", "api": 1 }
 ```
 
 - `type` is always `pwo-plugin`; `version` is the major version of the
@@ -205,7 +209,27 @@ From the host to the plugin:
 
 `data` maps each `id` of the manifest to
 `{ "mediaType", "bytes" }` (an `ArrayBuffer`) or, with `table: true`, to
-`{ "mediaType", "table": { "columns": ["day", "course", "name"], "rows": [["Monday", "Main", "Ratatouille"]] } }`.
+`{ "mediaType", "table": { "columns", "rows" } }`. The answer of a screen to
+the `ready` above:
+
+```json
+{
+  "type": "pwo-plugin",
+  "version": 1,
+  "action": "init",
+  "host": { "name": "DigitalSignalix", "version": "1.0.0", "target": "signage" },
+  "locale": "fr",
+  "theme": "dark",
+  "settings": { "title": "Menu", "accent": "#1f6feb" },
+  "data": {
+    "menu": {
+      "mediaType": "application/vnd.oasis.opendocument.spreadsheet",
+      "table": { "columns": ["day", "course", "name"], "rows": [["Monday", "Main", "Ratatouille"]] }
+    }
+  },
+  "viewport": { "width": 1920, "height": 1080 }
+}
+```
 
 From the plugin to the host:
 
@@ -218,7 +242,29 @@ From the plugin to the host:
 | `document.read`, `document.write`, `command.register`, `panel.show` | as their names say | PWO only, with the permission |
 
 On a screen, `fetch` is answered from what the Manager fetched and kept;
-the screen itself reaches nothing.
+the screen itself reaches nothing. A request and its answer:
+
+```json
+{ "type": "pwo-plugin", "version": 1, "action": "fetch", "id": 3, "url": "https://api.example.org/today", "method": "GET" }
+```
+
+```json
+{ "type": "pwo-plugin", "version": 1, "action": "reply", "id": 3, "result": { "status": 200, "headers": { "content-type": "application/json" }, "body": "{\"dish\":\"Ratatouille\"}" } }
+```
+
+### JSON Schemas
+
+The contract between the hosts: these formats as JSON Schemas (draft
+2020-12), which the examples of this page and of
+[DigitalSignalix](./digitalsignalix.md) are tested against. Each schema
+allows unknown properties, as the hosts ignore what they do not know.
+
+| Format | Schema |
+|---|---|
+| `manifest.json` | [`plugin-manifest-1.schema.json`](https://progressive-web-office.github.io/schemas/plugin-manifest-1.schema.json) |
+| `registry.json` | [`plugin-registry-1.schema.json`](https://progressive-web-office.github.io/schemas/plugin-registry-1.schema.json) |
+| Messages | [`plugin-message-1.schema.json`](https://progressive-web-office.github.io/schemas/plugin-message-1.schema.json) |
+| Provenance | [`provenance-1.schema.json`](https://progressive-web-office.github.io/schemas/provenance-1.schema.json) |
 
 ## Distribution: a registry of Git repositories
 

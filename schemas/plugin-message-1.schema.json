@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://progressive-web-office.github.io/schemas/plugin-message-1.schema.json",
+  "title": "Plugin message, protocol version 1",
+  "description": "A postMessage between a sandboxed code plugin and its host (PLUG-010) — Progressive Web Office, or a DigitalSignalix screen — in the 'pwo-plugin' envelope. Within version 1 messages only gain optional fields and new actions: both sides ignore the fields and actions they do not know, so unknown properties and actions are allowed. Binary data ('bytes', 'body') travel as ArrayBuffer by structured clone and are not JSON.",
+  "type": "object",
+  "required": ["type", "version", "action"],
+  "properties": {
+    "type": {
+      "description": "Always 'pwo-plugin'.",
+      "const": "pwo-plugin"
+    },
+    "version": {
+      "description": "Major version of the protocol, the 'api' of the plugin's manifest.",
+      "const": 1
+    },
+    "action": {
+      "description": "What the message is: see the actions below; others are ignored.",
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)*$"
+    },
+    "id": {
+      "description": "Number of a request; its 'reply' carries the same.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "description": "Host → plugin, once after 'ready': everything it needs to start.",
+      "if": { "$ref": "#/$defs/is/init" },
+      "then": {
+        "required": ["host", "locale", "theme", "settings", "data", "viewport"],
+        "properties": {
+          "host": {
+            "type": "object",
+            "required": ["name", "version", "target"],
+            "properties": {
+              "name": { "type": "string" },
+              "version": { "type": "string" },
+              "target": { "description": "Which target of the manifest it runs as.", "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "locale": { "description": "BCP 47 language tag.", "type": "string" },
+          "theme": { "enum": ["light", "dark"] },
+          "settings": { "$ref": "#/$defs/settings" },
+          "data": { "$ref": "#/$defs/data" },
+          "viewport": { "$ref": "#/$defs/viewport" }
+        }
+      }
+    },
+    {
+      "description": "Host → plugin: the settings changed.",
+      "if": { "$ref": "#/$defs/is/settings" },
+      "then": { "required": ["settings"], "properties": { "settings": { "$ref": "#/$defs/settings" } } }
+    },
+    {
+      "description": "Host → plugin: a data file changed.",
+      "if": { "$ref": "#/$defs/is/data" },
+      "then": { "required": ["data"], "properties": { "data": { "$ref": "#/$defs/data" } } }
+    },
+    {
+      "description": "Host → plugin: the size changed.",
+      "if": { "$ref": "#/$defs/is/resize" },
+      "then": { "required": ["viewport"], "properties": { "viewport": { "$ref": "#/$defs/viewport" } } }
+    },
+    {
+      "description": "Host → plugin: shown or hidden (a screen's playlist, a closed panel) — start or pause.",
+      "if": { "$ref": "#/$defs/is/visibility" },
+      "then": { "required": ["visible"], "properties": { "visible": { "type": "boolean" } } }
+    },
+    {
+      "description": "Plugin → host: loaded, speaking this version; the host answers with 'init'.",
+      "if": { "$ref": "#/$defs/is/ready" },
+      "then": { "required": ["api"], "properties": { "api": { "type": "integer", "minimum": 1 } } }
+    },
+    {
+      "description": "Plugin → host: a network request made by the host, only to the hosts of 'permissions.network' (on a screen, answered from what the Manager fetched).",
+      "if": { "$ref": "#/$defs/is/fetch" },
+      "then": {
+        "required": ["id", "url"],
+        "properties": {
+          "url": { "type": "string", "pattern": "^https?://" },
+          "method": { "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] },
+          "headers": { "$ref": "#/$defs/headers" },
+          "body": { "description": "A string, or an ArrayBuffer (not JSON)." }
+        }
+      }
+    },
+    {
+      "description": "Either way: the answer to the request of the same 'id' — its result, or an error. The answer to 'fetch' has { status, headers, body } as result.",
+      "if": { "$ref": "#/$defs/is/reply" },
+      "then": {
+        "required": ["id"],
+        "oneOf": [
+          { "required": ["result"], "not": { "required": ["error"] } },
+          {
+            "required": ["error"],
+            "not": { "required": ["result"] },
+            "properties": {
+              "error": {
+                "type": "object",
+                "required": ["code", "message"],
+                "properties": {
+                  "code": { "type": "string", "minLength": 1 },
+                  "message": { "type": "string" }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "description": "Plugin → host: a line for the host's log.",
+      "if": { "$ref": "#/$defs/is/log" },
+      "then": {
+        "required": ["level", "message"],
+        "properties": {
+          "level": { "enum": ["debug", "info", "warn", "error"] },
+          "message": { "type": "string" }
+        }
+      }
+    },
+    {
+      "description": "Plugin → host, PWO only, with the matching permission: read or change the open document, add a command, show its panel. Each is a request answered by 'reply'.",
+      "if": {
+        "properties": { "action": { "enum": ["document.read", "document.write", "command.register", "panel.show"] } },
+        "required": ["action"]
+      },
+      "then": { "required": ["id"] }
+    }
+  ],
+  "$defs": {
+    "is": {
+      "init": { "type": "object", "properties": { "action": { "const": "init" } }, "required": ["action"] },
+      "settings": { "type": "object", "properties": { "action": { "const": "settings" } }, "required": ["action"] },
+      "data": { "type": "object", "properties": { "action": { "const": "data" } }, "required": ["action"] },
+      "resize": { "type": "object", "properties": { "action": { "const": "resize" } }, "required": ["action"] },
+      "visibility": { "type": "object", "properties": { "action": { "const": "visibility" } }, "required": ["action"] },
+      "ready": { "type": "object", "properties": { "action": { "const": "ready" } }, "required": ["action"] },
+      "fetch": { "type": "object", "properties": { "action": { "const": "fetch" } }, "required": ["action"] },
+      "reply": { "type": "object", "properties": { "action": { "const": "reply" } }, "required": ["action"] },
+      "log": { "type": "object", "properties": { "action": { "const": "log" } }, "required": ["action"] }
+    },
+    "settings": {
+      "description": "The values of the settings, as the plugin's settings schema describes them.",
+      "type": "object"
+    },
+    "viewport": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "headers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "data": {
+      "description": "Each data file of the manifest, by its id: bytes, or a table when the manifest asks for one.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["mediaType"],
+        "properties": {
+          "mediaType": { "type": "string" },
+          "bytes": { "description": "The file, an ArrayBuffer (not JSON)." },
+          "table": {
+            "type": "object",
+            "required": ["columns", "rows"],
+            "properties": {
+              "columns": { "type": "array", "items": { "type": "string" } },
+              "rows": {
+                "type": "array",
+                "items": { "type": "array", "items": { "type": ["string", "number", "boolean", "null"] } }
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "anyOf": [{ "required": ["bytes"] }, { "required": ["table"] }],
+        "additionalProperties": true
+      }
+    }
+  }
+}
