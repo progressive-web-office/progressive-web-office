@@ -1225,7 +1225,7 @@ export class App {
       h(
         'section',
         { class: 'start' },
-        h('h1', {}, t('app.name'), ' ', h('span', { class: 'app-version-title' }, versionLabel())),
+        h('h1', {}, h('img', { class: 'start-logo', src: 'icon.svg', alt: '', 'aria-hidden': 'true', width: '64', height: '64' }), t('app.name'), ' ', h('span', { class: 'app-version-title' }, versionLabel())),
         h('p', { class: 'tagline' }, t('app.tagline')),
         // The documentation (published next to the app, under docs/, see pages.yml), the source and About, in plain sight.
         h(
@@ -1461,7 +1461,8 @@ export class App {
   private renderHeader(): void {
     const doc = this.current;
     const items: (Node | null)[] = [
-      h('span', { class: 'brand', 'aria-hidden': 'true' }, 'PWO'),
+      // The icon of the application (fanned sheets: document, spreadsheet, presentation).
+      h('img', { class: 'brand', src: 'icon.svg', alt: '', 'aria-hidden': 'true', width: '28', height: '28' }),
       // UI-013: version and build, like QRShare; opens the About window.
       button(versionLabel(), () => void this.showAbout(), { className: 'app-version', title: t('about.openTitle') }),
     ];

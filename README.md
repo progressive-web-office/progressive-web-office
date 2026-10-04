@@ -1,3 +1,5 @@
+<img src="https://progressive-web-office.github.io/brand/banner.png" alt="Progressive Web Office">
+
 # Progressive Web Office
 
 An office suite in your browser — documents, spreadsheets, presentations,

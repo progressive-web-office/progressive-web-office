@@ -101,11 +101,7 @@ button:disabled { opacity: 0.5; cursor: default; }
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
-.brand {
-  display: inline-grid; place-items: center;
-  min-width: 28px; height: 28px; padding: 0 6px; border-radius: 6px; font-size: 0.8rem;
-  background: var(--accent); color: var(--accent-contrast); font-weight: 700;
-}
+.brand { display: block; width: 1.75rem; height: 1.75rem; flex: none; }
 .doc-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
 /* FILE-026: the name is a button that renames the file. */
 button.doc-name { background: transparent; border-color: transparent; padding: 2px 6px; font-size: inherit; color: inherit; cursor: text; }
@@ -142,7 +138,8 @@ button.doc-name:hover { border-color: var(--border); background: var(--sel); }
 
 /* Start screen */
 .start { max-width: 880px; margin: 0 auto; padding: 32px 16px; }
-.start h1 { margin: 0 0 4px; font-size: 2rem; }
+.start h1 { margin: 0 0 4px; font-size: 2rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0 12px; }
+.start-logo { width: 4rem; height: 4rem; flex: none; }
 .tagline { color: var(--muted); margin-top: 0; }
 .start-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 24px 0; }
 .card {

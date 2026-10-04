@@ -1,9 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#1f5fbf"/>
-  <rect x="120" y="96" width="272" height="320" rx="24" fill="#ffffff"/>
-  <path d="M312 96h56l24 24v56h-56a24 24 0 0 1-24-24z" fill="#cfe0ff"/>
-  <rect x="160" y="200" width="192" height="20" rx="10" fill="#1f5fbf"/>
-  <rect x="160" y="248" width="192" height="20" rx="10" fill="#3aa35a"/>
-  <rect x="160" y="296" width="140" height="20" rx="10" fill="#e07a1f"/>
-  <rect x="160" y="344" width="170" height="20" rx="10" fill="#9aa7b8"/>
+  <rect width="512" height="512" fill="#163f86"/>
+  <g transform="rotate(-14 256 300)"><rect x="132" y="104" width="232" height="296" rx="28" fill="#f08a24"/></g><g transform="rotate(-5 256 300)"><rect x="140" y="104" width="232" height="296" rx="28" fill="#2f9e57"/></g><path d="M176 112h132l64 64v220a28 28 0 0 1-28 28H176a28 28 0 0 1-28-28V140a28 28 0 0 1 28-28z" fill="#fff"/><path d="M308 112v40a24 24 0 0 0 24 24h40z" fill="#bcd3ff"/><rect x="184" y="216" width="152" height="22" rx="11" fill="#1f5fbf"/><rect x="184" y="262" width="152" height="22" rx="11" fill="#1f5fbf" opacity=".55"/><rect x="184" y="308" width="104" height="22" rx="11" fill="#1f5fbf" opacity=".55"/>
 </svg>

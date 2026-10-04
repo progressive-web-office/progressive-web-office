@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- **A new logo and new application icons**: three fanned sheets — the
+  document, the spreadsheet and the presentation — on a square navy icon,
+  also in the header of the application, on its start screen and in the
+  documentation; a **Brand** page in the documentation (files, colours,
+  type, usage).
 - The tagline says what the application does today — documents,
   spreadsheets, presentations, PDF, drawings, notes and live code — and
   that files stay on the device **unless you choose** to share, sync or
