@@ -7,9 +7,9 @@
  */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
-import { listen, startSync, stopSync, currentSync, SYNC_FOLDER } from './live';
+import { listen, relayFallback, startSync, stopSync, currentSync, SYNC_FOLDER } from './live';
 import { TRASH } from './plan';
-import { INVITE_MINUTES, hostInvitation, invitationUrl, joinInvitation, newInvitation, parseInvitation, type Invitation } from './invite';
+import { INVITE_MINUTES, hostInvitation, invitationUrl, joinInvitation, newInvitation, parseInvitation, verificationEmojis, type Invitation } from './invite';
 import { defaultName, deviceModelName, loadSyncState, newPairing, parsePairingCode, saveSyncState, unpaired, TOMBSTONE_DAYS } from './state';
 
 export interface SyncDialogOptions {
@@ -55,7 +55,8 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       error.hidden = true;
       const { connectRoom } = await import('../collab/ui');
       const transport = await connectRoom(inv.room, inv.secret);
-      const leave = (): void => transport.leave();
+      const stopFallback = relayFallback(transport);
+      const leave = (): void => (stopFallback(), transport.leave());
       leaving.add(leave);
       const asked = await joinInvitation(transport.room, inv, loadSyncState().name);
       const cancel = button(t('common.cancel'), () => {
@@ -83,8 +84,10 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       const url = invitationUrl(appBase(), inv);
       const [{ connectRoom }, { zoomableQr }] = await Promise.all([import('../collab/ui'), import('../app/qr')]);
       const transport = await connectRoom(inv.room, inv.secret);
+      const stopFallback = relayFallback(transport);
       let stopHost = (): void => {};
       const leave = (): void => {
+        stopFallback();
         stopHost();
         transport.leave();
       };
@@ -226,6 +229,22 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         );
       };
       showPeers();
+      // The same on every device paired together: different, they do not share the same key.
+      const fingerprint = h('p', { class: 'hint' });
+      const pairingNow = state.pairing;
+      void verificationEmojis(pairingNow.secret, `fingerprint|${pairingNow.room}`, 3).then((e) => (fingerprint.textContent = t('devsync.fingerprint', { emojis: e })));
+      // What the network allows, to tell "nobody online" from "cannot reach anybody".
+      const network = h('p', { class: 'hint devsync-network' });
+      const showNetwork = (): void => {
+        const n = currentSync()?.network();
+        network.textContent = n ? t(n.mode === 'relays' ? 'devsync.networkRelays' : 'devsync.networkDirect', { open: n.open, total: n.total }) : '';
+      };
+      showNetwork();
+      clearInterval(networkTimer);
+      networkTimer = setInterval(() => {
+        showNetwork();
+        showPeers();
+      }, 2000);
       const auto = h('input', { type: 'checkbox', checked: state.auto });
       auto.addEventListener('change', () => saveSyncState({ ...loadSyncState(), auto: auto.checked }));
       // What "Sync now" did, right under it.
@@ -265,6 +284,8 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
         nameRow,
         h('h3', {}, t('devsync.devices')),
         peers,
+        network,
+        fingerprint,
         h('p', { class: 'hint' }, last ? t('devsync.lastSync', { when: new Date(last).toLocaleString() }) : t('devsync.neverSynced')),
         h('div', { class: 'dialog-actions start' }, now),
         nowStatus,
@@ -289,6 +310,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       });
     };
     let unlisten: (() => void) | undefined;
+    let networkTimer: ReturnType<typeof setInterval> | undefined;
     const start = async (rerender = true): Promise<ReturnType<typeof currentSync>> => {
       try {
         const live = await startSync();
@@ -305,6 +327,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
     const dialog = h('dialog', { class: 'dialog devsync-dialog', 'aria-labelledby': 'devsync-title' }, form);
     const finish = (): void => {
       unlisten?.();
+      clearInterval(networkTimer);
       leaveAll();
       dialog.close();
       dialog.remove();

@@ -43,6 +43,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   says what it does under the button, the invitation explains what to do on
   the new device, which is named before pairing (a phone gets its model as
   first name when the browser tells it).
+- **Sync my devices**: devices that could not connect directly (a phone on a
+  mobile network and a computer on Wi-Fi…) never met, the synchronisation
+  never falling back on the relays as collaboration does; it now does after
+  about ten seconds. The window shows the network (relays reached, direct or
+  through the relays) and a fingerprint of the pairing, the same on every
+  device paired together.
 
 - A private repository added as a source of templates (**Templates and
   examples → ＋ Source…**) could not be read without an account of its site:

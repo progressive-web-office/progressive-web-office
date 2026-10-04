@@ -14,6 +14,26 @@ export interface LiveSync {
   sync: DeviceSync;
   peers: { id: string; device: string; name: string }[];
   stop(): void;
+  /** The relays reached, and whether the messages also go through them (to tell what goes wrong). */
+  network(): { open: number; total: number; mode: 'direct' | 'relays' } | undefined;
+}
+
+/** Seconds without any device reached directly before the relays carry the messages too. */
+const RELAY_AFTER = 10;
+
+/**
+ * DEVSYNC-002: when browsers cannot connect directly (a phone on a mobile
+ * network, a company network…), the encrypted messages also go through the
+ * relays, as for real-time collaboration (COLLAB-011).
+ */
+export function relayFallback(transport: { room: { onPeerJoin(fn: (id: string) => void): void }; useRelays?(): Promise<void>; mode?(): 'direct' | 'relays' }, seconds = RELAY_AFTER): () => void {
+  if (!transport.useRelays) return () => {};
+  let reached = false;
+  transport.room.onPeerJoin(() => (reached = true));
+  const timer = setTimeout(() => {
+    if (!reached && transport.mode?.() === 'direct') void transport.useRelays?.().catch(() => undefined);
+  }, seconds * 1000);
+  return () => clearTimeout(timer);
 }
 
 let live: LiveSync | undefined;
@@ -43,6 +63,7 @@ export async function startSync(files?: StorageProvider): Promise<LiveSync | und
   if (!provider) return undefined;
   const { connectRoom } = await import('../collab/ui');
   const transport = await connectRoom(state.pairing.room, state.pairing.secret);
+  const stopFallback = relayFallback(transport);
   const store = { get: (): DeviceSyncState => loadSyncState(), set: (s: DeviceSyncState) => saveSyncState(s) };
   const sync = new DeviceSync(transport.room, provider, store, {
     ...fan,
@@ -60,7 +81,12 @@ export async function startSync(files?: StorageProvider): Promise<LiveSync | und
   live = {
     sync,
     peers: [],
+    network: () => {
+      const r = transport.relays?.();
+      return r ? { open: r.open, total: r.total, mode: transport.mode?.() ?? 'direct' } : undefined;
+    },
     stop: () => {
+      stopFallback();
       clearInterval(timer);
       sync.close();
       transport.leave();

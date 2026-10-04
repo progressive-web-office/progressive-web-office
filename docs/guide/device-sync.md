@@ -73,6 +73,24 @@ How the documents are merged:
 
 Hidden files and the trash are never synchronised.
 
+## When the devices do not see each other
+
+- **Open the application on both devices**, each on **🔁 Sync my devices**
+  (or with *Synchronise by itself*): devices meet only while the
+  application is open on both.
+- **Compare the fingerprint of the pairing** (three emojis under the
+  devices): it is the same on every device paired together. Different, the
+  devices do not share the same key — pair the device again with a new
+  invitation.
+- **Reload the application** on both devices after an update (or close and
+  reopen the installed application): an older version may still be running.
+- **Read the Network line**: if no relay is reached (*0/6*), the network
+  blocks them (a company or school network…) — try another network, or set
+  relays and a TURN server in *Settings › Collaboration*. When no device is
+  reached directly within about ten seconds (a phone on a mobile network and
+  a computer on Wi-Fi, for instance), the messages also go through the
+  relays, still encrypted: the line then says so.
+
 ## Security
 
 **What protects your documents**

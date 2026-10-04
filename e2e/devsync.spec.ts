@@ -98,6 +98,10 @@ test('a new device joins by an invitation link, accepted on the paired device af
   const secret = await phone.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').pairing?.secret);
   expect(await phone.evaluate(() => JSON.parse(localStorage.getItem('pwo.devsync') ?? '{}').name)).toBe('Phone');
   expect(secret).toBe('the-key-of-the-documents-in-test');
+  // Both devices show the same fingerprint of the pairing.
+  const print = (d: typeof host): Promise<string | null> => d.getByText(/Fingerprint of the pairing/).textContent();
+  await expect(join.getByText(/Fingerprint of the pairing/)).toBeVisible();
+  expect(await print(join)).toBe(await print(host));
   // Sync now says what it does, under the button.
   await join.getByRole('button', { name: 'Sync now' }).click();
   await expect(join.locator('.devsync-now')).not.toBeEmpty();
