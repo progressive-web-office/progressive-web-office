@@ -12,7 +12,9 @@ afterEach(() => {
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 
-const gitCli = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 'Cli', GIT_AUTHOR_EMAIL: 'cli@x', GIT_COMMITTER_NAME: 'Cli', GIT_COMMITTER_EMAIL: 'cli@x' } });
+// No automatic gc or maintenance in the background: it would race with the explicit repack below.
+const NO_AUTO_GC = { GIT_CONFIG_COUNT: '2', GIT_CONFIG_KEY_0: 'gc.auto', GIT_CONFIG_VALUE_0: '0', GIT_CONFIG_KEY_1: 'maintenance.auto', GIT_CONFIG_VALUE_1: 'false' };
+const gitCli = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...NO_AUTO_GC, GIT_AUTHOR_NAME: 'Cli', GIT_AUTHOR_EMAIL: 'cli@x', GIT_COMMITTER_NAME: 'Cli', GIT_COMMITTER_EMAIL: 'cli@x' } });
 
 /** A real repository made with the git command, packed, with a history. */
 function realRepo(): string {
@@ -29,7 +31,7 @@ function realRepo(): string {
   writeFileSync(join(dir, 'docs', 'notes.md'), '# Notes\n\nMore\n');
   gitCli(dir, 'commit', '-q', '-am', 'docs: more notes');
   // Objects in a pack file, as most repositories have them.
-  gitCli(dir, 'gc', '-q');
+  gitCli(dir, 'repack', '-a', '-d', '-q');
   return dir;
 }
 
