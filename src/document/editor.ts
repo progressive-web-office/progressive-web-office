@@ -1758,8 +1758,21 @@ export class DocumentEditor implements EditorView {
 
   /** The exercise sheet: copies without the solutions (TEACH-001). */
   saveVariants(): SaveVariant[] {
-    if (!this.hasSolutions()) return [];
-    return (['odt', 'docx', 'md'] as const).map((format) => ({
+    // PDF-020: the document typeset as a PDF, without the print dialog.
+    const pdf: SaveVariant = {
+      id: 'pdf-typeset',
+      label: t('pdfx.saveAs'),
+      format: 'pdf',
+      suffix: '',
+      save: async () => {
+        const { typesetPdf } = await import('../pdf/typst-pdf');
+        const doc = { ...this.doc, blocks: this.currentBlocks() };
+        pruneComments(doc);
+        return typesetPdf(doc, { host: this.element, fileName: this.ctx.fileName?.() });
+      },
+    };
+    if (!this.hasSolutions()) return [pdf];
+    return [pdf, ...(['odt', 'docx', 'md'] as const).map((format) => ({
       id: `sheet-${format}`,
       label: t('solution.sheet', { ext: format }),
       format,
@@ -1769,7 +1782,7 @@ export class DocumentEditor implements EditorView {
         pruneComments(doc);
         return writeDocumentAsync(doc, format);
       },
-    }));
+    }))];
   }
 
   /** N variants of the sheet and their answer keys, in a ZIP (TEACH-002). */

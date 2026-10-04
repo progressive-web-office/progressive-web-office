@@ -101,10 +101,10 @@ async function rasterSvgs(doc: RichDocument, format: TextFormat): Promise<Map<st
   return out;
 }
 
-/** Rasterise diagrams for formats that embed them as pictures (DIAG-005, DIAG-006). */
-async function renderDiagrams(doc: RichDocument, format: TextFormat): Promise<Map<string, RenderedDiagram>> {
+/** Rasterise diagrams for formats that embed them as pictures (DIAG-005, DIAG-006); `pdf`: the typeset PDF (PDF-020). */
+export async function renderDiagrams(doc: RichDocument, format: TextFormat | 'pdf'): Promise<Map<string, RenderedDiagram>> {
   const out = new Map<string, RenderedDiagram>();
-  const sources = format === 'docx' || format === 'odt' || format === 'texzip' ? collectDiagrams(doc.blocks) : [];
+  const sources = format === 'docx' || format === 'odt' || format === 'texzip' || format === 'pdf' ? collectDiagrams(doc.blocks) : [];
   if (!sources.length) return out;
   try {
     const { renderDiagramPng } = await import('../diagram/mermaid');

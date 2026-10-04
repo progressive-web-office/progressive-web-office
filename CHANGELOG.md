@@ -45,6 +45,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Merged cells of a table holding a code cell were lost in the exports.
+
 - A document saved in the browser could not be found again: it now appears
   in the recent files (reopened from the browser's storage, as it is now),
   and the start screen has an **🗄️ In this browser** card (FILE-031).
@@ -104,6 +106,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   is asked once per site, one at a time (CODE-016).
 
 ### Added
+
+- **PDF typeset in the browser** (PDF-020): *Save as › PDF (.pdf), typeset*
+  writes a text document as a PDF at once, without the print dialog — by
+  Typst, compiled to WebAssembly and downloaded once (about 11 MB, after you
+  agree) then kept offline. Fonts embedded (with the widths of Calibri,
+  Arial, Times New Roman, Courier New and Cambria), selectable text, working
+  links and cross-references; the page, header and footer, tables,
+  pictures, footnotes, equations, table of contents, columns, code cells
+  and bibliography kept. The document never leaves the device.
 
 - Three more examples of the anywidget instruments, one per family:
   **Automation panel** (a PID loop tuned with knobs, its step response and

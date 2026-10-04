@@ -244,7 +244,7 @@ group is not a commitment.
 ### PDF and trust
 
 - ✅ Whole-page zoom and 2 or more pages side by side (PDF-016)
-- Direct PDF export (no print dialog), PDF/A and tagged (accessible) PDF
+- ✅ Direct PDF export of text documents, typeset by Typst in the browser (PDF-020); next: PDF/A and tagged (accessible) PDF, spreadsheets and presentations
 - Local electronic signatures and signature verification (WebCrypto,
   basic PAdES)
 - ✅ Text search in PDF (PDF-017)

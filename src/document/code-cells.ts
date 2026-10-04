@@ -24,7 +24,7 @@ export function cellsAsBlocks(doc: RichDocument): RichDocument {
   };
   const blocks = doc.blocks.flatMap((b): Block[] => {
     if (b.type === 'paragraph') return expand(b);
-    if (b.type === 'table') return [{ ...b, rows: b.rows.map((row) => row.map((c) => ({ blocks: c.blocks.flatMap(expand) }))) }];
+    if (b.type === 'table') return [{ ...b, rows: b.rows.map((row) => row.map((c) => ({ ...c, blocks: c.blocks.flatMap(expand) }))) }];
     return [b];
   });
   return changed ? { ...doc, blocks } : doc;

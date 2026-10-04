@@ -109,6 +109,19 @@ support) in a Web Worker. A Vite plugin serves and emits pdf.js runtime assets
 (CMaps, standard fonts, ICC profiles, WebAssembly decoders) under `pdfjs/` so
 that nothing is fetched from a CDN.
 
+**Typeset PDF** (PDF-020): `writeTypst()` (`src/document/typst-writer.ts`)
+writes a text document as [Typst](https://typst.app) source — every run of
+text a Typst string, so nothing in it is markup; equations converted from
+LaTeX by `tex2typst`; numbers, cross-references and citations written as the
+editor shows them, cross-references linked to `metadata` labels. The Typst
+compiler (`@myriaddreamin/typst-ts-web-compiler`, WebAssembly) runs in a
+module worker (`src/pdf/typst.worker.ts`): only its 60 kB JavaScript glue is
+bundled; the WebAssembly (about 11 MB compressed) and the fonts come from
+`cdn.jsdelivr.net` once the user agrees, each checked against the SHA-256
+pinned in `src/pdf/typst-hashes.ts` before it is used or kept in the
+`pwo-typst` cache (offline afterwards). An equation Typst refuses is tested
+alone and written as its LaTeX. The document itself never leaves the device.
+
 Forms and signatures are handled by **pdf-lib** (`@pdfme/pdf-lib`, a
 maintained fork): `inspectPdf()` lists AcroForm fields with their widget
 rectangles in PDF coordinates; the viewer overlays HTML controls converted with

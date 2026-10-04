@@ -33,8 +33,39 @@ The settings are remembered in this browser.
 
 ## Saving as PDF
 
+There are two ways, and everything stays on your device in both.
+
+### Typeset PDF (text documents)
+
+In **Save as**, choose **PDF (.pdf), typeset**: the document is typeset by
+[Typst](https://typst.app), a typesetting engine that runs in the browser,
+and the PDF is saved at once — no print dialog. The PDF has:
+
+- its **fonts embedded**: fonts with the widths of Calibri (Carlito),
+  Arial (Arimo), Times New Roman (Tinos), Courier New (Cousine) and Cambria
+  (Caladea), so that lines break as in Word or LibreOffice, and the fonts of
+  Typst for equations;
+- **selectable and searchable** text, **links** that work — to the web and
+  to the figures, tables and equations a cross-reference points to — and
+  the document's title, author and language;
+- the page of the document (paper, margins, header and footer, page
+  numbers), headings, lists, tables with merged cells, pictures, footnotes,
+  numbered equations, the table of contents, columns, the code cells with
+  their output and figures, the bibliography.
+
+The first time, the engine (about 11 MB) and the fonts are downloaded from
+`cdn.jsdelivr.net`, after you agree; they are then kept in the browser and
+work offline. **Your document is never sent**: it is typeset on your device.
+
+Its look follows the page on screen closely, but not to the point: Typst
+breaks lines and pages itself, and columns are filled one after the other
+rather than balanced. An equation Typst cannot read is written as its LaTeX.
+
+### Through printing
+
 Click **Print…** and choose **Save as PDF** (or *Microsoft Print to PDF*) as
-the printer in the browser dialog. Everything stays on your device.
+the printer in the browser dialog. This works for every kind of document
+(spreadsheets, presentations too), exactly as the print preview shows it.
 
 ## Colours for print
 
