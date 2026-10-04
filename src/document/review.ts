@@ -12,14 +12,38 @@ import { isTyping, reviewAction, reviewCommands, spreadStart, type ReviewAction 
 import { isDistractionFree, showReviewHelp, toggleDistractionFree } from '../review/ui';
 import { loadReading, rememberReading, saveReading, type PageFlow } from '../review/settings';
 
-/** A page of the screen layout, in CSS pixels (US Letter at 96 dpi, as the editor). */
-export const PAGE = { width: 816, height: 1056, marginX: 80, marginY: 72, gap: 24 } as const;
+/** A page of the screen layout, in CSS pixels: the paper and margins of the document (DOC-046). */
+export interface ReviewPage {
+  width: number;
+  height: number;
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** US Letter at 96 dpi, 1-inch and 0.83-inch margins: the page of a document without one. */
+export const LETTER: ReviewPage = { width: 816, height: 1056, top: 72, right: 80, bottom: 72, left: 80 };
+/** The space between two pages side by side. */
+export const PAGE_GAP = 24;
 
 /** The page (0-based) of a point `x` pixels from the left of the paged content. */
-export const pageAt = (x: number): number => Math.max(0, Math.floor(x / (PAGE.width + PAGE.gap)));
+export const pageAt = (x: number, page: ReviewPage = LETTER): number => Math.max(0, Math.floor(x / (page.width + PAGE_GAP)));
 
 /** Width of `n` pages side by side. */
-export const spreadWidth = (n: number): number => n * PAGE.width + (n - 1) * PAGE.gap;
+export const spreadWidth = (n: number, page: ReviewPage = LETTER): number => n * page.width + (n - 1) * PAGE_GAP;
+
+/** The CSS variables of the paged layout for this page. */
+export function pageVars(page: ReviewPage): Record<string, string> {
+  return {
+    '--rv-w': `${page.width}px`,
+    '--rv-h': `${page.height}px`,
+    '--rv-pad': `${page.top}px ${page.right}px ${page.bottom}px ${page.left}px`,
+    // Between the text of two pages: the right margin, the gap, the left margin.
+    '--rv-colgap': `${page.right + PAGE_GAP + page.left}px`,
+    '--rv-text-h': `${page.height - page.top - page.bottom}px`,
+  };
+}
 
 export interface ReviewHost {
   /** The editor's root (`.doc-editor`). */
@@ -33,6 +57,8 @@ export interface ReviewHost {
   find(): void;
   notify(message: string): void;
   statusChanged(): void;
+  /** The paper and margins of the document, in CSS pixels. */
+  page?(): ReviewPage;
 }
 
 export class DocReview {
@@ -42,6 +68,7 @@ export class DocReview {
   private perRow: number;
   private flow: PageFlow;
   private scale = 1;
+  private page: ReviewPage = LETTER;
   /** Pages of the document, and the first page shown (1-based). */
   private pages = 1;
   private current = 1;
@@ -149,7 +176,7 @@ export class DocReview {
       if (isDistractionFree()) this.do('fullscreen');
       this.host.root.classList.remove('paged');
       const dom = this.host.view().dom as HTMLElement;
-      for (const p of ['--pages', 'zoom', 'margin-left', 'clip-path']) dom.style.removeProperty(p);
+      for (const p of ['--pages', 'zoom', 'margin-left', 'clip-path', ...Object.keys(pageVars(LETTER))]) dom.style.removeProperty(p);
       this.host.view().focus();
     }
     this.host.statusChanged();
@@ -182,7 +209,10 @@ export class DocReview {
     this.host.root.classList.toggle('paged', paged);
     const s = this.host.scroller;
     const across = paged ? this.perRow : 1;
-    this.scale = fitScale(this.zoom, { width: s.clientWidth || 900, height: s.clientHeight || 1100, pageWidth: spreadWidth(across) / across, pageHeight: PAGE.height, columns: across, gap: 16 });
+    // DOC-046: the pages have the paper and the margins of the document.
+    this.page = this.host.page?.() ?? LETTER;
+    for (const [k, v] of Object.entries(pageVars(this.page))) dom.style.setProperty(k, v);
+    this.scale = fitScale(this.zoom, { width: s.clientWidth || 900, height: s.clientHeight || 1100, pageWidth: this.page.width, pageHeight: this.page.height, columns: across, gap: 16 });
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
     dom.style.setProperty('zoom', String(this.scale));
     if (!paged) {
@@ -195,10 +225,10 @@ export class DocReview {
     // Lay the text out on one page: what does not fit flows into more columns, to count them.
     dom.style.setProperty('--pages', '1');
     const box = dom.getBoundingClientRect();
-    const ratio = box.width / PAGE.width || 1;
+    const ratio = box.width / this.page.width || 1;
     let right = 0;
     for (const child of Array.from(dom.children)) right = Math.max(right, child.getBoundingClientRect().right);
-    const used = Math.max(1, pageAt((right - box.left) / ratio - 1) + 1);
+    const used = Math.max(1, pageAt((right - box.left) / ratio - 1, this.page) + 1);
     this.pages = used;
     // Whole spreads, so that the last one is aligned like the others.
     dom.style.setProperty('--pages', String(Math.ceil(used / this.perRow) * this.perRow));
@@ -213,13 +243,13 @@ export class DocReview {
     if (this.flow === 'pages') {
       const dom = this.host.view().dom as HTMLElement;
       const s = this.host.scroller;
-      const visible = spreadWidth(this.perRow) * this.scale;
+      const visible = spreadWidth(this.perRow, this.page) * this.scale;
       const offset = Math.max(0, (s.clientWidth - visible) / 2) / this.scale;
-      const before = (this.current - 1) * (PAGE.width + PAGE.gap);
+      const before = (this.current - 1) * (this.page.width + PAGE_GAP);
       const all = Number(dom.style.getPropertyValue('--pages')) || 1;
       dom.style.setProperty('margin-left', `${offset - before}px`);
       // Only the spread is shown (and can be clicked).
-      dom.style.setProperty('clip-path', `inset(0 ${Math.max(0, spreadWidth(all) - before - spreadWidth(this.perRow))}px 0 ${before}px)`);
+      dom.style.setProperty('clip-path', `inset(0 ${Math.max(0, spreadWidth(all, this.page) - before - spreadWidth(this.perRow, this.page))}px 0 ${before}px)`);
       s.scrollTop = 0;
     }
     this.host.statusChanged();
@@ -237,8 +267,8 @@ export class DocReview {
       return undefined;
     }
     const box = dom.getBoundingClientRect();
-    const ratio = box.width / spreadWidth(Number(dom.style.getPropertyValue('--pages')) || 1) || 1;
-    return pageAt((left - box.left) / ratio) + 1;
+    const ratio = box.width / spreadWidth(Number(dom.style.getPropertyValue('--pages')) || 1, this.page) || 1;
+    return pageAt((left - box.left) / ratio, this.page) + 1;
   }
 
   private shown(page: number): boolean {

@@ -45,6 +45,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Review mode, page by page: two pages side by side were pushed to the
+  right and cut off, and the rulers were drawn over them at a wrong scale.
+  The pages are now centred, without rulers, and have the paper and the
+  margins of the document (A4…) instead of always US Letter.
+
 - Merged cells of a table holding a code cell were lost in the exports.
 
 - A document saved in the browser could not be found again: it now appears

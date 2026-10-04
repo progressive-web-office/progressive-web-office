@@ -292,6 +292,11 @@ export class DocumentEditor implements EditorView {
         find: () => this.findBar.open(false),
         notify: (message) => (this.ctx.notify ? this.ctx.notify(message) : window.alert(message)),
         statusChanged: () => this.ctx.statusChanged(),
+        // DOC-046: the review pages have the paper and the margins of the document.
+        page: () => {
+          const g = this.geometry();
+          return { width: mmToPx(g.width), height: mmToPx(g.height), top: mmToPx(g.top), right: mmToPx(g.right), bottom: mmToPx(g.bottom), left: mmToPx(g.left) };
+        },
       },
       () => this.review.toggle(false),
     );

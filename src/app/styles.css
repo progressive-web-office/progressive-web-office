@@ -1256,17 +1256,21 @@ body.distraction-free .ai-panel { display: none !important; }
 .doc-editor.paged .doc-body { min-height: 0; flex: 1; align-items: stretch; }
 .doc-editor.paged .doc-scroll { height: 100%; box-sizing: border-box; padding: 16px 0; overflow-x: hidden; overflow-y: auto; background: #525659; }
 .doc-editor.paged .doc-furniture, .doc-editor.paged .doc-notes { display: none; }
+/* The spread is placed by the review mode itself: no rulers, and the sheet that holds the page neither centred nor narrowed (DOC-047). */
+.doc-editor.paged .ruler { display: none !important; }
+.doc-editor.paged .doc-sheet { width: auto; max-width: none; margin: 0; }
 .doc-editor.paged .doc-page {
   --pages: 1;
   box-sizing: border-box; max-width: none; min-height: 0; margin: 0;
-  width: calc(var(--pages) * 816px + (var(--pages) - 1) * 24px); height: 1056px;
-  padding: 72px 80px;
-  column-count: var(--pages); column-gap: calc(160px + 24px); column-fill: auto;
-  background: repeating-linear-gradient(to right, #fff 0 816px, transparent 816px 840px);
+  /* DOC-046: the paper and the margins of the document (set by the review mode). */
+  width: calc(var(--pages) * var(--rv-w, 816px) + (var(--pages) - 1) * 24px); height: var(--rv-h, 1056px);
+  padding: var(--rv-pad, 72px 80px);
+  column-count: var(--pages); column-gap: var(--rv-colgap, 184px); column-fill: auto;
+  background: repeating-linear-gradient(to right, #fff 0 var(--rv-w, 816px), transparent var(--rv-w, 816px) calc(var(--rv-w, 816px) + 24px));
   box-shadow: none;
 }
 .doc-editor.paged .doc-page hr.page-break { break-after: column; }
-.doc-editor.paged .doc-page img { max-height: 900px; object-fit: contain; }
+.doc-editor.paged .doc-page img { max-height: var(--rv-text-h, 900px); object-fit: contain; }
 .doc-editor.paged .doc-page table, .doc-editor.paged .doc-page pre { break-inside: avoid; }
 
 /* REVIEW-005: correcting a PDF file: the annotation tools and their panel in front. */

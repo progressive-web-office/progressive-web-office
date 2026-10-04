@@ -154,3 +154,32 @@ test.describe('review mode of a PDF file, in French (REVIEW-005, UI-018)', () =>
     await expect(notes).toBeVisible();
   });
 });
+
+test('shows two A4 pages side by side, whole and centred, without the rulers (REVIEW-001, DOC-046)', async ({ page }) => {
+  await page.setViewportSize({ width: 1630, height: 1000 });
+  const errors = await openApp(page);
+  const paragraphs = Array.from({ length: 80 }, (_, i) => `Paragraph ${i + 1}. ${'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(4)}`);
+  await openFile(page, 'a4.md', `---\npapersize: a4\ngeometry: "margin=25mm"\n---\n\n# Report\n\n${paragraphs.join('\n\n')}\n`, 'text/markdown');
+  await page.getByRole('button', { name: 'Review mode', exact: true }).click();
+  const bar = page.getByRole('toolbar', { name: 'Review' });
+  if ((await bar.getByRole('button', { name: 'Page layout' }).getAttribute('aria-pressed')) !== 'true') await page.keyboard.press('s');
+  await bar.getByRole('combobox', { name: 'Pages side by side' }).selectOption('2');
+  await expect(page.getByRole('group', { name: 'Horizontal ruler' })).toBeHidden();
+  await expect(page.getByRole('group', { name: 'Vertical ruler' })).toBeHidden();
+  const m = await page.evaluate(() => {
+    const s = document.querySelector('.doc-scroll')!.getBoundingClientRect();
+    const d = document.querySelector('.doc-page') as HTMLElement;
+    const zoom = Number(d.style.zoom) || 1;
+    const w = parseFloat(d.style.getPropertyValue('--rv-w'));
+    const h = parseFloat(d.style.getPropertyValue('--rv-h'));
+    const left = d.getBoundingClientRect().left;
+    return { left: left - s.left, right: s.right - (left + (2 * w + 24) * zoom), ratio: h / w, pad: d.style.getPropertyValue('--rv-pad') };
+  });
+  // Whole spread inside the view, as much room on each side, an A4 page (297/210), the margins of the document.
+  expect(m.left).toBeGreaterThanOrEqual(0);
+  expect(m.right).toBeGreaterThanOrEqual(-1);
+  expect(Math.abs(m.left - m.right)).toBeLessThan(3);
+  expect(m.ratio).toBeCloseTo(297 / 210, 2);
+  expect(m.pad).toMatch(/^94\.48\d*px( 94\.48\d*px){3}$/);
+  expect(errors).toEqual([]);
+});

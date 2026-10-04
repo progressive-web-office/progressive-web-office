@@ -54,16 +54,24 @@ describe('REVIEW-002 review shortcuts', () => {
 });
 
 describe('REVIEW-001 pages of a text document', async () => {
-  const { pageAt, spreadWidth, PAGE } = await import('../src/document/review');
+  const { pageAt, spreadWidth, pageVars, LETTER, PAGE_GAP } = await import('../src/document/review');
   it('finds the page of a point of the paged content', () => {
     expect(pageAt(0)).toBe(0);
-    expect(pageAt(PAGE.marginX + 10)).toBe(0);
-    expect(pageAt(PAGE.width - 1)).toBe(0);
-    expect(pageAt(PAGE.width + PAGE.gap + PAGE.marginX)).toBe(1);
-    expect(pageAt(3 * (PAGE.width + PAGE.gap) + 5)).toBe(3);
+    expect(pageAt(LETTER.left + 10)).toBe(0);
+    expect(pageAt(LETTER.width - 1)).toBe(0);
+    expect(pageAt(LETTER.width + PAGE_GAP + LETTER.left)).toBe(1);
+    expect(pageAt(3 * (LETTER.width + PAGE_GAP) + 5)).toBe(3);
   });
   it('measures spreads', () => {
-    expect(spreadWidth(1)).toBe(PAGE.width);
-    expect(spreadWidth(2)).toBe(2 * PAGE.width + PAGE.gap);
+    expect(spreadWidth(1)).toBe(LETTER.width);
+    expect(spreadWidth(2)).toBe(2 * LETTER.width + PAGE_GAP);
+  });
+  it('lays the pages out with the paper and the margins of the document (DOC-046)', () => {
+    // A4 at 96 dpi, 2 cm margins.
+    const a4 = { width: 793.7, height: 1122.5, top: 75.6, right: 75.6, bottom: 75.6, left: 75.6 };
+    expect(pageAt(a4.width + PAGE_GAP + 1, a4)).toBe(1);
+    expect(pageAt(LETTER.width + PAGE_GAP + 1, a4)).toBe(1);
+    expect(spreadWidth(2, a4)).toBeCloseTo(2 * 793.7 + 24);
+    expect(pageVars(a4)).toMatchObject({ '--rv-w': '793.7px', '--rv-h': '1122.5px', '--rv-colgap': `${75.6 + 24 + 75.6}px` });
   });
 });
