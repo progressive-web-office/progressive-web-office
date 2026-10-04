@@ -24,7 +24,13 @@ due. The start screen reminds you too, with **Back up now**.
   (chosen once — a USB drive, a synchronised folder…; Chromium-based
   browsers), or a **Nextcloud / WebDAV** account (in its `PWO backups`
   folder);
-- **Remind me**: never, every day, every week or every month;
+- **Remind me**: never, every hour, every day, every week or every month;
+- **Back up by itself while the application is open** (a folder or a
+  Nextcloud / WebDAV account): when a backup is due, it is made without
+  asking, checked every few minutes. Encrypted, it needs the password typed
+  once since the application was opened, with *Remember it until I close
+  the application*. After a restart, the browser may ask again for the
+  folder: one **Back up now** gives it back;
 - **Encrypt with a password** (recommended): AES-GCM with a key derived
   from the password (PBKDF2, 600,000 iterations). Without the password,
   nobody can restore the backup — not even you: write it down. It is never

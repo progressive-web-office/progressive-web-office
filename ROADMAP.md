@@ -198,8 +198,8 @@ group is not a commitment.
   all the documents kept in the browser, to a folder or a WebDAV / Nextcloud
   account, with reminders, kept for days and weeks, restored file by file or
   all at once; the last backup's date always visible (BACKUP-001..005);
-  next: a Git repository as a destination, automatic backups while the
-  application is open
+  automatic backups while the application
+  is open (BACKUP-006); next: a Git repository as a destination
 
 ### Images and drawing
 

@@ -105,6 +105,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Backups made by themselves while the application is open (BACKUP-006),
+  to a folder or a Nextcloud / WebDAV account, as often as every hour.
+
 - Templates synchronised between one's devices (DEVSYNC-012): saved,
   changed or deleted on one device, they follow on the others, as files of
   the folder `Templates` of the synchronised documents.

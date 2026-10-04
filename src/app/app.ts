@@ -1297,6 +1297,7 @@ export class App {
     void this.offerBackup(recent);
     this.offerMove(recent);
     void this.resumeDeviceSync();
+    this.startAutoBackup();
     this.renderHeader();
     this.renderStatus();
   }
@@ -1523,6 +1524,30 @@ export class App {
   }
 
   private backupReminded = false;
+
+  /** BACKUP-006: backups made by themselves while the application is open, when one is due. */
+  private autoBackupStarted = false;
+  private startAutoBackup(): void {
+    if (this.autoBackupStarted || inExam()) return;
+    this.autoBackupStarted = true;
+    let running = false;
+    const tick = async (): Promise<void> => {
+      if (running) return;
+      running = true;
+      try {
+        const { autoBackup } = await import('../backup/ui');
+        const result = await autoBackup();
+        if (typeof result === 'object') {
+          this.renderHeader();
+          this.showNotice(t('backup.autoDone', { name: result.last!.name }));
+        }
+      } finally {
+        running = false;
+      }
+    };
+    setTimeout(() => void tick(), 30_000);
+    setInterval(() => void tick(), 5 * 60_000);
+  }
 
   /** A reminder on the start screen when a backup is due and there is something to back up. */
   private async offerBackup(container: HTMLElement): Promise<void> {

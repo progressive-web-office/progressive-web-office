@@ -555,6 +555,7 @@ integration is ever needed.
 | BACKUP-003 | S | 0.2.0 | The system shall restore a backup chosen as a file or where backups go, after its password, all of it or the files ticked, a file already present kept and the restored copy written next to it unless the user chooses to replace it; records already present shall be left untouched. |
 | BACKUP-004 | S | 0.2.0 | The header shall always show how old the last backup is, marked when one is due; the user shall choose to be reminded every day, week or month, and the start screen shall remind when a backup is due and there is something to back up. |
 | BACKUP-005 | S | 0.2.0 | The backup window shall explain that synchronisation is not a backup (a deletion reaches every device; a backup keeps the documents as they were) and the 3-2-1 rule. |
+| BACKUP-006 | S | 0.2.0 | Where the user chose it, for a folder or a WebDAV target, the system shall make a backup by itself while the application is open whenever one is due (down to every hour), without asking, the password of an encrypted backup taken from the session only, and say it was made. |
 | BACKUP-006 | M | 0.1.0 | When the application runs at its former address (`s-celles.github.io/progressive-web-office`), the start screen shall announce the new address (`progressive-web-office.github.io/progressive-web-office`) and offer to back up the documents, since browser storage is kept per site. |
 
 ## 9q. One's own devices (DEVSYNC)

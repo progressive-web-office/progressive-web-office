@@ -12,6 +12,8 @@ export interface BackupSettings {
   /** Days between backups; 0: no reminder. */
   every: number;
   encrypt: boolean;
+  /** BACKUP-006: made by itself while the application is open (a folder or a cloud, not a download). */
+  auto?: boolean;
   /** The last backup: when, where, its name and size. */
   last?: { at: number; target: BackupTarget; name: string; size: number; files: number };
 }
@@ -29,6 +31,7 @@ export function loadBackupSettings(): BackupSettings {
       target,
       every: typeof raw.every === 'number' && raw.every >= 0 ? raw.every : DEFAULT_SETTINGS.every,
       encrypt: raw.encrypt !== false,
+      ...(raw.auto === true ? { auto: true } : {}),
       ...(raw.last && typeof raw.last.at === 'number' ? { last: raw.last } : {}),
     };
   } catch {

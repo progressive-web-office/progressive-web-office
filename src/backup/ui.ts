@@ -9,11 +9,14 @@ import { formatSize } from '../fs';
 import { backupName, buildArchive, BackupError, isEncryptedBackup, openArchive, type Backup } from './archive';
 import { browserSources, collectBackup, restoreBackup, type RestoreResult } from './browser';
 import { lastBackupText } from './text';
-import { daysSinceBackup, loadBackupSettings, saveBackupSettings, type BackupSettings, type BackupTarget } from './settings';
+import { backupDue, daysSinceBackup, loadBackupSettings, saveBackupSettings, type BackupSettings, type BackupTarget } from './settings';
 import { downloadBackup, listBackups, readBackup, storeBackup, targetPlace } from './targets';
 
 /** A password typed this session, so that scheduled backups need it once. */
 let sessionPassword: string | undefined;
+
+/** An hour, in days (BACKUP-006: backups made by themselves can be that frequent). */
+const HOUR = 1 / 24;
 
 function targets(): { value: BackupTarget; label: string }[] {
   const out: { value: BackupTarget; label: string }[] = [{ value: 'download', label: t('backup.toDownload') }];
@@ -27,8 +30,8 @@ async function davTargets(): Promise<{ value: BackupTarget; label: string }[]> {
 }
 
 /** Make a backup now, where the settings say; the settings with the new last backup. */
-export async function backUpNow(s: BackupSettings, password: string | undefined, progress: (text: string) => void = () => undefined): Promise<BackupSettings> {
-  const place = s.target === 'download' ? null : await targetPlace(s.target, true);
+export async function backUpNow(s: BackupSettings, password: string | undefined, progress: (text: string) => void = () => undefined, ask = true): Promise<BackupSettings> {
+  const place = s.target === 'download' ? null : await targetPlace(s.target, ask);
   if (s.target !== 'download' && !place) throw new Error(t('backup.noPlace'));
   progress(t('backup.collecting'));
   const sources = await browserSources();
@@ -44,6 +47,23 @@ export async function backUpNow(s: BackupSettings, password: string | undefined,
   return next;
 }
 
+/**
+ * BACKUP-006: a backup made by itself, when one is due, to a folder or a
+ * cloud reachable without asking (and, encrypted, once the password was
+ * typed this session). The new settings, or why none was made.
+ */
+export async function autoBackup(now = Date.now()): Promise<BackupSettings | 'not-due' | 'off' | 'password' | 'unreachable'> {
+  const s = loadBackupSettings();
+  if (!s.auto || s.target === 'download') return 'off';
+  if (!backupDue(s, now)) return 'not-due';
+  if (s.encrypt && !sessionPassword) return 'password';
+  try {
+    return await backUpNow(s, s.encrypt ? sessionPassword : undefined, () => undefined, false);
+  } catch {
+    return 'unreachable';
+  }
+}
+
 /** The backup window; resolves when it is closed. */
 export function backupDialog(host: HTMLElement): Promise<void> {
   return new Promise((resolve) => {
@@ -52,7 +72,14 @@ export function backupDialog(host: HTMLElement): Promise<void> {
     const status = h('p', { class: 'hint', role: 'status', 'aria-live': 'polite' });
     const error = h('p', { class: 'error', role: 'alert', hidden: true });
     const where = h('select', { 'aria-label': t('backup.where') });
-    const every = h('select', { 'aria-label': t('backup.every') }, ...[0, 1, 7, 30].map((n) => h('option', { value: String(n), selected: n === settings.every }, t(`backup.every${n}` as 'backup.every0'))));
+    const every = h(
+      'select',
+      { 'aria-label': t('backup.every') },
+      ...([0, HOUR, 1, 7, 30] as const).map((n) => h('option', { value: String(n), selected: Math.abs(n - settings.every) < 1e-9 }, n === HOUR ? t('backup.everyHour') : t(`backup.every${n}` as 'backup.every0'))),
+    );
+    // BACKUP-006: by itself, to a folder or a cloud.
+    const auto = h('input', { type: 'checkbox', checked: !!settings.auto });
+    const autoRow = h('div', {}, h('label', {}, auto, ` ${t('backup.auto')}`), h('p', { class: 'hint' }, t('backup.autoHint')));
     const encrypt = h('input', { type: 'checkbox', checked: settings.encrypt });
     const password = h('input', { type: 'password', autocomplete: 'new-password', 'aria-label': t('backup.password'), value: sessionPassword ?? '' });
     const confirm = h('input', { type: 'password', autocomplete: 'new-password', 'aria-label': t('backup.confirm'), value: sessionPassword ?? '' });
@@ -69,16 +96,17 @@ export function backupDialog(host: HTMLElement): Promise<void> {
       last.textContent = lastBackupText(settings);
       last.classList.toggle('due', !settings.last || (settings.every > 0 && (daysSinceBackup(settings) ?? 0) >= settings.every));
       passwordBox.hidden = !encrypt.checked;
+      autoRow.hidden = (where.value || settings.target) === 'download';
     };
     void davTargets().then((dav) => {
       where.replaceChildren(...[...targets(), ...dav].map((o) => h('option', { value: o.value, selected: o.value === settings.target }, o.label)));
     });
     const persist = (): void => {
-      settings = { ...settings, target: (where.value || 'download') as BackupTarget, every: Number(every.value), encrypt: encrypt.checked };
+      settings = { ...settings, target: (where.value || 'download') as BackupTarget, every: Number(every.value), encrypt: encrypt.checked, ...(auto.checked ? { auto: true } : { auto: false }) };
       saveBackupSettings(settings);
       show();
     };
-    for (const el of [where, every, encrypt]) el.addEventListener('change', persist);
+    for (const el of [where, every, encrypt, auto]) el.addEventListener('change', persist);
     const fail = (message: string): void => {
       error.textContent = message;
       error.hidden = false;
@@ -115,6 +143,7 @@ export function backupDialog(host: HTMLElement): Promise<void> {
       h('details', {}, h('summary', {}, t('backup.why')), h('p', {}, t('backup.notSync')), h('p', {}, t('backup.rule321'))),
       h('label', { class: 'git-row' }, t('backup.where'), ' ', where),
       h('label', { class: 'git-row' }, t('backup.every'), ' ', every),
+      autoRow,
       h('label', {}, encrypt, ` ${t('backup.encrypt')}`),
       passwordBox,
       error,
