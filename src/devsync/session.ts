@@ -8,12 +8,13 @@ import type { CollabRoom } from '@scelles/collab';
 import type { StorageProvider } from '../fs';
 import { applyPlan, emptyOldTrash, safePath, scan, type ApplyResult } from './engine';
 import { planSync, type SyncManifest } from './plan';
-import { withRecord, type DeviceSyncState } from './state';
+import { baseWith, toldPeers, withPeers, withRecord, type DeviceSyncState, type KnownPeer } from './state';
 
 type Send<T> = (data: T, target?: string) => unknown;
 type Receive<T> = (fn: (data: T, peer: string) => void) => void;
 
-interface Hello { device: string; name: string }
+/** DEVSYNC-013: with the devices this one knows, so that they are known along a chain of devices. */
+interface Hello { device: string; name: string; peers?: Record<string, KnownPeer> }
 /** `final`: the files after the merge, only to know what the other holds now (DEVSYNC-011). */
 interface ManifestMsg { manifest: SyncManifest; reply: boolean; final?: boolean }
 interface GetMsg { id: string; path: string }
@@ -50,7 +51,12 @@ function cleanManifest(m: unknown): SyncManifest | undefined {
     const path = safePath(p);
     if (path && typeof at === 'number') deleted[path] = at;
   }
-  return { device: x.device.slice(0, 64), name: x.name.slice(0, 80), files, deleted };
+  const deletedHash: Record<string, string> = {};
+  for (const [p, hash] of Object.entries(x.deletedHash && typeof x.deletedHash === 'object' ? x.deletedHash : {})) {
+    const path = safePath(p);
+    if (path && deleted[path] !== undefined && typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash)) deletedHash[path] = hash;
+  }
+  return { device: x.device.slice(0, 64), name: x.name.slice(0, 80), files, deleted, deletedHash };
 }
 
 export class DeviceSync {
@@ -86,9 +92,10 @@ export class DeviceSync {
     receiveHello((data, peer) => {
       if (typeof data?.device !== 'string' || typeof data.name !== 'string') return;
       const known = this.peers.has(peer);
-      this.peers.set(peer, { device: data.device.slice(0, 64), name: data.name.slice(0, 80) });
-      const s = this.state.get();
-      this.state.set({ ...s, peers: { ...s.peers, [data.device]: { name: data.name.slice(0, 80), lastSeen: Date.now() } } });
+      const from = { device: data.device.slice(0, 64), name: data.name.slice(0, 80) };
+      this.peers.set(peer, from);
+      // DEVSYNC-013: met directly; and the devices it knows.
+      this.state.set(withPeers(this.state.get(), from, data.peers));
       if (!known) void this.sendHello(this.hello(), peer);
       this.emitPeers();
     });
@@ -110,7 +117,7 @@ export class DeviceSync {
 
   private hello(): Hello {
     const s = this.state.get();
-    return { device: s.device, name: s.name };
+    return { device: s.device, name: s.name, peers: toldPeers(s) };
   }
 
   private emitPeers(): void {
@@ -148,7 +155,8 @@ export class DeviceSync {
     this.events.status?.('merging');
     await this.hooks.before?.().catch(() => undefined);
     const scanned = await scan(this.files, this.state.get());
-    const plan = planSync(scanned.manifest, remote, scanned.state.base);
+    // DEVSYNC-013: the base of the last merge with this device, not with another.
+    const plan = planSync(scanned.manifest, remote, baseWith(scanned.state, remote.device));
     const result = await applyPlan(this.files, plan, (path) => this.fetch(path, peer));
     await this.hooks.after?.().catch(() => undefined);
     await emptyOldTrash(this.files).catch(() => []);
@@ -158,7 +166,8 @@ export class DeviceSync {
     // DEVSYNC-011: what the other device holds, and what this synchronisation did.
     const now = Date.now();
     const remotes = { ...(after.state.remotes ?? {}), [remote.device]: { name: remote.name, at: now, files: Object.fromEntries(Object.entries(remote.files).map(([p, f]) => [p, f.hash])), deleted: remote.deleted } };
-    this.state.set(withRecord({ ...after.state, base, lastSync: now, remotes }, { at: now, device: remote.device, name: remote.name, ...result }));
+    const bases = { ...(after.state.bases ?? {}), [remote.device]: base };
+    this.state.set(withRecord({ ...after.state, base, bases, lastSync: now, remotes }, { at: now, device: remote.device, name: remote.name, ...result }));
     this.events.synced?.({ ...result, peer: remote.name });
     if (reply) await this.sendManifest({ manifest: after.manifest, reply: false }, peer);
     // DEVSYNC-011: the last word, so that the other device knows what this one now holds.

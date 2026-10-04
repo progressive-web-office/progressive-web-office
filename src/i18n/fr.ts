@@ -980,6 +980,7 @@ export const fr: Record<MessageKey, string> = {
   'devsync.devices': 'Appareils',
   'devsync.online': 'en ligne',
   'devsync.lastSeen': 'vu le {when}',
+  'devsync.lastSeenVia': 'vu le {when}, d’après {via}',
   'devsync.noPeer': 'Aucun autre appareil pour l’instant.',
   'devsync.lastSync': 'Dernière synchronisation : {when}.',
   'devsync.neverSynced': 'Pas encore synchronisé.',

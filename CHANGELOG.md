@@ -55,6 +55,15 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- Synchronising one's devices along a chain (DEVSYNC-013): when the laptop
+  met the phone, then the phone the tablet with the laptop off, the tablet
+  did not know the laptop; worse, depending on which device started, a
+  change could be overwritten by an older version or a deleted document come
+  back, because a device merged with each other device against what it had
+  agreed with the last one. Each device now keeps what it agreed with each
+  other device, deletions carry the content deleted, and the devices pass on
+  the devices they know (*last seen …, according to Phone*).
+
 - Review mode, page by page: two pages side by side were pushed to the
   right and cut off, and the rulers were drawn over them at a wrong scale.
   The pages are now centred, without rulers, and have the paper and the

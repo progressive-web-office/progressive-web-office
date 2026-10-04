@@ -978,6 +978,7 @@ export const en = {
   'devsync.devices': 'Devices',
   'devsync.online': 'online',
   'devsync.lastSeen': 'last seen {when}',
+  'devsync.lastSeenVia': 'last seen {when}, according to {via}',
   'devsync.noPeer': 'No other device yet.',
   'devsync.lastSync': 'Last synchronisation: {when}.',
   'devsync.neverSynced': 'Not synchronised yet.',

@@ -5,7 +5,7 @@
  */
 import type { StorageProvider } from '../fs';
 import { DeviceSync, type SyncEvents } from './session';
-import { loadSyncState, newPairing, saveSyncState, type DeviceSyncState, type Pairing } from './state';
+import { loadSyncState, MAX_PEERS, newPairing, saveSyncState, type DeviceSyncState, type Pairing } from './state';
 import { giveNewKey, serveRekey } from './rekey';
 
 export const SYNC_FOLDER = 'Documents';
@@ -39,8 +39,11 @@ export const setRekeyPrompt = (fn: typeof rekeyPrompt): void => void (rekeyPromp
 /** Move this device to a new pairing, forgetting a revoked device, and meet the others there. */
 async function switchPairing(pairing: Pairing, forget: (peer: { name: string }, device: string) => boolean, files: StorageProvider, told: boolean): Promise<void> {
   const s = loadSyncState();
-  const peers = Object.fromEntries(Object.entries(s.peers).filter(([device, p]) => !forget(p, device)));
-  saveSyncState({ ...s, pairing, peers });
+  const gone = Object.entries(s.peers).filter(([device, p]) => forget(p, device)).map(([device]) => device);
+  const peers = Object.fromEntries(Object.entries(s.peers).filter(([device]) => !gone.includes(device)));
+  // DEVSYNC-013: a revoked device is not listed again from what the others tell.
+  const bases = Object.fromEntries(Object.entries(s.bases ?? {}).filter(([device]) => !gone.includes(device)));
+  saveSyncState({ ...s, pairing, peers, bases, revoked: [...new Set([...(s.revoked ?? []), ...gone])].slice(-MAX_PEERS) });
   live?.stop();
   await startSync(files);
   // Told by another device: said in the window.

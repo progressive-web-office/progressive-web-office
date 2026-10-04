@@ -40,12 +40,18 @@ export async function scan(provider: StorageProvider, state: DeviceSyncState, no
     files[e.path] = { hash, mtime: e.lastModified ?? now };
   }
   const deleted = { ...state.deleted };
-  // Files there at the last scan and gone now were deleted here.
-  for (const path of Object.keys(state.known)) if (!files[path] && deleted[path] === undefined) deleted[path] = now;
+  const deletedHash = { ...(state.deletedHash ?? {}) };
+  // Files there at the last scan and gone now were deleted here (DEVSYNC-013: with the content they had).
+  for (const [path, hash] of Object.entries(state.known)) {
+    if (files[path] || deleted[path] !== undefined) continue;
+    deleted[path] = now;
+    deletedHash[path] = hash;
+  }
   for (const path of Object.keys(files)) delete deleted[path];
   for (const [path, at] of Object.entries(deleted)) if (now - at > TOMBSTONE_DAYS * DAY) delete deleted[path];
-  const next = { ...state, deleted, known: Object.fromEntries(hashes) };
-  return { manifest: { device: state.device, name: state.name, files, deleted }, state: next, hashes };
+  for (const path of Object.keys(deletedHash)) if (deleted[path] === undefined) delete deletedHash[path];
+  const next = { ...state, deleted, deletedHash, known: Object.fromEntries(hashes) };
+  return { manifest: { device: state.device, name: state.name, files, deleted, deletedHash }, state: next, hashes };
 }
 
 /** Where a file goes in the trash: `.pwo-trash/2026-10-03/notes/a.md`. */

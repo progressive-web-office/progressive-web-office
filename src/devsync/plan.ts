@@ -22,6 +22,8 @@ export interface SyncManifest {
   files: Record<string, FileState>;
   /** Deleted files and when (tombstones, kept for a while). */
   deleted: Record<string, number>;
+  /** DEVSYNC-013: the content each deleted file had. */
+  deletedHash?: Record<string, string>;
 }
 
 /** The content of each file at the last synchronisation, by path. */
@@ -56,6 +58,12 @@ const remoteWins = (local: SyncManifest, remote: SyncManifest, path: string): bo
   return r.mtime !== l.mtime ? r.mtime > l.mtime : remote.device > local.device;
 };
 
+/**
+ * DEVSYNC-013: a copy of the content a device deleted, not written since the
+ * deletion — not a document put back from the trash, written after it.
+ */
+const staleCopy = (file: FileState, deletedHash: string | undefined, deletedAt: number): boolean => deletedHash === file.hash && file.mtime <= deletedAt;
+
 export function planSync(local: SyncManifest, remote: SyncManifest, base: SyncBase): SyncAction[] {
   const out: SyncAction[] = [];
   const paths = [...new Set([...Object.keys(local.files), ...Object.keys(remote.files)])].filter(syncable).sort();
@@ -75,11 +83,12 @@ export function planSync(local: SyncManifest, remote: SyncManifest, base: SyncBa
       }
     } else if (l) {
       const gone = remote.deleted[path];
-      // Deleted there and unchanged here since the last synchronisation.
-      if (gone !== undefined && b === l.hash) out.push({ kind: 'trash', path });
+      // Deleted there and unchanged here since the last synchronisation — or,
+      // for a device not met since, an old copy of what was deleted (DEVSYNC-013).
+      if (gone !== undefined && (b === l.hash || staleCopy(l, remote.deletedHash?.[path], gone))) out.push({ kind: 'trash', path });
     } else if (r) {
       const gone = local.deleted[path];
-      if (gone !== undefined && b === r.hash) continue;
+      if (gone !== undefined && (b === r.hash || staleCopy(r, local.deletedHash?.[path], gone))) continue;
       out.push({ kind: 'fetch', path });
     }
   }

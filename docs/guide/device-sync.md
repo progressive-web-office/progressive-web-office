@@ -96,6 +96,16 @@ How the documents are merged:
 
 Hidden files and the trash are never synchronised.
 
+**Devices need not all be on at once.** The laptop meets the phone, later
+the phone meets the tablet while the laptop is off: the phone **passes on**
+what it got from the laptop — new documents, changes, deletions — and back.
+The tablet lists the laptop too, *last seen …, according to Phone*, until it
+meets it itself. Each device remembers what it last agreed with **each**
+other device, so that a change or a deletion made on one device travels the
+whole chain, whichever device starts the synchronisation, and a document is
+never brought back once deleted — unless it was changed, or put back from
+the trash, since.
+
 ### Documents and history
 
 **🗄️ In this browser** on the start screen (or *Documents and history* in

@@ -980,6 +980,7 @@ export const zh: Record<MessageKey, string> = {
   'devsync.devices': '设备',
   'devsync.online': '在线',
   'devsync.lastSeen': '上次在线 {when}',
+  'devsync.lastSeenVia': '据 {via}，最后在线 {when}',
   'devsync.noPeer': '尚无其他设备。',
   'devsync.lastSync': '上次同步：{when}。',
   'devsync.neverSynced': '尚未同步。',

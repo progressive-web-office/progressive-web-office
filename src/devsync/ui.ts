@@ -249,7 +249,8 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
                   'li',
                   {},
                   `${online.has(device) ? '🟢' : '⚪'} ${p.name}`,
-                  h('span', { class: 'hint' }, ` — ${online.has(device) ? t('devsync.online') : t('devsync.lastSeen', { when: new Date(p.lastSeen).toLocaleString() })}`),
+                  // DEVSYNC-013: a device heard of through another one, not met here yet.
+                  h('span', { class: 'hint' }, ` — ${online.has(device) ? t('devsync.online') : p.via ? t('devsync.lastSeenVia', { when: new Date(p.lastSeen).toLocaleString(), via: p.via }) : t('devsync.lastSeen', { when: new Date(p.lastSeen).toLocaleString() })}`),
                   ' ',
                   // DEVSYNC-010: revoke this device only.
                   button(t('devsync.revokeOne', { name: p.name }), () => void revokeOne(device, p.name), { icon: '⛔', className: 'devsync-revoke-one', text: t('devsync.revokeOneShort') }),
