@@ -329,6 +329,8 @@ export interface Paragraph extends ParagraphLayout, InColumns {
   /** DOC-038: first block of a KaimonSlate text cell: its header after `#%% `, and its Markdown as written. */
   cellHeader?: string;
   cellSource?: string;
+  /** DOC-053: the named style of the paragraph (an id of `RichDocument.styles`). */
+  named?: string;
   align?: Align;
   list?: ListInfo;
   runs: Run[];
@@ -668,6 +670,8 @@ export interface RichDocument {
   extras?: Record<string, unknown>;
   /** Comments and replies, in creation order (REV-001). */
   comments?: DocComment[];
+  /** DOC-053: the named paragraph styles of the document. */
+  styles?: import('./styles').NamedStyle[];
 }
 
 export const isImageRun = (run: Run): run is ImageRun => 'image' in run;

@@ -10,6 +10,7 @@
 import { cleanValidations } from '../sheet/validation';
 import { cleanConditional } from '../sheet/conditional';
 import type { Block, RichDocument } from '../document/model';
+import { cleanNamedStyles } from '../document/styles';
 import type { Sheet, Workbook } from '../sheet/model';
 
 export interface CollabParts {
@@ -116,6 +117,7 @@ export function documentParts(doc: RichDocument, blocks: Block[]): CollabParts {
   const keys: Record<string, string> = { meta: stringify(doc.meta) };
   if (doc.page) keys.page = stringify(doc.page);
   if (doc.references) keys.references = stringify(doc.references);
+  if (doc.styles?.length) keys.styles = stringify(doc.styles);
   for (const [key, res] of doc.resources) keys[`r:${key}`] = stringify(res);
   return { keys, list: blocks.map((b) => stringify(b)) };
 }
@@ -127,6 +129,9 @@ export function applyDocumentParts(doc: RichDocument, parts: CollabParts): Block
   else delete doc.page;
   if (parts.keys.references) doc.references = parse(parts.keys.references);
   else delete doc.references;
+  const styles = parts.keys.styles ? cleanNamedStyles(parse(parts.keys.styles)) : undefined;
+  if (styles?.length) doc.styles = styles;
+  else delete doc.styles;
   for (const [key, text] of Object.entries(parts.keys)) {
     if (key.startsWith('r:') && !doc.resources.has(key.slice(2))) doc.resources.set(key.slice(2), parse(text));
   }

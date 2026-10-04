@@ -1,4 +1,5 @@
 /** OpenDocument Text (.odt) reader (DOC-002). */
+import { namedFromOdf, styleId, type NamedStyle } from './styles';
 import { fillOfStyle, fractionOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
 import type { BibEntry } from './bibliography';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
@@ -56,6 +57,8 @@ interface OdfStyle {
   columnAfter?: boolean;
   /** The columns of a section style (DOC-049). */
   columns?: ColumnLayout;
+  /** DOC-053: the element, to read a named style from. */
+  el?: Element;
 }
 
 /** Header and footer of the first master page, as zones split at tabs (DOC-024). */
@@ -136,6 +139,9 @@ function readFurniture(xml: Document, content?: Document): PageSetup | undefined
 }
 
 /** `12pt`, `0.5in`, `1cm`… in points. */
+/** Paragraph styles of the word processors themselves, not named styles of the user (DOC-053). */
+const BUILTIN_PARAGRAPH = /^(Standard|Default|Text_20_body|Text_20_Body|Body_20_Text|First_20_line_20_indent|Hanging_20_indent|Heading|Heading_20_\d+|Title|Subtitle|Quotations|Preformatted_20_Text|Caption|Horizontal_20_Line|List.*|Numbering.*|Table_20_Contents|Table_20_Heading|Footnote|Endnote|Header.*|Footer.*|Contents.*|Index.*|Bibliography.*|Illustration|Figure|Drawing|Text|Frame_20_contents|Addressee|Sender|Signature|Marginalia|PWO_Space.*|Spring.*|Fill.*)$/;
+
 function lengthPt(value: string | null): number | undefined {
   const m = /^(-?[\d.]+)(pt|in|cm|mm|px|pc)$/.exec(value?.trim() ?? '');
   if (!m) return undefined;
@@ -218,6 +224,7 @@ class OdtReader {
     resolveAnchors(this.doc.blocks, this.anchorAlias);
     if (this.entries.size) this.doc.references = { entries: [...this.entries.values()], ...(this.authorYear ? { style: 'author-year' as const } : {}) };
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
+    if (this.named.size) this.doc.styles = [...this.named.values()];
     this.doc.meta = readOdfMeta(this.zip);
     if (stylesText) {
       const page = readFurniture(parseXml(stylesText), xml);
@@ -232,7 +239,7 @@ class OdtReader {
       const name = attr(s, 'name');
       if (!name) continue;
       const automatic = s.parentElement?.localName === 'automatic-styles';
-      const style: OdfStyle = { name, family: attr(s, 'family') ?? '', automatic: automatic && fromContent, format: {} };
+      const style: OdfStyle = { name, family: attr(s, 'family') ?? '', automatic: automatic && fromContent, format: {}, el: s };
       const parent = attr(s, 'parent-style-name');
       if (parent) style.parent = parent;
       const tp = child(s, 'text-properties');
@@ -322,6 +329,22 @@ class OdtReader {
       name = s.parent ?? null;
     }
     return out;
+  }
+
+  /** DOC-053: the named styles met, by their name in the file. */
+  private named = new Map<string, NamedStyle>();
+
+  private namedStyle(chain: OdfStyle[]): string | undefined {
+    const own = chain.find((s) => !s.automatic && s.family === 'paragraph');
+    if (!own?.el || BUILTIN_PARAGRAPH.test(own.name)) return undefined;
+    let found = this.named.get(own.name);
+    if (!found) {
+      const display = attr(own.el, 'display-name') ?? own.name.replace(/_20_/g, ' ').replace(/_([0-9a-f]{2})_/gi, (_m, h: string) => String.fromCharCode(parseInt(h, 16)));
+      const id = own.name.startsWith('PWO_') ? own.name.slice(4) : styleId(display, [...this.named.values()].map((n) => n.id));
+      found = namedFromOdf(id, display, child(own.el, 'paragraph-properties') ?? undefined, child(own.el, 'text-properties') ?? undefined, (v) => lengthPt(v));
+      this.named.set(own.name, found);
+    }
+    return found.id;
   }
 
   private paragraphKind(name: string | null): ParagraphStyle | 'rule' {
@@ -434,6 +457,11 @@ class OdtReader {
     if (fraction !== undefined) return { type: 'space', fraction, ...(size ? { size } : {}) };
     if (chain.some((s) => isSpaceStyle(s.name))) return { type: 'space', size: size ?? 0 };
     const para: Paragraph = { type: 'paragraph', style: kind === 'rule' ? 'normal' : kind, runs: [] };
+    // DOC-053: a named style of the user (not one of the usual ones), kept as such.
+    if (kind === 'normal') {
+      const named = this.namedStyle(chain);
+      if (named) para.named = named;
+    }
     const align = chain.find((s) => s.align)?.align;
     if (align && align !== 'left') para.align = align;
     if (list && !para.style.startsWith('h')) para.list = list;

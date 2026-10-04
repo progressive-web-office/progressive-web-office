@@ -94,7 +94,7 @@ function runsToInline(runs: Run[]): PmNode[] {
 export function paragraphToPm(p: Paragraph): PmNode {
   const layout = Object.fromEntries(LAYOUT_KEYS.map((k) => [k, p[k] ?? null]));
   return schema.nodes.paragraph!.create(
-    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, anchor: p.id ?? null, solution: !!p.solution, cellHeader: p.cellHeader ?? null, cellSource: p.cellSource ?? null, ...layout },
+    { style: p.style, align: p.align ?? null, listOrdered: p.list ? p.list.ordered : null, listLevel: p.list?.level ?? 0, anchor: p.id ?? null, solution: !!p.solution, cellHeader: p.cellHeader ?? null, cellSource: p.cellSource ?? null, named: p.named ?? null, ...layout },
     runsToInline(p.runs),
   );
 }
@@ -204,6 +204,7 @@ export function pmToParagraph(node: PmNode): Paragraph {
     ...(node.attrs.solution ? { solution: true } : {}),
     ...(node.attrs.cellHeader !== null ? { cellHeader: node.attrs.cellHeader as string } : {}),
     ...(node.attrs.cellSource !== null ? { cellSource: node.attrs.cellSource as string } : {}),
+    ...(node.attrs.named ? { named: node.attrs.named as string } : {}),
     ...(a.align ? { align: a.align } : {}),
     ...(a.listOrdered !== null ? { list: { ordered: a.listOrdered, level: a.listLevel } } : {}),
     ...Object.fromEntries(LAYOUT_KEYS.filter((k) => node.attrs[k] !== null).map((k) => [k, node.attrs[k] as number])),

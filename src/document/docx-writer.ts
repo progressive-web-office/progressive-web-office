@@ -1,4 +1,5 @@
 /** DOCX writer producing a minimal, standards-conformant package (DOC-006). */
+import { docxNamedStyle } from './styles';
 import { FILL_STYLE, fillTabs, fractionStyleName, SPACE_STYLE, springStyleName } from './springs';
 import { escapeXml as esc, escapeXmlAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
@@ -173,7 +174,7 @@ class DocxWriter {
       ...(custom ? [{ path: 'docProps/custom.xml', data: custom }] : []),
       { path: 'docProps/app.xml', data: APP_XML },
       { path: 'word/document.xml', data: documentXml },
-      { path: 'word/styles.xml', data: STYLES_XML.replace('</w:styles>', `${springStyles(this.doc)}</w:styles>`) },
+      { path: 'word/styles.xml', data: STYLES_XML.replace('</w:styles>', `${springStyles(this.doc)}${(this.doc.styles ?? []).map(docxNamedStyle).join('')}</w:styles>`) },
       { path: 'word/numbering.xml', data: this.numberingXml() },
       { path: 'word/_rels/document.xml.rels', data: this.relsXml() },
     ];
@@ -377,7 +378,9 @@ class DocxWriter {
 
   private paragraph(p: Paragraph, numId?: string): string {
     let pPr = '';
-    const styleId = STYLE_IDS[p.style];
+    // DOC-053: a named style of the document.
+    const named = p.named && p.style === 'normal' ? this.doc.styles?.find((s) => s.id === p.named) : undefined;
+    const styleId = named?.id ?? STYLE_IDS[p.style];
     if (styleId) pPr += `<w:pStyle w:val="${styleId}"/>`;
     else if (numId) pPr += '<w:pStyle w:val="ListParagraph"/>';
     if (numId) pPr += `<w:numPr><w:ilvl w:val="${Math.min(8, p.list?.level ?? 0)}"/><w:numId w:val="${numId}"/></w:numPr>`;

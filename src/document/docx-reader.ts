@@ -1,4 +1,5 @@
 /** DOCX (Office Open XML word-processing) reader (DOC-001). */
+import { namedFromDocx, styleId as styleIdOf, type NamedStyle } from './styles';
 import { fillOfStyle, fractionOfStyle, isSpaceStyle, stretchOfStyle } from './springs';
 import { attr, child, children, descendants, parseXml } from '../core/xml';
 import { readZip, readZipText, type ZipEntries } from '../core/zip';
@@ -41,12 +42,19 @@ import { DOCX_NUMBER_FORMAT, DOCX_PICTURES, EMU_PER_PX, IMAGE_CONTENT_TYPES, onO
 
 interface StyleInfo {
   name: string;
+  /** DOC-053: as written, its element, and whether it is a style of the user. */
+  display?: string;
+  el?: Element;
+  custom?: boolean;
+  type?: string;
   basedOn?: string;
   numPr?: { numId: string; ilvl: number };
   monospace?: boolean;
 }
 
 const MONO = /courier|consolas|menlo|monaco|mono|source code|fira code/i;
+/** Word's own paragraph styles (lower case names), not named styles of the user (DOC-053). */
+const BUILTIN_DOCX = /^(normal|default paragraph font|body text.*|heading \d|title|subtitle|quote|intense quote|block text|caption|list.*|toc.*|toc heading|footnote.*|endnote.*|header|footer|bibliography|comment.*|balloon text|no spacing|plain text|html.*|table.*|annotation.*|index.*|macro text|envelope.*|signature|salutation|closing|date|note heading|message header|e-mail signature|.*space.*|.*spring.*)$/;
 
 class DocxReader {
   private styles = new Map<string, StyleInfo>();
@@ -182,7 +190,8 @@ class DocxReader {
     for (const s of descendants(parseXml(text), 'style')) {
       const id = attr(s, 'styleId');
       if (!id) continue;
-      const info: StyleInfo = { name: (attr(child(s, 'name') ?? s, 'val') ?? id).toLowerCase() };
+      const display = attr(child(s, 'name') ?? s, 'val') ?? id;
+      const info: StyleInfo = { name: display.toLowerCase(), display, el: s, type: attr(s, 'type') ?? 'paragraph', custom: /^(1|true)$/.test(attr(s, 'customStyle') ?? '') };
       const based = child(s, 'basedOn');
       if (based) info.basedOn = attr(based, 'val') ?? undefined;
       const numPr = child(s, 'pPr') && child(child(s, 'pPr')!, 'numPr');
@@ -228,6 +237,22 @@ class DocxReader {
       id = s.basedOn;
     }
     return out;
+  }
+
+  private named = new Map<string, NamedStyle>();
+
+  private namedStyle(styleId: string): string | undefined {
+    const info = this.styles.get(styleId);
+    if (!info?.el || info.type !== 'paragraph' || info.monospace) return undefined;
+    // Word's own styles have a known name; those the user made are marked custom.
+    if (!info.custom && BUILTIN_DOCX.test(info.name)) return undefined;
+    let found = this.named.get(styleId);
+    if (!found) {
+      const id = /^[A-Za-z][\w-]{0,63}$/.test(styleId) ? styleId : styleIdOf(info.display ?? styleId, [...this.named.values()].map((n) => n.id));
+      found = namedFromDocx(id, info.display ?? styleId, info.el);
+      this.named.set(styleId, found);
+    }
+    return found.id;
   }
 
   private paragraphStyle(styleId: string | null): ParagraphStyle {
@@ -297,6 +322,7 @@ class DocxReader {
     if (page) this.doc.page = page;
     if (!this.doc.blocks.length) this.doc.blocks = emptyDocument().blocks;
     this.doc.meta = readCoreProps(this.zip);
+    if (this.named.size) this.doc.styles = [...this.named.values()];
     return this.doc;
   }
 
@@ -386,6 +412,11 @@ class DocxReader {
       return fraction !== undefined ? { type: 'space', fraction, ...(before ? { size: before } : {}) } : { type: 'space', size: before };
     }
     const para: Paragraph = { type: 'paragraph', style: this.paragraphStyle(styleId), runs: [] };
+    // DOC-053: a style of the user (not one of Word's own), kept as a named style.
+    if (para.style === 'normal' && styleId) {
+      const named = this.namedStyle(styleId);
+      if (named) para.named = named;
+    }
     if (pPr) {
       const jc = attr(child(pPr, 'jc') ?? pPr, 'val');
       const align = jcToAlign(jc);

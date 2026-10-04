@@ -30,6 +30,7 @@ function paragraphAttrs(dom: HTMLElement, style: ParagraphStyle): Record<string,
     listLevel: Number(dom.dataset.level ?? 0) || 0,
     anchor: dom.dataset.anchor || null,
     solution: dom.dataset.solution === 'true',
+    named: dom.dataset.named || null,
   };
   // Spacing is read back from the editor's own data attributes only (DOC-020).
   for (const k of LAYOUT_KEYS) {
@@ -65,6 +66,7 @@ function paragraphDom(node: PmNode): DOMOutputSpec {
   for (const k of LAYOUT_KEYS) if (node.attrs[k] !== null) attrs[`data-${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`] = String(node.attrs[k]);
   if (style === 'caption') attrs.class = 'caption';
   if (node.attrs.solution) attrs['data-solution'] = 'true';
+  if (node.attrs.named) attrs['data-named'] = node.attrs.named as string;
   if (node.attrs.cellHeader !== null) attrs['data-cell-header'] = node.attrs.cellHeader as string;
   if (listOrdered !== null) {
     attrs.class = `${attrs.class ?? ''} list-item`.trim();
@@ -99,6 +101,8 @@ export const schema = new Schema({
         /** DOC-038: first block of a KaimonSlate text cell (its header and Markdown as written). */
         cellHeader: { default: null },
         cellSource: { default: null },
+        /** DOC-053: a named style of the document. */
+        named: { default: null },
       },
       parseDOM: [
         ...STYLES.filter((s) => /^h\d$/.test(s)).map((s) => ({ tag: s, getAttrs: (d: HTMLElement) => paragraphAttrs(d, s) })),

@@ -1,4 +1,5 @@
 /** OpenDocument Text (.odt) writer (DOC-007). */
+import { odfNamedStyle, odfStyleName } from './styles';
 import { FILL_STYLE, fillTabs, fractionStyleName, odfName, SPACE_STYLE, springStyleName } from './springs';
 import { escapeXml as esc, escapeXmlAttr as escAttr } from '../core/xml';
 import { writeZip, type ZipEntryInput } from '../core/zip';
@@ -410,7 +411,9 @@ class OdtWriter {
       const style = this.paraStyle(`Heading_20_${heading[1]}`, p);
       return `<text:h text:style-name="${style}" text:outline-level="${heading[1]}">${runs}</text:h>`;
     }
-    const style = this.paraStyle(PARA_STYLE[p.style] ?? 'Standard', p);
+    // DOC-053: a named style of the document is the parent of the paragraph's own.
+    const named = p.named && p.style === 'normal' ? this.doc.styles?.find((s) => s.id === p.named) : undefined;
+    const style = this.paraStyle(named ? odfStyleName(named) : (PARA_STYLE[p.style] ?? 'Standard'), p);
     return `<text:p text:style-name="${style}">${runs}</text:p>`;
   }
 
@@ -673,7 +676,7 @@ function stylesXml(doc: RichDocument): string {
   return STYLES_XML.replace('@MASTER@', master)
     .replace(/fo:page-width="[^"]*" fo:page-height="[^"]*" fo:margin-top="[^"]*" fo:margin-bottom="[^"]*" fo:margin-left="[^"]*" fo:margin-right="[^"]*"/, (m) => layout ?? m)
     .replace('<style:page-layout-properties ', `<style:page-layout-properties${numFormat} `)
-    .replace('</office:styles>', `${springStyles(doc)}</office:styles>`);
+    .replace('</office:styles>', `${springStyles(doc)}${(doc.styles ?? []).map(odfNamedStyle).join('')}</office:styles>`);
 }
 
 

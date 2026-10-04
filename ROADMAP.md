@@ -71,7 +71,7 @@ group is not a commitment.
 
 ### Word processor
 
-- Named paragraph and character styles beyond headings
+- ✅ Named paragraph styles beyond headings (DOC-053); next: character styles
 - ✅ Page numbering styles (DOC-029, 0.1.0)
 - ✅ Templates and examples, the user's own templates in the browser, the
   template file formats (FILE-018 to FILE-020), templates kept in a folder

@@ -49,7 +49,17 @@ export function currentStyle(state: EditorState): ParagraphStyle {
 export const setStyle =
   (style: ParagraphStyle): Command =>
   (state, dispatch) =>
-    updateParagraphs(state, dispatch, (a) => ({ ...a, style, ...(style !== 'normal' ? { listOrdered: null, listLevel: 0 } : {}) }));
+    updateParagraphs(state, dispatch, (a) => ({ ...a, style, named: null, ...(style !== 'normal' ? { listOrdered: null, listLevel: 0 } : {}) }));
+
+/** DOC-053: a named style of the document given to the paragraphs (a normal paragraph with that look). */
+export const setNamedStyle =
+  (id: string): Command =>
+  (state, dispatch) =>
+    updateParagraphs(state, dispatch, (a) => ({ ...a, style: 'normal', named: id }));
+
+export function currentNamed(state: EditorState): string | null {
+  return (selectedParagraphs(state)[0]?.node.attrs.named as string | null | undefined) ?? null;
+}
 
 export const setAlign =
   (align: Align): Command =>

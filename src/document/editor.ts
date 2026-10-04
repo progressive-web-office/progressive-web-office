@@ -34,7 +34,8 @@ import { blockToPm, blocksToPm, pmCiteRuns, pmCrossTargets, pmToBlocks, type PmC
 import { schema } from './pm/schema';
 import { linkRange, removeLink } from './pm/commands';
 import { columnsAt, columnsOf, setColumns } from './pm/columns';
-import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReference, numberEquation, insertToc, changeIndent, clearFormatting, currentAlign, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setStyle, toggleList } from './pm/commands';
+import { inDisplayEquation, insertBlockAfter, insertCaption, insertCrossReference, numberEquation, insertToc, changeIndent, clearFormatting, currentAlign, currentNamed, currentStyle, inList, insertInline, insertOnOwnLine, insertRule, insertTable, linkAt, markActive, markValue, paragraphAttr, setAlign, setLink, setMarkValue, setParagraphAttrs, setNamedStyle, setStyle, toggleList } from './pm/commands';
+import { namedStylesCss, type NamedStyle } from './styles';
 import { LINE_SPACINGS } from './paragraph-dialog';
 import { basePlugins, peersKey, type PeerMarker } from './pm/plugins';
 import { cellHandle, nodeViews } from './pm/views';
@@ -94,6 +95,9 @@ function installListCss(): void {
 /** Fonts offered in the toolbar: common names, rendered with metric-compatible fallbacks when missing. */
 const FONTS = ['Arial', 'Calibri', 'Cambria', 'Georgia', 'Liberation Sans', 'Liberation Serif', 'Times New Roman', 'Verdana', 'OpenDyslexic'];
 const SIZES = [8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 60, 72, 96, 120, 144];
+
+/** The last item of the list of styles: the "Styles…" window (DOC-053). */
+const NEW_STYLE = 'styles:manage';
 
 const STYLES: [ParagraphStyle, MessageKey][] = [
   ['normal', 'doc.style.normal'],
@@ -236,7 +240,13 @@ export class DocumentEditor implements EditorView {
     this.page = h('div', { class: 'doc-page' });
     this.styleSelect = h('select', { 'aria-label': t('doc.style'), title: t('doc.style') }, ...STYLES.map(([v, l]) => h('option', { value: v }, t(l))));
     this.styleSelect.addEventListener('change', () => {
-      this.command(setStyle(this.styleSelect.value as ParagraphStyle));
+      const v = this.styleSelect.value;
+      // DOC-053: a named style of the document, or the window to make one.
+      if (v === NEW_STYLE) {
+        this.styleSelect.value = this.currentStyleValue();
+        return void this.editStyles();
+      }
+      this.command(v.startsWith('named:') ? setNamedStyle(v.slice(6)) : setStyle(v as ParagraphStyle));
       this.refocus();
     });
     this.fontSelect = h('select', { 'aria-label': t('fmt.font'), title: t('fmt.font'), class: 'font-select' }, h('option', { value: '' }, t('fmt.default')), ...FONTS.map((f) => h('option', { value: f, style: `font-family: "${f}"` }, f)));
@@ -300,6 +310,7 @@ export class DocumentEditor implements EditorView {
       () => this.review.toggle(false),
     );
     this.element.append(
+      this.namedCss,
       this.toolbar(),
       this.modeBar,
       this.review.bar,
@@ -422,6 +433,7 @@ export class DocumentEditor implements EditorView {
     addEventListener('afterprint', this.onResize);
     void document.fonts?.ready.then(() => this.springsSoon());
     this.springsSoon();
+    this.renderNamedStyles();
     this.updateToolbar();
     this.renderNotes();
     this.comments.refresh();
@@ -1053,6 +1065,8 @@ export class DocumentEditor implements EditorView {
       ...(editable ? [{ label: t('ctx.paste'), icon: '📋', shortcut: 'Ctrl+V', run: () => void this.pasteFromClipboard() }] : []),
       // DOC-020: the spacing and indents of the paragraph (letters, reports).
       ...(editable ? [{ label: t('para.button'), icon: '¶', run: () => void this.editParagraph() }] : []),
+      // DOC-053: the named styles of the document.
+      ...(editable ? [{ label: t('styles.manage'), icon: '🅰', run: () => void this.editStyles() }] : []),
     );
     if (editable) {
       const link = linkRange(state);
@@ -1947,6 +1961,72 @@ export class DocumentEditor implements EditorView {
     await (this.ctx.busy ? this.ctx.busy(run) : run());
   }
 
+  // --- DOC-053: named paragraph styles --------------------------------------------
+
+  private readonly namedCss = h('style', { class: 'named-styles' });
+
+  private currentStyleValue(): string {
+    const state = this.view.state;
+    const named = currentNamed(state);
+    return named && this.doc.styles?.some((s) => s.id === named) ? `named:${named}` : currentStyle(state);
+  }
+
+  /** The styles of the document in the list of styles, and their look in the page. */
+  private renderNamedStyles(): void {
+    this.namedCss.textContent = namedStylesCss(this.doc.styles, '.doc-editor .ProseMirror');
+    this.styleSelect.querySelector('optgroup.named')?.remove();
+    this.styleSelect.querySelector(`option[value="${NEW_STYLE}"]`)?.remove();
+    const group = h('optgroup', { class: 'named', label: t('styles.ofDocument') }, ...(this.doc.styles ?? []).map((s) => h('option', { value: `named:${s.id}` }, s.name)));
+    if (this.doc.styles?.length) this.styleSelect.append(group);
+    this.styleSelect.append(h('option', { value: NEW_STYLE }, t('styles.manage')));
+    if (this.view) this.styleSelect.value = this.currentStyleValue();
+  }
+
+  /** The look of the current paragraph, to make a style from it. */
+  private paragraphLook(): Omit<NamedStyle, 'id' | 'name'> {
+    const { $from } = this.view.state.selection;
+    const para = $from.parent;
+    const look: Omit<NamedStyle, 'id' | 'name'> = {};
+    const a = para.attrs as Record<string, unknown>;
+    if (a.align) look.align = a.align as NamedStyle['align'];
+    for (const k of ['spaceBefore', 'spaceAfter', 'indent', 'firstLine', 'lineHeight'] as const) if (typeof a[k] === 'number') look[k] = a[k] as number;
+    let first: PmNode | undefined;
+    para.forEach((n) => {
+      if (!first && n.isText) first = n;
+    });
+    for (const m of first?.marks ?? []) {
+      if (m.type === schema.marks.bold) look.bold = true;
+      else if (m.type === schema.marks.italic) look.italic = true;
+      else if (m.type === schema.marks.underline) look.underline = true;
+      else if (m.type === schema.marks.smallCaps) look.smallCaps = true;
+      else if (m.type === schema.marks.size) look.size = m.attrs.pt as number;
+      else if (m.type === schema.marks.color) look.color = m.attrs.hex as string;
+      else if (m.type === schema.marks.font) look.font = m.attrs.family as string;
+    }
+    return look;
+  }
+
+  /** The "Styles…" window: the styles of the document, then the paragraphs without a style that was deleted. */
+  private async editStyles(): Promise<void> {
+    if (this.readOnly) return;
+    const { chooseStyles } = await import('./styles-dialog');
+    const choice = await chooseStyles(this.element, this.doc.styles ?? [], this.paragraphLook(), currentNamed(this.view.state) ?? undefined);
+    if (!choice) return this.refocus();
+    if (choice.styles.length) this.doc.styles = choice.styles;
+    else delete this.doc.styles;
+    const kept = new Set(choice.styles.map((s) => s.id));
+    const tr = this.view.state.tr;
+    this.view.state.doc.descendants((node, pos) => {
+      if (node.type === schema.nodes.paragraph && node.attrs.named && !kept.has(node.attrs.named as string)) tr.setNodeMarkup(pos, undefined, { ...node.attrs, named: null });
+      return true;
+    });
+    if (tr.docChanged) this.view.dispatch(tr);
+    this.renderNamedStyles();
+    if (choice.apply) this.command(setNamedStyle(choice.apply));
+    this.ctx.changed();
+    this.refocus();
+  }
+
   /** Comment the selection or the word at the cursor (REV-001). */
   private addComment(): void {
     if (this.readOnly) return;
@@ -2073,6 +2153,7 @@ export class DocumentEditor implements EditorView {
       write: (parts) => {
         this.replaceBlocks(applyDocumentParts(this.doc, parts), true);
         this.renderFurniture();
+        this.renderNamedStyles();
         this.referencesChanged();
       },
       cursor: () => ({ block: this.view.state.selection.$from.index(0) }),
@@ -2096,9 +2177,12 @@ export class DocumentEditor implements EditorView {
         else delete this.doc.page;
         if (doc.references) this.doc.references = doc.references;
         else delete this.doc.references;
+        if (doc.styles) this.doc.styles = doc.styles;
+        else delete this.doc.styles;
         for (const [id, res] of doc.resources) if (!this.doc.resources.has(id)) this.doc.resources.set(id, res);
         this.replaceBlocks(doc.blocks, false);
         this.renderFurniture();
+        this.renderNamedStyles();
         this.referencesChanged();
         this.ctx.changed();
       },
@@ -2423,6 +2507,7 @@ export class DocumentEditor implements EditorView {
         act(t('para.indentMore'), '⇢', () => this.command(changeIndent(1))),
         this.lineSelect,
         act(t('para.button'), '¶', () => void this.editParagraph()),
+        act(t('styles.manage'), '🅰', () => void this.editStyles()),
       ]),
       toolGroup(t('group.insert'), '＋', [
         act(t('doc.insertLink'), '🔗', () => this.insertLink(), t('doc.insertLinkTitle')),
@@ -2515,7 +2600,7 @@ export class DocumentEditor implements EditorView {
     if (inTable) for (const [cmd, b] of this.tableButtons) b.disabled = !cmd(state);
     for (const [name, b] of this.markButtons) b.setAttribute('aria-pressed', String(markActive(state, schema.marks[name]!)));
     for (const [active, b] of this.stateButtons) b.setAttribute('aria-pressed', String(active()));
-    this.styleSelect.value = currentStyle(state);
+    this.styleSelect.value = this.currentStyleValue();
     const font = (markValue(state, schema.marks.font!, 'family') as string | undefined) ?? '';
     if (font && ![...this.fontSelect.options].some((o) => o.value === font)) this.fontSelect.append(h('option', { value: font }, font));
     this.fontSelect.value = font;

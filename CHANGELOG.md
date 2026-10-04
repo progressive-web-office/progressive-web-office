@@ -105,6 +105,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Named paragraph styles (DOC-053): **🅰 Styles…** makes a style from the
+  look of a paragraph (font, size, colour, bold, italic, alignment,
+  spacing, indents, line spacing), changes, renames and deletes it; the
+  styles of the document are in the list of paragraph styles, and changing
+  one changes every paragraph using it. Saved and read back as the named
+  styles of OpenDocument and Word (those made in LibreOffice or Word are
+  read too), and shared in real-time collaboration.
+
 - Backups made by themselves while the application is open (BACKUP-006),
   to a folder or a Nextcloud / WebDAV account, as often as every hour.
 

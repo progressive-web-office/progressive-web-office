@@ -739,3 +739,48 @@ test('inserts the step response of the closed loop and its poles (TEACH-006)', a
   const images = page.locator('.ProseMirror').getByRole('img', { name: /closed loop of G\(s\) = 1\/\(s\(s\+1\)\)/ });
   await expect(images).toHaveCount(4);
 });
+
+test('makes a named style from a paragraph, applies it and keeps it in ODT and DOCX (DOC-053)', async ({ page }) => {
+  const editor = await newDocument(page);
+  await page.keyboard.type('Remarque importante');
+  await page.keyboard.press('Shift+Home');
+  await page.getByRole('button', { name: 'Bold', exact: true }).click();
+  await page.getByRole('button', { name: 'Text colour', exact: true }).click(); // the default red
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Une autre remarque');
+  await page.keyboard.press('ArrowUp');
+
+  page.once('dialog', (d) => void d.accept('Remarque'));
+  await page.getByRole('button', { name: 'Styles…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Paragraph styles' });
+  await dialog.getByRole('button', { name: 'New style from this paragraph' }).click();
+  await expect(dialog.getByRole('option', { name: 'Remarque' })).toHaveAttribute('aria-selected', 'true');
+  await expect(dialog.getByLabel('Bold')).toBeChecked();
+  await dialog.getByLabel('Space before (pt)').fill('12');
+  await dialog.getByLabel('Space before (pt)').press('Tab');
+  await dialog.getByRole('button', { name: 'Save the styles' }).click();
+
+  // The style is in the list; the second paragraph takes it and its look.
+  await editor.locator('p').nth(1).click();
+  await page.getByLabel('Paragraph style', { exact: true }).selectOption({ label: 'Remarque' });
+  const second = editor.locator('p').nth(1);
+  await expect(second).toHaveAttribute('data-named', 'Remarque');
+  await expect(second).toHaveCSS('font-weight', '700');
+  await expect(second).toHaveCSS('color', 'rgb(192, 0, 0)');
+
+  const { unzipSync, strFromU8 } = await import('fflate');
+  const odt = await saveAs(page, 'OpenDocument text (.odt)');
+  const files = unzipSync(new Uint8Array(odt.data));
+  expect(strFromU8(files['styles.xml']!)).toMatch(/style:name="PWO_Remarque"[^>]*style:display-name="Remarque"|style:display-name="Remarque"[^>]*style:name="PWO_Remarque"/);
+  expect(strFromU8(files['content.xml']!)).toMatch(/text:style-name="PWO_Remarque"|style:parent-style-name="PWO_Remarque"/);
+  const docx = unzipSync(new Uint8Array((await saveAs(page, 'Word document (.docx)')).data));
+  expect(strFromU8(docx['word/styles.xml']!)).toContain('<w:name w:val="Remarque"/>');
+  expect(strFromU8(docx['word/document.xml']!)).toContain('<w:pStyle w:val="Remarque"/>');
+
+  // Reopened, the paragraph still has its style.
+  await openFile(page, 'remarque.odt', odt.data);
+  const reopened = page.getByRole('textbox', { name: 'Document' });
+  await expect(reopened.locator('p[data-named="Remarque"]')).toHaveCount(1);
+  await expect(page.getByLabel('Paragraph style', { exact: true }).locator('optgroup option')).toHaveText(['Remarque']);
+});

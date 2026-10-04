@@ -298,6 +298,29 @@ The text is set with the care of TeX, on screen and on paper:
   `[…]{.smallcaps}` in Markdown (as Pandoc), and the small capitals of
   OpenDocument and Word.
 
+### Styles
+
+A **style** gives a look a name — *Remark*, *Quotation*, *Instruction* —
+so that it is the same everywhere, and changes everywhere at once.
+
+1. Format a paragraph as you like it (font, size, colour, bold, spacing…),
+   leave the cursor in it and choose **🅰 Styles…** (in the *Paragraph*
+   group, the context menu, or the end of the list of paragraph styles).
+2. **New style from this paragraph**, and give it a name. Change what you
+   want — the sample shows the result — then **Save the styles**.
+3. The styles of the document are at the end of the **list of paragraph
+   styles**: choose one to give it to the paragraphs selected.
+
+Changing a style changes every paragraph using it; deleting it turns them
+back into normal text. **Apply to this paragraph** gives the style chosen
+in the window to the paragraph of the cursor.
+
+Styles are kept as the **named styles** of OpenDocument (`.odt`) and Word
+(`.docx`): LibreOffice and Word show them in their own list of styles, and
+the styles made there come back in Progressive Web Office. Formatting set
+by hand on a word stays on top of the style. Markdown, LaTeX and HTML
+keep the text and what was formatted by hand, not the styles.
+
 ### Columns
 
 For a newsletter, a school newspaper or a leaflet, part of a document can be

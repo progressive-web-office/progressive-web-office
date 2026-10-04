@@ -1677,6 +1677,17 @@ th.colhead { position: relative; }
 
 /* DEVSYNC-011: the documents of this browser and the history of synchronisations. */
 .browser-docs-dialog { max-width: min(820px, calc(100vw - 32px)); }
+/* DOC-053: the named paragraph styles. */
+.styles-dialog { max-width: min(860px, calc(100vw - 32px)); }
+.styles-body { display: grid; grid-template-columns: minmax(180px, 1fr) 2fr; gap: 16px; align-items: start; }
+@media (max-width: 640px) { .styles-body { grid-template-columns: 1fr; } }
+.styles-list { list-style: none; margin: 0 0 8px; padding: 0; max-height: 50vh; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+.styles-list li { padding: 6px 10px; cursor: pointer; }
+.styles-list li[aria-selected="true"] { background: var(--accent-soft, rgba(0, 120, 212, 0.12)); }
+.styles-list .styles-sample { display: block; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.styles-editor .styles-row { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }
+.styles-editor .styles-row .field input[type="number"] { width: 6em; }
+
 .browser-docs-scroll { max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
 .browser-docs { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .browser-docs th, .browser-docs td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
