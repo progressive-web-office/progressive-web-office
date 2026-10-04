@@ -299,12 +299,18 @@ keyboard. Equations are stored as LaTeX in the document model.
 | PRES-008 | M | 0.0.5 | When a presentation is saved as `.pptx` or `.odp`, the system shall write slides, shapes, text and images in that format. |
 | PRES-009 | S | 0.0.5 | The system shall let the user move and resize shapes with the pointer, and delete the selected shape. |
 | PRES-010 | S | 0.0.5 | The system shall preserve slide speaker notes text when reading and writing. |
-| PRES-011 | C | — | Slide transitions and animations. |
+| PRES-011 | C | — | Slide transitions (animations: PRES-020..PRES-022). |
 | PRES-012 | W | — | Embedded video/audio, SmartArt, charts editing, legacy `.ppt`. |
 | PRES-013 | S | 0.1.0 | The system shall let the user choose the slide size (16:9, 4:3, A4, Letter) and orientation (landscape, portrait) of a presentation, moving and resizing shapes and text sizes with the slides (undoable), keep the size in ODP and PPTX (with the orientation declared in ODP), and print in the orientation of the slides by default. |
 | PRES-014 | S | 0.2.0 | When the user starts the presenter view, the system shall show the slideshow and, in a second window, a console with the current and next slides, the speaker notes (resizable), the time spent (pause, restart) and the time of day, both moving together; if no second window can be opened, the system shall show the console alone to rehearse. |
 | PRES-015 | S | 0.2.0 | While a shape is moved or resized with the pointer, the system shall snap its edges and centre to those of the other shapes and of the slide within a few pixels, and show alignment guides; holding Alt shall place it freely. |
 | PRES-016 | S | 0.2.0 | The system shall let the user add a slide with a layout: title slide, title and content, section header, two contents, comparison, title only, blank. |
+| PRES-017 | S | 0.3.0 | The system shall export each slide of a presentation as an image (PNG or WebP) at a size the user chooses, 1920 × 1080 by default, a slide of another shape fitted with margins of a chosen colour. |
+| PRES-018 | S | 0.3.0 | The system shall let the user set how long each slide is shown before the next one in an automatic slideshow, keep it in ODP (`presentation:duration`) and PPTX (`advTm`) files, and follow it in the slideshow. |
+| PRES-019 | S | 0.3.0 | The system shall give each slide an identifier kept when the slide is moved or edited and written in ODP and PPTX files, so that a slide sent elsewhere can be found and replaced again. |
+| PRES-020 | C | 0.4.0 | The system should read, play in the slideshow and write slide animations — entrance, exit and motion; keyframes of position, opacity, scale and rotation with easing — as ODF animations (SMIL) and PPTX timing. |
+| PRES-021 | C | 0.4.0 | The system should offer a timeline editor of the animations of a slide: one row per shape, its keyframes placed, moved and eased with the pointer, played and scrubbed. |
+| PRES-022 | C | 0.4.0 | The system should export a slide or a presentation, with its animations, as an MP4 video (H.264 High where the browser offers it, else Constrained Baseline; up to 1920 × 1080; 30 frames per second; a key frame every 2 seconds; no B-frames; fast start), encoded by WebCodecs in the browser. |
 
 ## 7. PDF (PDF)
 
@@ -637,12 +643,26 @@ integration is ever needed.
 | PLUG-006 | C | — | A code plugin should declare its permissions (read or change the open document, network hosts, a panel), asked when installed, shown and revocable in the settings. |
 | PLUG-007 | C | — | The plugin API should offer commands, importers and exporters, panels, symbols, templates, snippets and code-cell languages. |
 | PLUG-008 | C | — | A version of a plugin marked revoked in its registry should be disabled at the next check. |
+| PLUG-009 | C | — | A plugin's `manifest.json` (version 1) should give its id, name, description, version (SemVer), licence (SPDX), authors, kind (`pack` or `code`), `targets` (`pwo`, `signage`), the host versions it works with, its entry page or contents, the message protocol version, a JSON Schema of its settings, the data it reads and its permissions; a host should install only the plugins naming it in `targets`, and `registry.json` (version 1) should list each version with the SHA-256 of every file, its permissions and its revocation — the same formats as the apps of DigitalSignalix screens. |
+| PLUG-010 | C | — | A code plugin should talk to its host only through `postMessage` messages in one envelope (`type: "pwo-plugin"`, `version`: the major version, `action`, `id`), the host handing it its settings, data, size and visibility, and making the network requests of the hosts it declared on its behalf; within a major version both sides should ignore the fields and actions they do not know. |
 
 ## 9v. Notes and knowledge (NOTE)
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
 | NOTE-001 | S | 0.2.0 | The front matter of a Markdown note shall be shown above its page as a card of properties, each with its type — text, list, date, number, yes/no, YAML left as it is — tags as coloured chips and `[[links]]` and web addresses drawn as links to follow; each property shall be changed, added or removed in place, the front matter written back in its order with the lines of the others unchanged; the card shall be shown to change, to read, or as the YAML source of the whole front matter, the choice kept, and hidden from the View menu. |
+
+## 9w. Digital signage (SIGN)
+
+See [DigitalSignalix](./digitalsignalix.md).
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| SIGN-001 | S | 0.3.0 | The system shall let the user add DigitalSignalix Managers — an HTTPS address and a token — check them when added (`GET /v1/me`), keep them in this browser or for the session only, and forget them, in the settings with the other connections. |
+| SIGN-002 | S | 0.3.0 | When the user sends a presentation to a Manager, the system shall export its slides as images (PRES-017), send only those the Manager does not have (by SHA-256), then create or replace the presentation chosen with each slide's identifier, image and duration, showing the progress and, at the end, the address of the presentation in the Manager's console. |
+| SIGN-003 | S | 0.3.0 | The system shall send with the presentation and each image a provenance record — the tool, its version and commit, the source document's name, type, SHA-256 and network origin, the slide, the export format, the time, and the author's name only when the user leaves it checked. |
+| SIGN-004 | S | 0.3.0 | If a Manager cannot be reached or refuses a request, the system shall say whether the certificate, the browser's access to the local network, CORS or the token is the likely cause, and link to the setup guide. |
+| SIGN-005 | C | — | The system should let the user preview a slide or a pack on the size of a screen, and install packs whose `targets` include `signage` to try them in PWO. |
 
 ## 10. Out of scope (Won't, this time)
 

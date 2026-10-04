@@ -60,6 +60,166 @@ Each plugin **declares its permissions** in its manifest — read the open
 document, change it, reach these network hosts, show a panel — asked once
 when it is installed, shown in **Settings → Plugins**, revocable.
 
+## Formats, version 1 (PLUG-009, PLUG-010)
+
+The same formats serve PWO and the screens of
+[DigitalSignalix](./digitalsignalix.md): a pack says where it runs with
+`targets`, and each host installs only the packs naming it. Field names are
+in camelCase; hashes are SHA-256 in lowercase hexadecimal; versions follow
+Semantic Versioning; licences are SPDX expressions.
+
+### `manifest.json`
+
+```json
+{
+  "manifestVersion": 1,
+  "id": "menu-board",
+  "name": "Menu board",
+  "description": "The menu of the week, from a spreadsheet.",
+  "locales": { "fr": { "name": "Menu de la semaine", "description": "Le menu de la semaine, depuis un classeur." } },
+  "version": "1.2.0",
+  "license": "MIT",
+  "authors": [{ "name": "Ada Lovelace", "url": "https://example.org" }],
+  "homepage": "https://example.org/menu-board",
+  "repository": "https://github.com/example/menu-board",
+  "kind": "code",
+  "targets": ["signage", "pwo"],
+  "engines": { "pwo": ">=0.3.0", "signage": ">=1.0.0" },
+  "entry": "index.html",
+  "api": 1,
+  "settings": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "title": { "type": "string", "default": "Menu" },
+      "accent": { "type": "string", "format": "color", "default": "#1f6feb" }
+    }
+  },
+  "data": [
+    {
+      "id": "menu",
+      "description": "One row per dish: day, course, name.",
+      "mediaTypes": ["text/csv", "application/vnd.oasis.opendocument.spreadsheet"],
+      "table": true
+    }
+  ],
+  "permissions": { "network": [], "document": "none", "ui": [] }
+}
+```
+
+- `id`: lowercase letters, digits and `-`, unique within a registry.
+- `kind`: `pack` (content, no code) or `code`.
+- `targets`: `pwo`, `signage`; a host ignores the targets it does not know.
+- `engines`: the host versions it works with (SemVer ranges), per target.
+- `entry`: the HTML page of a code plugin, loaded in a sandboxed iframe;
+  for a pack, `contents` lists its files instead:
+  `{ "templates": ["menu.ods"], "symbols": "symbols/", "snippets": "snippets.json" }`.
+- `api`: the major version of the message protocol it speaks.
+- `settings`: a JSON Schema (2020-12) of its settings; the host draws the
+  form, keeps the values and hands them over.
+- `data`: the files it reads, by name; `table: true` asks for them as a
+  table (columns and rows) rather than bytes.
+- `permissions`:
+  - `network` — the hosts it may reach, always through the host (the
+    `fetch` request below), never directly;
+  - `document` — `none`, `read` or `write` (PWO only);
+  - `ui` — `panel`, `command` (PWO only).
+
+  They are asked once when it is installed, shown in the settings and
+  revocable.
+
+### An entry of `registry.json`
+
+```json
+{
+  "registryVersion": 1,
+  "name": "Example registry",
+  "updated": "2026-10-04T09:30:00Z",
+  "plugins": [
+    {
+      "id": "menu-board",
+      "name": "Menu board",
+      "description": "The menu of the week, from a spreadsheet.",
+      "kind": "code",
+      "targets": ["signage", "pwo"],
+      "license": "MIT",
+      "repository": "https://github.com/example/menu-board",
+      "versions": [
+        {
+          "version": "1.2.0",
+          "published": "2026-10-01T12:00:00Z",
+          "base": "https://cdn.jsdelivr.net/gh/example/menu-board@v1.2.0/",
+          "files": {
+            "manifest.json": "3f1c…64 hexadecimal digits",
+            "index.html": "9a0b…",
+            "app.js": "c2d4…"
+          },
+          "permissions": { "network": [], "document": "none", "ui": [] },
+          "engines": { "pwo": ">=0.3.0", "signage": ">=1.0.0" }
+        },
+        {
+          "version": "1.1.0",
+          "published": "2026-09-01T12:00:00Z",
+          "base": "https://cdn.jsdelivr.net/gh/example/menu-board@v1.1.0/",
+          "files": { "manifest.json": "…", "index.html": "…" },
+          "revoked": { "date": "2026-09-20T08:00:00Z", "reason": "Shows the settings of another screen." }
+        }
+      ]
+    }
+  ]
+}
+```
+
+Every file is listed with its hash and checked before use; `manifest.json`
+is one of them, and its `permissions` and `engines` are repeated in the
+entry so that a host can decide without downloading the plugin. A version
+with `revoked` is disabled at the next check.
+
+### Messages of code plugins
+
+A code plugin runs in an iframe with `sandbox="allow-scripts"` (no same
+origin) and a content security policy forbidding network access
+(`connect-src 'none'`). It talks to its host with `postMessage`, every
+message in one envelope:
+
+```json
+{ "type": "pwo-plugin", "version": 1, "action": "init", "id": 7 }
+```
+
+- `type` is always `pwo-plugin`; `version` is the major version of the
+  protocol (`api` of the manifest). Within a major version, messages only
+  gain optional fields and new actions; both sides ignore what they do not
+  know. A host refuses a plugin whose `api` it does not speak.
+- `id` numbers a request; its answer carries the same `id`
+  (`action: "reply"`, with `result` or `error: { "code", "message" }`).
+
+From the host to the plugin:
+
+| `action` | Fields | When |
+|---|---|---|
+| `init` | `host: { name, version, target }`, `locale`, `theme` (`light`, `dark`), `settings`, `data`, `viewport: { width, height }` | once, after `ready` |
+| `settings` | `settings` | the settings changed |
+| `data` | `data` | a data file changed |
+| `resize` | `viewport` | the size changed |
+| `visibility` | `visible` (true, false) | shown or hidden (a screen's playlist, a closed panel): start or pause |
+
+`data` maps each `id` of the manifest to
+`{ "mediaType", "bytes" }` (an `ArrayBuffer`) or, with `table: true`, to
+`{ "mediaType", "table": { "columns": ["day", "course", "name"], "rows": [["Monday", "Main", "Ratatouille"]] } }`.
+
+From the plugin to the host:
+
+| `action` | Fields | Answer |
+|---|---|---|
+| `ready` | `api` (the version it speaks) | `init` |
+| `fetch` | `url`, `method`, `headers`, `body` | `reply` with `{ status, headers, body }`, only for the hosts of `permissions.network` |
+| `log` | `level`, `message` | none |
+| `done` | — | none: on a screen, the app has shown everything (it may end its slot early) |
+| `document.read`, `document.write`, `command.register`, `panel.show` | as their names say | PWO only, with the permission |
+
+On a screen, `fetch` is answered from what the Manager fetched and kept;
+the screen itself reaches nothing.
+
 ## Distribution: a registry of Git repositories
 
 ```
