@@ -132,3 +132,79 @@ test('puts a drawing on a slide, edited again by a double click (DRAW-007)', asy
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   expect(errors).toEqual([]);
 });
+
+test('a component dragged from inside its body; wheel zoom, middle-button and two-finger pan, pinch (DRAW-018, DRAW-019)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New document' }).click();
+  await page.getByRole('button', { name: 'Drawing or schematic…' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Drawing' });
+  await dialog.getByLabel('Search a symbol…').fill('block');
+  await dialog.getByRole('listitem', { name: 'Block (transfer function)', exact: true }).click();
+  const before = await centre(page, 'Block');
+  // Pressed in the middle of the empty box, not on its lines: it moves.
+  const from = await screen(page, before);
+  const to = await screen(page, [before[0] + 100, before[1] + 50]);
+  await page.mouse.move(...from);
+  await page.mouse.down();
+  await page.mouse.move(...to, { steps: 6 });
+  await page.mouse.up();
+  expect(await centre(page, 'Block')).toEqual([before[0] + 100, before[1] + 50]);
+  await expect(dialog.locator('.draw-band')).toHaveCount(0);
+
+  // The wheel zooms, keeping the point under the pointer in place (once the drawing is larger than the view).
+  const zoom = dialog.locator('.draw-zoom');
+  for (let i = 0; i < 4; i++) await dialog.getByRole('button', { name: 'Zoom in' }).click();
+  await dialog.locator('.draw-scroll').evaluate((el) => {
+    el.scrollLeft = el.scrollWidth / 2 - el.clientWidth / 2;
+    el.scrollTop = el.scrollHeight / 2 - el.clientHeight / 2;
+  });
+  const view = (await dialog.locator('.draw-scroll').boundingBox())!;
+  const under: [number, number] = [view.x + view.width / 2, view.y + view.height / 2];
+  const pointAt = await page.evaluate(([x, y]) => {
+    const svg = document.querySelector('svg.draw-stage')!;
+    const r = svg.getBoundingClientRect();
+    const [, , w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number) as number[];
+    return [((x! - r.left) / r.width) * w!, ((y! - r.top) / r.height) * h!] as [number, number];
+  }, under);
+  const shownBefore = await zoom.textContent();
+  await page.mouse.move(...under);
+  await page.mouse.wheel(0, -300);
+  await expect(zoom).not.toHaveText(shownBefore!);
+  const again = await screen(page, pointAt);
+  expect(Math.abs(again[0] - under[0])).toBeLessThan(3);
+  expect(Math.abs(again[1] - under[1])).toBeLessThan(3);
+  await page.mouse.wheel(0, 200);
+
+  // The middle button pans.
+  const scroller = dialog.locator('.draw-scroll');
+  await scroller.evaluate((el) => (el.scrollLeft = 200));
+  const left = await scroller.evaluate((el) => el.scrollLeft);
+  await page.mouse.move(under[0], under[1]);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(under[0] + 80, under[1], { steps: 4 });
+  await page.mouse.up({ button: 'middle' });
+  expect(await scroller.evaluate((el) => el.scrollLeft)).toBeLessThan(left - 40);
+
+  // Two fingers on a touch screen: pinched apart, it zooms in.
+  const shown = await zoom.textContent();
+  await scroller.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const [cx, cy] = [r.left + r.width / 2, r.top + r.height / 2];
+    const fire = (type: string, id: number, x: number): void => {
+      el.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', clientX: x, clientY: cy, bubbles: true, cancelable: true, isPrimary: id === 1 }));
+    };
+    fire('pointerdown', 1, cx - 20);
+    fire('pointerdown', 2, cx + 20);
+    for (let k = 1; k <= 5; k++) {
+      fire('pointermove', 1, cx - 20 - k * 10);
+      fire('pointermove', 2, cx + 20 + k * 10);
+    }
+    fire('pointerup', 1, cx - 70);
+    fire('pointerup', 2, cx + 70);
+  });
+  const pct = (s: string | null): number => Number(s?.replace(/\D/g, ''));
+  expect(pct(await zoom.textContent())).toBeGreaterThan(pct(shown) * 2);
+  // Nothing was drawn or moved by the fingers.
+  expect(await centre(page, 'Block')).toEqual([before[0] + 100, before[1] + 50]);
+  expect(errors).toEqual([]);
+});

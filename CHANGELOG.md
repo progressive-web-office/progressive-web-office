@@ -105,6 +105,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Drawings and paintings zoom with the wheel where the pointer is, pan with
+  the middle button, and on touch screens pinch and pan with two fingers;
+  a component of a schematic is dragged from anywhere inside it, not only
+  from its lines (DRAW-018, DRAW-019).
+
 - A guide page, [Where are my documents?](docs/guide/where.md), comparing
   files, browser storage, sending, collaboration, Git, the cloud,
   synchronising devices and backups, with what to choose; linked from the

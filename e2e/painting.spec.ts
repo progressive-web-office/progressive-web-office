@@ -247,3 +247,23 @@ test('a line gets arrows, right angles and bends added, moved and removed (DRAW-
   expect(line.points[1][1]).toBeGreaterThan(line.points[0][1]);
   expect(errors).toEqual([]);
 });
+
+test('the painting view zooms with the wheel and pans with the middle button (DRAW-019)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'New painting' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Painting' });
+  const zoom = dialog.locator('.paint-value').first();
+  const shown = await zoom.textContent();
+  const view = (await dialog.locator('.paint-scroll').boundingBox())!;
+  await page.mouse.move(view.x + view.width / 2, view.y + view.height / 2);
+  await page.mouse.wheel(0, -500);
+  await expect(zoom).not.toHaveText(shown!);
+  const scroller = dialog.locator('.paint-scroll');
+  await scroller.evaluate((el) => (el.scrollLeft = 300));
+  const left = await scroller.evaluate((el) => el.scrollLeft);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(view.x + view.width / 2 + 100, view.y + view.height / 2, { steps: 4 });
+  await page.mouse.up({ button: 'middle' });
+  expect(await scroller.evaluate((el) => el.scrollLeft)).toBeLessThan(left - 50);
+  expect(errors).toEqual([]);
+});

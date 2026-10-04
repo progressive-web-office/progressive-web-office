@@ -9,6 +9,7 @@
  * flipped, resized (DRAW-015); the alpha channel kept where the format has
  * one. A layered picture is saved as OpenRaster (.ora), else flattened.
  */
+import { attachZoomPan, zoomAt } from '../app/zoom-pan';
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import { ORA_TYPE, readOra, writeOra, type OraLayer } from './ora';
@@ -1053,10 +1054,31 @@ export async function paintPicture(
     };
     overlay.addEventListener('keydown', onKey);
 
-    const setZoom = (z: number): void => {
-      zoom = Math.min(8, Math.max(0.1, z));
-      sync();
+    // DRAW-019: the wheel zooms where the pointer is; the middle button, or two fingers, pan; two fingers pinch.
+    const scroller = h('div', { class: 'paint-scroll' }, stack);
+    const zoomPan = {
+      content: (): Element => overlay,
+      zoom: (): number => zoom,
+      setZoom: (z: number): void => {
+        zoom = Math.min(8, Math.max(0.1, z));
+        sync();
+      },
+      cancel: (): void => {
+        const dr = drag;
+        drag = undefined;
+        if (!dr) return;
+        // The stroke begun is dropped; a shape being moved goes back.
+        sheet = undefined;
+        if (dr.mode === 'moveShape' && dr.original && picked !== undefined && A().shapes) {
+          A().shapes![picked] = dr.original;
+          renderVector(A());
+          undo.pop();
+        }
+        drawOverlay();
+      },
     };
+    const setZoom = (z: number): void => zoomAt(scroller, zoomPan, z);
+    attachZoomPan(scroller, zoomPan);
 
     // --- saving ------------------------------------------------------------------------
     /** All the visible layers, as shown; a JPEG on white. */
@@ -1146,7 +1168,7 @@ export async function paintPicture(
       h(
         'div',
         { class: 'paint-main' },
-        h('div', { class: 'paint-scroll' }, stack),
+        scroller,
         h(
           'aside',
           { class: 'paint-layers-panel', 'aria-label': t('paint.layers') },

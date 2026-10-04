@@ -2,6 +2,7 @@
  * DRAW-001..DRAW-006, DRAW-011: the drawing editor — shapes, connectors,
  * schematic symbols and wires on a grid, in a dialog.
  */
+import { attachZoomPan, zoomAt } from '../app/zoom-pan';
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
 import {
@@ -262,6 +263,18 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
       const [dx, dy] = m ? [m.e, m.f] : [0, 0];
       return [b.x + dx, b.y + dy, b.x + b.width + dx, b.y + b.height + dy];
     };
+    /** DRAW-018: the shape under a point — the selected ones first, then from the top — inside its box, or near a line. */
+    const shapeAt = (p: Pt): string | undefined => {
+      const near = (sh: Shape): boolean => {
+        if (sh.kind === 'line' || sh.kind === 'free') return sh.points.slice(1).some((q, i) => segmentDistance(p, sh.points[i]!, q) <= 5);
+        const b = bbox(sh) ?? domBox(sh.id);
+        return !!b && p[0] >= b[0] - 3 && p[0] <= b[2] + 3 && p[1] >= b[1] - 3 && p[1] <= b[3] + 3;
+      };
+      const chosen = sel().find(near);
+      if (chosen) return chosen.id;
+      for (let i = d.shapes.length - 1; i >= 0; i--) if (near(d.shapes[i]!)) return d.shapes[i]!.id;
+      return undefined;
+    };
     const toggle = (id: string): string[] => (selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
 
     // --- pointer -----------------------------------------------------------------
@@ -315,7 +328,8 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
         return;
       }
       if (tool === 'select') {
-        const id = target.closest('[data-id]')?.getAttribute('data-id') ?? target.closest('[data-for]')?.getAttribute('data-for');
+        // DRAW-018: a press inside a shape (between the lines of a component) takes it too.
+        const id = target.closest('[data-id]')?.getAttribute('data-id') ?? target.closest('[data-for]')?.getAttribute('data-for') ?? shapeAt(p);
         if (id) {
           if (e.shiftKey) selected = toggle(id);
           else if (!selected.includes(id)) selected = [id];
@@ -356,7 +370,11 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
     });
 
     svg.addEventListener('pointermove', (e) => {
-      if (!drag) return;
+      if (!drag) {
+        // DRAW-018: what can be dragged shows it.
+        if (tool === 'select' && e.pointerType === 'mouse') svg.style.cursor = shapeAt(point(e)) || (e.target as Element).closest('[data-id]') ? 'move' : '';
+        return;
+      }
       const p = point(e);
       if (drag.kind === 'move') {
         const q = snapPt(p, e.altKey);
@@ -560,11 +578,28 @@ export function editDrawing(host: HTMLElement, initial?: Drawing): Promise<Drawi
       }
       render();
     };
-    const setZoom = (z: number): void => {
-      zoom = Math.min(4, Math.max(0.25, z));
-      zoomLabel.textContent = `${Math.round(zoom * 100)} %`;
-      render();
+    // DRAW-019: the wheel zooms where the pointer is; the middle button, or two fingers, pan; two fingers pinch.
+    const zoomPan = {
+      content: (): Element => svg,
+      zoom: (): number => zoom,
+      setZoom: (z: number): void => {
+        zoom = Math.min(8, Math.max(0.1, z));
+        zoomLabel.textContent = `${Math.round(zoom * 100)} %`;
+        render();
+      },
+      cancel: (): void => {
+        if (!drag) return;
+        if (drag.kind === 'band') drag.el.remove();
+        else {
+          const before = undo.pop();
+          if (before) d = JSON.parse(before) as Drawing;
+        }
+        drag = undefined;
+        render();
+      },
     };
+    const setZoom = (z: number): void => zoomAt(stage, zoomPan, z);
+    attachZoomPan(stage, zoomPan);
     const addSymbol = (def: SymbolDef): void => {
       snapshot();
       const r = stage.getBoundingClientRect();

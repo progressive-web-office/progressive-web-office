@@ -30,14 +30,30 @@ whole.
 | ▭ Rectangle, ◯ Ellipse | Drag from one corner to the other; Shift draws a square or a circle |
 | ╱ Line, ➝ Arrow | Drag from one end to the other; an end dropped on a connection point stays attached to it |
 
+| ✎ Freehand | Draw with the mouse, the finger or a pen; the stroke is smoothed |
+| T Text | Click where the text goes |
+| ⌐ Wire | Drag from a pin to another pin: the wire is drawn in right angles |
+
 A line selected shows its properties: **arrow at the start**, **arrow at
 the end**, and **right angles** (routed in horizontal and vertical
 segments between its ends). **Double-click a line to add a bend** there,
 drag a bend to move it, double-click a bend to remove it — for a loop back
 in a GRAFCET or a flowchart, or a pipe around a part.
-| ✎ Freehand | Draw with the mouse, the finger or a pen; the stroke is smoothed |
-| T Text | Click where the text goes |
-| ⌐ Wire | Drag from a pin to another pin: the wire is drawn in right angles |
+
+A component, a text or a shape is **dragged from anywhere inside it** — not
+only from its lines: press in the middle of a resistor or a block and drag.
+The pointer turns into a cross with arrows over what can be moved.
+
+### Zoom and move around
+
+| | Mouse | Touch screen |
+|---|---|---|
+| Zoom in or out, where the pointer is | the **wheel** (a pinch on a touchpad) | **pinch** with two fingers |
+| Move the view | drag with the **middle button** (the wheel pressed) | **two fingers** moved together |
+| | − and + in the toolbar | − and + in the toolbar |
+
+One finger keeps drawing; a second finger put down cancels what the first
+began, then zooms and pans. The same works in the painting editor.
 
 Everything snaps to the **grid** (10 px). Untick **Snap** to place freely, or
 hold **Alt** while dragging. **Grid** shows or hides it.
@@ -180,7 +196,8 @@ use the painting editor:
 **Colour**, **Size** and **Opacity** set the tool; **Width** and **Height**
 resize the canvas (the picture stays at the top left, the background
 extended with its colour). Undo and redo with Ctrl+Z and Ctrl+Y; zoom with −
-and +.
+and +, the wheel or two fingers, and move the view with the middle button or
+two fingers (see [Zoom and move around](#zoom-and-move-around)).
 
 ### Layers
 

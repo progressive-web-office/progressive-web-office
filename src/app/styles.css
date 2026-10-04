@@ -1688,3 +1688,6 @@ th.colhead { position: relative; }
 .sync-button.online::after { content: ''; position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: #2e7d32; box-shadow: 0 0 0 2px var(--bg); }
 /* Icons of the other buttons (button(…, { icon })), drawn before their name. */
 button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-link):not(.folder-file)::before { content: attr(data-icon) ' '; content: attr(data-icon) ' ' / ''; }
+/* DRAW-019: the views of drawings and paintings zoom and pan by themselves (wheel, middle button, two fingers). */
+.draw-scroll, .paint-scroll { touch-action: none; overscroll-behavior: contain; }
+.draw-scroll.panning, .paint-scroll.panning { cursor: grabbing; }

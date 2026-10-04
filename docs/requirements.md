@@ -611,6 +611,8 @@ integration is ever needed.
 | DRAW-015 | S | 0.2.0 | The painting editor shall import a picture as a new layer, set the background (a colour, transparent, a picture fitted as asked), crop to the selection, turn the picture a quarter turn or by any angle, flip it, turn a layer, keep the alpha channel in PNG, WebP and OpenRaster, and show transparency as a checkerboard. |
 | DRAW-016 | S | 0.2.0 | The painting editor shall draw gradients (linear, radial, conic, every hue) and a grid of any step on a layer. |
 | DRAW-017 | S | 0.2.0 | A line of a drawing shall get or lose an arrow at either end and its routing in right angles, and bends added, moved and removed with the pointer. |
+| DRAW-018 | S | 0.2.0 | In the drawing editor, a component, text or shape shall be selected and dragged from anywhere inside its box (a line, from near it), not only from its strokes, the pointer showing what can be moved. |
+| DRAW-019 | S | 0.2.0 | The drawing and painting editors shall zoom with the wheel (or a touchpad pinch) around the pointer, pan with the middle button, and on touch screens pinch with two fingers to zoom and move them to pan, a second finger cancelling what the first began. |
 
 ## 9u. Plugins (PLUG) — proposal
 
