@@ -84,6 +84,7 @@ export default defineConfig({
           { text: 'Architecture', link: '/architecture' },
           { text: 'Offline synchronisation', link: '/offline-sync' },
           { text: 'Plugins (proposal)', link: '/plugins' },
+          { text: 'DigitalSignalix', link: '/digitalsignalix' },
           { text: 'Brand', link: '/brand' },
         ],
       },
