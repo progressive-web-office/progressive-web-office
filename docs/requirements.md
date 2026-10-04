@@ -585,6 +585,19 @@ integration is ever needed.
 | DRAW-011 | S | 0.2.0 | The drawing editor shall be accessible: every shape reachable with Tab and named for screen readers (its kind, its reference and value, its text), moved and resized with the keyboard, and the drawing given an alternative text. |
 | DRAW-012 | S | 0.2.0 | The system shall offer the graphical languages of IEC 61131-3 as symbol libraries: ladder diagram (power rails, contacts NO, NC, P, N; coils, negated, set, reset, P, N; the variable above), function block diagram (standard timers, counters, edge detectors, bistables, arithmetic and comparison functions, a generic block; named pins, instance names) and sequential function chart / Grafcet (steps, initial step, transitions with their condition, action blocks, simultaneous and selection divergences and convergences, jumps). |
 
+## 9u. Plugins (PLUG) — proposal
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| PLUG-001 | C | — | The system should install content packs without code — templates, symbol libraries, snippets, palettes, themes, word lists, packages for code cells — described by a manifest. |
+| PLUG-002 | C | — | The system should read a registry of plugins kept in a Git repository (`registry.json`: plugins, versions with the SHA-256 of their files, permissions, licence, revoked versions) and let the user browse, install, update and remove plugins in the settings. |
+| PLUG-003 | C | — | A plugin should be installed at a pinned version, its files checked against their hashes, and kept for offline use; updates should be offered, never forced, with their changes and new permissions. |
+| PLUG-004 | C | — | The user should add other registries — any Git repository or WebDAV folder — to share plugins privately. |
+| PLUG-005 | C | — | Code plugins should run in a sandbox (an iframe or a worker, as code cells), talking to the application through a versioned message API, without access to its DOM, storage or tokens. |
+| PLUG-006 | C | — | A code plugin should declare its permissions (read or change the open document, network hosts, a panel), asked when installed, shown and revocable in the settings. |
+| PLUG-007 | C | — | The plugin API should offer commands, importers and exporters, panels, symbols, templates, snippets and code-cell languages. |
+| PLUG-008 | C | — | A version of a plugin marked revoked in its registry should be disabled at the next check. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.

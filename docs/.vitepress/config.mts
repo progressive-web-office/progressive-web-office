@@ -74,6 +74,7 @@ export default defineConfig({
           { text: 'Development', link: '/development' },
           { text: 'Architecture', link: '/architecture' },
           { text: 'Offline synchronisation', link: '/offline-sync' },
+          { text: 'Plugins (proposal)', link: '/plugins' },
         ],
       },
     ],

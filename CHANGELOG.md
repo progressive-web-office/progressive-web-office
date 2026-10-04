@@ -10,6 +10,9 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- A **plugins proposal** (docs: *Plugins (proposal)*, PLUG-001..PLUG-008):
+  content packs first, then sandboxed code plugins, distributed through a
+  registry of Git repositories.
 - **Templates in your own repository or cloud** (FILE-030): a Git repository
   (or a folder of one) or a Nextcloud / WebDAV folder added to the gallery
   with **＋ Source…**; its documents are templates, in their own tab, read

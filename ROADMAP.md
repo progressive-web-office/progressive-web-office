@@ -277,6 +277,16 @@ group is not a commitment.
 - Crash recovery from an operation log in IndexedDB, beyond autosave
 - Upstream MDZ collaboration
 
+### Plugins (proposal, see docs/plugins.md)
+
+- Content packs without code: templates, symbol libraries, snippets,
+  palettes (PLUG-001); a registry of plugins in a Git repository of a
+  dedicated organisation, installed at pinned versions, offline (PLUG-002..
+  PLUG-004)
+- Sandboxed code plugins with declared permissions: commands, importers and
+  exporters, panels (PLUG-005..PLUG-008); optional parts of the core moved
+  behind the same API
+
 ### Cross-cutting
 
 - Phones: a contextual toolbar docked above the keyboard (the essential
