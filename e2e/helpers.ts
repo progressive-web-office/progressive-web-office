@@ -162,3 +162,10 @@ export async function openLocalFolder(page: Page): Promise<void> {
   await dialog.getByLabel('A folder of this device').check();
   await dialog.getByRole('button', { name: 'Open' }).click();
 }
+
+/** FILE-018: a template or an example chosen in the gallery, found by its name (one kind is shown at a time). */
+export async function pickTemplate(page: Page, name: string): Promise<void> {
+  const gallery = page.getByRole('dialog', { name: 'New from a template' });
+  await gallery.getByRole('searchbox', { name: 'Search a template or an example…' }).fill(name);
+  await gallery.getByRole('button', { name, exact: true }).click();
+}

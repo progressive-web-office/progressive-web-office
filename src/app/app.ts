@@ -746,6 +746,13 @@ export class App {
       try {
         const { contentLang } = await import('../templates/catalog');
         const built = template.build(contentLang(getLocale()));
+        // A drawing or a picture opens as a picture, to edit and save as a file.
+        if (built.kind === 'picture') {
+          const name = `${t(template.name)}.${built.ext}`;
+          const view = await openView('image', await built.bytes(), this.viewContext(), name);
+          this.setDocument({ name, format: 'image', kind: formatKind('image'), view });
+          return;
+        }
         const format = defaultFormat(built.kind);
         // The model goes straight to the editor: saving converts it like any new document.
         const view = await newView(built.kind, this.viewContext(), format, built);

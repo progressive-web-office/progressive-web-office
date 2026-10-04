@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile, saveAs, usePyodidePackages } from './helpers';
+import { openApp, openFile, saveAs, usePyodidePackages, pickTemplate } from './helpers';
 
 const COUNTER = [
   '# Widgets',
@@ -147,7 +147,7 @@ test('opens the interactive widgets example and brings its widgets to life (CODE
   const python = await usePyodidePackages(page);
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: /Interactive widgets/ }).click();
+  await pickTemplate(page, 'Interactive widgets');
   const cells = page.locator('.doc-page .code-cell');
   await expect(cells).toHaveCount(4);
   // The JavaScript widget needs no download.

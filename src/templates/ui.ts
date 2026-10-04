@@ -1,4 +1,7 @@
-/** Template gallery (FILE-018): cards grouped by kind, then the examples. */
+/**
+ * Template gallery (FILE-018): one kind at a time behind tabs — progressive
+ * disclosure — and a search through all of them.
+ */
 import { button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
 import type { UserTemplate } from '../storage/recent';
@@ -14,8 +17,11 @@ const GROUPS: [MessageKey, (tpl: Template) => boolean][] = [
   ['tpl.documents', (tpl) => tpl.kind === 'document' && !tpl.example],
   ['tpl.spreadsheets', (tpl) => tpl.kind === 'spreadsheet' && !tpl.example],
   ['tpl.presentations', (tpl) => tpl.kind === 'presentation' && !tpl.example],
+  ['tpl.drawings', (tpl) => tpl.kind === 'picture' && !tpl.example],
   ['tpl.examples', (tpl) => !!tpl.example],
 ];
+
+const fold = (text: string): string => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 /**
  * Resolves to the chosen template, built-in or of the user (FILE-019), or
@@ -61,30 +67,65 @@ export function chooseTemplate(
       );
       return li;
     };
-    // The user's templates come first; while there are none, a hint at the end says how to make one.
-    const mineSection = h(
-      'section',
-      { class: 'template-group', 'aria-label': t('tpl.mine') },
-      h('h3', {}, t('tpl.mine')),
-      mine.length ? h('ul', { class: 'template-list', role: 'list' }, ...mine.map(own)) : h('p', { class: 'hint' }, t('tpl.mineEmpty')),
-    );
     const inFolder = (tpl: FolderTemplateChoice): HTMLElement =>
       h('li', {}, button(tpl.name, () => finish(tpl), { className: 'template-card', icon: '📁', title: tpl.path }), h('p', { class: 'hint' }, tpl.path));
-    const folderSection = folder?.items.length
-      ? [h('section', { class: 'template-group', 'aria-label': t('tpl.folder', { name: folder.label }) }, h('h3', {}, t('tpl.folder', { name: folder.label })), h('ul', { class: 'template-list', role: 'list' }, ...folder.items.map(inFolder)))]
-      : [];
+    // One panel per kind, behind tabs; the folder's or the user's templates first when there are some.
+    const panels: { label: string; body: HTMLElement; cards: { el: HTMLElement; words: string }[] }[] = [];
+    const panel = (label: string, items: HTMLElement[], words: string[], empty?: HTMLElement): void => {
+      const list = h('ul', { class: 'template-list', role: 'list' }, ...items);
+      panels.push({ label, body: h('div', { class: 'template-panel', role: 'tabpanel', 'aria-label': label }, items.length ? list : (empty ?? list)), cards: items.map((el, i) => ({ el, words: fold(words[i] ?? '') })) });
+    };
+    if (folder?.items.length) panel(t('tpl.folder', { name: folder.label }), folder.items.map(inFolder), folder.items.map((f) => `${f.name} ${f.path}`));
+    if (mine.length) panel(t('tpl.mine'), mine.map(own), mine.map((m) => m.name));
+    for (const [label, keep] of GROUPS) {
+      const items = TEMPLATES.filter(keep);
+      if (items.length) panel(t(label), items.map(card), items.map((tpl) => `${t(tpl.name)} ${t(tpl.description)}`));
+    }
+    if (!mine.length) panel(t('tpl.mine'), [], [], h('p', { class: 'hint' }, t('tpl.mineEmpty')));
+    const tabs = panels.map((p, i) => {
+      const tab = h('button', { type: 'button', role: 'tab', class: 'template-tab', 'aria-selected': String(i === 0), tabindex: i === 0 ? '0' : '-1' }, p.label);
+      tab.addEventListener('click', () => select(i));
+      tab.addEventListener('keydown', (e) => {
+        const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        select((i + step + panels.length) % panels.length);
+        tabs[(i + step + panels.length) % panels.length]!.focus();
+      });
+      return tab;
+    });
+    const tablist = h('div', { class: 'template-tabs', role: 'tablist', 'aria-label': t('tpl.categories') }, ...tabs);
+    const stage = h('div', { class: 'template-stage' });
+    const results = h('ul', { class: 'template-list', role: 'list', 'aria-label': t('tpl.search') });
+    const noMatch = h('p', { class: 'hint' }, t('tpl.noMatch'));
+    let current = 0;
+    function select(i: number): void {
+      current = i;
+      tabs.forEach((tab, j) => {
+        tab.setAttribute('aria-selected', String(j === i));
+        tab.tabIndex = j === i ? 0 : -1;
+      });
+      stage.replaceChildren(panels[i]!.body);
+    }
+    // A search shows every match, whatever its kind.
+    const search = h('input', { type: 'search', class: 'template-search', placeholder: t('tpl.search'), 'aria-label': t('tpl.search') });
+    search.addEventListener('input', () => {
+      const words = fold(search.value).split(/\s+/).filter(Boolean);
+      tablist.hidden = words.length > 0;
+      if (!words.length) return select(current);
+      const found = panels.flatMap((p) => p.cards.filter((c) => words.every((w) => c.words.includes(w))).map((c) => c.el));
+      results.replaceChildren(...found);
+      stage.replaceChildren(found.length ? results : noMatch);
+    });
     dialog.append(
       h('h2', { id: 'tpl-title' }, t('tpl.title')),
       h('p', { class: 'hint' }, t('tpl.intro')),
-      ...folderSection,
-      ...(mine.length ? [mineSection] : []),
-      ...GROUPS.flatMap(([label, keep]) => {
-        const items = TEMPLATES.filter(keep);
-        return items.length ? [h('section', { class: 'template-group', 'aria-label': t(label) }, h('h3', {}, t(label)), h('ul', { class: 'template-list', role: 'list' }, ...items.map(card)))] : [];
-      }),
-      ...(mine.length ? [] : [mineSection]),
+      search,
+      tablist,
+      stage,
       h('div', { class: 'dialog-actions' }, button(t('common.cancel'), () => finish(null))),
     );
+    select(0);
     dialog.addEventListener('cancel', (e) => {
       e.preventDefault();
       finish(null);

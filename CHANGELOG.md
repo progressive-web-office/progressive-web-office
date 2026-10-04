@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Drawings and pictures in the template gallery** (FILE-018): an
+  electrical circuit, a ladder diagram, a Grafcet, a pneumatic circuit and a
+  flowchart, editable at once; graph paper, a colour wheel and a pixel-art
+  canvas made by the application (CC0), ready to paint.
 - **IEC 61131-3 graphical languages** in the drawing editor (DRAW-012):
   ladder diagram (rails, contacts, coils), function block diagram (TON,
   TOF, TP, CTU, CTD, CTUD, R_TRIG, F_TRIG, SR, RS, arithmetic and comparison
@@ -454,6 +458,8 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- The template gallery shows **one kind at a time** behind tabs, with a
+  search through all the templates and examples.
 - The version shows the date of the build as Semantic Versioning build
   metadata: `v0.1.0+20261004 (1a2b3c4)` — the date tells how recent a build
   is and is ignored when versions are compared.

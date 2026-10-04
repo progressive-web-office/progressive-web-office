@@ -2,6 +2,7 @@
  * Built-in templates and examples (FILE-018): each builds a new document,
  * opened as an untitled file in the user's preferred format.
  */
+import * as drawings from './drawings';
 import type { MessageKey } from '../i18n';
 import { readMarkdown } from '../document/markdown-reader';
 import type { Paragraph, RichDocument } from '../document/model';
@@ -14,7 +15,12 @@ import { widgetsMarkdown } from './widgets';
 import { instrumentsMarkdown } from './instruments';
 import { languagesMarkdown } from './languages';
 
-export type Built = { kind: 'document'; doc: RichDocument } | { kind: 'spreadsheet'; wb: Workbook } | { kind: 'presentation'; pres: Presentation };
+export type Built =
+  | { kind: 'document'; doc: RichDocument }
+  | { kind: 'spreadsheet'; wb: Workbook }
+  | { kind: 'presentation'; pres: Presentation }
+  /** A drawing (SVG) or a picture (PNG), opened as a picture to edit (DRAW-001, DRAW-008). */
+  | { kind: 'picture'; ext: 'svg' | 'png'; bytes: () => Promise<Uint8Array> };
 
 export interface Template {
   id: string;
@@ -364,6 +370,23 @@ export const TEMPLATES: Template[] = [
   { id: 'invoice', kind: 'spreadsheet', icon: '🧾', name: 'tpl.invoice', description: 'tpl.invoiceDesc', build: (lang) => ({ kind: 'spreadsheet', wb: invoice(lang) }) },
   { id: 'talk', kind: 'presentation', icon: '🎤', name: 'tpl.talk', description: 'tpl.talkDesc', build: (lang) => ({ kind: 'presentation', pres: talk(lang) }) },
   { id: 'race-signs', kind: 'presentation', icon: '🏁', name: 'tpl.signs', description: 'tpl.signsDesc', build: (lang) => ({ kind: 'presentation', pres: raceSigns(lang) }) },
+  // DRAW-012: drawings and schematics, and pictures made here (CC0).
+  ...(
+    [
+      ['circuit-rc', '🔌', 'tpl.rc', 'tpl.rcDesc', drawings.rcCircuit],
+      ['ladder-latch', '🪜', 'tpl.ladder', 'tpl.ladderDesc', drawings.ladderLatch],
+      ['grafcet', '🔁', 'tpl.grafcet', 'tpl.grafcetDesc', drawings.grafcetCycle],
+      ['pneumatic', '💨', 'tpl.pneumatic', 'tpl.pneumaticDesc', drawings.pneumaticCylinder],
+      ['flowchart', '🔀', 'tpl.flowchart', 'tpl.flowchartDesc', drawings.flowchart],
+    ] as const
+  ).map(([id, icon, name, description, make]): Template => ({ id, kind: 'picture', icon, name, description, build: (lang) => ({ kind: 'picture', ext: 'svg', bytes: async () => new TextEncoder().encode(make(lang)) }) })),
+  ...(
+    [
+      ['graph-paper', '📐', 'tpl.graphPaper', 'tpl.graphPaperDesc', drawings.graphPaper],
+      ['colour-wheel', '🎨', 'tpl.colourWheel', 'tpl.colourWheelDesc', drawings.colourWheel],
+      ['pixel-art', '👾', 'tpl.pixelArt', 'tpl.pixelArtDesc', drawings.pixelCanvas],
+    ] as const
+  ).map(([id, icon, name, description, make]): Template => ({ id, kind: 'picture', icon, name, description, build: () => ({ kind: 'picture', ext: 'png', bytes: make }) })),
   { id: 'tour', kind: 'document', example: true, icon: '🧭', name: 'tpl.tour', description: 'tpl.tourDesc', build: documentFrom('tour') },
   { id: 'lab', kind: 'document', example: true, icon: '🧪', name: 'tpl.lab', description: 'tpl.labDesc', build: lab },
   { id: 'widgets', kind: 'document', example: true, icon: '🎛️', name: 'tpl.widgets', description: 'tpl.widgetsDesc', build: widgets },

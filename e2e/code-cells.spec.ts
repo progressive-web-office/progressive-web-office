@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openApp, openFile, saveAs } from './helpers';
+import { openApp, openFile, saveAs, pickTemplate } from './helpers';
 
 const NOTEBOOK = [
   '# Notebook',
@@ -284,7 +284,7 @@ test('opens a marimo notebook as a document, runs its cells and saves it back un
 test('colours the code of cells, shown and edited, and completes every language (CODE-011, CODE-018)', async ({ page }) => {
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Languages' }).click();
+  await pickTemplate(page, 'Languages');
   const cells = page.locator('.doc-page .code-cell');
   // Shown in the document: coloured, in every language.
   for (const i of [0, 1, 2, 3, 5, 8]) await expect(cells.nth(i).locator('.code-cell-source [class^="tok-"]').first()).toBeVisible();

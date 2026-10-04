@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile, usePyodidePackages, useRuntimePackages, useWebR } from './helpers';
+import { openApp, openFile, usePyodidePackages, useRuntimePackages, useWebR, pickTemplate } from './helpers';
 
 // CODE-018: Lua and SQL files run with a runtime downloaded from its CDN after the user agreed.
 test('runs Lua and SQL files with runtimes downloaded when first needed (CODE-018)', async ({ page }) => {
@@ -62,7 +62,7 @@ test('runs every cell of the languages example (FILE-018, CODE-017, CODE-018)', 
   test.skip(!ready, 'needs PYODIDE_PACKAGES and RUNTIME_PACKAGES, or the network');
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Languages' }).click();
+  await pickTemplate(page, 'Languages');
   const cells = page.locator('.doc-page .code-cell');
   await expect(cells).toHaveCount(9);
   // Each download is asked once per site; the trust question comes first.

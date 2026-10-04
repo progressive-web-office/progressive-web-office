@@ -60,14 +60,15 @@ function symbolSvg(s: SymbolShape): string {
     if (s.value) out += textEl(s.x, s.y + 4, s.value, 12, color, 'middle', ` data-for="${esc(s.id)}"`);
     return out;
   }
-  const horizontal = s.rot === 0 || s.rot === 180;
+  // Beside a vertical symbol (a battery, a source, or any symbol turned), above and below a horizontal one.
+  const horizontal = box[2] - box[0] >= box[3] - box[1];
   // DRAW-012: a ladder variable above its contact or coil, an SFC condition to the right of its transition.
   if (def?.label === 'above' && horizontal) {
     if (s.value) out += label(s.x, box[1] - 4, s.value, 'middle');
     if (s.ref) out += label(s.x, box[3] + 13, s.ref, 'middle');
     return out;
   }
-  if (def?.label === 'right' && horizontal) {
+  if (def?.label === 'right') {
     if (s.value) out += label(box[2] + 6, s.y + 4, s.value, 'start');
     if (s.ref) out += label(box[0] - 6, s.y + 4, s.ref, 'end');
     return out;
@@ -96,7 +97,11 @@ function lineSvg(s: LineShape): string {
   if (s.label && pts.length >= 2) {
     const i = Math.floor((pts.length - 1) / 2);
     const [a, b] = [pts[i]!, pts[i + 1]!];
-    out += textEl((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 5, s.label, 12, color, 'middle', ` data-for="${esc(s.id)}"`);
+    // Beside a vertical segment, above another.
+    const vertical = a[0] === b[0];
+    out += vertical
+      ? textEl(a[0] + 6, (a[1] + b[1]) / 2 + 4, s.label, 12, color, 'start', ` data-for="${esc(s.id)}"`)
+      : textEl((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 5, s.label, 12, color, 'middle', ` data-for="${esc(s.id)}"`);
   }
   return out;
 }

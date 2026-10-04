@@ -27,8 +27,14 @@ describe('FILE-018 built-in templates', () => {
       const calc = new Calculator(built.wb);
       for (const [key] of built.wb.sheets[0]!.cells) expect(isError(calc.value(0, key.split(',').map(Number) as [number, number]))).toBe(false);
       for (const f of ['xlsx', 'ods'] as const) expect(readWorkbook(f, writeWorkbook(built.wb, f)).sheets[0]!.cells.size).toBe(built.wb.sheets[0]!.cells.size);
-    } else {
+    } else if (built.kind === 'presentation') {
       for (const f of ['pptx', 'odp'] as const) expect(readPresentation(f, writePresentation(built.pres, f)).slides.length).toBe(built.pres.slides.length);
+    } else if (built.ext === 'svg') {
+      // DRAW-012: a drawing that opens again editable, its wires attached.
+      const { fromSvg } = await import('../src/draw/svg');
+      const d = fromSvg(new TextDecoder().decode(await built.bytes()));
+      expect(d.shapes.filter((s) => s.kind === 'symbol').length).toBeGreaterThan(3);
+      expect(d.alt).toBeTruthy();
     }
   });
 

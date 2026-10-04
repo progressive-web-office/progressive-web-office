@@ -222,7 +222,7 @@ test('offers the templates of the folder and keeps new ones there (FOLDER-020)',
   await openLocalFolder(page);
   await page.getByRole('button', { name: 'Templates and examples' }).click();
   const gallery = page.getByRole('dialog', { name: 'New from a template' });
-  await gallery.getByRole('region', { name: 'Templates of thesis' }).getByRole('button', { name: 'Lab note' }).click();
+  await gallery.getByRole('tabpanel', { name: 'Templates of thesis' }).getByRole('button', { name: 'Lab note' }).click();
   const editor = page.getByRole('textbox', { name: 'Document' });
   await expect(editor.locator('h1')).toHaveText('Lab note');
   // Saving as template offers the folder's templates folder.

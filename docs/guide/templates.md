@@ -10,6 +10,13 @@ document you pick opens as a new, untitled document in your preferred format
 where you want. The templates are written in the language of the interface
 (English for languages without a translation of their content).
 
+The gallery shows **one kind at a time**: the tabs at the top — *Text
+documents*, *Spreadsheets*, *Presentations*, *Drawings and pictures*,
+*Examples*, and *My templates* or the templates of the open folder when
+there are some (they come first) — choose which; the arrow keys move from
+tab to tab. **Search a template or an example…** looks through all of them
+by name and description.
+
 ## Text documents
 
 | Template | What it has |
@@ -39,6 +46,24 @@ water station and finish, each on an A4 landscape page, in letters several
 centimetres high and high-contrast colours. Print one slide per page and
 laminate them. Turn them to portrait with the orientation list; the text
 sizes follow.
+
+## Drawings and pictures
+
+Drawings open as pictures, ready for **✏️ Edit the drawing** (see
+[Drawings and schematics](./drawing.md)), saved as `.svg`:
+
+- **Electrical circuit**: an RC circuit, a battery charging a capacitor
+  through a resistor, the wires attached to the pins;
+- **Ladder diagram (LD)**: start / stop with a holding contact, in the
+  ladder language of IEC 61131-3;
+- **Grafcet (SFC)**: a two-step cycle with its transitions and an action;
+- **Pneumatic circuit**: a double-acting cylinder driven by a 5/2 valve
+  (ISO 1219);
+- **Flowchart**: a decision with two branches (ISO 5807).
+
+Pictures, made by the application itself and free to use (CC0), open ready
+for **🎨 Paint on the picture**, saved as `.png`: **Graph paper** (a 5 mm
+grid on an A4 page), **Colour wheel**, **Pixel art** (a 32 × 32 canvas).
 
 ## Examples
 

@@ -1041,6 +1041,13 @@ nav.toc .toc-empty { margin: 0; color: #6b7686; font-style: italic; font-size: 0
 /* FILE-018: template gallery. */
 .template-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; }
 .template-group h3 { margin: 16px 0 6px; font-size: 1rem; }
+/* FILE-018: one kind at a time, behind tabs, and a search through all. */
+.template-search { width: 100%; margin: 4px 0 8px; }
+.template-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.template-tabs[hidden] { display: none; }
+.template-tab { border: 1px solid transparent; border-bottom: none; background: none; border-radius: 6px 6px 0 0; padding: 6px 10px; cursor: pointer; color: inherit; }
+.template-tab[aria-selected="true"] { border-color: var(--border); background: var(--surface, #fff); font-weight: 600; margin-bottom: -1px; }
+.template-stage { min-height: 220px; }
 .template-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .template-list li { display: flex; flex-direction: column; gap: 2px; }
 .template-card { justify-content: flex-start; font-weight: 600; text-align: left; padding: 10px 12px; }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile, saveAs } from './helpers';
+import { openApp, openFile, saveAs, pickTemplate } from './helpers';
 
 test('creates, formats and saves a new document (DOC-003, DOC-004, FILE-005)', async ({ page }) => {
   const errors = await openApp(page);
@@ -63,7 +63,7 @@ test('opens templates and examples from the gallery (FILE-018)', async ({ page }
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'Templates and examples' }).click();
   const gallery = page.getByRole('dialog', { name: 'New from a template' });
-  await expect(gallery.getByRole('region', { name: 'Spreadsheets' })).toBeVisible();
+  await expect(gallery.getByRole('tab', { name: 'Spreadsheets' })).toBeVisible();
   await gallery.getByRole('button', { name: 'Report', exact: true }).click();
   const editor = page.getByRole('textbox', { name: 'Document' });
   await expect(editor).toContainText('Table 1: Measurements of the three tests');
@@ -71,13 +71,13 @@ test('opens templates and examples from the gallery (FILE-018)', async ({ page }
 
   await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Budget' }).click();
+  await pickTemplate(page, 'Budget');
   await expect(page.locator('td[data-r="9"][data-c="4"]')).toHaveText('2,575.00');
   await expect(page.getByRole('figure', { name: /Expenses by month/ })).toBeVisible();
 
   await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'A tour of the word processor' }).click();
+  await pickTemplate(page, 'A tour of the word processor');
   await expect(editor).toContainText('A tour of Progressive Web Office');
   await expect(editor.locator('.diagram').first()).toBeVisible();
   if (process.env.SCREENSHOTS) await page.screenshot({ path: 'test-results/tour.png', fullPage: false });
@@ -97,7 +97,7 @@ test('saves a document as a template of the browser and starts from it (FILE-019
   await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: 'Templates and examples' }).click();
   const gallery = page.getByRole('dialog', { name: 'New from a template' });
-  const mine = gallery.getByRole('region', { name: 'My templates' });
+  const mine = gallery.getByRole('tabpanel', { name: 'My templates' });
   await mine.getByRole('button', { name: 'Weekly report', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Document' })).toContainText('Weekly report of the lab');
 
@@ -133,7 +133,7 @@ test('opens a template file as a new document and saves template files (FILE-020
 test('opens the examples with plots: a lab report with Python figures and a workbook of measurements (FILE-018, SHEET-024)', async ({ page }) => {
   const errors = await openApp(page);
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Lab report with Python plots' }).click();
+  await pickTemplate(page, 'Lab report with Python plots');
   const editor = page.getByRole('textbox', { name: 'Document' });
   await expect(editor).toContainText('R = 47.0 Ω');
   const figures = editor.locator('.code-cell img');
@@ -147,7 +147,7 @@ test('opens the examples with plots: a lab report with Python figures and a work
 
   await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Measurements and charts' }).click();
+  await pickTemplate(page, 'Measurements and charts');
   await expect(page.getByRole('figure', { name: /Damped oscillations/ })).toBeVisible();
   await page.getByRole('tab', { name: 'Ohm’s law' }).click();
   await expect(page.getByRole('figure', { name: /U against I/ })).toBeVisible();
@@ -171,5 +171,34 @@ test('opens several dropped files at once in the folder panel (FILE-027)', async
   await expect(page.locator('.doc-page h1')).toHaveText('Notes');
   await panel.getByRole('button', { name: 'data.csv', exact: true }).click();
   await expect(page.locator('td[data-r="1"][data-c="1"]')).toHaveText('2');
+  expect(errors).toEqual([]);
+});
+
+test('the gallery shows one kind at a time, finds templates by name, and opens drawings and pictures (FILE-018, DRAW-012)', async ({ page }) => {
+  const errors = await openApp(page);
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  const gallery = page.getByRole('dialog', { name: 'New from a template' });
+  // Progressive disclosure: the documents first, the other kinds behind tabs.
+  await expect(gallery.getByRole('button', { name: 'Report', exact: true })).toBeVisible();
+  await expect(gallery.getByRole('button', { name: 'Budget', exact: true })).toBeHidden();
+  await gallery.getByRole('tab', { name: 'Drawings and pictures' }).click();
+  await expect(gallery.getByRole('button', { name: 'Ladder diagram (LD)' })).toBeVisible();
+  await expect(gallery.getByRole('button', { name: 'Report', exact: true })).toBeHidden();
+  // A search looks through every kind.
+  await gallery.getByRole('searchbox').fill('grafcet');
+  await expect(gallery.locator('.template-card')).toHaveCount(1);
+  await gallery.getByRole('searchbox').fill('');
+  await gallery.getByRole('button', { name: 'Ladder diagram (LD)' }).click();
+  // A drawing, editable at once.
+  await expect(page.locator('.picture-view img')).toBeVisible();
+  await page.getByRole('button', { name: 'Edit the drawing' }).click();
+  const drawing = page.getByRole('dialog', { name: 'Drawing' });
+  await expect(drawing.locator('.draw-objects button', { hasText: 'Coil' })).toHaveCount(1);
+  await drawing.getByRole('button', { name: 'Cancel' }).click();
+  // A picture made here.
+  await page.reload();
+  await page.getByRole('button', { name: 'Templates and examples' }).click();
+  await pickTemplate(page, 'Graph paper');
+  await expect(page.getByRole('button', { name: 'Paint on the picture' })).toBeVisible();
   expect(errors).toEqual([]);
 });

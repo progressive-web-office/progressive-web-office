@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, openFile, saveAs } from './helpers';
+import { openApp, openFile, saveAs, pickTemplate } from './helpers';
 
 test('creates a presentation, edits text, adds slides and shapes, presents and saves (PRES-004..008)', async ({ page }) => {
   const errors = await openApp(page);
@@ -64,7 +64,7 @@ test('very large font sizes on a text box and on selected text (UI-016)', async 
 test('race signs in very large letters, turned to portrait and back (FILE-018, PRES-013)', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Templates and examples' }).click();
-  await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name: 'Race signs' }).click();
+  await pickTemplate(page, 'Race signs');
   await expect(page.locator('.slide-thumb')).toHaveCount(8);
   await expect(page.getByLabel('Slide size')).toHaveValue('A4');
   await expect(page.getByLabel('Orientation')).toHaveValue('landscape');

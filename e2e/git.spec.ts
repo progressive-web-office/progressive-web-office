@@ -148,7 +148,8 @@ test('opens a repository as a folder, each change being a commit (FOLDER-007)', 
   await page.keyboard.type(' and plans');
   await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => files.get('README.md')).toContain('# Notes and plans\n');
-  expect(commits).toEqual(['docs: update README.md']);
+  // The tree is written before the commit is: wait for both.
+  await expect.poll(() => commits).toEqual(['docs: update README.md']);
 
   // Renaming in the explorer is a commit too.
   await panel.getByRole('button', { name: 'docs' }).click();
@@ -156,13 +157,13 @@ test('opens a repository as a folder, each change being a commit (FOLDER-007)', 
   page.once('dialog', (d) => void d.accept('roadmap.md'));
   await page.getByRole('menu').getByRole('menuitem', { name: 'Rename (F2)' }).click();
   await expect.poll(() => [...files.keys()].sort()).toEqual(['README.md', 'docs/roadmap.md']);
-  expect(commits.at(-1)).toBe('docs: rename docs/plan.md to docs/roadmap.md');
+  await expect.poll(() => commits.at(-1)).toBe('docs: rename docs/plan.md to docs/roadmap.md');
 
   // GIT-015: a new text document made right in the repository, opened at once.
   page.once('dialog', (d) => void d.accept('Report.odt'));
   await panel.getByRole('button', { name: 'New document (.odt)' }).click();
   await expect.poll(() => [...files.keys()].find((f) => f.endsWith('Report.odt'))).toBeTruthy();
-  expect(commits.at(-1)).toMatch(/Report\.odt/);
+  await expect.poll(() => commits.at(-1)).toMatch(/Report\.odt/);
   await expect(page.locator('.doc-page')).toBeVisible();
   expect(errors).toEqual([]);
 });

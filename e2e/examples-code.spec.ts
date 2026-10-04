@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openApp, usePyodidePackages } from './helpers';
+import { openApp, usePyodidePackages, pickTemplate } from './helpers';
 
 /**
  * FILE-018, CODE-016: every example with code runs without an error — all
@@ -19,7 +19,7 @@ for (const [name, min] of EXAMPLES) {
     test.skip(!(await usePyodidePackages(page)) || !process.env.CI, 'needs the network (CI) for the Python packages');
     const errors = await openApp(page);
     await page.getByRole('button', { name: 'Templates and examples' }).click();
-    await page.getByRole('dialog', { name: 'New from a template' }).getByRole('button', { name }).click();
+    await pickTemplate(page, name);
     const cells = page.locator('.doc-page .code-cell');
     await expect.poll(() => cells.count()).toBeGreaterThanOrEqual(Math.max(1, min));
     await page.addLocatorHandler(page.getByRole('dialog', { name: 'Run the code of this document?' }), async (d) => d.getByRole('button', { name: 'Run' }).click());
