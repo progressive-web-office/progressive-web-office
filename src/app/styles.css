@@ -1391,6 +1391,24 @@ body.distraction-free .ai-panel { display: none !important; }
 .folder-tag-section { margin: 8px 0; font-size: 0.9rem; }
 .folder-tag-section > summary { cursor: pointer; font-weight: 600; }
 .folder-tags { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 6px 0; }
+.folder-calendar-section { flex: none; max-height: 55%; overflow: auto; font-size: 0.9rem; }
+.folder-calendar-section > summary { cursor: pointer; font-weight: 600; padding: 2px 0; }
+.folder-panel .fs-explorer { min-height: 8rem; }
+.daily-calendar { padding: 4px 0 8px; font-size: 0.85rem; }
+.daily-head { display: flex; align-items: center; gap: 2px; margin-bottom: 4px; }
+.daily-month { flex: 1; text-align: center; font-weight: 600; text-transform: capitalize; }
+.daily-today { font-size: 0.75rem; padding: 1px 6px; }
+.daily-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.daily-weekday { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; }
+.daily-day { position: relative; border: 1px solid transparent; background: none; color: inherit; border-radius: 6px; padding: 3px 0 7px; min-width: 0; font: inherit; cursor: pointer; }
+.daily-day:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.daily-day.has-note::after { content: ''; position: absolute; left: 50%; bottom: 2px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
+.daily-day.today { border-color: var(--accent); font-weight: 700; }
+.daily-day.current { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.daily-settings { display: grid; gap: 4px; margin: 4px 0 8px; }
+.daily-settings label { display: grid; grid-template-columns: 5.5em 1fr; align-items: center; gap: 6px; }
+.daily-settings input { min-width: 0; font: 0.85em ui-monospace, monospace; }
+.daily-settings .hint { margin: 0; font-size: 0.75rem; }
 .folder-tag { display: inline-flex; align-items: center; gap: 2px; }
 .folder-tag-count { font-size: 0.75rem; color: var(--muted); }
 .folder-tag-rename { width: 1.6rem; height: 1.6rem; padding: 0; font-size: 0.8rem; }

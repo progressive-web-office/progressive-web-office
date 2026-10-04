@@ -4,12 +4,14 @@
  */
 import { busyText, button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
-import { basename, dirname, Explorer, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
+import { basename, dirname, Explorer, readText, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
 import { searchable, type FolderIndex, type SearchHit } from './search';
 import { isNote, NoteVault, noteName } from './vault';
 import { newNoteId, newNoteText, noteId } from '../document/wiki-links';
 import { officeNewFiles } from './new-files';
+import { DailyCalendar } from './calendar';
+import { dailyPath, dailyText, loadDailySettings } from './daily';
 import { linkMention, loadBacklinkSettings, mentions, saveBacklinkSettings, type BacklinkSettings } from './backlinks';
 import { loadTagColours, setTagColour, TAG_COLOURS, type TagColour } from './tags';
 
@@ -44,6 +46,23 @@ const ICONS: [RegExp, string][] = [
   [/\.(c|h|cpp|cc|cxx|hpp|py|java|js|mjs|ts|tsx|jsx|cs|go|rs|rb|php|sh|r|m|jl|kt|swift|sql|html?|css|scss|lua|hs|f90|pas|ml|scala|dart|ipynb)$|(^|\/)(makefile|dockerfile)$/i, '🧾'],
 ];
 const SORT_KEY = 'pwo.folder.sort';
+const CALENDAR_KEY = 'pwo.notes.calendarOpen';
+
+function calendarOpen(): boolean {
+  try {
+    return localStorage.getItem(CALENDAR_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveCalendarOpen(open: boolean): void {
+  try {
+    localStorage.setItem(CALENDAR_KEY, open ? '1' : '0');
+  } catch {
+    /* not kept */
+  }
+}
 const savedSort = (): SortKey | undefined => {
   try {
     const v = localStorage.getItem(SORT_KEY);
@@ -68,6 +87,9 @@ export class FolderPanel {
   private readonly search: HTMLInputElement;
   /** FOLDER-017: the tags of the notes. */
   private readonly tagSection: HTMLDetailsElement;
+  /** FOLDER-027: the calendar of the daily notes. */
+  private readonly calendar: DailyCalendar;
+  private readonly calendarSection: HTMLDetailsElement;
   private readonly tagList = h('div', { class: 'folder-tags' });
   private paths: string[] = [];
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -162,15 +184,26 @@ export class FolderPanel {
     this.tagSection.addEventListener('toggle', () => {
       if (this.tagSection.open) void this.renderTags();
     });
+    this.calendar = new DailyCalendar({
+      notes: () => this.entries.filter((e) => e.kind === 'file' && isNote(e.path)).map((e) => e.path),
+      current: () => this.current,
+      openDay: (date) => void this.openDaily(date),
+    });
+    this.calendarSection = h('details', { class: 'folder-calendar-section', open: calendarOpen() }, h('summary', {}, t('daily.calendar')), this.calendar.element) as HTMLDetailsElement;
+    this.calendarSection.addEventListener('toggle', () => {
+      saveCalendarOpen(this.calendarSection.open);
+      if (this.calendarSection.open) this.calendar.render();
+    });
     this.element = h(
       'aside',
       { class: 'folder-panel', 'aria-label': t('folder.panel') },
-      h('div', { class: 'folder-head' }, h('h2', { title: provider.label }, `📁 ${provider.label}`), ...(hooks.actions ?? []), button(t('folder.graph'), () => void this.showGraph(), { text: '🕸', className: 'icon', title: t('folder.graphTitle') }), button(t('folder.close'), () => hooks.close(), { text: '✕', className: 'icon' })),
+      h('div', { class: 'folder-head' }, h('h2', { title: provider.label }, `📁 ${provider.label}`), ...(hooks.actions ?? []), button(t('daily.todayNote'), () => void this.openDaily(new Date()), { text: '📅', className: 'icon' }), button(t('folder.graph'), () => void this.showGraph(), { text: '🕸', className: 'icon', title: t('folder.graphTitle') }), button(t('folder.close'), () => hooks.close(), { text: '✕', className: 'icon' })),
       provider.capabilities.write ? '' : h('p', { class: 'folder-readonly' }, t('folder.readOnlyHint')),
       this.search,
       this.results,
       this.explorer.element,
       this.indexStatus,
+      this.calendarSection,
       this.tagSection,
       this.backlinksHome,
       this.backlinks,
@@ -339,6 +372,7 @@ export class FolderPanel {
     this.vault.listed(this.entries);
     if (this.vault.started || !/^(git|webdav):/.test(this.provider.id)) void this.indexNotes();
     if (this.tagSection.open) await this.renderTags();
+    if (this.calendarSection.open) this.calendar.render();
     if (this.search.value.trim()) await this.runSearch();
   }
 
@@ -350,6 +384,7 @@ export class FolderPanel {
   setCurrent(path: string | undefined): void {
     this.current = path;
     this.explorer.setCurrent(path);
+    if (this.calendarSection.open) this.calendar.render();
     if (!path) this.backlinks.hidden = true;
   }
 
@@ -464,6 +499,30 @@ export class FolderPanel {
         ),
       ),
     );
+  }
+
+  /**
+   * FOLDER-027: the note of a day, created when there is none — named after
+   * its date in the format chosen, in its folder, from its template.
+   */
+  async openDaily(date: Date): Promise<void> {
+    const settings = loadDailySettings();
+    const lang = document.documentElement.lang || undefined;
+    const path = dailyPath(date, settings, lang);
+    const existing = this.entries.find((e) => e.kind === 'file' && e.path.toLowerCase() === path.toLowerCase());
+    if (!existing) {
+      if (!this.provider.capabilities.write) return this.hooks.error(t('daily.readOnly'));
+      try {
+        const template = settings.template ? await readText(this.provider, settings.template).catch(() => undefined) : undefined;
+        if (settings.template && template === undefined) this.hooks.error(t('daily.noTemplate', { path: settings.template }));
+        await this.provider.write(path, new Blob([dailyText(date, settings, template, lang)]));
+        await this.refresh();
+      } catch (err) {
+        return this.hooks.error((err as Error).message);
+      }
+    }
+    this.calendar.showMonthOf(date);
+    this.hooks.open(existing?.path ?? path);
   }
 
   /** FOLDER-026: the notes writing the name of this one (or an alias) without a link. */

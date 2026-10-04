@@ -155,6 +155,27 @@ addresses as links to follow, dates, yes/no boxes and numbers.
 The way chosen is kept for the next notes; **View › Properties of the note**
 hides the card.
 
+### Daily notes and calendar
+
+**📅** in the panel's header opens **today's note**, created when there is
+none (FOLDER-027). The **📅 Calendar** section shows the month: a dot under
+each day that has its note; a click opens it, or creates it; **‹ ›** change
+the month, **Today** comes back.
+
+**⚙** sets:
+
+::: v-pre
+
+- **Name** — the format of the date, `YYYY-MM-DD` by default: `YYYY` year,
+  `MM` month, `DD` day, `ddd`/`dddd` weekday, `MMMM` month name, `ww` week,
+  `[text]` written as it is. A `/` makes folders: `YYYY/MM/YYYY-MM-DD` files
+  the notes by year and month.
+- **Folder** — where the daily notes go (the root of the folder by default).
+- **Template** — a note copied into each new daily note, its fields filled:
+  `{{title}}`, `{{date}}`, `{{date:dddd D MMMM}}`, `{{time}}`.
+
+:::
+
 ### Tags
 
 **Tags** (below the tree) lists the tags of the notes, the most used first

@@ -139,6 +139,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Daily notes from a calendar (FOLDER-027): the month of the folder with a
+  dot on each day that has its note, a click opening or creating it, and
+  📅 for today's note — named `YYYY-MM-DD` by default, or in the format, the
+  folder and from the template you set.
+
 - Backlinks at the bottom of the note's page (FOLDER-026), or in the side
   panel: sorted by name or latest changed, with or without the words around
   each link, folded; and the unlinked mentions of the note — its name or an

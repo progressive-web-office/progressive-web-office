@@ -138,12 +138,11 @@ any other tool. Planned, the most useful first:
 
 **Backlinks**
 
-- Backlinks at the bottom of the note, or beside it, or hidden — a setting,
-  and a command for one note
-- Linked and unlinked mentions (the name or an alias written without a
-  link), each made a link in one click
-- Settings: the whole paragraph or one line of context, sort by name or
-  date, collapsed, a filter
+- ✅ Backlinks at the bottom of the note or beside it, sorted by name or
+  date, with or without context, folded (FOLDER-026); next: the whole
+  paragraph as context, a filter
+- ✅ Unlinked mentions (the name or an alias written without a link), each
+  made a link in one click (FOLDER-026)
 
 **Graph**
 
@@ -167,11 +166,11 @@ any other tool. Planned, the most useful first:
 
 **Daily notes and calendar**
 
-- Today's note opened (created when missing), named `YYYY-MM-DD` by default,
-  the format, the folder and the template chosen; a format with `/` makes
-  sub-folders
-- A month calendar beside the notes: a dot for each day with a note, a click
-  opens or creates it; previous and next day
+- ✅ Today's note opened (created when missing), named `YYYY-MM-DD` by
+  default, the format, the folder and the template chosen; a format with `/`
+  makes sub-folders (FOLDER-027)
+- ✅ A month calendar beside the notes: a dot for each day with a note, a
+  click opens or creates it (FOLDER-027); next: previous and next day
 - Weekly, monthly, quarterly and yearly notes, each with its format, folder
   and template
 - Dates written in words (`@today`, `@next friday`) made links to their day
