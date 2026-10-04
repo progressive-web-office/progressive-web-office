@@ -1889,6 +1889,23 @@ export const en = {
   'git.howGitea2': 'Under “Manage access tokens”, name the token (e.g. “PWO”).',
   'git.howGitea3': 'In “Select permissions”, give “repository” Read and write (and “user” Read, to list your repositories).',
   'git.howGitea4': 'Click “Generate token”, copy it (shown only once) and paste it here.',
+  'gitwc.commitDoc': 'Commit this document…',
+  'gitwc.commitAll': 'Commit all the changes…',
+  'gitwc.askOnSave': 'Offer a commit at each save',
+  'gitwc.dontAskOnSave': 'Stop offering a commit at each save',
+  'gitwc.askingOn': 'Each save in this folder will offer a commit.',
+  'gitwc.askingOff': 'Saving no longer offers a commit; commit from ⎇ when you want.',
+  'gitwc.menuMessage': 'Git working copy on branch {branch}: the application commits here itself, Git keeps the versions.',
+  'gitwc.nothing': 'Nothing to commit: the files are as in the last commit.',
+  'gitwc.committed': 'Committed {n} file(s) to {branch} ({id}).',
+  'gitwc.commitTitle': 'Commit on {branch}',
+  'gitwc.commitHint': 'A commit in the Git working copy of this folder, as the git command would make it.',
+  'gitwc.files': 'Files',
+  'gitwc.stopAsking': 'Do not offer a commit at each save in this folder',
+  'gitwc.notNow': 'Not now',
+  'gitwc.status.new': 'new',
+  'gitwc.status.modified': 'modified',
+  'gitwc.status.deleted': 'deleted',
 } as const;
 
 export type MessageKey = keyof typeof en;

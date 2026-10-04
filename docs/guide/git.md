@@ -420,6 +420,24 @@ shared drive of the local network, can be a **Git working copy** (made with
   `git checkout` work on them as on any file. Prefer the text formats (`.md`,
   `.tex`, `.csv`, `.fodt`…) when you want readable diffs (see
   [GIT-010](#commit-changes)).
+- **Or let the application commit**: when the working copy can be written
+  (a folder of this device in Chrome or Edge, or the browser storage), the
+  application makes the commits itself, as the `git` command would (it uses
+  [isomorphic-git](https://isomorphic-git.org), entirely in the browser):
+  - **Save** offers a commit of the document: a message (`docs: update
+    notes.md`), the files to include; **Not now** leaves it to later. Tick
+    *Do not offer a commit at each save in this folder* to stop being asked;
+  - **⎇ branch**, at the top of the panel: **Commit this document…**,
+    **Commit all the changes…** (new, modified and deleted files, chosen one
+    by one), **History of this document…** (the local commits, each compared
+    with the one before or with the document as it is now, opened or
+    restored — a restore is a new commit, the history stays as it is), and
+    turning the offer at each save on or off;
+  - the author is the `user.name` / `user.email` of the repository's own
+    `.git/config`, else your name from the settings;
+  - large repositories work, packed objects included; the files are written
+    in place, and a later `git status` in a terminal shows nothing to commit.
+  Pushing to and pulling from a remote is still done with your Git tool.
 - **New documents right there**: in the folder panel, 📝, 📊 and 📽️ create a
   text document, a spreadsheet or a presentation in the selected folder
   (in the format family of the settings) and open it; a drawing is in the

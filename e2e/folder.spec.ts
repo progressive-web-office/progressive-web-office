@@ -358,5 +358,5 @@ test('a Git working copy shows its branch; documents are saved in place (GIT-014
   await expect(panel.getByRole('button', { name: 'Git working copy, branch main' })).toHaveText('⎇ main');
   await expect(panel.getByRole('button', { name: '.git' })).toHaveCount(0);
   await panel.getByRole('button', { name: 'Git working copy, branch main' }).click();
-  await expect(page.getByRole('alert')).toContainText('Git keeps their versions');
+  await expect(page.getByRole('dialog', { name: 'This folder is a Git working copy' })).toContainText('Git keeps the versions');
 });

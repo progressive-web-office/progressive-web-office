@@ -116,6 +116,8 @@ export class App {
   private collab: import('../collab/ui').Collaboration | null = null;
   /** The open folder and its side panel (FOLDER-001). */
   private folder: import('../folder/panel').FolderPanel | null = null;
+  /** GIT-017: the open folder is a Git working copy the application commits to. */
+  private localRepo: import('../git/local').LocalRepo | undefined;
 
   constructor(
     private readonly root: HTMLElement,
@@ -1740,6 +1742,8 @@ export class App {
     // GIT-014: a folder that is a Git working copy, its branch shown.
     const { workingCopy } = await import('../git/working-copy');
     const wc = folder instanceof GitRepoProvider || folder instanceof ArchiveProvider ? undefined : await workingCopy(folder);
+    // GIT-017: a writable working copy is committed to by the application itself.
+    this.localRepo = wc && folder.capabilities.write ? new (await import('../git/local')).LocalRepo(folder) : undefined;
     const index = new FolderIndex(folder, async (name, bytes) => {
       const format = detectFormat(name, bytes);
       if (!format || formatKind(format) !== 'document') return undefined;
@@ -1775,7 +1779,7 @@ export class App {
             ],
           }
         : wc
-          ? { actions: [button(t('gitwc.button', { branch: wc.branch ?? 'Git' }), () => this.showNotice(t('gitwc.info', { branch: wc.branch ?? '—' })), { text: `⎇ ${wc.branch ?? 'Git'}`, className: 'folder-git', title: t('gitwc.title') })] }
+          ? { actions: [button(t('gitwc.button', { branch: wc.branch ?? 'Git' }), () => void this.workingCopyMenu(wc.branch ?? '—'), { text: `⎇ ${wc.branch ?? 'Git'}`, className: 'folder-git', title: t('gitwc.title') })] }
           : {}),
     });
     this.root.append(this.folder.element);
@@ -1829,6 +1833,7 @@ export class App {
     if (!this.confirmArchiveClose()) return;
     this.folder?.element.remove();
     this.folder = null;
+    this.localRepo = undefined;
     this.root.classList.remove('with-folder');
     if (this.current) delete this.current.folderPath;
     this.renderHeader();
@@ -2042,9 +2047,93 @@ export class App {
       if (format) await folder.refresh();
       folder.setCurrent(path);
       this.renderHeader();
+      // GIT-017: in a Git working copy, the save is offered as a commit.
+      if (this.localRepo && (await import('../git/local-ui')).asksToCommit(folder.provider.id)) await this.commitLocal([path], true);
     } catch (err) {
       this.showError(t('error.save', { message: (err as Error).message }));
     }
+  }
+
+  /** GIT-014, GIT-017: what can be done in a Git working copy. */
+  private async workingCopyMenu(branch: string): Promise<void> {
+    const repo = this.localRepo;
+    if (!repo) return this.showNotice(t('gitwc.info', { branch }));
+    const doc = this.current;
+    const commitDoc = t('gitwc.commitDoc');
+    const commitAll = t('gitwc.commitAll');
+    const history = t('history.menu');
+    const ask = t('gitwc.askOnSave');
+    const dontAsk = t('gitwc.dontAskOnSave');
+    const { asksToCommit, setAsksToCommit } = await import('../git/local-ui');
+    const asking = asksToCommit(repo.provider.id);
+    const options = [...(doc?.folderPath ? [commitDoc, history] : []), commitAll, asking ? dontAsk : ask];
+    const choice = await this.choose(t('gitwc.title'), t('gitwc.menuMessage', { branch }), options, options[0]!, t('common.continue'));
+    if (choice === commitDoc && doc?.folderPath) return this.commitLocal([doc.folderPath]);
+    if (choice === commitAll) return this.commitLocal();
+    if (choice === history) return this.localHistory();
+    if (choice === ask || choice === dontAsk) {
+      setAsksToCommit(repo.provider.id, choice === ask);
+      this.showNotice(t(choice === ask ? 'gitwc.askingOn' : 'gitwc.askingOff'));
+    }
+  }
+
+  /** GIT-017: a commit of some files (or of every change) of the working copy. */
+  private async commitLocal(paths?: string[], afterSave = false): Promise<void> {
+    const repo = this.localRepo;
+    if (!repo) return;
+    try {
+      const [{ localCommitDialog, setAsksToCommit }, { commentAuthor }] = await Promise.all([import('../git/local-ui'), import('./author')]);
+      const all = await repo.changes();
+      const files = paths ? all.filter((c) => paths.includes(c.path)) : all;
+      if (!files.length) return afterSave ? undefined : this.showNotice(t('gitwc.nothing'));
+      const branch = (await repo.branch()) ?? '—';
+      const first = files[0]!.path;
+      const message = files.length === 1 ? `docs: ${files[0]!.status === 'new' ? 'add' : files[0]!.status === 'deleted' ? 'remove' : 'update'} ${basename(first)}` : `docs: update ${files.length} files`;
+      const choice = await localCommitDialog(this.root, { branch, message, files, afterSave });
+      if (!choice) return;
+      if (choice.stopAsking) setAsksToCommit(repo.provider.id, false);
+      const id = await this.withBusy(async () => repo.commit(choice.paths, choice.message, await repo.author(commentAuthor())));
+      this.showNotice(t('gitwc.committed', { n: choice.paths.length, branch, id: id.slice(0, 7) }));
+    } catch (err) {
+      this.showError(t('error.git', { message: (err as Error).message }));
+    }
+  }
+
+  /** GIT-017, VER-002: the local commits of the open document, compared, opened or restored. */
+  private async localHistory(): Promise<void> {
+    const repo = this.localRepo;
+    const doc = this.current;
+    const path = doc?.folderPath;
+    if (!repo || !doc?.view.save || !path) return;
+    const { historyDialog } = await import('../git/history');
+    const client = {
+      provider: 'github',
+      listCommits: (_repo: string, _ref: string, p: string) => repo.listCommits(p),
+      readFile: async (_repo: string, ref: string, p: string) => ({ bytes: await repo.readAt(ref, p), version: ref }),
+    } as unknown as import('../git/types').GitClient;
+    const choice = await historyDialog(this.root, { client, repo: '', branch: (await repo.branch()) ?? '', path, current: async () => doc.view.save!(doc.format) });
+    if (!choice || this.current !== doc) return;
+    if (!this.confirmDiscard()) return;
+    const name = basename(path);
+    const when = new Date(choice.commit.date).toLocaleString();
+    await this.withBusy(async () => {
+      try {
+        if (choice.action === 'restore') {
+          // A new commit putting the old version back; the history stays as it is.
+          await repo.provider.write(path, new Blob([choice.bytes as BlobPart]));
+          const { commentAuthor } = await import('./author');
+          await repo.commit([path], `docs: restore ${name} as of ${choice.commit.id.slice(0, 7)}`, await repo.author(commentAuthor()));
+        }
+        if (!(await this.openBytes(name, choice.bytes))) return;
+        const now = this.current;
+        if (now) now.folderPath = path;
+        this.dirty = choice.action === 'open';
+        this.renderHeader();
+        this.showNotice(t(choice.action === 'restore' ? 'history.restored' : 'history.opened', { name, when, id: choice.commit.id.slice(0, 7) }));
+      } catch (err) {
+        this.showError(t('error.git', { message: (err as Error).message }));
+      }
+    });
   }
 
   /** A link relative to the open document, opened from the folder (FOLDER-003). */

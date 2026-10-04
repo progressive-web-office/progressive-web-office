@@ -10,6 +10,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Commits made by the application in a Git working copy** (GIT-017), with
+  isomorphic-git, in the browser: Save offers a commit (message, files),
+  the ⎇ branch menu commits the document or all the changes and shows the
+  local history of a document (compare, open, restore as a new commit);
+  the repository's own author name is used. New runtime dependencies:
+  `isomorphic-git` (MIT) and `buffer` (MIT, the Node Buffer it needs),
+  loaded only when a working copy is opened.
 - **Gitea and Forgejo** (GIT-016): Codeberg, self-hosted and local-network
   forges, as GitHub and GitLab — accounts with a token, addresses
   (`…/src/branch/main/…`) understood, open, commit, branches, pull requests,

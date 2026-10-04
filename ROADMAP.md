@@ -261,6 +261,13 @@ group is not a commitment.
 - ✅ Git repositories (GitHub, GitLab) as folders of the file explorer, each
   change being a commit (FOLDER-007); new branches and pull / merge requests
   from a branch (FOLDER-022)
+- ✅ Gitea and Forgejo forges — Codeberg, self-hosted, local network (GIT-016)
+- ✅ Git working copies on disk: branch shown (GIT-014), new documents made
+  in folders and repositories (GIT-015), commits made by the application
+  itself with isomorphic-git, local history, compare and restore (GIT-017);
+  next: branches, pull and push to a remote from a working copy
+- ✅ Repositories and servers used remembered, documents keeping where they
+  come from (FILE-028, FILE-029)
 - ✅ Read-only opening: open any document read-only (viewing without
   accidental edits, files from a read-only folder or link), with a visible
   banner and "Edit a copy"
