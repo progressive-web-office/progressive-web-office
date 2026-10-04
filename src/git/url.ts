@@ -23,13 +23,21 @@ export interface RepoAddress {
 
 export function apiUrlFor(provider: GitProvider, host: string): string {
   if (provider === 'github') return host === 'github.com' ? 'https://api.github.com' : `https://${host}/api/v3`;
+  if (provider === 'gitea') return `https://${host}/api/v1`;
   return `https://${host}/api/v4`;
+}
+
+/** The name of a kind of forge, to show. */
+export function providerName(provider: GitProvider): string {
+  return provider === 'github' ? 'GitHub' : provider === 'gitea' ? 'Gitea / Forgejo' : 'GitLab';
 }
 
 /** The provider of a site: GitHub for github.com and GitHub Enterprise sites named so, GitLab otherwise. */
 function providerOf(host: string, path: string): GitProvider {
   if (host === 'github.com' || /(^|\.)github\./.test(host)) return 'github';
   if (host === 'gitlab.com' || /(^|\.)gitlab\./.test(host) || path.includes('/-/')) return 'gitlab';
+  // GIT-016: Codeberg and sites named so run Forgejo or Gitea; their links have `/src/branch/`.
+  if (host === 'codeberg.org' || /(^|\.)(gitea|forgejo)\./.test(host) || /\/src\/(branch|commit|tag)\//.test(path)) return 'gitea';
   return 'gitlab';
 }
 
@@ -66,6 +74,14 @@ export function parseRepoAddress(text: string): RepoAddress | undefined {
     if (m[3]) branch = m[3];
     if (m[4]) inside = m[4];
     isFile = m[2] === 'blob';
+  } else if (provider === 'gitea') {
+    // `owner/name/src/branch/main/a/b.md` (a folder or a file: told when opened).
+    const m = /^([^/]+\/[^/]+)(?:\/src\/(?:branch|commit|tag)\/([^/]+)(?:\/(.+))?)?/.exec(rest);
+    if (!m) return undefined;
+    path = m[1]!;
+    if (m[2]) branch = m[2];
+    if (m[3]) inside = m[3];
+    isFile = !!m[3] && /\.[a-z0-9]+$/i.test(m[3]);
   } else {
     const m = /^(.+?)(?:\/-\/(tree|blob)\/([^/]+)(?:\/(.+))?)?$/.exec(rest);
     if (!m) return undefined;
@@ -80,6 +96,7 @@ export function parseRepoAddress(text: string): RepoAddress | undefined {
 
 /** Where a personal access token is created on a site. */
 export function tokenPage(provider: GitProvider, host: string): string {
+  if (provider === 'gitea') return `https://${host}/user/settings/applications`;
   return provider === 'github' ? `https://${host}/settings/personal-access-tokens/new` : `https://${host}/-/user_settings/personal_access_tokens`;
 }
 
@@ -98,5 +115,6 @@ export function repoWebUrl(provider: GitProvider, apiUrl: string, repo: string, 
   if (!branch) return base;
   const kind = isFile ? 'blob' : 'tree';
   const tail = `${encodeURIComponent(branch)}${inside ? `/${inside.split('/').map(encodeURIComponent).join('/')}` : ''}`;
+  if (provider === 'gitea') return `${base}/src/branch/${tail}`;
   return provider === 'github' ? `${base}/${kind}/${tail}` : `${base}/-/${kind}/${tail}`;
 }

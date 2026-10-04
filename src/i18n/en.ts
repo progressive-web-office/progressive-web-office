@@ -1885,6 +1885,10 @@ export const en = {
   'gitwc.button': 'Git working copy, branch {branch}',
   'gitwc.title': 'This folder is a Git working copy',
   'gitwc.info': 'This folder is a Git working copy (branch {branch}): documents are saved in place; Git keeps their versions.',
+  'git.howGitea1': 'Open the Applications page of your settings (signed in to the Gitea or Forgejo site):',
+  'git.howGitea2': 'Under “Manage access tokens”, name the token (e.g. “PWO”).',
+  'git.howGitea3': 'In “Select permissions”, give “repository” Read and write (and “user” Read, to list your repositories).',
+  'git.howGitea4': 'Click “Generate token”, copy it (shown only once) and paste it here.',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -1571,7 +1571,7 @@ export class App {
     // FOLDER-007: a branch of a GitHub or GitLab repository, each change a commit.
     const { loadAccounts } = await import('../git/accounts');
     const gitAccounts = loadAccounts();
-    const git = gitAccounts.map((a) => `⎇ ${a.label} (${a.provider === 'github' ? 'GitHub' : 'GitLab'})`);
+    const git = gitAccounts.map((a) => `⎇ ${a.label} (${a.provider === 'github' ? 'GitHub' : a.provider === 'gitea' ? 'Gitea / Forgejo' : 'GitLab'})`);
     // GIT-008: any repository, by its address, adding its account if needed.
     const byAddress = t('folder.gitAddress');
     const choice = await this.choose(t('folder.open'), t('folder.where'), [local, browser, ...cloud, ...git, byAddress], local);

@@ -1887,4 +1887,8 @@ export const fr: Record<MessageKey, string> = {
   'gitwc.button': 'Copie de travail Git, branche {branch}',
   'gitwc.title': 'Ce dossier est une copie de travail Git',
   'gitwc.info': 'Ce dossier est une copie de travail Git (branche {branch}) : les documents sont enregistrés sur place ; Git en garde les versions.',
+  'git.howGitea1': 'Ouvrez la page Applications de vos paramètres (connecté au site Gitea ou Forgejo) :',
+  'git.howGitea2': 'Sous « Gérer les jetons d’accès », nommez le jeton (par ex. « PWO »).',
+  'git.howGitea3': 'Dans « Sélectionner les autorisations », donnez à « repository » Lecture et écriture (et à « user » Lecture, pour lister vos dépôts).',
+  'git.howGitea4': 'Cliquez sur « Générer le jeton », copiez-le (affiché une seule fois) et collez-le ici.',
 };

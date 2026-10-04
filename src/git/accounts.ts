@@ -1,5 +1,6 @@
 /** Git accounts stored in this browser only (GIT-001, GIT-006). */
 import { GitHubClient } from './github';
+import { GiteaClient } from './gitea';
 import { GitLabClient } from './gitlab';
 import type { FetchFn, GitClient, GitProvider } from './types';
 
@@ -15,7 +16,7 @@ export interface GitAccount {
 const KEY = 'pwo.git.accounts';
 
 export function defaultApiUrl(provider: GitProvider): string {
-  return provider === 'github' ? 'https://api.github.com' : 'https://gitlab.com/api/v4';
+  return provider === 'github' ? 'https://api.github.com' : provider === 'gitea' ? 'https://codeberg.org/api/v1' : 'https://gitlab.com/api/v4';
 }
 
 /** GIT-012: accounts whose token is not to be remembered: kept until the application is closed. */
@@ -24,7 +25,7 @@ const sessionAccounts: GitAccount[] = [];
 function storedAccounts(): GitAccount[] {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
-    return Array.isArray(raw) ? (raw as GitAccount[]).filter((a) => a && typeof a.token === 'string' && (a.provider === 'github' || a.provider === 'gitlab')) : [];
+    return Array.isArray(raw) ? (raw as GitAccount[]).filter((a) => a && typeof a.token === 'string' && (a.provider === 'github' || a.provider === 'gitlab' || a.provider === 'gitea')) : [];
   } catch {
     return [];
   }
@@ -62,7 +63,7 @@ export function forgetAccount(id: string): void {
 
 export function clientFor(account: Pick<GitAccount, 'provider' | 'apiUrl' | 'token'>, fetchFn?: FetchFn): GitClient {
   const config = { apiUrl: account.apiUrl, token: account.token };
-  return account.provider === 'github' ? new GitHubClient(config, fetchFn) : new GitLabClient(config, fetchFn);
+  return account.provider === 'github' ? new GitHubClient(config, fetchFn) : account.provider === 'gitea' ? new GiteaClient(config, fetchFn) : new GitLabClient(config, fetchFn);
 }
 
 /** Conventional commit message proposed when saving (GIT-003). */

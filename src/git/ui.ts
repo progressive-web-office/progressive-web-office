@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import { repoInfo } from './info';
 import { addAccount, clientFor, commitMessage, defaultApiUrl, forgetAccount, isRemembered, loadAccounts, type GitAccount } from './accounts';
 import type { GitClient, GitEntry, GitProvider, GitRepo } from './types';
-import { apiUrlFor, hostOfApi, parseRepoAddress, tokenPage, type RepoAddress } from './url';
+import { apiUrlFor, hostOfApi, parseRepoAddress, providerName, tokenPage, type RepoAddress } from './url';
 import { isDiffable, orderForGit, preferDiffable, withExtension } from './diffable';
 
 export interface RepoLocation {
@@ -88,7 +88,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
 
     const renderAccounts = (): void => {
       const accounts = loadAccounts();
-      accountSelect.replaceChildren(...accounts.map((a) => h('option', { value: a.id, selected: a.id === account?.id }, `${a.provider === 'github' ? 'GitHub' : 'GitLab'} — ${a.label}${isRemembered(a.id) ? '' : ` (${t('git.sessionOnly')})`}`)));
+      accountSelect.replaceChildren(...accounts.map((a) => h('option', { value: a.id, selected: a.id === account?.id }, `${providerName(a.provider)} — ${a.label}${isRemembered(a.id) ? '' : ` (${t('git.sessionOnly')})`}`)));
       accountSelect.disabled = !accounts.length;
       if (!accounts.length) {
         account = undefined;
@@ -230,7 +230,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
 
     // --- add account form ---------------------------------------------------------
     const addForm = h('form', { class: 'git-add', hidden: true });
-    const provider = h('select', { 'aria-label': t('git.provider') }, h('option', { value: 'github' }, 'GitHub'), h('option', { value: 'gitlab' }, 'GitLab'));
+    const provider = h('select', { 'aria-label': t('git.provider') }, h('option', { value: 'github' }, 'GitHub'), h('option', { value: 'gitlab' }, 'GitLab'), h('option', { value: 'gitea' }, providerName('gitea')));
     const apiUrl = h('input', { type: 'url', value: defaultApiUrl('github'), 'aria-label': t('git.apiUrl'), spellcheck: 'false' });
     const howTo = h('details', { class: 'git-token-help' });
     // GIT-009: how to make a token, for the service and the site chosen.
@@ -306,7 +306,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       clearRepo();
       const [owner, ...rest] = at.path.split('/');
       understood.hidden = false;
-      understood.textContent = `✓ ${t('git.understood', { service: `${at.provider === 'github' ? 'GitHub' : 'GitLab'} (${at.host})`, owner: owner ?? '', repo: rest.join('/') })}${at.branch ? ` · ${t('git.branch')} ${at.branch}` : ''}${at.inside ? ` · ${at.inside}` : ''}`;
+      understood.textContent = `✓ ${t('git.understood', { service: `${providerName(at.provider)} (${at.host})`, owner: owner ?? '', repo: rest.join('/') })}${at.branch ? ` · ${t('git.branch')} ${at.branch}` : ''}${at.inside ? ` · ${at.inside}` : ''}`;
       otherRepo.value = at.path;
       provider.value = at.provider;
       apiUrl.value = apiUrlFor(at.provider, at.host);
@@ -504,10 +504,15 @@ function fillTokenHelp(howTo: HTMLElement, kind: GitProvider, api: string): void
   try {
     site = hostOfApi(api.trim());
   } catch {
-    site = kind === 'github' ? 'github.com' : 'gitlab.com';
+    site = kind === 'github' ? 'github.com' : kind === 'gitea' ? 'codeberg.org' : 'gitlab.com';
   }
   const page = tokenPage(kind, site);
-  const steps = kind === 'github' ? (['git.howGithub1', 'git.howGithub2', 'git.howGithub3', 'git.howGithub4', 'git.howGithub5'] as const) : (['git.howGitlab1', 'git.howGitlab2', 'git.howGitlab3', 'git.howGitlab4'] as const);
+  const steps =
+    kind === 'github'
+      ? (['git.howGithub1', 'git.howGithub2', 'git.howGithub3', 'git.howGithub4', 'git.howGithub5'] as const)
+      : kind === 'gitea'
+        ? (['git.howGitea1', 'git.howGitea2', 'git.howGitea3', 'git.howGitea4'] as const)
+        : (['git.howGitlab1', 'git.howGitlab2', 'git.howGitlab3', 'git.howGitlab4'] as const);
   howTo.replaceChildren(
     h('summary', {}, t('git.howTitle')),
     h('ol', {}, ...steps.map((k, i) => h('li', {}, ...(i === 0 ? [t(k), ' ', h('a', { href: page, target: '_blank', rel: 'noopener noreferrer' }, page)] : [t(k)])))),

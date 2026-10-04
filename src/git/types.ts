@@ -1,6 +1,7 @@
 /** Provider-neutral access to GitHub / GitLab repositories (GIT-001..GIT-005). */
 
-export type GitProvider = 'github' | 'gitlab';
+/** GIT-016: `gitea` stands for Gitea and Forgejo (Codeberg…). */
+export type GitProvider = 'github' | 'gitlab' | 'gitea';
 
 export interface GitRepo {
   /** Identifier used in API calls ("owner/name" on GitHub, project id on GitLab). */

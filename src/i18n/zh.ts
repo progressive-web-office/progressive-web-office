@@ -1887,4 +1887,8 @@ export const zh: Record<MessageKey, string> = {
   'gitwc.button': 'Git 工作副本，分支 {branch}',
   'gitwc.title': '此文件夹是 Git 工作副本',
   'gitwc.info': '此文件夹是 Git 工作副本（分支 {branch}）：文档就地保存，由 Git 保留版本。',
+  'git.howGitea1': '打开设置中的“应用”页面（已登录 Gitea 或 Forgejo 站点）：',
+  'git.howGitea2': '在“管理访问令牌”下为令牌命名（如“PWO”）。',
+  'git.howGitea3': '在“选择权限”中，将“repository”设为读写（并将“user”设为只读，以列出您的仓库）。',
+  'git.howGitea4': '点击“生成令牌”，复制（只显示一次）并粘贴到此处。',
 };

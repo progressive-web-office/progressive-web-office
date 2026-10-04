@@ -1,13 +1,15 @@
 ---
-description: Open documents from GitHub or GitLab repositories and commit changes back, with conflict protection.
+description: Open documents from GitHub, GitLab, Gitea or Forgejo repositories, or a Git working copy on disk, and commit changes back, with conflict protection.
 ---
 
 # Git repositories
 
 Progressive Web Office can open files stored in **GitHub** (github.com or
-GitHub Enterprise) and **GitLab** (gitlab.com or self-hosted) repositories,
-and commit your changes back — directly from the browser, without a server
-of our own.
+GitHub Enterprise), **GitLab** (gitlab.com or self-hosted) and **Gitea /
+Forgejo** (Codeberg, self-hosted, on the local network) repositories, and
+commit your changes back — directly from the browser, without a server of
+our own. A Git working copy on your own disk works too (see
+[Git on your own computer or network](#git-on-your-own-computer-or-network)).
 
 ## Open a repository by its address
 
@@ -182,9 +184,47 @@ The same steps on your own site:
 (CORS), as gitlab.com does; ask its administrator if every request fails
 with a network error.
 
+### Gitea and Forgejo (Codeberg, self-hosted, local network)
+
+Choose **Gitea / Forgejo** as the service; the API URL is
+`https://<site>/api/v1` (`https://codeberg.org/api/v1` for Codeberg). An
+address such as `https://codeberg.org/owner/repo/src/branch/main/a.odt`
+opens directly; on another site, add an account first so that the site is
+known as a Gitea / Forgejo one.
+
+1. Signed in to the site, open **Settings → Applications**
+   (`https://<site>/user/settings/applications`).
+2. Under **Manage access tokens**, name the token (e.g. `PWO`).
+3. In **Select permissions**, give **repository: Read and write** — and
+   **user: Read**, to list your repositories.
+4. **Generate token**, copy it (shown only once) and paste it in Progressive
+   Web Office.
+
+A forge **on the local network** works the same, with two conditions set by
+the browser:
+
+- it must be reached over **HTTPS** (a page served over HTTPS cannot call an
+  `http://` address), with a certificate the device trusts — or run
+  Progressive Web Office itself from the local network over `http://`;
+- it must accept requests from the page (**CORS**). In Gitea's or Forgejo's
+  `app.ini`:
+
+  ```ini
+  [cors]
+  ENABLED = true
+  ALLOW_DOMAIN = https://s-celles.github.io
+  METHODS = GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS
+  HEADERS = Content-Type,Authorization
+  ```
+
+  (replace the domain with the address the application is served from).
+
+Saving several changes in one commit (a repository opened as a folder)
+needs Gitea 1.20 or Forgejo 1.20 or later.
+
 ### Other forges
 
-Gitea, Forgejo (Codeberg), Bitbucket and others are not supported yet.
+Bitbucket, Gogs and others are not supported yet.
 
 ::: warning Token storage
 The token is stored **only in this browser** (local storage) — or only in

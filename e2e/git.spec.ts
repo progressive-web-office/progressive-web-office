@@ -561,3 +561,45 @@ test('shows the history of a document, what each commit changed, and restores an
   await expect(page.locator('.doc-page p')).toHaveCount(0);
   expect(errors.filter((e) => !e.includes('404'))).toEqual([]);
 });
+
+test('works with a Forgejo site: Codeberg by its address, then saved with a token (GIT-016)', async ({ page }) => {
+  const errors = await openApp(page);
+  const CB = 'https://codeberg.org/api/v1';
+  const auth: (string | undefined)[] = [];
+  const writes: { method: string; body: Record<string, string> }[] = [];
+  await page.route(`${CB}/**`, async (route: Route) => {
+    const req = route.request();
+    const p = new URL(req.url()).pathname.replace('/api/v1', '');
+    auth.push(req.headers().authorization);
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (p === '/repos/me/notes') return json({ full_name: 'me/notes', default_branch: 'main', private: false, permissions: { push: true, pull: true } });
+    if (p === '/repos/me/notes/branches') return json([{ name: 'main' }]);
+    if (p === '/repos/me/notes/contents') return json([{ name: 'notes.md', path: 'notes.md', type: 'file', size: 8 }]);
+    // The repository shown as a folder beside the file (GIT-013).
+    if (p === '/repos/me/notes/branches/main') return json({ name: 'main', commit: { id: 'c1' } });
+    if (p === '/repos/me/notes/git/trees/c1') return json({ tree: [{ path: 'notes.md', type: 'blob', sha: 's1', size: 8 }], truncated: false });
+    if (p === '/repos/me/notes/contents/notes.md' && req.method() === 'GET') return json({ type: 'file', sha: 's1', content: b64('# Notes\n'), encoding: 'base64' });
+    if (p === '/repos/me/notes/contents/notes.md') {
+      writes.push({ method: req.method(), body: JSON.parse(req.postData() ?? '{}') as Record<string, string> });
+      return json({ content: { sha: 's2' } });
+    }
+    return json({ message: 'Not Found' }, 404);
+  });
+  await page.getByRole('button', { name: 'Open from repository…' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Open from repository' });
+  await dialog.getByLabel('Repository address').fill('https://codeberg.org/me/notes/src/branch/main/notes.md');
+  await dialog.getByRole('button', { name: 'Go' }).first().click();
+  await expect(page.locator('.doc-page h1')).toHaveText('Notes');
+  await page.locator('.doc-page h1').click();
+  await page.keyboard.type('!');
+  await page.locator('.header-actions').getByRole('button', { name: 'Save', exact: true }).click();
+  const ask = page.getByRole('dialog', { name: 'A token to save in the repository' });
+  await expect(ask.getByRole('link', { name: 'https://codeberg.org/user/settings/applications' })).toBeVisible();
+  await ask.getByLabel('Personal access token').fill('cb_token');
+  await ask.getByRole('button', { name: 'Connect' }).click();
+  await page.getByRole('dialog', { name: 'Commit to the repository' }).getByRole('button', { name: 'Commit' }).click();
+  await expect(page.getByRole('alert')).toContainText('Committed notes.md to main.');
+  expect(writes[0]).toMatchObject({ method: 'PUT', body: { branch: 'main', sha: 's1', message: 'docs: update notes.md' } });
+  expect(auth.at(-1)).toBe('token cb_token');
+  expect(errors).toEqual([]);
+});

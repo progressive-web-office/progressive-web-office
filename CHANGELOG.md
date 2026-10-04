@@ -10,6 +10,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **Gitea and Forgejo** (GIT-016): Codeberg, self-hosted and local-network
+  forges, as GitHub and GitLab — accounts with a token, addresses
+  (`…/src/branch/main/…`) understood, open, commit, branches, pull requests,
+  history, collaborators, a repository as a folder.
 - **Git working copies on disk** (GIT-014): a folder that is a Git working
   copy shows its branch in the folder panel; documents are saved in place
   for your own Git tool to version.
