@@ -71,6 +71,60 @@ test('draws fields on a PDF, which become real form fields (FORM-001)', async ({
   expect(errors).toEqual([]);
 });
 
+test('a field has its properties: tooltip, maximum length, format checked while filling, kept in the file (FORM-005)', async ({ page }) => {
+  const errors = await openApp(page);
+  await openFile(page, 'order.pdf', await blankPdf(), 'application/pdf');
+  await page.getByRole('button', { name: 'Design the form' }).click();
+  const pdfPage = page.locator('.pdf-page').first();
+  await expect(pdfPage.locator('canvas')).toBeVisible();
+  const box = (await pdfPage.boundingBox())!;
+  await page.mouse.click(box.x + 100, box.y + 150);
+  const dialog = page.getByRole('dialog', { name: 'Text' });
+  await dialog.getByLabel(/Name of the field/).fill('Code');
+  await dialog.getByLabel(/^Tooltip/).fill('Your client code');
+  await dialog.getByLabel('Maximum number of characters').fill('5');
+  await dialog.getByLabel('What may be typed').selectOption('regex');
+  await dialog.getByLabel(/^Pattern/).fill('[A-Z]{2}\\d{3}');
+  await dialog.getByLabel(/^Message when/).fill('Two letters, then three digits');
+  // The pattern is tried in the window.
+  await dialog.getByPlaceholder('Type a value to check it').fill('AB12');
+  await expect(dialog.locator('.form-try-verdict')).toHaveText(/Two letters, then three digits/);
+  await dialog.getByPlaceholder('Type a value to check it').fill('AB123');
+  await expect(dialog.locator('.form-try-verdict')).toHaveText('✓');
+  // A value by default that does not match is refused.
+  await dialog.getByLabel('Value by default').fill('abc');
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText(/does not have the expected format/);
+  await dialog.getByLabel('Value by default').fill('');
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  // Its properties again, from its menu.
+  await page.locator('.pdf-design-field.new').click();
+  await page.getByRole('menuitem', { name: /Field properties/ }).click();
+  const again = page.getByRole('dialog', { name: 'Text' });
+  await expect(again.getByLabel('Maximum number of characters')).toHaveValue('5');
+  await again.getByLabel('Required').check();
+  await again.getByRole('button', { name: 'OK' }).click();
+  await page.getByRole('toolbar', { name: 'Design the form' }).getByRole('button', { name: 'Done' }).click();
+
+  // Kept in the file, and checked while filling it in.
+  const saved = await download(page);
+  const field = (await PDFDocument.load(saved)).getForm().getTextField('Code');
+  expect(field.getMaxLength()).toBe(5);
+  expect(field.isRequired()).toBe(true);
+  await page.locator('.header-actions').getByRole('button', { name: 'Close' }).click();
+  await openFile(page, 'order.pdf', saved, 'application/pdf');
+  const input = page.locator('.pdf-form-layer input[data-field="Code"]');
+  await expect(input).toHaveAttribute('maxlength', '5');
+  await expect(input).toHaveAttribute('title', 'Your client code');
+  await input.fill('ab1');
+  await input.blur();
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  await input.fill('AB123');
+  await input.blur();
+  await expect(input).toHaveAttribute('aria-invalid', 'false');
+  expect(errors).toEqual([]);
+});
+
 test('compiles the answers of filled forms into a spreadsheet (FORM-002)', async ({ page }) => {
   const errors = await openApp(page);
   const filled = async (name: string, newsletter: boolean, level: string): Promise<Buffer> => {

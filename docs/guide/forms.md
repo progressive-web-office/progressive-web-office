@@ -27,14 +27,39 @@ of the filled copies into a spreadsheet or a [Grist](./grist.md) table.
    | ◉ Option button | one choice among buttons: draw one button per answer, all with the same name, each with its value |
 
 3. Choose a kind, then **draw the field** on the page with the pointer (or
-   click: the field gets a usual size there). Give it a **name** — it will
-   be the column of the answers — and say whether it is **required**.
-4. Click a field to **rename** or **remove** it — those that were already in
-   the PDF too.
+   click: the field gets a usual size there). Its **properties** window
+   opens (see below): at least give it a **name** — it will be the column of
+   the answers.
+4. Click a field to change its **properties**, **rename** or **remove** it —
+   those that were already in the PDF too.
 5. Click **✓ Done**, then **Save**: the fields become real AcroForm fields of
    the file.
 
 Reopened here, the form can be filled (see [PDF › Filling forms](./pdf.md#filling-forms)).
+
+### The properties of a field
+
+| Section | Properties |
+|---|---|
+| General | **name**, **tooltip** (shown when the pointer rests on the field, read by screen readers), **required**, **read only** |
+| Choices | a drop-down list: its **choices**, whether **another value can be typed**, **sorted**; an option button: its **value** |
+| Value at first | the **value by default** of a text or a list; a check box **checked by default** |
+| Text | the **maximum number of characters**, **one box per character** (a comb, for codes and numbers written in boxes), the **alignment**, the **size of the text** |
+| Format and validation | what may be typed: **any text**, **a number** (with its decimals), **a whole number**, **a date** (written as `dd/mm/yyyy`, `yyyy-mm-dd`…), **an e-mail address**, **a phone number**, or **a pattern of your own** — a regular expression the whole value must match, with the message shown when it does not (`[A-Z]{2}\d{3}`: two capitals, then three digits). **Try a value** checks it at once. |
+
+They are written in the file as PDF forms say them — the maximum length,
+the flags, the tooltip, and the **JavaScript actions** of PDF readers
+(`AFNumber_*`, `AFDate_*`, and a validation for e-mail, phone and patterns) —
+so that Acrobat and most readers check the value too. Filled in Progressive
+Web Office, a value that does not suit the format is outlined in red, with
+the message in its tooltip; the maximum length is never exceeded.
+
+::: warning Limits
+A browser's own PDF viewer, or a simple reader, may ignore the JavaScript of
+forms: there, the format is not checked (the maximum length and the flags
+still apply). Checking a value is help to fill a form right, not a
+guarantee: anyone can change a PDF — check the answers you compile.
+:::
 
 ## Form fields in a text document
 

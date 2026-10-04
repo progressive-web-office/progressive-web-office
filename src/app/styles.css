@@ -408,6 +408,17 @@ table.grid { border-collapse: separate; border-spacing: 0; table-layout: fixed; 
 }
 .pdf-field:focus { background: #fff; outline: 2px solid var(--accent); }
 textarea.pdf-field { resize: none; }
+/* FORM-005: a value refused by the format, boxes of a comb field, a list one can type in. */
+.pdf-field.invalid { outline: 2px solid #c62828; background: color-mix(in srgb, #c62828 8%, #fff); }
+.pdf-field.comb { letter-spacing: 0.5em; font-family: ui-monospace, monospace; }
+.pdf-field-wrap { position: absolute; display: block; pointer-events: auto; }
+.pdf-field-wrap > .pdf-field { position: static; width: 100%; height: 100%; box-sizing: border-box; }
+.form-props-section { border: 1px solid var(--border); border-radius: var(--radius); margin: 0 0 10px; padding: 6px 12px 4px; }
+.form-props-section legend { font-weight: 600; padding: 0 4px; }
+.form-props-section .field[hidden] { display: none; }
+.form-try { display: flex; gap: 8px; align-items: center; }
+.form-try-verdict.error { color: #c62828; }
+.form-field-dialog { max-height: 90vh; overflow: auto; }
 .pdf-stamp {
   position: absolute; pointer-events: auto; cursor: move; touch-action: none; border: 1px dashed transparent; z-index: 3;
   display: flex; align-items: center; color: #000; font-family: Helvetica, Arial, sans-serif;

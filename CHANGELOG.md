@@ -84,6 +84,16 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- **The properties of the fields of a PDF form** (FORM-005): drawing a
+  field, or choosing *Field properties…* on any field, opens a window like
+  that of PDF form applications — tooltip, required, read only, value by
+  default, choices (another value allowed, sorted), maximum number of
+  characters, one box per character, alignment, size of the text, and a
+  format: number, whole number, date, e-mail, phone, or a regular expression
+  with its message, tried in the window. Written in the file as PDF readers
+  read them (with the standard JavaScript actions), and checked while filling
+  the form here.
+
 - **Moving notice** (BACKUP-006): the application moves to
   <https://progressive-web-office.github.io/progressive-web-office/>. At the
   former address, the start screen announces the new one and offers a

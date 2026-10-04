@@ -4,16 +4,53 @@
  */
 import {
   PDFCheckBox,
+  PDFDict,
   PDFDocument,
   PDFDropdown,
+  PDFHexString,
   PDFName,
   PDFOptionList,
   PDFRadioGroup,
+  PDFString,
   PDFTextField,
   rgb,
   StandardFonts,
+  TextAlignment,
+  type PDFField,
 } from '@pdfme/pdf-lib';
 import { writeAnnotations, type PdfNote } from './annotations';
+import { formatActions, parseFormatScripts, type FieldFormat } from './field-format';
+
+/**
+ * FORM-005: the properties of a field, as in the forms of PDF readers: its
+ * tooltip, required, read-only, value by default, and for a text its
+ * length, boxes, alignment, size of text and format; for a list, whether one
+ * may type another value and whether the choices are sorted.
+ */
+export interface FieldSettings {
+  tooltip?: string;
+  required?: boolean;
+  readOnly?: boolean;
+  /** A text, or the choice of a list, filled in at first. */
+  defaultValue?: string;
+  /** A check box checked at first. */
+  checked?: boolean;
+  maxLength?: number;
+  /** One box per character (needs `maxLength`). */
+  comb?: boolean;
+  align?: 'left' | 'center' | 'right';
+  /** In points; 0 or none: fit to the field. */
+  fontSize?: number;
+  format?: FieldFormat;
+  /** A drop-down list in which another value can be typed. */
+  editable?: boolean;
+  sorted?: boolean;
+  /** The choices of a drop-down list (changed on an existing one). */
+  options?: string[];
+}
+
+/** The message of a value refused by the format, written in the file's scripts. */
+export const INVALID_VALUE = 'The value does not have the expected format.';
 
 export type FieldType = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'list' | 'other';
 
@@ -34,6 +71,14 @@ export interface FormField {
   readOnly: boolean;
   maxLength?: number;
   widgets: FieldWidget[];
+  /** FORM-005: what the file says of the field beyond its value. */
+  tooltip?: string;
+  required?: boolean;
+  comb?: boolean;
+  align?: 'left' | 'center' | 'right';
+  format?: FieldFormat;
+  editable?: boolean;
+  sorted?: boolean;
 }
 
 export interface PdfInfo {
@@ -64,6 +109,8 @@ export interface NewField {
   /** The value of this button of a radio group (its other buttons are other fields of the same name). */
   option?: string;
   required?: boolean;
+  /** FORM-005: its other properties. */
+  settings?: FieldSettings;
 }
 
 export interface PdfEdits {
@@ -72,6 +119,8 @@ export interface PdfEdits {
   newFields?: NewField[];
   removedFields?: string[];
   renamedFields?: Record<string, string>;
+  /** FORM-005: properties changed on fields of the file, by their name in the file. */
+  fieldSettings?: Record<string, FieldSettings>;
   stamps: Stamp[];
   flatten: boolean;
   /** Highlights and notes (PDF-018). */
@@ -113,11 +162,18 @@ export async function inspectPdf(bytes: Uint8Array): Promise<PdfInfo> {
       if (page < 0) page = doc.getPages().findIndex((p) => p.node.Annots()?.asArray().some((a) => a.toString() === doc.context.getObjectRef(w.dict)?.toString()));
       return { page: Math.max(0, page), rect: [r.x, r.y, r.width, r.height] };
     });
-    const base = { name: field.getName(), readOnly: field.isReadOnly(), widgets };
+    const tooltip = textOf(field.acroField.dict.lookup(PDFName.of('TU')));
+    const base = { name: field.getName(), readOnly: field.isReadOnly(), widgets, ...(tooltip ? { tooltip } : {}), ...(field.isRequired() ? { required: true } : {}) };
     if (field instanceof PDFTextField) {
       const f: FormField = { ...base, type: 'text', value: field.getText() ?? '', multiline: field.isMultiline() };
       const max = field.getMaxLength();
       if (max !== undefined) f.maxLength = max;
+      if (field.isCombed()) f.comb = true;
+      const align = field.getAlignment();
+      if (align === TextAlignment.Center) f.align = 'center';
+      else if (align === TextAlignment.Right) f.align = 'right';
+      const format = parseFormatScripts(scriptsOf(field));
+      if (format) f.format = format;
       info.fields.push(f);
     } else if (field instanceof PDFCheckBox) {
       info.fields.push({ ...base, type: 'checkbox', value: field.isChecked() });
@@ -126,7 +182,7 @@ export async function inspectPdf(bytes: Uint8Array): Promise<PdfInfo> {
       widgets.forEach((w, i) => (w.option = options[i]));
       info.fields.push({ ...base, type: 'radio', value: field.getSelected() ?? '', options });
     } else if (field instanceof PDFDropdown) {
-      info.fields.push({ ...base, type: 'dropdown', value: field.getSelected()[0] ?? '', options: field.getOptions() });
+      info.fields.push({ ...base, type: 'dropdown', value: field.getSelected()[0] ?? '', options: field.getOptions(), ...(field.isEditable() ? { editable: true } : {}), ...(field.isSorted() ? { sorted: true } : {}) });
     } else if (field instanceof PDFOptionList) {
       info.fields.push({ ...base, type: 'list', value: field.getSelected(), options: field.getOptions() });
     } else {
@@ -171,11 +227,21 @@ export async function applyEdits(bytes: Uint8Array, edits: PdfEdits): Promise<Ui
       field.addToPage(page, at);
     }
     if (f.required) field.enableRequired();
+    if (f.settings) applySettings(field, { ...f.settings, ...(f.required !== undefined ? { required: f.required } : {}) });
+  }
+  // FORM-005: properties changed on the fields of the file.
+  for (const [name, settings] of Object.entries(edits.fieldSettings ?? {})) {
+    const field = form.getFieldMaybe(edits.renamedFields?.[name] ?? name);
+    if (field) applySettings(field, settings);
   }
   for (const [name, value] of Object.entries(edits.values)) {
     const field = form.getFieldMaybe(name);
     if (!field || field.isReadOnly()) continue;
-    if (field instanceof PDFTextField) field.setText(String(value));
+    if (field instanceof PDFTextField) {
+      // FORM-005: never longer than the field allows.
+      const max = field.getMaxLength();
+      field.setText(max ? String(value).slice(0, max) : String(value));
+    }
     else if (field instanceof PDFCheckBox) (value ? field.check() : field.uncheck());
     else if (field instanceof PDFRadioGroup) {
       if (value) field.select(String(value));
@@ -208,4 +274,78 @@ export async function applyEdits(bytes: Uint8Array, edits: PdfEdits): Promise<Ui
   if (edits.notes?.length) writeAnnotations(doc, edits.notes);
   if (edits.flatten) form.flatten();
   return doc.save();
+}
+
+/** The text of a PDF string (TU, JS…), or undefined. */
+function textOf(obj: unknown): string | undefined {
+  return obj instanceof PDFString || obj instanceof PDFHexString ? obj.decodeText() : undefined;
+}
+
+/** The scripts of a field's actions (K keystroke, F format, V validate). */
+function scriptsOf(field: PDFField): { K?: string; F?: string; V?: string } {
+  const aa = field.acroField.dict.lookup(PDFName.of('AA'));
+  const out: { K?: string; F?: string; V?: string } = {};
+  if (!(aa instanceof PDFDict)) return out;
+  for (const key of ['K', 'F', 'V'] as const) {
+    const action = aa.lookup(PDFName.of(key));
+    const js = action instanceof PDFDict ? textOf(action.lookup(PDFName.of('JS'))) : undefined;
+    if (js) out[key] = js;
+  }
+  return out;
+}
+
+/** FORM-005: the properties of a field, written as PDF readers read them. */
+export function applySettings(field: PDFField, s: FieldSettings): void {
+  const dict = field.acroField.dict;
+  if (s.tooltip !== undefined) {
+    if (s.tooltip) dict.set(PDFName.of('TU'), PDFHexString.fromText(s.tooltip));
+    else dict.delete(PDFName.of('TU'));
+  }
+  if (s.required !== undefined) (s.required ? field.enableRequired() : field.disableRequired());
+  if (s.readOnly !== undefined) (s.readOnly ? field.enableReadOnly() : field.disableReadOnly());
+  if (field instanceof PDFTextField) {
+    if (s.maxLength !== undefined) {
+      if (s.maxLength > 0) {
+        // A shorter limit than the text: the text is cut, as a reader would.
+        const text = field.getText() ?? '';
+        if (text.length > s.maxLength) field.setText(text.slice(0, s.maxLength));
+        field.setMaxLength(s.maxLength);
+      } else {
+        if (field.isCombed()) field.disableCombing();
+        field.setMaxLength(undefined);
+      }
+    }
+    if (s.comb !== undefined) (s.comb && field.getMaxLength() && !field.isMultiline() ? field.enableCombing() : field.disableCombing());
+    if (s.align) field.setAlignment(s.align === 'center' ? TextAlignment.Center : s.align === 'right' ? TextAlignment.Right : TextAlignment.Left);
+    if (s.fontSize !== undefined) field.setFontSize(Math.max(0, s.fontSize));
+    if (s.defaultValue !== undefined) {
+      const max = field.getMaxLength();
+      const value = max ? s.defaultValue.slice(0, max) : s.defaultValue;
+      field.setText(value || undefined);
+      if (value) dict.set(PDFName.of('DV'), PDFHexString.fromText(value));
+      else dict.delete(PDFName.of('DV'));
+    }
+    if ('format' in s) {
+      if (!s.format) dict.delete(PDFName.of('AA'));
+      else {
+        const js = formatActions(s.format, INVALID_VALUE);
+        const action = (code: string): PDFDict => dict.context.obj({ S: PDFName.of('JavaScript'), JS: PDFHexString.fromText(code) });
+        const aa = dict.context.obj({});
+        if (js.K) aa.set(PDFName.of('K'), action(js.K));
+        if (js.F) aa.set(PDFName.of('F'), action(js.F));
+        aa.set(PDFName.of('V'), action(js.V));
+        dict.set(PDFName.of('AA'), aa);
+      }
+    }
+  } else if (field instanceof PDFCheckBox) {
+    if (s.checked !== undefined) (s.checked ? field.check() : field.uncheck());
+  } else if (field instanceof PDFDropdown) {
+    if (s.options) field.setOptions(s.options);
+    if (s.editable !== undefined) (s.editable ? field.enableEditing() : field.disableEditing());
+    if (s.sorted !== undefined) (s.sorted ? field.enableSorting() : field.disableSorting());
+    if (s.defaultValue !== undefined) {
+      if (s.defaultValue && (field.getOptions().includes(s.defaultValue) || field.isEditable())) field.select(s.defaultValue, field.isEditable());
+      else if (!s.defaultValue) field.clear();
+    }
+  }
 }

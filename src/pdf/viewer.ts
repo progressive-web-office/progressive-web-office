@@ -10,7 +10,8 @@ import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import type { PDFDocumentProxy, PDFPageProxy, PageViewport } from 'pdfjs-dist';
 import { button, h } from '../app/dom';
 import type { EditorView, SaveVariant, ViewContext } from '../app/views';
-import { applyEdits, NEW_FIELD_KINDS, type NewField, type NewFieldKind, type PdfEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from './forms';
+import { applyEdits, NEW_FIELD_KINDS, type FieldSettings, type NewField, type NewFieldKind, type PdfEdits, inspectPdf, type FormField, type PdfInfo, type Stamp } from './forms';
+import { checkValue, inputPattern } from './field-format';
 import { captureSignature } from './signature-pad';
 import { fitScale, PAGES_PER_ROW, type PdfZoom } from './fit';
 import { findInPages, type PdfMatch } from './find';
@@ -89,6 +90,8 @@ export class PdfViewer implements EditorView {
   private newFields: NewField[] = [];
   private removedFields = new Set<string>();
   private renamedFields: Record<string, string> = {};
+  /** FORM-005: properties changed on the fields of the file, by their name in the file. */
+  private fieldSettings: Record<string, FieldSettings> = {};
   private readonly designBar = h('div', { class: 'toolbar pdf-design-bar', role: 'toolbar', 'aria-label': t('form.design'), hidden: true });
   private readonly kindButtons = new Map<NewFieldKind, HTMLButtonElement>();
   private stamps: Stamp[] = [];
@@ -220,14 +223,14 @@ export class PdfViewer implements EditorView {
 
   /** Save with the form fields still editable, for later changes (PDF-009). */
   async save(): Promise<Uint8Array> {
-    const designed = this.newFields.length || this.removedFields.size || Object.keys(this.renamedFields).length;
+    const designed = this.newFields.length || this.removedFields.size || Object.keys(this.renamedFields).length || Object.keys(this.fieldSettings).length;
     if (!Object.keys(this.values).length && !this.stamps.length && !this.notes.length && !designed) return this.bytes;
     return applyEdits(this.bytes, { values: this.values, stamps: this.stamps, flatten: false, notes: this.notes, ...this.design() });
   }
 
   /** FORM-001: the design to apply on saving. */
-  private design(): Pick<PdfEdits, 'newFields' | 'removedFields' | 'renamedFields'> {
-    return { newFields: this.newFields, removedFields: [...this.removedFields], renamedFields: this.renamedFields };
+  private design(): Pick<PdfEdits, 'newFields' | 'removedFields' | 'renamedFields' | 'fieldSettings'> {
+    return { newFields: this.newFields, removedFields: [...this.removedFields], renamedFields: this.renamedFields, fieldSettings: this.fieldSettings };
   }
 
   /** "Flattened PDF": a copy whose filled fields become part of the page (PDF-010). */
@@ -393,9 +396,44 @@ export class PdfViewer implements EditorView {
       else if (field.added !== undefined) this.newFields.splice(field.added, 1);
       this.designChanged();
     };
+    const properties = (): void => void this.editProperties(field);
     void import('../app/context-menu').then(({ openContextMenu }) =>
-      openContextMenu(b.left + box.left, b.top + box.top + box.height, [{ title: field.name }, { label: t('form.rename'), icon: '✎', run: rename }, { label: t('form.delete'), icon: '🗑', run: remove }], { label: field.name }),
+      openContextMenu(
+        b.left + box.left,
+        b.top + box.top + box.height,
+        [{ title: field.name }, { label: t('form.properties'), icon: '⚙', run: properties }, { label: t('form.rename'), icon: '✎', run: rename }, { label: t('form.delete'), icon: '🗑', run: remove }],
+        { label: field.name },
+      ),
     );
+  }
+
+  /** FORM-005: the properties window of a field, drawn here or already in the file. */
+  private async editProperties(field: { existing?: string; added?: number; name: string }): Promise<void> {
+    const taken = this.fieldNames();
+    taken.delete(field.name);
+    const groups = [...taken];
+    if (field.added !== undefined) {
+      const f = this.newFields[field.added];
+      if (!f) return;
+      const props = await fieldDialog(this.element, f.kind, { name: f.name, taken, groups, options: f.options, option: f.option, required: f.required, settings: f.settings, submit: t('form.ok') });
+      if (!props) return;
+      // The buttons of a group share their name.
+      if (props.name !== f.name) for (const other of this.newFields) if (other !== f && other.name === f.name) other.name = props.name;
+      Object.assign(f, props);
+      return this.designChanged();
+    }
+    const original = this.info.fields.find((x) => x.name === field.existing);
+    if (!original || original.type === 'other' || original.type === 'list') return;
+    const kind: NewFieldKind = original.type === 'text' ? (original.multiline ? 'multiline' : 'text') : original.type;
+    const before = { ...settingsOf(original), ...this.fieldSettings[original.name] };
+    const props = await fieldDialog(this.element, kind, { name: field.name, taken, groups, options: before.options ?? original.options, required: before.required, settings: before, submit: t('form.ok') });
+    if (!props) return;
+    if (props.name !== field.name) this.renamedFields[original.name] = props.name;
+    this.fieldSettings[original.name] = { ...props.settings, required: props.required, ...(props.options ? { options: props.options } : {}) };
+    // Filled in here as the file will say.
+    Object.assign(original, fieldFromSettings(this.fieldSettings[original.name]!));
+    if (props.options) original.options = props.options;
+    this.designChanged();
   }
 
   // --- annotations (PDF-018) ------------------------------------------------------------
@@ -971,12 +1009,29 @@ export class PdfViewer implements EditorView {
       }
     };
     const value = this.currentValue(field);
-    const common = { 'data-field': field.name, 'aria-label': field.name, disabled: field.readOnly, class: 'pdf-field' };
+    // FORM-005: its tooltip, required, and what the file says it accepts.
+    const common = { 'data-field': field.name, 'aria-label': field.tooltip ? `${field.name}: ${field.tooltip}` : field.name, title: field.tooltip ?? field.name, disabled: field.readOnly, required: !!field.required, class: 'pdf-field' };
     switch (field.type) {
       case 'text': {
-        const el = field.multiline ? h('textarea', common) : h('input', { ...common, type: 'text', maxlength: field.maxLength ? String(field.maxLength) : undefined });
+        const numeric = field.format?.kind === 'number' || field.format?.kind === 'integer';
+        const el = field.multiline
+          ? h('textarea', { ...common, maxlength: field.maxLength ? String(field.maxLength) : undefined })
+          : h('input', { ...common, type: field.format?.kind === 'email' ? 'email' : field.format?.kind === 'phone' ? 'tel' : 'text', inputmode: numeric ? 'decimal' : undefined, pattern: inputPattern(field.format), maxlength: field.maxLength ? String(field.maxLength) : undefined });
         el.value = String(value ?? '');
-        el.addEventListener('input', () => set(el.value));
+        if (field.align) el.style.textAlign = field.align;
+        if (field.comb && field.maxLength) el.classList.add('comb');
+        const validate = (): void => {
+          const ok = checkValue(field.format, el.value);
+          el.classList.toggle('invalid', !ok);
+          el.setAttribute('aria-invalid', String(!ok));
+          el.title = ok ? (field.tooltip ?? field.name) : (field.format?.kind === 'regex' && field.format.message) || t('form.valueInvalid');
+        };
+        el.addEventListener('input', () => {
+          set(el.value);
+          if (el.classList.contains('invalid')) validate();
+        });
+        el.addEventListener('change', validate);
+        if (el.value) validate();
         return el;
       }
       case 'checkbox': {
@@ -993,6 +1048,15 @@ export class PdfViewer implements EditorView {
       }
       case 'dropdown':
       case 'list': {
+        // FORM-005: a list in which another value can be typed.
+        if (field.type === 'dropdown' && field.editable) {
+          const id = `pdf-choices-${field.name.replace(/\W+/g, '-')}`;
+          const el = h('input', { ...common, type: 'text', list: id });
+          el.value = String(value ?? '');
+          el.addEventListener('input', () => set(el.value));
+          const wrap = h('span', { class: 'pdf-field-wrap' }, el, h('datalist', { id }, ...(field.options ?? []).map((o) => h('option', { value: o }))));
+          return wrap;
+        }
         const el = h('select', { ...common, multiple: field.type === 'list' }, h('option', { value: '' }, ''), ...(field.options ?? []).map((o) => h('option', { value: o }, o)));
         const selected = Array.isArray(value) ? value : [String(value ?? '')];
         for (const o of Array.from(el.options)) o.selected = selected.includes(o.value);
@@ -1153,4 +1217,35 @@ export class PdfViewer implements EditorView {
       this.ctx.statusChanged();
     }
   }
+}
+
+/** FORM-005: the properties of a field of the file, for its window. */
+function settingsOf(f: FormField): FieldSettings {
+  return {
+    ...(f.tooltip ? { tooltip: f.tooltip } : {}),
+    required: !!f.required,
+    readOnly: f.readOnly,
+    ...(f.maxLength ? { maxLength: f.maxLength } : {}),
+    ...(f.comb ? { comb: true } : {}),
+    ...(f.align ? { align: f.align } : {}),
+    ...(f.format ? { format: f.format } : {}),
+    ...(f.editable ? { editable: true } : {}),
+    ...(f.sorted ? { sorted: true } : {}),
+    ...(f.type === 'checkbox' ? { checked: f.value === true } : typeof f.value === 'string' && f.value ? { defaultValue: f.value } : {}),
+  };
+}
+
+/** What a field of the file becomes with these properties, while filling it in here. */
+function fieldFromSettings(s: FieldSettings): Partial<FormField> {
+  return {
+    tooltip: s.tooltip || undefined,
+    required: !!s.required,
+    readOnly: !!s.readOnly,
+    maxLength: s.maxLength || undefined,
+    comb: !!s.comb,
+    align: s.align,
+    format: s.format,
+    editable: !!s.editable,
+    sorted: !!s.sorted,
+  };
 }
