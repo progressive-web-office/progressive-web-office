@@ -10,7 +10,10 @@ const EXAMPLES: [name: string, cells: number][] = [
   ['A tour of the word processor', 1],
   ['Lab report with Python plots', 0],
   ['Interactive widgets', 0],
-  ['Instrument panel', 3],
+  ['Instrument panel', 4],
+  ['Automation panel', 4],
+  ['Flight instruments', 3],
+  ['Car dashboard', 3],
 ];
 
 for (const [name, min] of EXAMPLES) {

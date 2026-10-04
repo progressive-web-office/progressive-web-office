@@ -12,7 +12,7 @@ import { contentSlide, DEFAULT_SIZE, textShape, titleSlide, type Presentation, t
 import { DOCUMENT_TEXTS, LABELS, type DocumentTexts, type TemplateLang } from './content';
 import { labMarkdown } from './lab';
 import { widgetsMarkdown } from './widgets';
-import { instrumentsMarkdown } from './instruments';
+import { aeronauticsMarkdown, automationMarkdown, automotiveMarkdown, instrumentsMarkdown } from './instruments';
 import { languagesMarkdown } from './languages';
 
 export type Built =
@@ -66,12 +66,14 @@ function widgets(lang: TemplateLang): Built {
   return { kind: 'document', doc };
 }
 
-/** The instrument panel example (CODE-016): the anywidget instruments, reactive controls and indicators. */
-function instruments(lang: TemplateLang): Built {
-  const doc = readMarkdown(instrumentsMarkdown(lang));
-  if (doc.extras) delete doc.extras.frontMatter;
-  return { kind: 'document', doc };
-}
+/** The instrument panel examples (CODE-016): the anywidget instruments, one family each, reactive controls and indicators. */
+const instrumentsPage =
+  (markdown: (lang: TemplateLang) => string) =>
+  (lang: TemplateLang): Built => {
+    const doc = readMarkdown(markdown(lang));
+    if (doc.extras) delete doc.extras.frontMatter;
+    return { kind: 'document', doc };
+  };
 
 /** The languages example (CODE-017, CODE-018): a small program in each language the cells run. */
 function languages(lang: TemplateLang): Built {
@@ -392,7 +394,10 @@ export const TEMPLATES: Template[] = [
   { id: 'tour', kind: 'document', example: true, icon: '🧭', name: 'tpl.tour', description: 'tpl.tourDesc', build: documentFrom('tour') },
   { id: 'lab', kind: 'document', example: true, icon: '🧪', name: 'tpl.lab', description: 'tpl.labDesc', build: lab },
   { id: 'widgets', kind: 'document', example: true, icon: '🎛️', name: 'tpl.widgets', description: 'tpl.widgetsDesc', build: widgets },
-  { id: 'instruments', kind: 'document', example: true, icon: '🏭', name: 'tpl.instruments', description: 'tpl.instrumentsDesc', build: instruments },
+  { id: 'instruments', kind: 'document', example: true, icon: '🏭', name: 'tpl.instruments', description: 'tpl.instrumentsDesc', build: instrumentsPage(instrumentsMarkdown) },
+  { id: 'instruments-automation', kind: 'document', example: true, icon: '🤖', name: 'tpl.automation', description: 'tpl.automationDesc', build: instrumentsPage(automationMarkdown) },
+  { id: 'instruments-aeronautics', kind: 'document', example: true, icon: '✈️', name: 'tpl.aeronautics', description: 'tpl.aeronauticsDesc', build: instrumentsPage(aeronauticsMarkdown) },
+  { id: 'instruments-automotive', kind: 'document', example: true, icon: '🚗', name: 'tpl.automotive', description: 'tpl.automotiveDesc', build: instrumentsPage(automotiveMarkdown) },
   { id: 'languages', kind: 'document', example: true, icon: '🔤', name: 'tpl.languages', description: 'tpl.languagesDesc', build: languages },
   { id: 'measurements', kind: 'spreadsheet', example: true, icon: '📈', name: 'tpl.measurements', description: 'tpl.measurementsDesc', build: (lang) => ({ kind: 'spreadsheet', wb: measurements(lang) }) },
 ];

@@ -8,7 +8,7 @@ import type { TemplateLang } from './content';
 const fence = (body: string, info: string): string => `\`\`\`${info}\n${body.trim()}\n\`\`\``;
 
 /** A slider as an anywidget front-end module (AFM). */
-const SLIDER_ESM = `export default {
+export const SLIDER_ESM = `export default {
   render({ model, el }) {
     const label = document.createElement("label");
     const input = document.createElement("input");
@@ -76,7 +76,7 @@ const TEXTS: Record<TemplateLang, Texts> = {
     ],
     instruments: [
       'Instrument panels',
-      'The [anywidget instruments](https://anywidgetinstruments.github.io/) (knobs, gauges, tanks, LEDs, alarms; automotive and flight instruments) work here too: install them with `await pwo.install("…/wheel.txt")`, or use their front end from JavaScript with `importWidget(url)`. See *Code cells › Widgets* in the documentation.',
+      'The [anywidget instruments](https://anywidgetinstruments.github.io/) work here too, one example for each family, among the examples: **Instrument panel** (industrial process: knobs, tank, gauges, pump, valve, stack light), **Automation panel** (a PID loop to tune and a PackML state machine), **Flight instruments** (the basic six) and **Car dashboard** (speedometer, rev counter, tell-tales). Install them with `await pwo.install("…/wheel.txt")`, or use their front end from JavaScript with `importWidget(url)`; see *Code cells › Widgets* in the documentation.',
     ],
     outro: 'Saving or printing keeps a picture of each widget, shown in print, in Word and OpenDocument exports and when the document is reopened.',
     plot: { title: 'Signal', x: 't (s)' },
@@ -99,7 +99,7 @@ const TEXTS: Record<TemplateLang, Texts> = {
     ],
     instruments: [
       'Tableaux de bord d’instruments',
-      'Les [anywidget instruments](https://anywidgetinstruments.github.io/) (boutons rotatifs, jauges, cuves, voyants, alarmes ; instruments automobiles et de vol) fonctionnent aussi : installez-les avec `await pwo.install("…/wheel.txt")`, ou utilisez leur front-end depuis JavaScript avec `importWidget(url)`. Voir *Cellules de code › Widgets* dans la documentation.',
+      'Les [anywidget instruments](https://anywidgetinstruments.github.io/) fonctionnent aussi, un exemple par famille, parmi les exemples : **Tableau de bord d’instruments** (procédé industriel : boutons, cuve, jauges, pompe, vanne, colonne lumineuse), **Pupitre d’automatisme** (une boucle PID à régler et une machine d’états PackML), **Instruments de vol** (les six de base) et **Tableau de bord automobile** (compteur, compte-tours, voyants). Installez-les avec `await pwo.install("…/wheel.txt")`, ou utilisez leur front-end depuis JavaScript avec `importWidget(url)` ; voir *Cellules de code › Widgets* dans la documentation.',
     ],
     outro: 'Enregistrer ou imprimer garde une image de chaque widget, montrée à l’impression, dans les exports Word et OpenDocument et à la réouverture du document.',
     plot: { title: 'Signal', x: 't (s)' },

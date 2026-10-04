@@ -134,10 +134,28 @@ describe('FILE-018 examples with plots', () => {
 
   it.each(['en', 'fr'] as const)('instruments (%s): the anywidget instruments installed, reactive controls driving indicators (CODE-016)', (lang) => {
     const cells = runs(doc('instruments', lang)).filter(isCodeCellRun);
-    expect(cells.map((c) => c.lang)).toEqual(['python', 'python', 'python']);
+    expect(cells.map((c) => c.lang)).toEqual(['python', 'python', 'python', 'python']);
     expect(cells[0]!.cell).toContain('await pwo.install("https://anywidgetinstruments.github.io/anywidget-instruments-industrial/marimo/gallery/public/wheel.txt")');
     expect(cells[1]!.cell).toContain('setpoint = pwo.ui(ai.Knob(');
     expect(cells[2]!.cell).toContain('ai.Tank(level');
+    expect(cells[3]!.cell).toContain('ai.StackLight(');
+  });
+
+  it.each(['en', 'fr'] as const)('instrument families (%s): automation, aeronautics and automotive, each installed from its wheels (CODE-016)', (lang) => {
+    const cells = (id: string) => runs(doc(id, lang)).filter(isCodeCellRun).map((c) => c.cell);
+    const automation = cells('instruments-automation');
+    expect(automation[0]).toContain('anywidget-instruments-industrial/marimo/gallery/public/wheel.txt');
+    expect(automation[1]).toContain('kp = pwo.ui(ai.Knob(');
+    expect(automation[2]).toContain('pid.step(y, dt)');
+    expect(automation[3]).toContain('ai.StateMachine("packml"');
+    const aeronautics = cells('instruments-aeronautics');
+    expect(aeronautics[0]).toContain('anywidget-instruments-aeronautics/marimo/flight/public/wheels.txt');
+    expect(aeronautics[1]).toContain('class Slider(anywidget.AnyWidget)');
+    expect(aeronautics[2]).toContain('aw.AttitudeIndicator(pitch=pitch.value, roll=bank.value');
+    const automotive = cells('instruments-automotive');
+    expect(automotive[0]).toContain('anywidget-instruments-automotive/marimo/dials/public/wheels.txt');
+    expect(automotive[2]).toContain('aa.Speedometer(speed.value, limit=limit.value)');
+    expect(automotive[2]).toContain('aa.TellTaleCluster(');
   });
 
   it.each(['en', 'fr'] as const)('languages (%s): one runnable cell per supported language (CODE-017, CODE-018)', (lang) => {

@@ -91,7 +91,22 @@ play with them. It also tells how to use the anywidget instruments.
 cell installs them from the wheels published with their demos (you are asked
 first, then they are kept for offline use); two knobs and a switch, made
 reactive with `pwo.ui`, drive a tank, a gauge, a thermometer, a LED and a
-seven-segment display, as in their marimo gallery.
+seven-segment display, then a process line — a pump, a valve and a mixer
+with their tags, and a stack light — as in their marimo gallery.
+
+Three more examples show the other families of instruments, one each:
+
+- **Automation panel** — a PID controller tuned with three knobs (`Kp`,
+  `Ti`, `Td`): the loop is simulated in Python, its step response drawn on
+  a chart beside the controller's faceplate and the overshoot; then a
+  machine following the PackML states, driven by clicking its commands,
+  with a HAND / OFF / AUTO selector and a stack light that follows the state;
+- **Flight instruments** — the basic six of a light aircraft (airspeed,
+  attitude, altitude, turn coordinator, heading, vertical speed), in the
+  basic T, set with sliders;
+- **Car dashboard** — speedometer with its limit, rev counter with its red
+  line, gear, fuel and coolant gauges, odometer and tell-tales, set with
+  sliders.
 
 **Languages** holds one small program in each language the cells run:
 statistics in Python, Fibonacci numbers in JavaScript, a word count in Lua,

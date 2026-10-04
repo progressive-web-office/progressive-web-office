@@ -191,7 +191,8 @@ The [anywidget instruments](https://anywidgetinstruments.github.io/)
 their package (`await pwo.install(".../wheel.txt")` then
 `import anywidget_instruments_industrial as ai`), or from JavaScript with
 their front end and the traits of their contract (`_kind` selects the
-instrument):
+instrument). The examples *Instrument panel*, *Automation panel*, *Flight
+instruments* and *Car dashboard* show each family from Python:
 
 ```javascript {run}
 const esm = await importWidget("https://example.org/instruments/index.js");

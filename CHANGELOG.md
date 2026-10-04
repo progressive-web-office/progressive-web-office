@@ -105,6 +105,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Three more examples of the anywidget instruments, one per family:
+  **Automation panel** (a PID loop tuned with knobs, its step response and
+  faceplate; a PackML state machine driving a stack light), **Flight
+  instruments** (the basic six) and **Car dashboard** (speedometer, rev
+  counter, gear, gauges, tell-tales). **Instrument panel** gains a process
+  line (pump, valve, mixer, stack light); the *Interactive widgets* example
+  points to all four.
+
 - Rulers shown or hidden **each on its own** (DOC-054): *View › Horizontal
   ruler*, *View › Vertical ruler*, the command palette or the settings. The
   **unit of measure** (mm, cm, inches, points) is the one of the page size:
