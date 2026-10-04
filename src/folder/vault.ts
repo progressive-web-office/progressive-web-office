@@ -13,6 +13,8 @@ export const isNote = (path: string): boolean => /\.(md|markdown)$/i.test(path);
 export class NoteVault {
   readonly index: NoteIndex;
   private ready: Promise<void> | undefined;
+  /** The files of the folder as the panel listed them, for the next reading. */
+  private listing: Entry[] | undefined;
 
   constructor(private readonly provider: StorageProvider) {
     this.index = new NoteIndex(provider);
@@ -22,7 +24,7 @@ export class NoteVault {
    * Bring the index up to date with the folder (only the notes changed since
    * are read); `progress` tells how far the reading is.
    */
-  sync(progress?: (done: number, total: number) => void, entries?: Entry[]): Promise<void> {
+  sync(progress?: (done: number, total: number) => void, entries = this.listing): Promise<void> {
     this.ready = (async () => {
       const notes: { path: string; size?: number; modified?: number }[] = [];
       const add = (e: Entry): void => {
@@ -34,6 +36,21 @@ export class NoteVault {
       await this.index.update(notes, progress);
     })();
     return this.ready;
+  }
+
+  /**
+   * The files of the folder, listed again: read from them when next needed —
+   * a folder of a server (a repository, WebDAV) is read only then, not each
+   * of its notes as soon as it is opened.
+   */
+  listed(entries: Entry[]): void {
+    this.listing = entries;
+    if (!this.started) this.ready = undefined;
+  }
+
+  /** Whether the notes were read once (then kept up to date at once). */
+  get started(): boolean {
+    return this.ready !== undefined;
   }
 
   /** The index as last brought up to date (brought up to date first, the first time). */

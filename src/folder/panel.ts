@@ -306,7 +306,7 @@ export class FolderPanel {
           this.indexStatus.hidden = false;
           this.indexStatus.replaceChildren(...busyText(t('vault.indexingCount', { done, total })));
         }
-      }, this.entries);
+      });
     } catch (err) {
       this.hooks.error((err as Error).message);
     } finally {
@@ -329,8 +329,10 @@ export class FolderPanel {
   async refresh(): Promise<void> {
     await this.reindex();
     await this.explorer.refresh();
-    // FOLDER-025: the index of the notes, brought up to date in the background (only what changed is read).
-    void this.indexNotes();
+    // FOLDER-025: the index of the notes, brought up to date in the background (only what changed is read);
+    // the notes of a server are read when first needed (backlinks, tags, graph), not each one at once.
+    this.vault.listed(this.entries);
+    if (this.vault.started || !/^(git|webdav):/.test(this.provider.id)) void this.indexNotes();
     if (this.tagSection.open) await this.renderTags();
     if (this.search.value.trim()) await this.runSearch();
   }
