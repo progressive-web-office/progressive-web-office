@@ -3,7 +3,7 @@
  * (public, private, or internal to the site on GitLab), the role of the
  * account, and the collaborators with their roles.
  */
-import { h } from '../app/dom';
+import { busyText, h } from '../app/dom';
 import { t } from '../i18n';
 import { canWrite, type GitClient, type GitRepo, type GitRole, type GitVisibility } from './types';
 
@@ -38,7 +38,7 @@ export function repoInfo(client: GitClient | undefined, repo: GitRepo, signedIn:
       people.replaceChildren(h('li', { class: 'hint' }, t('git.collaboratorsSignIn')));
       return;
     }
-    people.replaceChildren(h('li', { class: 'hint' }, t('git.loading')));
+    people.replaceChildren(h('li', { class: 'hint' }, ...busyText(t('git.loading'))));
     client
       .listCollaborators(repo.id)
       .then((list) => {

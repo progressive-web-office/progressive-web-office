@@ -28,6 +28,21 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   return el;
 }
 
+/** UI-019: a spinner turning before a text of work in progress, for a status line or a hint. */
+export function busyText(text: string): Node[] {
+  return [h('span', { class: 'spinner', 'aria-hidden': 'true' }), document.createTextNode(` ${text}`)];
+}
+
+/**
+ * UI-019: the text of a status line; a text of work in progress (ending with
+ * "…": loading, checking, searching…) turns a spinner before it.
+ */
+export function setStatus(el: HTMLElement, text: string, error = false): void {
+  if (!error && text.trim().endsWith('…')) el.replaceChildren(...busyText(text));
+  else el.textContent = text;
+  el.classList.toggle('error', error);
+}
+
 /** Toolbar button helper with accessible label and optional tooltip. */
 export function button(
   label: string,

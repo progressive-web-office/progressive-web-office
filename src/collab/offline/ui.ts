@@ -6,7 +6,7 @@
 import * as Y from 'yjs';
 import { loadIdentity } from '@scelles/collab';
 import { commentAuthor } from '../../app/author';
-import { button, h } from '../../app/dom';
+import { busyText, button, h } from '../../app/dom';
 import type { SyncableDocument } from '../../app/views';
 import { t } from '../../i18n';
 import { receiveFromWindow, sendFileToWindow, type WindowLike } from '../../share/handoff';
@@ -193,7 +193,7 @@ export async function openOfflineSync(host: OfflineSyncHost): Promise<void> {
       return;
     }
     abort = new AbortController();
-    status.textContent = t('sync.waitingScan');
+    status.replaceChildren(...busyText(t('sync.waitingScan')));
     actions.replaceChildren(button(t('common.cancel'), () => (abort?.abort(), idle())));
     void receiveFromWindow(window as unknown as WindowLike, scanner as unknown as WindowLike, qrshareOrigin(settings.url), { signal: abort.signal }).then(async (file) => {
       scanner = null;

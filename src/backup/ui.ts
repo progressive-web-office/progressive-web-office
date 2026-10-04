@@ -3,7 +3,7 @@
  * where backups go, how often to be reminded, a password — and restoring a
  * backup, all of it or file by file.
  */
-import { button, h } from '../app/dom';
+import { busyText, button, h } from '../app/dom';
 import { t } from '../i18n';
 import { formatSize } from '../fs';
 import { backupName, buildArchive, BackupError, isEncryptedBackup, openArchive, type Backup } from './archive';
@@ -93,7 +93,9 @@ export function backupDialog(host: HTMLElement): Promise<void> {
       sessionPassword = remember.checked && encrypt.checked ? password.value : undefined;
       now.disabled = true;
       try {
-        settings = await backUpNow(settings, encrypt.checked ? password.value : undefined, (text) => (status.textContent = text));
+        // UI-019: each step with a spinner, until done.
+        status.replaceChildren(...busyText(t('app.working')));
+        settings = await backUpNow(settings, encrypt.checked ? password.value : undefined, (text) => status.replaceChildren(...busyText(text)));
         status.textContent = t('backup.done', { name: settings.last!.name, size: formatSize(settings.last!.size), n: settings.last!.files });
       } catch (err) {
         status.textContent = '';
@@ -159,9 +161,11 @@ export function restoreDialog(host: HTMLElement, settings: BackupSettings): Prom
     const open = async (): Promise<void> => {
       error.hidden = true;
       if (!bytes) return;
+      status.replaceChildren(...busyText(t('app.working')));
       try {
         backup = await openArchive(bytes, password.value || undefined);
       } catch (err) {
+        status.textContent = '';
         passwordRow.hidden = !isEncryptedBackup(bytes);
         if (err instanceof BackupError && err.code === 'password') {
           if (password.value) fail(t('backup.wrongPassword'));
@@ -188,11 +192,13 @@ export function restoreDialog(host: HTMLElement, settings: BackupSettings): Prom
     const fromPlace = button(t('backup.fromPlace'), async () => {
       const place = await targetPlace(settings.target, true);
       if (!place) return fail(t('backup.noPlace'));
-      const names = await listBackups(place);
+      status.replaceChildren(...busyText(t('app.working')));
+      const names = await listBackups(place).finally(() => (status.textContent = ''));
       if (!names.length) return fail(t('backup.none'));
       places.replaceChildren(...names.map((n) => h('option', { value: n }, n)));
       places.hidden = false;
       const load = async (): Promise<void> => {
+        status.replaceChildren(...busyText(t('app.working')));
         bytes = await readBackup(place, places.value);
         passwordRow.hidden = !isEncryptedBackup(bytes);
         await open();
@@ -213,12 +219,14 @@ export function restoreDialog(host: HTMLElement, settings: BackupSettings): Prom
       if (!backup) return;
       const paths = new Set([...list.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => i.value));
       go.disabled = true;
+      status.replaceChildren(...busyText(t('app.working')));
       try {
         const sources = await browserSources();
         const result = await restoreBackup(backup, sources, { paths, replace: replace.checked, records: records.checked });
         status.textContent = t('backup.restored', { n: result.restored.length, m: result.renamed.length, s: result.same.length, r: result.records });
         done = result;
       } catch (err) {
+        status.textContent = '';
         fail((err as Error).message);
       } finally {
         go.disabled = false;

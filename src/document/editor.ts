@@ -1808,16 +1808,22 @@ export class DocumentEditor implements EditorView {
       const stem = (doc.meta.title || t('merge.stem')).replace(/[\\/:*?"<>|]+/g, '-').trim();
       const { saveFile } = await import('../storage/file-io');
       const plain = withoutSolutions(doc);
+      // UI-019: one document per row can take a while.
+      const busy = <T,>(task: () => Promise<T>): Promise<T> => this.ctx.busy?.(task) ?? task();
       if (choice.output === 'single') {
         const all = merge.mergeAll(plain, table.rows);
-        await saveFile(await writeDocumentAsync(all, choice.format), `${stem}-${t('merge.suffix')}.${choice.format}`, choice.format);
+        await saveFile(await busy(() => writeDocumentAsync(all, choice.format)), `${stem}-${t('merge.suffix')}.${choice.format}`, choice.format);
       } else {
         const names = merge.mergeNames(table.rows, choice.nameField, stem);
         const files: { path: string; data: Uint8Array }[] = [];
-        for (const [i, row] of table.rows.entries()) files.push({ path: `${names[i]}.${choice.format}`, data: await writeDocumentAsync(merge.mergeOne(plain, row), choice.format) });
+        await busy(async () => {
+          for (const [i, row] of table.rows.entries()) files.push({ path: `${names[i]}.${choice.format}`, data: await writeDocumentAsync(merge.mergeOne(plain, row), choice.format) });
+        });
         if (choice.output === 'folder') {
           const dir = `${stem} – ${t('merge.suffix')}`;
-          for (const f of files) await this.ctx.writeFolderFile!(`${dir}/${f.path}`, f.data);
+          await busy(async () => {
+            for (const f of files) await this.ctx.writeFolderFile!(`${dir}/${f.path}`, f.data);
+          });
           this.ctx.notify?.(t('merge.written', { n: files.length, dir }));
         } else {
           const { writeZip } = await import('../core/zip');

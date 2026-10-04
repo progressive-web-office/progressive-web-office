@@ -510,6 +510,7 @@ export const en = {
   'share.sendButton': 'Send',
   'ai.title': 'Assistant',
   'ai.open': 'AI assistant',
+  'ai.thinking': 'Thinking…',
   'ai.openTitle': 'Ask an AI assistant to read or edit this document',
   'ai.settings': 'Assistant settings',
   'ai.info': '{provider} · {model}',

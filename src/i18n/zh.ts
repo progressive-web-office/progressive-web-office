@@ -512,6 +512,7 @@ export const zh: Record<MessageKey, string> = {
   'share.sendButton': '发送',
   'ai.title': '助手',
   'ai.open': 'AI 助手',
+  'ai.thinking': '思考中…',
   'ai.openTitle': '让 AI 助手阅读或编辑此文档',
   'ai.settings': '助手设置',
   'ai.info': '{provider} · {model}',

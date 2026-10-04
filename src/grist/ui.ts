@@ -1,5 +1,5 @@
 /** Grist accounts and document picker (GRIST-001, GRIST-002). */
-import { button, h } from '../app/dom';
+import { button, h, setStatus } from '../app/dom';
 import { t } from '../i18n';
 import { GristClient, GristError, type GristDoc } from './client';
 
@@ -98,7 +98,7 @@ export function pickGristDocument(host: HTMLElement): Promise<GristChoice | null
       );
       const add = async (): Promise<void> => {
         if (!server.value.trim() || !key.value.trim()) return;
-        status.textContent = t('grist.checking');
+        setStatus(status, t('grist.checking'));
         try {
           await new GristClient({ serverUrl: server.value, apiKey: key.value }).listOrgs();
         } catch (err) {
@@ -138,7 +138,7 @@ export function pickGristDocument(host: HTMLElement): Promise<GristChoice | null
       const client = gristClient(account);
       const loadDocs = async (orgId: number): Promise<void> => {
         list.replaceChildren();
-        status.textContent = t('grist.loading');
+        setStatus(status, t('grist.loading'));
         try {
           const docs = await client.listDocs(orgId);
           status.textContent = docs.length ? '' : t('grist.noDocuments');
@@ -150,7 +150,7 @@ export function pickGristDocument(host: HTMLElement): Promise<GristChoice | null
         }
       };
       orgSelect.addEventListener('change', () => void loadDocs(Number(orgSelect.value)));
-      status.textContent = t('grist.loading');
+      setStatus(status, t('grist.loading'));
       void client
         .listOrgs()
         .then((orgs) => {

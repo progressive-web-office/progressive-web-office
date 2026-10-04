@@ -245,7 +245,7 @@ export class PdfViewer implements EditorView {
   }
 
   print(): void {
-    void this.save().then((bytes) => {
+    void (this.ctx.busy?.(() => this.save()) ?? this.save()).then((bytes) => {
       const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
       window.open(url, '_blank', 'noopener');
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -602,7 +602,8 @@ export class PdfViewer implements EditorView {
   }
 
   private async search(query: string): Promise<void> {
-    const pages = await this.pageTexts();
+    // UI-019: the first search reads the text of every page.
+    const pages = this.texts ? await this.pageTexts() : await (this.ctx.busy?.(() => this.pageTexts()) ?? this.pageTexts());
     if (query !== this.findInput.value) return;
     this.matches = findInPages(pages, query);
     // The first match from the page shown.

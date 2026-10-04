@@ -32,6 +32,14 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Fixed
 
+- **A spinner for every long operation** (UI-019): saving and exporting,
+  opening the template gallery on a folder, the lists of Git, WebDAV,
+  Grist and Zotero, a template source, searching a folder, the graph of the
+  notes, backups and restores, the assistant preparing its answer, a mail
+  merge, the first search and the print of a PDF, the print preview, the
+  synchronisation of devices and the wait for QRShare. A status text of work
+  in progress (ending with “…”) now always turns a spinner before it.
+
 - QRShare did not recognise the pairing QR code of **Sync my devices**
   (`pwo-sync:…`, not a link): the invitation is now a link to the
   application, which opens ready to pair. The command palette has *Sync my

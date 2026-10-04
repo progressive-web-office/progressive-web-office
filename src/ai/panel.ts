@@ -1,6 +1,6 @@
 /** Assistant side panel (AI-001..AI-005). */
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages';
-import { button, h } from '../app/dom';
+import { busyText, button, h } from '../app/dom';
 import { getLocale, t } from '../i18n';
 import { createStreamFactory, runAgent, systemPrompt, type Effort } from './agent';
 import { PROVIDERS, providerById, type ProviderId } from './providers';
@@ -213,6 +213,14 @@ export class AssistantPanel {
     this.sendButton.disabled = true;
     this.stopButton.hidden = false;
     let answer: HTMLElement | null = null;
+    // UI-019: turning while the assistant prepares its answer, and again after each of its actions.
+    const thinking = h('div', { class: 'ai-msg note', role: 'status' }, ...busyText(t('ai.thinking')));
+    const think = (on: boolean): void => {
+      if (!on) return thinking.remove();
+      this.log.append(thinking);
+      this.log.scrollTop = this.log.scrollHeight;
+    };
+    think(true);
     try {
       const common = {
         system: systemPrompt(ctx.kind, ctx.name, getLocale()),
@@ -220,6 +228,7 @@ export class AssistantPanel {
         prompt,
         signal: controller.signal,
         onText: (delta: string) => {
+          think(false);
           answer ??= this.entry('assistant');
           answer.textContent += delta;
           this.log.scrollTop = this.log.scrollHeight;
@@ -227,6 +236,7 @@ export class AssistantPanel {
         onAction: (action: { name: string; input: unknown; ok: boolean; result: string }) => {
           answer = null;
           this.entry('action', `${action.ok ? '✓' : '✗'} ${action.name} ${summarize(action.input)} — ${action.result.split('\n')[0]}`);
+          think(true);
         },
       };
       let result: { history: unknown[]; changed: boolean; stop: string };
@@ -244,6 +254,7 @@ export class AssistantPanel {
     } catch (err) {
       this.entry('error', await this.describeError(err));
     } finally {
+      think(false);
       this.controller = null;
       this.sendButton.disabled = false;
       this.stopButton.hidden = true;

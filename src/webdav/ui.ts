@@ -1,5 +1,5 @@
 /** Nextcloud / WebDAV accounts and file browser (DAV-001..DAV-004). */
-import { button, h } from '../app/dom';
+import { button, h, setStatus as showStatus } from '../app/dom';
 import { ACCEPTED_EXTENSIONS } from '../core/format';
 import { t } from '../i18n';
 import { davRootUrl, WebDavClient, WebDavError, type DavEntry } from './client';
@@ -102,10 +102,7 @@ export function browseCloud(host: HTMLElement, mode: 'open' | 'save', suggestedN
       e.preventDefault();
       finish(null);
     });
-    const setStatus = (text: string, error = false): void => {
-      status.textContent = text;
-      status.classList.toggle('error', error);
-    };
+    const setStatus = (text: string, error = false): void => showStatus(status, text, error);
     const cancel = (): HTMLElement => button(t('common.cancel'), () => finish(null));
 
     const showAddForm = (): void => {

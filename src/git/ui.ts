@@ -1,5 +1,5 @@
 /** Repository browser and commit dialogs (GIT-001..GIT-006). */
-import { button, h } from '../app/dom';
+import { button, h, setStatus as showStatus } from '../app/dom';
 import { ACCEPTED_EXTENSIONS } from '../core/format';
 import { t } from '../i18n';
 import { repoInfo } from './info';
@@ -80,10 +80,7 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       close();
       resolve(value);
     };
-    const setStatus = (text: string, error = false): void => {
-      status.textContent = text;
-      status.classList.toggle('error', error);
-    };
+    const setStatus = (text: string, error = false): void => showStatus(status, text, error);
     const fail = (err: unknown): void => setStatus(t('error.git', { message: (err as Error).message }), true);
 
     const renderAccounts = (): void => {
@@ -549,7 +546,7 @@ export function askToken(host: HTMLElement, base: Pick<GitAccount, 'provider' | 
     const save = async (): Promise<void> => {
       const value = token.value.trim();
       if (!value) return void token.focus();
-      status.textContent = t('git.loading');
+      showStatus(status, t('git.loading'));
       status.classList.remove('error');
       try {
         // The token must reach this repository.

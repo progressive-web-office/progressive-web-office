@@ -512,6 +512,7 @@ export const fr: Record<MessageKey, string> = {
   'share.sendButton': 'Envoyer',
   'ai.title': 'Assistant',
   'ai.open': 'Assistant IA',
+  'ai.thinking': 'Réflexion…',
   'ai.openTitle': 'Demander à un assistant IA de lire ou modifier ce document',
   'ai.settings': 'Réglages de l’assistant',
   'ai.info': '{provider} · {model}',

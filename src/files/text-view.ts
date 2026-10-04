@@ -9,7 +9,7 @@ import { gotoLine, highlightSelectionMatches, search, searchKeymap } from '@code
 import { Compartment, EditorSelection, EditorState, RangeSetBuilder, type Extension } from '@codemirror/state';
 import { Decoration, drawSelection, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { highlightCode } from '@lezer/highlight';
-import { button, h } from '../app/dom';
+import { busyText, button, h } from '../app/dom';
 import type { EditorView as PwoView, ViewContext } from '../app/views';
 import { t } from '../i18n';
 import { runtimeOf } from '../code/runtimes';
@@ -301,7 +301,7 @@ export class TextView implements PwoView {
   /** Download a package from the package index (after the user agrees for the site), then run again. */
   private async installAndRun(name: string): Promise<void> {
     if (!this.runner) return;
-    const status = h('p', { class: 'code-file-status' }, t('textfile.installing', { name }));
+    const status = h('p', { class: 'code-file-status' }, ...busyText(t('textfile.installing', { name })));
     this.showOutput([status]);
     const result = await this.runner.run('python', `import pwo\nawait pwo.install(${JSON.stringify(name)})`, (s) => {
       if (s.startsWith('packages:')) status.textContent = `${t('code.packages')} ${s.slice('packages:'.length)}`;

@@ -4,7 +4,7 @@
  * is now, opened, or restored (a new commit putting it back, the history
  * kept as it is).
  */
-import { button, h } from '../app/dom';
+import { busyText, button, h, setStatus } from '../app/dom';
 import { t } from '../i18n';
 import type { GitClient, GitCommit } from './types';
 
@@ -25,7 +25,7 @@ export function historyDialog(host: HTMLElement, src: HistorySource): Promise<Hi
   return new Promise((resolve) => {
     const name = src.path.slice(src.path.lastIndexOf('/') + 1);
     const dialog = h('dialog', { class: 'dialog history-dialog', 'aria-labelledby': 'history-title' });
-    const status = h('p', { class: 'git-status', role: 'status', 'aria-live': 'polite' }, t('git.loading'));
+    const status = h('p', { class: 'git-status', role: 'status', 'aria-live': 'polite' }, ...busyText(t('git.loading')));
     const list = h('ol', { class: 'history-list' });
     const finish = (choice: HistoryChoice): void => {
       dialog.close();
@@ -38,7 +38,7 @@ export function historyDialog(host: HTMLElement, src: HistorySource): Promise<Hi
       status.classList.add('error');
     };
     const compare = async (before: { label: string; bytes: () => Promise<Uint8Array> }, after: { label: string; bytes: () => Promise<Uint8Array> }): Promise<void> => {
-      status.textContent = t('git.loading');
+      setStatus(status, t('git.loading'));
       status.classList.remove('error');
       try {
         const [{ versionView }, { showDiff }] = await Promise.all([import('../diff/views'), import('../diff/ui')]);

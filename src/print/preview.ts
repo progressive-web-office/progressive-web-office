@@ -1,5 +1,5 @@
 /** Print preview dialog (PRINT-001, PRINT-002, PRINT-007). */
-import { button, h } from '../app/dom';
+import { busyText, button, h } from '../app/dom';
 import { t } from '../i18n';
 import { listCss } from '../document/pm/list-css';
 import { contentHeightPx, contentWidthPx, loadPrintSettings, mmToPx, pageCss, pageMargins, pageSize, PAPER_SIZES, savePrintSettings, type PrintSettings } from './settings';
@@ -67,7 +67,9 @@ export async function openPrintPreview(
 ): Promise<PreviewHandle> {
   let settings = { ...loadPrintSettings(), ...overrides };
   const frame = h('iframe', { class: 'print-frame', title: t('print.preview') });
-  const frameWrap = h('div', { class: 'print-frame-wrap' }, frame);
+  // UI-019: turning over the page while it is laid out again.
+  const building = h('p', { class: 'print-building', role: 'status', hidden: true }, ...busyText(t('app.working')));
+  const frameWrap = h('div', { class: 'print-frame-wrap' }, building, frame);
   const form = h('form', { class: 'print-settings' });
   const dialog = h('dialog', { class: 'dialog print-dialog', 'aria-labelledby': 'print-title' });
 
@@ -107,7 +109,8 @@ export async function openPrintPreview(
       doc.head.append(pageStyle);
     }
     pageStyle.textContent = pageCss(settings);
-    const content = await build(settings);
+    building.hidden = false;
+    const content = await Promise.resolve(build(settings)).finally(() => (building.hidden = true));
     const paper = doc.createElement('div');
     paper.className = 'paper';
     paper.style.width = `${contentWidthPx(settings)}px`;

@@ -27,7 +27,7 @@ import type { AssistantPanel } from '../ai/panel';
 import type { GitAccount } from '../git/accounts';
 import type { GitRepo } from '../git/types';
 import { versionLabel } from './build-info';
-import { button, h } from './dom';
+import { busyText, button, h } from './dom';
 import { applyTheme, loadTheme, nextTheme, saveTheme } from './theme';
 import { newView, openView, type EditorView, type ViewContext } from './views';
 
@@ -445,7 +445,7 @@ export class App {
     if (!doc?.grist || !doc.view.save) return;
     const source = doc.grist;
     const [{ gristChanges }, { readWorkbook }, { gristClient, gristErrorMessage }] = await Promise.all([import('../grist/workbook'), import('../sheet/io'), import('../grist/ui')]);
-    const changes = gristChanges(source.snapshot, readWorkbook('xlsx', await doc.view.save('xlsx')));
+    const changes = gristChanges(source.snapshot, readWorkbook('xlsx', await this.withBusy(async () => doc.view.save!('xlsx'))));
     if (!changes.length) {
       this.showNotice(t('grist.noChanges'));
       return;
@@ -682,7 +682,7 @@ export class App {
       if (!isTemplateBase(base)) return;
       const extension = templateExtension(base);
       const name = `${doc.name.replace(/\.[^.]+$/, '')}.${extension}`;
-      if (await saveFile(toTemplate(await doc.view.save(base), base), name, base, { mimeType: templateMimeType(base), extension })) this.showNotice(t('tpl.fileSaved', { name }));
+      if (await saveFile(toTemplate(await this.withBusy(async () => doc.view.save!(base)), base), name, base, { mimeType: templateMimeType(base), extension })) this.showNotice(t('tpl.fileSaved', { name }));
     } catch (err) {
       this.showError(t('error.save', { message: (err as Error).message }));
     }
@@ -706,14 +706,14 @@ export class App {
         if (where === there) {
           const path = `${dir}/${name.replace(/[\\/:*?"<>|]/g, '_')}.${fileExtension(doc.format)}`;
           await folder.mkdir(dir);
-          await folder.write(path, new Blob([(await doc.view.save(doc.format)) as BlobPart]));
+          await folder.write(path, new Blob([(await this.withBusy(async () => doc.view.save!(doc.format))) as BlobPart]));
           await this.folder?.refresh();
           this.showNotice(t('tpl.savedInFolder', { path }));
           return;
         }
       }
       const { saveTemplate } = await import('../storage/recent');
-      await saveTemplate(name, doc.format, await doc.view.save(doc.format));
+      await saveTemplate(name, doc.format, await this.withBusy(async () => doc.view.save!(doc.format)));
       this.showNotice(t('tpl.saved', { name }));
     } catch (err) {
       this.showError(t('error.save', { message: (err as Error).message }));
@@ -723,9 +723,11 @@ export class App {
   /** A new document from a built-in template or example (FILE-018), or from a template of the user (FILE-019). */
   async newFromTemplate(): Promise<void> {
     const [{ chooseTemplate }, storage] = await Promise.all([import('../templates/ui'), import('../storage/recent')]);
-    const mine = await storage.listTemplates().catch(() => []);
     const provider = this.folder?.provider;
-    const inFolder = provider ? await import('../folder/templates').then((m) => m.folderTemplates(provider)).catch(() => []) : [];
+    // The folder is looked through first, which can take a while (a repository, a cloud folder).
+    const [mine, inFolder] = await this.withBusy(() =>
+      Promise.all([storage.listTemplates().catch(() => []), provider ? import('../folder/templates').then((m) => m.folderTemplates(provider)).catch(() => []) : Promise.resolve([])]),
+    );
     // FILE-030: the repositories and cloud folders of templates.
     const sourcesModule = await import('../templates/sources');
     const opened = new Map<string, Promise<{ provider: import('../fs').StorageProvider; dir: string }>>();
@@ -856,7 +858,7 @@ export class App {
     if (!format && doc.folderPath && this.folder?.provider.capabilities.write) return this.saveToFolder();
     const target = format ?? doc.format;
     try {
-      const bytes = await doc.view.save(target);
+      const bytes = await this.withBusy(async () => doc.view.save!(target));
       // FILE-022: a text or source file keeps its name and extension.
       const own = doc.kind === 'file';
       const name = own ? doc.name : replaceExtension(doc.name, fileExtension(target));
@@ -888,7 +890,7 @@ export class App {
     const variant = doc?.view.saveVariants?.().find((v) => v.id === id);
     if (!doc || !variant) return;
     try {
-      const bytes = await variant.save();
+      const bytes = await this.withBusy(() => variant.save());
       const dot = doc.name.lastIndexOf('.');
       const stem = dot > 0 ? doc.name.slice(0, dot) : doc.name;
       const name = `${stem}${variant.suffix}.${fileExtension(variant.format)}`;
@@ -903,10 +905,10 @@ export class App {
     const doc = this.current;
     if (!doc?.view.save) return;
     try {
-      const bytes = await doc.view.save(doc.format);
+      const bytes = await this.withBusy(async () => doc.view.save!(doc.format));
       const file = new File([bytes as BlobPart], replaceExtension(doc.name, fileExtension(doc.format)), { type: MIME_TYPES[doc.format] });
       // Links carry text documents as Markdown, much shorter than DOCX (SHARE-009).
-      const linkFile = doc.kind === 'document' && doc.format !== 'md' ? new File([(await doc.view.save('md')) as BlobPart], replaceExtension(doc.name, 'md'), { type: MIME_TYPES.md }) : file;
+      const linkFile = doc.kind === 'document' && doc.format !== 'md' ? new File([(await this.withBusy(async () => doc.view.save!('md'))) as BlobPart], replaceExtension(doc.name, 'md'), { type: MIME_TYPES.md }) : file;
       const { openSendDialog } = await import('../share/ui');
       await openSendDialog(this.root, file, doc.format, (message) => this.showNotice(message), linkFile);
     } catch (err) {
@@ -968,7 +970,7 @@ export class App {
   private async snapshot(): Promise<() => Promise<void>> {
     const doc = this.current;
     if (!doc?.view.save) return async () => undefined;
-    const bytes = await doc.view.save(doc.format);
+    const bytes = await this.withBusy(async () => doc.view.save!(doc.format));
     const wasDirty = this.dirty;
     let restored: OpenDocument | null = doc;
     return async () => {
@@ -1059,6 +1061,7 @@ export class App {
 
   private viewContext(): ViewContext {
     return {
+      busy: (task) => this.withBusy(task),
       changed: () => {
         this.markChanged();
         this.collab?.changed();
@@ -1312,6 +1315,7 @@ export class App {
     const doc = this.current;
     if (!this.dirty || !doc?.view.save || !this.options.drafts) return;
     try {
+      // In the background: no spinner.
       const bytes = await doc.view.save(doc.format);
       if (this.current === doc && this.dirty) await this.options.drafts.save({ name: doc.name, format: doc.format, bytes });
     } catch {
@@ -1353,7 +1357,7 @@ export class App {
     if (!state.pairing || !state.understood) return this.openDeviceSync();
     const { startSync, listen } = await import('../devsync/live');
     try {
-      const live = await startSync();
+      const live = await this.withBusy(() => startSync());
       if (!live) return this.showError(t('devsync.noStorage'));
       if (!live.sync.peerCount()) return this.showNotice(t('devsync.waiting'));
       const stop = listen({
@@ -1362,7 +1366,7 @@ export class App {
       });
       setTimeout(stop, 120_000);
       this.showNotice(t('devsync.done'));
-      await live.sync.syncNow();
+      await this.withBusy(() => live.sync.syncNow());
     } catch (err) {
       this.showError((err as Error).message);
     }
@@ -1593,7 +1597,7 @@ export class App {
       dialog.remove();
     };
     const create = async (): Promise<void> => {
-      result.replaceChildren(h('p', { class: 'hint' }, t('remote.checking')));
+      result.replaceChildren(h('p', { class: 'hint' }, ...busyText(t('remote.checking'))));
       try {
         const file = await fetchRemote({ url: address.value });
         const link = encodeRemoteLink(location.origin + location.pathname, { url: address.value, ...(pin.checked ? { sha256: file.sha256 } : {}) });
@@ -2161,7 +2165,7 @@ export class App {
     const target = format ?? doc.format;
     const path = format ? replaceExtension(doc.folderPath, fileExtension(target)) : doc.folderPath;
     try {
-      const bytes = await doc.view.save(target);
+      const bytes = await this.withBusy(async () => doc.view.save!(target));
       await folder.provider.write(path, new Blob([bytes as BlobPart]));
       if (this.archiveChanged()) this.showNotice(t('zip.savedInside'));
       doc.folderPath = path;
@@ -2517,7 +2521,7 @@ export class App {
       const choice = await chooseVersion(this.root, doc.name, await listVersions(key).catch(() => []));
       if (!choice) return;
       if (choice.action === 'save') {
-        const bytes = await doc.view.save(doc.format);
+        const bytes = await this.withBusy(async () => doc.view.save!(doc.format));
         await saveVersion(key, doc.name, doc.format, bytes, choice.label || undefined);
         this.showNotice(t('versions.saved'));
         continue;
@@ -2531,7 +2535,7 @@ export class App {
       if (!bytes) return this.showError(t('versions.missing'));
       if (choice.action === 'compare') {
         const [{ versionView }, { showDiff }] = await Promise.all([import('../diff/views'), import('../diff/ui')]);
-        const now = await doc.view.save(doc.format);
+        const now = await this.withBusy(async () => doc.view.save!(doc.format));
         const [before, after] = await Promise.all([versionView(v.name, bytes), versionView(doc.name, now)]);
         await showDiff(this.root, t('diff.title', { name: doc.name }), [new Date(v.savedAt).toLocaleString(), t('history.now')], before, after);
         continue;

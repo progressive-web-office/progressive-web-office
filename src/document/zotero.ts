@@ -3,7 +3,7 @@
  * key the user creates (read-only), kept in this browser and sent only to
  * api.zotero.org. Sources come as BibTeX, with Zotero's citation keys.
  */
-import { button, h } from '../app/dom';
+import { button, h, setStatus } from '../app/dom';
 import { t } from '../i18n';
 import { entrySummary, parseBibtex, type BibEntry } from './bibliography';
 
@@ -177,18 +177,18 @@ export async function pickFromZotero(host: HTMLElement, mode: 'search' | 'collec
         const q = search.value.trim();
         if (!q) return;
         const n = ++round;
-        status.textContent = t('git.loading');
+        setStatus(status, t('git.loading'));
         client.search(account.userId, q).then((entries) => n === round && show(entries, false), fail);
       }, 300);
     });
     collections.addEventListener('change', () => {
       if (!collections.value) return;
       chosen.clear();
-      status.textContent = t('git.loading');
+      setStatus(status, t('git.loading'));
       client.collection(account.userId, collections.value).then((entries) => show(entries, true), fail);
     });
     if (mode === 'collection') {
-      status.textContent = t('git.loading');
+      setStatus(status, t('git.loading'));
       client.collections(account.userId).then((list) => {
         collections.replaceChildren(h('option', { value: '' }, '—'), ...list.map((c) => h('option', { value: c.key }, `${c.name} (${c.items})`)));
         status.textContent = '';

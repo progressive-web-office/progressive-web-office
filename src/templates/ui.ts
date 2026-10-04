@@ -2,7 +2,7 @@
  * Template gallery (FILE-018): one kind at a time behind tabs — progressive
  * disclosure — and a search through all of them.
  */
-import { button, h } from '../app/dom';
+import { busyText, button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
 import type { UserTemplate } from '../storage/recent';
 import { TEMPLATES, type Template } from './catalog';
@@ -108,7 +108,7 @@ export function chooseTemplate(
     };
     // FILE-030: a repository or a cloud folder of templates, read when its tab is first chosen.
     const sourcePanel = (source: TemplateSource): void => {
-      const body = h('div', { class: 'template-panel', role: 'tabpanel', 'aria-label': source.label }, h('p', { class: 'hint' }, t('git.loading')));
+      const body = h('div', { class: 'template-panel', role: 'tabpanel', 'aria-label': source.label }, h('p', { class: 'hint' }, ...busyText(t('git.loading'))));
       const entry: (typeof panels)[number] = { label: source.label, icon: source.kind === 'git' ? '🗃️' : '☁️', body, cards: [] };
       entry.load = async () => {
         entry.load = undefined;

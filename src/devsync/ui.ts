@@ -5,7 +5,7 @@
  * code accepted on the paired device), the devices, "Sync now",
  * synchronising by itself, the trash, and revoking.
  */
-import { button, h } from '../app/dom';
+import { button, h, setStatus } from '../app/dom';
 import { t } from '../i18n';
 import { listen, relayFallback, startSync, stopSync, currentSync, SYNC_FOLDER } from './live';
 import { TRASH } from './plan';
@@ -256,7 +256,7 @@ export function syncDialog(host: HTMLElement, opts: SyncDialogOptions = {}): Pro
       // What "Sync now" did, right under it.
       const nowStatus = h('p', { class: 'hint devsync-now', role: 'status', 'aria-live': 'polite' });
       const say = (text: string): void => {
-        nowStatus.textContent = text;
+        setStatus(nowStatus, text);
         status.textContent = '';
       };
       const now = button(t('devsync.now'), async () => {

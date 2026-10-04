@@ -3,7 +3,7 @@
  * draws the notes and their links; a click on a note (or on its name in the
  * list, for the keyboard) opens it.
  */
-import { button, h } from '../app/dom';
+import { busyText, button, h } from '../app/dom';
 import { t } from '../i18n';
 import { noteName } from './vault';
 
@@ -38,7 +38,7 @@ export function notesGraphDialog(host: HTMLElement, notes: string[], links: { fr
       dialog.remove();
       resolve(path);
     };
-    const graph = h('div', { class: 'notes-graph' }, h('p', { class: 'hint' }, t('folder.graphDrawing')));
+    const graph = h('div', { class: 'notes-graph' }, h('p', { class: 'hint' }, ...busyText(t('folder.graphDrawing'))));
     const linked = new Set(links.flatMap((l) => [l.from, l.to]));
     dialog.append(
       h('h2', { id: 'notes-graph-title' }, t('folder.graph')),

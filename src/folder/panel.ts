@@ -2,7 +2,7 @@
  * The folder side panel (FOLDER-001, FOLDER-002, FOLDER-004): the file
  * explorer of `src/fs` over the open folder, and a search across its documents.
  */
-import { button, h } from '../app/dom';
+import { busyText, button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
 import { basename, dirname, Explorer, listFiles, walk, type Entry, type ExplorerChange, type SortKey, type StorageProvider } from '../fs';
 import '../fs/ui/explorer.css';
@@ -361,7 +361,7 @@ export class FolderPanel {
       ? h('section', { class: 'folder-names' }, h('h3', {}, t('folder.byName')), h('ul', { role: 'list' }, ...named.map((p) => h('li', {}, button(p, () => this.hooks.open(p), { className: 'folder-file', icon: iconOf(p) })))))
       : '';
     const inDocs = named.length ? h('h3', {}, t('folder.inDocuments')) : '';
-    this.results.replaceChildren(names, inDocs, h('p', { class: 'hint' }, t('folder.searching')));
+    this.results.replaceChildren(names, inDocs, h('p', { class: 'hint' }, ...busyText(t('folder.searching'))));
     const hits: SearchHit[] = await this.index.search(query, all.filter((p) => OPENABLE.test(p) || searchable(p)));
     if (query !== this.search.value.trim()) return;
     this.results.replaceChildren(

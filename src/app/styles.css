@@ -560,6 +560,9 @@ button.link { border: 0; background: none; color: var(--accent); text-decoration
 .print-settings label.check { flex-direction: row; align-items: center; }
 .print-settings input[type='number'] { padding: 4px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); }
 .print-frame-wrap { flex: 1; min-width: 0; overflow: auto; background: #6b7280; border-radius: 6px; display: flex; justify-content: center; }
+.print-frame-wrap { position: relative; }
+.print-building { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; background: var(--surface, #fff); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 10px; margin: 0; z-index: 1; }
+.print-building[hidden] { display: none; }
 .print-frame { border: 0; height: 100%; min-height: 400px; background: transparent; }
 @media (max-width: 700px) {
   .print-body { flex-direction: column; }
