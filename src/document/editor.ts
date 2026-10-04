@@ -1767,6 +1767,24 @@ export class DocumentEditor implements EditorView {
   }
 
   /** N variants of the sheet and their answer keys, in a ZIP (TEACH-002). */
+  /** TEACH-003: the questions of the document for a learning platform or AMC. */
+  private async exportQuiz(): Promise<void> {
+    const doc = { ...this.doc, blocks: this.currentBlocks() };
+    const quiz = await import('../teach/quiz');
+    const questions = quiz.quizQuestions(doc);
+    if (!questions.length) return void window.alert(t('quiz.none'));
+    const formats = [t('quiz.moodle'), t('quiz.gift'), t('quiz.amc')];
+    const choice = await this.ctx.choose(t('quiz.title'), t('quiz.found', { n: questions.length, short: questions.filter((q) => q.kind === 'short').length }), formats, formats[0]!);
+    if (!choice) return this.refocus();
+    const stem = (doc.meta.title || this.ctx.fileName?.()?.replace(/\.[^.]+$/, '') || t('quiz.stem')).replace(/[\\/:*?"<>|]+/g, '-').trim();
+    const { saveFile } = await import('../storage/file-io');
+    const enc = (s: string): Uint8Array => new TextEncoder().encode(s);
+    if (choice === formats[0]) await saveFile(enc(quiz.moodleXml(questions, stem)), `${stem}-moodle.xml`, 'text', { mimeType: 'application/xml', extension: 'xml' });
+    else if (choice === formats[1]) await saveFile(enc(quiz.giftText(questions)), `${stem}.gift.txt`, 'text', { mimeType: 'text/plain', extension: 'txt' });
+    else await saveFile(enc(quiz.amcLatex(questions, { title: doc.meta.title || stem, lang: this.lang() })), `${stem}-amc.tex`, 'text', { mimeType: 'application/x-tex', extension: 'tex' });
+    this.refocus();
+  }
+
   private async generateVariants(): Promise<void> {
     const doc = { ...this.doc, blocks: this.currentBlocks() };
     const [{ definitions, draw, random, substitute, checkDefinitions }, { chooseVariants }] = await Promise.all([import('../teach/variants'), import('../teach/variants-dialog')]);
@@ -2431,6 +2449,7 @@ export class DocumentEditor implements EditorView {
         this.solutionsButton,
         act(t('variants.button'), '🎲', () => void this.generateVariants(), t('variants.buttonTitle')),
         act(t('merge.button'), '✉', () => void this.mailMerge(), t('merge.buttonTitle')),
+        act(t('quiz.button'), '📝', () => void this.exportQuiz(), t('quiz.buttonTitle')),
       ]),
       toolGroup(t('group.document'), '📄', [...(compact ? [this.textToolsMenu(), this.viewToolsMenu()] : []), act(t('meta.button'), 'ⓘ', () => void this.editProperties(), t('meta.buttonTitle')), act(t('hf.button'), '▤', () => void this.editPageSetup())]),
     );

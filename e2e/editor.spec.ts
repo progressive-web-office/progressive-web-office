@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openApp, saveAs } from './helpers';
+import { openApp, openFile, saveAs } from './helpers';
 
 async function newDocument(page: Page) {
   await openApp(page);
@@ -665,5 +665,42 @@ test('compares with another version: the differences become tracked changes (DOC
   // Rejecting every change brings the older text back.
   await page.getByRole('button', { name: 'Reject all' }).click();
   await expect(editor).toHaveText('The meeting is on Monday.Bring the old report.');
+  expect(errors).toEqual([]);
+});
+
+test('exports the questions of a document for Moodle and AMC (TEACH-003)', async ({ page }) => {
+  const errors = await openApp(page);
+  const md = [
+    '# Geography',
+    '',
+    'Which city is the capital of France?',
+    '',
+    '- [ ]{.checkbox name="a"} Lyon',
+    '- [x]{.checkbox name="b"} Paris',
+    '',
+    'The longest river of Europe is the [Volga]{.input name="r"}.',
+    '',
+  ].join('\n');
+  await openFile(page, 'quiz.md', md, 'text/markdown');
+  await expect(page.locator('.ProseMirror')).toContainText('capital of France');
+  const exportAs = async (label: string | RegExp): Promise<{ name: string; text: string }> => {
+    await page.getByRole('button', { name: 'Export the quiz…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Export the quiz' });
+    await expect(dialog.getByText('2 questions found (1 with a short answer).')).toBeVisible();
+    await dialog.getByLabel(label).check();
+    const download = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Open' }).click();
+    const d = await download;
+    const chunks: Buffer[] = [];
+    for await (const c of await d.createReadStream()) chunks.push(c as Buffer);
+    return { name: d.suggestedFilename(), text: Buffer.concat(chunks).toString('utf8') };
+  };
+  const moodle = await exportAs('Moodle XML (.xml)');
+  expect(moodle.name).toMatch(/moodle\.xml$/);
+  expect(moodle.text).toContain('<question type="multichoice">');
+  expect(moodle.text).toMatch(/<text>\$course\$\/[^<]*\/Geography<\/text>/);
+  expect(moodle.text).toContain('<question type="shortanswer">');
+  const amc = await exportAs(/AMC, Auto Multiple Choice/);
+  expect(amc.text).toContain('\\correctchoice{Paris}');
   expect(errors).toEqual([]);
 });

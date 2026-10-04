@@ -615,6 +615,28 @@ with one sheet per variant (without the solutions), its answer key (with
 them), and a CSV table of the values drawn for each variant.
 :::
 
+### Quizzes for Moodle and AMC
+
+Write the questions as on any sheet, with **form fields** (☑ Form field):
+
+- **multiple choice**: the question, then a list whose items start with a
+  **check box** — ticked for the right answers (one, or several);
+- **short answer**: a **text field** in the sentence, holding the expected
+  answer (a number makes a numerical question);
+- a **drop-down list** in the sentence, set on the right choice.
+
+Headings group the questions. **📝 Export the quiz…** (🎓 Teaching) counts
+them and saves:
+
+| Format | For |
+|--------|-----|
+| **Moodle XML** (`.xml`) | Moodle: *Question bank ▸ Import*; headings become categories |
+| **GIFT** (`.txt`) | Moodle and other platforms reading GIFT |
+| **AMC** (`.tex`) | [Auto Multiple Choice](https://www.auto-multiple-choice.net/): answer sheets printed, scanned and marked; the choice questions only, shuffled by heading |
+
+With several right answers, each is worth an equal share and each wrong one
+takes the same share off. Equations are kept as LaTeX (`\(…\)`).
+
 ## Mail merge
 
 Write **fields** in a document as `{{Name}}`, named like the columns of a

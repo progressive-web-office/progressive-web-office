@@ -533,6 +533,7 @@ integration is ever needed.
 |----|-----|-------|-------------|
 | TEACH-001 | S | 0.2.0 | The system shall let the user mark paragraphs of a text document as solutions, shown framed and labelled, hide or show them on screen and in print, and save copies without them (the exercise sheet) in ODT, DOCX and Markdown; solutions shall be kept as Word content controls (tag `pwo:solution`, alias Solution), ODF sections named Solution*n*, and Markdown fenced divs (`::: solution`, `::: {.solution}`). |
 | TEACH-002 | S | 0.2.0 | The system shall generate N random variants of a text document: `{{X=rand(a..b[, step])}}`, `{{X=choice(…)}}` and `{{X=expression}}` define values drawn per variant with a seeded generator, `{{X}}` and `{{=expression[\|digits]}}` show values and computed results (arithmetic and common functions, no code run), numbers being formatted for the document's language; the result shall be a ZIP of the sheets (without solutions), their answer keys and a CSV of the values, in ODT, DOCX or Markdown. |
+| TEACH-003 | S | 0.2.0 | The system shall find the questions of a text document written with form fields (a list of answers starting with check boxes, ticked for the right ones; a text field holding the expected answer; a drop-down list set on the right choice), grouped by heading, and export them as Moodle XML, GIFT and an AMC (Auto Multiple Choice) LaTeX source. |
 
 ## 9o. Colour (COLOR)
 

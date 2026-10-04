@@ -231,7 +231,7 @@ group is not a commitment.
 - ✅ Exercise sheets and answer keys from one document (TEACH-001)
 - ✅ Random variants (TEACH-002): parameterised values give each student a
   different version, with its computed answer key
-- Quiz export to learning-platform XML formats and AMC (Auto Multiple Choice)
+- ✅ Quiz export to Moodle XML, GIFT and AMC (Auto Multiple Choice) (TEACH-003)
 - Hand out and collect work in class over QRShare / peer-to-peer
   collaboration, without a learning platform
 - Block diagrams and Bode / Nyquist plots from a transfer function

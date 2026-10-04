@@ -101,6 +101,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Quiz export (TEACH-003): **📝 Export the quiz…** saves the questions of a
+  document — answers as ticked check boxes, short answers as text fields —
+  as Moodle XML, GIFT or an Auto Multiple Choice (AMC) LaTeX source.
+
 - Comparing two versions of a document (DOC-052): **⇆ Compare with another
   version…** turns the differences with another file (older or newer, any
   text format) into tracked changes, word by word, to accept or reject.
