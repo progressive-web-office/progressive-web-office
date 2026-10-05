@@ -562,6 +562,8 @@ export const zh: Record<MessageKey, string> = {
   'git.publicAccess': '{site} — 公开，无令牌',
   'git.openedPublic': '已无令牌打开公开仓库：可以阅读；要保存（提交）到其中，请添加带令牌的账户。',
   'git.needAccountPrivate': '{repo} 是私有的或不存在：请添加一个对其有访问权限的 {site} 账户令牌（下方表单已预填）。',
+  'git.noAccessAny': '此站点的令牌都无法打开 {repo}：请添加有权访问它的令牌（细粒度令牌会列出其仓库）。',
+  'git.addTokenRepo': '为此仓库添加令牌',
   'git.noAccess': '使用此账户找不到 {repo}：请检查其令牌是否有权访问此仓库（细粒度令牌会列出其仓库）。',
   'git.noAccountYet': '请在上方粘贴仓库地址。仅私有仓库或保存到仓库时才需要令牌。',
   'git.emptyRepoOpen': '此仓库为空：尚无可打开的内容。请先在其中保存一个文档（保存 › 提交…，或打开文件夹 › Git 仓库）。',

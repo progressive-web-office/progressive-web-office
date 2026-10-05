@@ -3,7 +3,7 @@ import { button, h, setStatus as showStatus } from '../app/dom';
 import { ACCEPTED_EXTENSIONS } from '../core/format';
 import { t } from '../i18n';
 import { repoInfo } from './info';
-import { addAccount, clientFor, commitMessage, defaultApiUrl, forgetAccount, isRemembered, loadAccounts, type GitAccount } from './accounts';
+import { accountForRepo, addAccount, clientFor, commitMessage, defaultApiUrl, forgetAccount, isRemembered, loadAccounts, siteAccounts, type GitAccount } from './accounts';
 import type { GitClient, GitEntry, GitProvider, GitRepo } from './types';
 import { apiUrlFor, hostOfApi, parseRepoAddress, providerName, tokenPage, type RepoAddress } from './url';
 import { isDiffable, orderForGit, preferDiffable, withExtension } from './diffable';
@@ -307,21 +307,40 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
       otherRepo.value = at.path;
       provider.value = at.provider;
       apiUrl.value = apiUrlFor(at.provider, at.host);
-      const same = (a: GitAccount): boolean => a.provider === at.provider && (a.apiUrl.replace(/\/+$/, '') === at.apiUrl || hostOfApi(a.apiUrl) === at.host);
-      const found = loadAccounts().find(same);
-      if (found && found.id !== account?.id) {
-        account = found;
-        accountSelect.value = found.id;
-        void selectAccount(found.id);
+      // GIT-018: of the tokens of the site, the one that opens it (the one used last for it first).
+      setStatus(t('git.loading'));
+      const known = siteAccounts(at).length > 0;
+      let chosen: Awaited<ReturnType<typeof accountForRepo>>;
+      try {
+        chosen = await accountForRepo(at);
+      } catch (err) {
+        return fail(err);
+      }
+      if (!chosen) {
+        // Private (or missing): a token of the site that opens it is needed, its form filled in.
+        pending = at;
+        client = undefined;
+        if (!known) {
+          setStatus(t('git.needAccountPrivate', { site: at.host, repo: at.path }));
+          showAddForm();
+          return;
+        }
+        setStatus(t('git.noAccessAny', { repo: at.path }), true);
+        status.append(' ', button(`🔑 ${t('git.addTokenRepo')}`, () => showAddForm(), { className: 'link' }));
+        return;
+      }
+      const found = !chosen.account.id.startsWith('public:');
+      if (found && chosen.account.id !== account?.id) {
+        account = chosen.account;
+        accountSelect.value = chosen.account.id;
+        void selectAccount(chosen.account.id);
       }
       // Without an account of the site, a public repository opens anyway (read only, no token).
-      const using: GitAccount = found ?? { id: `public:${at.host}`, provider: at.provider, apiUrl: at.apiUrl, token: '', label: t('git.publicAccess', { site: at.host }) };
+      const using: GitAccount = found ? chosen.account : { ...chosen.account, label: t('git.publicAccess', { site: at.host }) };
       client = clientFor(using);
-      setStatus(t('git.loading'));
       try {
-        const r = await client.getRepo(at.path);
         account = using;
-        await selectRepo(r, at);
+        await selectRepo(chosen.repo, at);
         if (!found) {
           setStatus(t('git.openedPublic'));
           // GIT-012: a token for this site, to save here; the repository opens again with it.
@@ -331,16 +350,6 @@ export function browseRepository(host: HTMLElement, mode: 'open' | 'save' | 'fol
           }, { className: 'link' }));
         }
       } catch (err) {
-        const status = (err as { status?: number }).status;
-        if (!found && (status === 404 || status === 401 || status === 403)) {
-          // Private (or missing): an account of the site is needed, its form filled in.
-          pending = at;
-          client = undefined;
-          setStatus(t('git.needAccountPrivate', { site: at.host, repo: at.path }));
-          showAddForm();
-          return;
-        }
-        if (found && status === 404) return setStatus(t('git.noAccess', { repo: at.path }), true);
         fail(err);
       }
     };

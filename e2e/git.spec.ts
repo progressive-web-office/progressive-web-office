@@ -604,3 +604,45 @@ test('works with a Forgejo site: Codeberg by its address, then saved with a toke
   expect(auth.at(-1)).toBe('token cb_token');
   expect(errors).toEqual([]);
 });
+
+test('opens each repository with the token that has access to it, among several of the same site (GIT-018)', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'pwo.git.accounts',
+      JSON.stringify([
+        { id: 'gh-docs', provider: 'github', apiUrl: 'https://api.github.com', token: 'pat_docs', label: 'docs' },
+        { id: 'gh-site', provider: 'github', apiUrl: 'https://api.github.com', token: 'pat_site', label: 'site' },
+      ]),
+    );
+  });
+  const used: string[] = [];
+  await page.route(`${API}/**`, async (route: Route) => {
+    const p = new URL(route.request().url()).pathname;
+    const token = (route.request().headers().authorization ?? '').replace(/^(Bearer|token) /, '');
+    const json = (body: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    // Each token opens its own repository only (fine-grained tokens).
+    const mine = token === 'pat_site' ? 'ada/site' : token === 'pat_docs' ? 'ada/docs' : '';
+    if (p === '/user/repos') return json([]);
+    if (p.startsWith('/repos/')) used.push(`${token} ${p}`);
+    if (p === `/repos/${mine}`) return json({ full_name: mine, default_branch: 'main', private: true, permissions: { pull: true, push: true } });
+    if (p === `/repos/${mine}/branches`) return json([{ name: 'main' }]);
+    if (p === `/repos/${mine}/git/trees/main`) return json({ tree: [{ path: 'index.md', type: 'blob', sha: 'b1', size: 8 }], truncated: false });
+    return json({ message: 'Not Found' }, 404);
+  });
+  await openApp(page);
+  await page.getByRole('button', { name: 'Open a folder' }).click();
+  const where = page.getByRole('dialog', { name: 'Open a folder' });
+  await where.getByLabel('⎇ GitHub / GitLab repository…').check();
+  await where.getByRole('button', { name: 'Open' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Open a repository as a folder' });
+  await dialog.getByLabel('Repository address').fill('https://github.com/ada/site');
+  await dialog.getByLabel('Repository address').press('Enter');
+  await expect(dialog.getByLabel('Account')).toHaveValue('gh-site');
+  await dialog.getByRole('button', { name: 'Open as folder' }).click();
+  await expect(page.getByRole('complementary', { name: 'Folder' }).getByRole('heading', { name: '📁 ada/site (main)' })).toBeVisible();
+  // Remembered: next time the address opens with that token at once.
+  expect(await page.evaluate(() => localStorage.getItem('pwo.git.repoAccounts'))).toBe('{"github.com/ada/site":"gh-site"}');
+  // The tokens of the site tried in turn: the first one does not open it.
+  expect(used[0]).toBe('pat_docs /repos/ada/site');
+  expect(used).toContain('pat_site /repos/ada/site');
+});

@@ -428,6 +428,7 @@ Should to **Must**).
 | GIT-015 | S | 0.2.0 | In the open folder — on disk, on a server, or a repository opened as a folder (where each change is a commit) — the system shall create a new text document, spreadsheet, presentation or drawing in the format family chosen, and open it. |
 | GIT-016 | S | 0.2.0 | The system shall work with Gitea and Forgejo forges (on their sites, self-hosted, or on the local network) as with GitHub and GitLab: accounts with a token, open, commit, branches, history, a repository opened as a folder. |
 | GIT-017 | S | 0.2.0 | In a Git working copy opened from disk, the system shall itself commit what is saved (with a message and the author name of the settings), and show the history of a document, compare and restore its versions from the local commits — Git, not the application, keeping the versions. |
+| GIT-018 | S | 0.2.0 | The user shall keep several accounts, each with its token, on every forge and several on the same site (a token per repository); a repository opened by its address shall be opened with the account last used for it, else the first account of its site whose token may write in it, else one that may read it; which account goes with which repository shall be remembered without its token. |
 
 ## 9e. Device-to-device exchange with QRShare (SHARE)
 

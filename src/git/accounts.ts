@@ -2,7 +2,7 @@
 import { GitHubClient } from './github';
 import { GiteaClient } from './gitea';
 import { GitLabClient } from './gitlab';
-import type { FetchFn, GitClient, GitProvider } from './types';
+import type { FetchFn, GitClient, GitProvider, GitRepo, GitRole } from './types';
 import { readSecret, writeSecret } from '../lock/session';
 
 export interface GitAccount {
@@ -65,6 +65,74 @@ export function forgetAccount(id: string): void {
 export function clientFor(account: Pick<GitAccount, 'provider' | 'apiUrl' | 'token'>, fetchFn?: FetchFn): GitClient {
   const config = { apiUrl: account.apiUrl, token: account.token };
   return account.provider === 'github' ? new GitHubClient(config, fetchFn) : account.provider === 'gitea' ? new GiteaClient(config, fetchFn) : new GitLabClient(config, fetchFn);
+}
+
+// --- GIT-018: an account per repository --------------------------------------------
+
+const REPO_KEY = 'pwo.git.repoAccounts';
+const hostOf = (apiUrl: string): string => {
+  const host = new URL(apiUrl).host;
+  return host === 'api.github.com' ? 'github.com' : host;
+};
+const repoKey = (host: string, path: string): string => `${host}/${path}`.toLowerCase();
+
+function repoAccounts(): Record<string, string> {
+  try {
+    const v = JSON.parse(localStorage.getItem(REPO_KEY) ?? '{}') as unknown;
+    return v && typeof v === 'object' ? (v as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * GIT-018: remember the account a repository was opened or saved with (its
+ * id only, no token), so that its address opens it with that account again.
+ */
+export function rememberRepoAccount(account: Pick<GitAccount, 'id' | 'apiUrl'>, path: string): void {
+  if (account.id.startsWith('public:')) return;
+  try {
+    localStorage.setItem(REPO_KEY, JSON.stringify({ ...repoAccounts(), [repoKey(hostOf(account.apiUrl), path)]: account.id }));
+  } catch {
+    /* not kept */
+  }
+}
+
+/** The accounts of a site, the one last used for the repository first. */
+export function siteAccounts(at: { provider: GitProvider; apiUrl: string; host: string; path?: string }): GitAccount[] {
+  const same = loadAccounts().filter((a) => a.provider === at.provider && (a.apiUrl.replace(/\/+$/, '') === at.apiUrl.replace(/\/+$/, '') || hostOf(a.apiUrl) === at.host));
+  const last = at.path ? repoAccounts()[repoKey(at.host, at.path)] : undefined;
+  return [...same.filter((a) => a.id === last), ...same.filter((a) => a.id !== last)];
+}
+
+const WRITES: GitRole[] = ['write', 'maintain', 'admin', 'developer', 'maintainer', 'owner'];
+
+/**
+ * GIT-018: the account to open a repository with, when several tokens of
+ * its site are known (a token per repository): the one last used for it if
+ * it still opens it, else the first that may write in it, else the first
+ * that may read it, else no token (a public repository, read only).
+ */
+export async function accountForRepo(at: { provider: GitProvider; apiUrl: string; host: string; path: string }, fetchFn?: FetchFn): Promise<{ account: GitAccount; repo: GitRepo } | undefined> {
+  const candidates = siteAccounts(at);
+  const last = repoAccounts()[repoKey(at.host, at.path)];
+  let readable: { account: GitAccount; repo: GitRepo } | undefined;
+  for (const account of candidates) {
+    try {
+      const repo = await clientFor(account, fetchFn).getRepo(at.path);
+      if (account.id === last || (repo.role && WRITES.includes(repo.role))) return { account, repo };
+      readable ??= { account, repo };
+    } catch {
+      /* this token does not open it: the next one */
+    }
+  }
+  if (readable) return readable;
+  const account: GitAccount = { id: `public:${at.host}`, provider: at.provider, apiUrl: at.apiUrl, token: '', label: at.host };
+  try {
+    return { account, repo: await clientFor(account, fetchFn).getRepo(at.path) };
+  } catch {
+    return undefined;
+  }
 }
 
 /** Conventional commit message proposed when saving (GIT-003). */

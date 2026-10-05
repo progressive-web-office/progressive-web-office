@@ -84,6 +84,20 @@ In the form:
 
 **Forget** removes the account and its token from this device.
 
+### Several tokens, a token per repository
+
+Add as many accounts as you need, on GitHub, GitLab, Gitea or Forgejo — and
+**several on the same site** (GIT-018): a fine-grained token for each
+repository, a token of a project or of a group, a work account and a
+personal one. They are listed in **Account** of the repository window.
+
+When a repository is opened by its address (pasted, a place remembered, a
+document saved there before), the application takes the account last used
+for that repository; otherwise it tries the tokens of the site in turn, and
+takes the one that may write in it, else one that may read it. Which
+account goes with which repository is remembered in this browser (its name
+only, never the token).
+
 ## Creating a personal access token (PAT), forge by forge
 
 **How to create a token?**, under the token field, repeats the steps for the

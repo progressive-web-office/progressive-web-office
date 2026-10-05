@@ -562,6 +562,8 @@ export const fr: Record<MessageKey, string> = {
   'git.publicAccess': '{site} — public, sans jeton',
   'git.openedPublic': 'Dépôt public ouvert sans jeton : vous pouvez le lire ; pour y enregistrer (commit), ajoutez un compte avec un jeton.',
   'git.needAccountPrivate': '{repo} est privé, ou n’existe pas : ajoutez un compte {site} avec un jeton qui y a accès (le formulaire ci-dessous est pré-rempli).',
+  'git.noAccessAny': 'Aucun jeton de ce site n’ouvre {repo} : ajoutez le jeton qui y a accès (un jeton à granularité fine liste ses dépôts).',
+  'git.addTokenRepo': 'Ajouter un jeton pour ce dépôt',
   'git.noAccess': '{repo} est introuvable avec ce compte : vérifiez que son jeton a accès à ce dépôt (un jeton à granularité fine liste ses dépôts).',
   'git.noAccountYet': 'Collez l’adresse d’un dépôt ci-dessus. Un jeton n’est nécessaire que pour un dépôt privé, ou pour y enregistrer.',
   'git.emptyRepoOpen': 'Ce dépôt est vide : il n’y a encore rien à ouvrir. Enregistrez-y d’abord un document (Enregistrer › Commit…, ou Ouvrir un dossier › dépôt Git).',

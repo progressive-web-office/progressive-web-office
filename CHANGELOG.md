@@ -154,6 +154,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- A token per repository (GIT-018): of several accounts of the same site
+  (fine-grained tokens, tokens of a project), a repository opened by its
+  address is opened with the one that has access to it — the one used last
+  for it, else the first that may write in it — and the choice is
+  remembered.
 - Reminders of events (NOTIF-001): a reminder chosen in the window of an
   event (alarms of imported or synchronised calendars kept), notified once
   by the system and in the application while it is open, a click opening

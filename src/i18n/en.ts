@@ -560,6 +560,8 @@ export const en = {
   'git.publicAccess': '{site} — public, no token',
   'git.openedPublic': 'Public repository opened without a token: you can read it; to save into it (commit), add an account with a token.',
   'git.needAccountPrivate': '{repo} is private, or does not exist: add an account of {site} with a token that has access to it (the form below is filled in).',
+  'git.noAccessAny': 'None of the tokens of this site opens {repo}: add the token that has access to it (a fine-grained token lists its repositories).',
+  'git.addTokenRepo': 'Add a token for this repository',
   'git.noAccess': '{repo} was not found with this account: check that its token has access to this repository (fine-grained tokens list their repositories).',
   'git.noAccountYet': 'Paste the address of a repository above. A token is needed only for a private repository, or to save into one.',
   'git.emptyRepoOpen': 'This repository is empty: there is nothing to open yet. Save a document in it first (Save › Commit…, or Open a folder › Git repository).',

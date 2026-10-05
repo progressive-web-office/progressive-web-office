@@ -277,15 +277,17 @@ export class App {
     // Only a copy in the same format goes back there (a .md saved as .odt is another file).
     const extOf = (path: string): string => (path.includes('.') ? path.slice(path.lastIndexOf('.') + 1).toLowerCase() : '');
     const sameFormat = (path: string): boolean => extOf(path) === extOf(doc.name);
-    const [{ parseRepoAddress, hostOfApi }, { davLocationOf }] = await Promise.all([import('../git/url'), import('../webdav/ui')]);
+    const [{ parseRepoAddress }, { davLocationOf }] = await Promise.all([import('../git/url'), import('../webdav/ui')]);
     const at = parseRepoAddress(url);
     if (at?.isFile && at.branch && at.inside) {
       if (!sameFormat(at.inside)) return undefined;
-      const { loadAccounts, clientFor } = await import('../git/accounts');
-      const found = loadAccounts().find((a) => a.provider === at.provider && (a.apiUrl.replace(/\/+$/, '') === at.apiUrl || hostOfApi(a.apiUrl) === at.host));
-      const account = found ?? { id: `public:${at.host}`, provider: at.provider, apiUrl: at.apiUrl, token: '', label: t('git.publicAccess', { site: at.host }) };
+      const { accountForRepo } = await import('../git/accounts');
       try {
-        const repo = await clientFor(account).getRepo(at.path);
+        // GIT-018: of the tokens of the site, the one that opens it.
+        const chosen = await accountForRepo(at);
+        if (!chosen) throw new Error('No access');
+        const account = chosen.account.id.startsWith('public:') ? { ...chosen.account, label: t('git.publicAccess', { site: at.host }) } : chosen.account;
+        const repo = chosen.repo;
         if (this.current !== doc) return undefined;
         // The version is read again when saving: the commit dialog comes first, conflicts are still found.
         doc.source = { account, repo, branch: at.branch, path: at.inside, version: '' };
@@ -501,7 +503,9 @@ export class App {
     const file = await browseRepository(this.root, 'open', '', [], startAt);
     if (!file) return;
     // GIT-013: the repository is shown as a folder, with its tree, beside the file opened.
-    const [{ clientFor }, { GitRepoProvider }] = await Promise.all([import('../git/accounts'), import('../git/provider')]);
+    const [{ clientFor, rememberRepoAccount }, { GitRepoProvider }] = await Promise.all([import('../git/accounts'), import('../git/provider')]);
+    // GIT-018: its address opens it with this account again.
+    rememberRepoAccount(file.account, file.repo.name);
     const folder = new GitRepoProvider(clientFor(file.account), file.repo, file.branch);
     if (!('bytes' in file)) {
       await this.setFolder(folder);
@@ -589,6 +593,8 @@ export class App {
         }
         if (this.current !== doc) return;
         doc.source = { ...location, branch, path, version: result.version };
+        // GIT-018: its address opens it with this account again.
+        (await import('../git/accounts')).rememberRepoAccount(location.account, location.repo.name);
         delete doc.originRestored;
         doc.name = basename(path);
         doc.format = format;
@@ -2118,8 +2124,10 @@ export class App {
 
   /** A repository chosen in the repository dialog — by its address first — as a folder (FOLDER-007, GIT-008). */
   private async repositoryFolderByAddress(): Promise<import('../fs').StorageProvider | undefined> {
-    const [{ browseRepository }, { clientFor }, { GitRepoProvider }] = await Promise.all([import('../git/ui'), import('../git/accounts'), import('../git/provider')]);
+    const [{ browseRepository }, { clientFor, rememberRepoAccount }, { GitRepoProvider }] = await Promise.all([import('../git/ui'), import('../git/accounts'), import('../git/provider')]);
     const chosen = await browseRepository(this.root, 'folder');
+    // GIT-018: its address opens it with this account again.
+    if (chosen) rememberRepoAccount(chosen.account, chosen.repo.name);
     return chosen ? new GitRepoProvider(clientFor(chosen.account), chosen.repo, chosen.branch) : undefined;
   }
 
@@ -2139,6 +2147,7 @@ export class App {
     const branches = await this.withBusy(() => client.listBranches(repo.id));
     const branch = branches.length > 1 ? await this.choose(t('folder.repository'), t('folder.pickBranch', { repo: repo.name }), branches, branches.includes(repo.defaultBranch) ? repo.defaultBranch : branches[0]!) : (branches[0] ?? repo.defaultBranch);
     if (!branch) return undefined;
+    (await import('../git/accounts')).rememberRepoAccount(account, repo.name);
     return new GitRepoProvider(client, repo, branch);
   }
 
