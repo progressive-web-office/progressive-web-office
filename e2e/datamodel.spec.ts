@@ -20,13 +20,13 @@ test('derives the logical model and the SQL from the conceptual one (DB-002..DB-
   await page.screenshot({ path: 'test-results/datamodel-conceptual.png' });
 
   // The logical model.
-  await view.getByRole('tab', { name: 'Logical (MLD)' }).click();
+  await view.getByRole('tab', { name: 'Logical model' }).click();
   const relations = view.locator('.datamodel-relation');
   await expect(relations).toHaveText(['Order (order_id, date, #customer_id)', 'Customer (customer_id, name, email)', 'Product (product_id, label, price)', 'Contains (#order_id, #product_id, quantity)'].sort((a, b) => ['Customer', 'Order', 'Product', 'Contains'].indexOf(a.split(' ')[0]!) - ['Customer', 'Order', 'Product', 'Contains'].indexOf(b.split(' ')[0]!)));
   await expect(relations.nth(1).locator('u')).toHaveText('order_id');
 
   // The SQL, for the database chosen, saved beside the model.
-  await view.getByRole('tab', { name: 'Physical (SQL)' }).click();
+  await view.getByRole('tab', { name: 'Physical model (SQL)' }).click();
   const sql = view.getByLabel('SQL of the tables');
   await expect(sql).toContainText('"customer_id" INTEGER PRIMARY KEY AUTOINCREMENT');
   await view.getByLabel('Database').selectOption('postgresql');
@@ -35,7 +35,7 @@ test('derives the logical model and the SQL from the conceptual one (DB-002..DB-
   await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('Shop.postgresql.sql'))).toContain('CREATE TABLE "Contains"');
 
   // A change of the text: the three levels follow; a mistake is told with its line.
-  await view.getByRole('tab', { name: 'Conceptual (MCD)' }).click();
+  await view.getByRole('tab', { name: 'Conceptual model' }).click();
   const source = view.getByRole('textbox', { name: 'The conceptual model, as text' });
   await source.press('Control+End');
   // Lines under an association are indented as they are typed.
@@ -46,7 +46,7 @@ test('derives the logical model and the SQL from the conceptual one (DB-002..DB-
   await source.press('Backspace');
   await expect(view.getByRole('list', { name: 'Problems of the model' })).toBeHidden();
   await expect(diagram.locator('.dm-association')).toHaveCount(3);
-  await view.getByRole('tab', { name: 'Logical (MLD)' }).click();
+  await view.getByRole('tab', { name: 'Logical model' }).click();
   await expect(relations.last()).toHaveText('Reviews (#customer_id, #product_id, stars)');
   await page.keyboard.press('Control+s');
   await expect.poll(() => page.evaluate(() => (window as unknown as { __folder: Map<string, string> }).__folder.get('Shop.mcd'))).toContain('association Reviews');

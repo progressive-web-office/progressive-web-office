@@ -154,6 +154,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- SQLite databases as documents (DB-001): a `.sqlite` / `.db` file opens
+  with its tables, rows changed in a grid, its structure, and SQL to run
+  (a `.sql` file too, such as the SQL of a data model); saved back as a
+  SQLite file. *New SQLite database* makes an empty one. **Conceptual
+  data model** reads the conceptual model back from the tables (DB-005).
 - Data models (DB-002..DB-004): a `.mcd` file holds a conceptual model
   written as text — entities, identifiers, associations and their
   cardinalities — drawn as a diagram as it is typed; the logical model is

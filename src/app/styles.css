@@ -1981,3 +1981,28 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
 @media (max-width: 760px) {
   .datamodel-conceptual { grid-template-columns: 1fr; }
 }
+
+/* DB-001: a SQLite database as a document. */
+.sqlite-view { display: grid; grid-template-columns: minmax(10em, 15em) 1fr; height: 100%; min-height: 0; box-sizing: border-box; background: var(--bg); color: var(--text); }
+.sqlite-side { border-right: 1px solid var(--border); padding: 8px; overflow-y: auto; background: var(--surface); }
+.sqlite-side h2 { font-size: 0.85rem; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.sqlite-tables { list-style: none; margin: 0; padding: 0; }
+.sqlite-tables li[role='option'] { padding: 4px 8px; border-radius: 6px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sqlite-tables li[role='option']:hover { background: var(--sel); }
+.sqlite-tables li[aria-selected='true'] { background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 600; }
+.sqlite-content { display: flex; flex-direction: column; gap: 8px; padding: 8px 12px; min-width: 0; min-height: 0; }
+.sqlite-info:empty { display: none; }
+.sqlite-info { margin: 0; }
+.sqlite-main { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.sqlite-null { color: var(--muted); font-style: italic; }
+.sqlite-grid td { white-space: pre-wrap; max-width: 28em; }
+.sqlite-row-actions button { border: 0; background: none; cursor: pointer; opacity: 0.6; }
+.sqlite-row-actions button:hover, .sqlite-row-actions button:focus { opacity: 1; }
+.sqlite-query { min-height: 8em; flex: none; }
+.sqlite-results { display: flex; flex-direction: column; gap: 8px; }
+.hint.error { color: var(--danger); }
+.sqlite-view .notes-table thead th { padding: 4px 8px; }
+@media (max-width: 700px) {
+  .sqlite-view { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .sqlite-side { border-right: 0; border-bottom: 1px solid var(--border); max-height: 9em; }
+}

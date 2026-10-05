@@ -28,6 +28,14 @@ export interface RunResult {
   widgets?: string[];
 }
 
+/** DB-001: what the database of a SQLite document answers. */
+export interface DbReply {
+  results?: { columns: string[]; values: unknown[][] }[];
+  changes?: number;
+  bytes?: ArrayBuffer;
+  error?: string;
+}
+
 export type RunStatus = 'loading-python' | 'running' | `packages:${string}`;
 
 interface Pending {
@@ -114,6 +122,30 @@ export class CodeRunner {
 
   private readonly analyses = new Map<number, (deps: import('./reactive').CellDeps | null) => void>();
 
+  private readonly dbPending = new Map<number, (reply: DbReply) => void>();
+
+  /**
+   * DB-001: the database of a SQLite document, in the sandbox (SQLite is
+   * downloaded code): open it from its bytes (a new one without), run SQL
+   * with parameters, or get its bytes back.
+   */
+  db(op: 'open', bytes?: Uint8Array): Promise<DbReply>;
+  db(op: 'exec', sql: string, params?: unknown[]): Promise<DbReply>;
+  db(op: 'export'): Promise<DbReply>;
+  db(op: 'open' | 'exec' | 'export', arg?: Uint8Array | string, params?: unknown[]): Promise<DbReply> {
+    return this.start().then(
+      () =>
+        new Promise<DbReply>((resolve) => {
+          const id = ++this.nextId;
+          this.dbPending.set(id, resolve);
+          if (op === 'open') {
+            const bytes = arg instanceof Uint8Array ? arg.slice().buffer : undefined;
+            this.post({ type: 'db', id, op, ...(bytes ? { bytes } : {}) }, bytes ? [bytes] : []);
+          } else this.post({ type: 'db', id, op, ...(typeof arg === 'string' ? { sql: arg } : {}), ...(params ? { params } : {}) });
+        }),
+    );
+  }
+
   /** CODE-014: remove names no cell defines any more. */
   forget(lang: CodeLang, names: string[]): void {
     if (this.frame && names.length) this.post({ type: 'forget', lang, names });
@@ -145,6 +177,8 @@ export class CodeRunner {
     this.pending.clear();
     for (const done of this.analyses.values()) done(null);
     this.analyses.clear();
+    for (const done of this.dbPending.values()) done({ error: reason });
+    this.dbPending.clear();
     // The models lived in the stopped interpreter.
     this.widgetHost?.destroy();
     this.widgetHost = undefined;
@@ -237,6 +271,12 @@ export class CodeRunner {
           (files) => this.post({ type: 'fetched', id: f.id, files }, files),
           (err: Error) => this.post({ type: 'fetched', id: f.id, error: err.message }),
         );
+        break;
+      }
+      case 'db-result': {
+        const done = this.dbPending.get(m.id);
+        this.dbPending.delete(m.id);
+        done?.(m as unknown as DbReply);
         break;
       }
       case 'fatal':

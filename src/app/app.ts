@@ -886,7 +886,7 @@ export class App {
       const name = own ? doc.name : replaceExtension(doc.name, fileExtension(target));
       const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : 'txt';
       // A picture keeps its own type (DRAW-001, DRAW-008).
-      const mimeType = doc.format === 'image' ? ((doc.view as { mediaType?: () => string }).mediaType?.() ?? 'image/png') : 'text/plain';
+      const mimeType = doc.format === 'image' ? ((doc.view as { mediaType?: () => string }).mediaType?.() ?? 'image/png') : doc.format === 'sqlite' ? MIME_TYPES.sqlite : 'text/plain';
       if (await saveFile(bytes, name, target, own ? { mimeType, extension: ext } : undefined)) {
         // The document is now the file saved elsewhere, no longer the one of the folder.
         if (doc.folderPath && format) {
@@ -1583,6 +1583,16 @@ export class App {
     });
     folder.setCurrent(undefined);
     this.setDocument({ name: t('cal.title'), format: 'text', kind: 'file', view });
+  }
+
+  /** DB-001: a new, empty SQLite database, to save where the user wants. */
+  async newDatabase(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    const name = t('sqlite.untitled');
+    const view = await openView('sqlite', new Uint8Array(), this.viewContext(), name);
+    this.setDocument({ name, format: 'sqlite', kind: formatKind('sqlite'), view });
+    this.dirty = true;
+    this.renderHeader();
   }
 
   /** DB-002: a new data model (an example to start from), in the folder open (else the browser's storage). */
@@ -2844,6 +2854,7 @@ export class App {
         { label: t('people.title'), where: t('daily.notes'), keywords: 'contacts people address book persons contacts personnes carnet d’adresses 联系人 通讯录', run: () => void setTimeout(() => void this.openContactsApp()) },
         { label: t('cal.title'), where: t('daily.notes'), keywords: 'calendar events agenda month week journal calendrier événements agenda mois semaine 日历 事件', run: () => void setTimeout(() => void this.openCalendarApp()) },
         { label: t('daily.todayNote'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien aujourd’hui 日历 每日 今天', run: () => void setTimeout(() => void this.openCalendar(true)) },
+        { label: t('sqlite.new'), where: 'SQLite', keywords: 'sqlite database base de données table sql db 数据库', run: () => void setTimeout(() => void this.newDatabase()) },
         { label: t('dm.new'), where: t('dm.format'), keywords: 'data model database mcd mld mpd merise entity association sql schema modèle de données base entité 数据模型 实体', run: () => void setTimeout(() => void this.newDataModel()) },
         { label: t('views.new'), where: t('daily.notes'), keywords: 'view table cards board kanban query database base vue tableau cartes requête base de données 视图 表格 看板', run: () => void setTimeout(() => void this.newNotesView()) },
         { label: t('goto.title'), where: t('folder.browserStorage'), keys: ['Ctrl+Shift+O'], keywords: 'go to file open quick aller ouvrir fichier rapide 转到 打开 文件', run: () => void setTimeout(() => void this.goToFile()) },

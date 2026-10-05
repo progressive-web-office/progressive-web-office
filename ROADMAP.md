@@ -222,8 +222,9 @@ any other tool. Planned, the most useful first:
 
 ### Databases
 
-- A SQLite file (`.sqlite`, `.db`) opened as a document: its tables, their
-  rows changed in a grid as in the spreadsheet, its queries kept in it
+- ~~A SQLite file (`.sqlite`, `.db`) opened as a document: its tables, their
+  rows changed in a grid, SQL run~~ (DB-001, done); next: queries kept in
+  the database, sorting and filtering the grid, import of CSV into a table
 - Forms to enter rows, reports made from a document template
 - ~~Data modelling as taught, with three levels kept in step: the
   conceptual model written as text beside its diagram, the logical model
@@ -232,8 +233,8 @@ any other tool. Planned, the most useful first:
 - Data modelling, next: entities placed by hand on the diagram, weak
   entities (relative identification), inheritance, the SQL applied at once
   to a SQLite file
-- The reverse: the logical and conceptual models read back from an existing
-  SQLite file
+- ~~The reverse: the conceptual model read back from an existing SQLite
+  file~~ (DB-005, done)
 - Exercises of modelling with their solution (Teaching)
 
 ### Working on several documents
@@ -320,6 +321,13 @@ any other tool. Planned, the most useful first:
   all at once; the last backup's date always visible (BACKUP-001..005);
   automatic backups while the application
   is open (BACKUP-006); next: a Git repository as a destination
+- Locking the application with a passkey (proposal, LOCK-001..005): nothing
+  of what the browser keeps shown before the passkey (fingerprint, face,
+  PIN of the device, security key); where the device gives a secret with the
+  passkey, everything the browser keeps encrypted with a key derived from
+  it — the files of its storage, drafts, recent files, settings — the data
+  key also opened by a recovery key shown once; locked again after a delay;
+  the backups opened by the passkey as well as by their password
 
 ### Images and drawing
 

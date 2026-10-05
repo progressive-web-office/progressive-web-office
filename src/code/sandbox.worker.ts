@@ -22,6 +22,14 @@ interface RunRequest {
   /** NOTE-002: the notes of the open folder, as tables of SQL. */
   notes?: NoteTables;
 }
+interface DbRequest {
+  type: 'db';
+  id: number;
+  op: 'open' | 'exec' | 'export';
+  bytes?: ArrayBuffer;
+  sql?: string;
+  params?: unknown[];
+}
 interface CompleteRequest {
   type: 'complete';
   id: number;
@@ -768,20 +776,52 @@ async function runLua(id: number, code: string, project?: RunProject): Promise<O
 }
 
 interface SqlDatabase extends SqlFill {
-  exec(sql: string): { columns: string[]; values: unknown[][] }[];
+  exec(sql: string, params?: unknown[]): { columns: string[]; values: unknown[][] }[];
   getRowsModified(): number;
+  export(): Uint8Array;
+  close(): void;
 }
 let sqlDb: Promise<SqlDatabase> | undefined;
 let SqlDatabaseClass: (new (data?: Uint8Array) => SqlDatabase) | undefined;
+let sqlEngine: Promise<new (data?: Uint8Array) => SqlDatabase> | undefined;
 
-async function runSql(id: number, code: string, project?: RunProject, notes?: NoteTables): Promise<Output> {
-  sqlDb ??= (async () => {
+/** SQLite, downloaded (or read from the cache) once the user agreed, and checked. */
+function sqlite(id: number): Promise<new (data?: Uint8Array) => SqlDatabase> {
+  sqlEngine ??= (async () => {
     const files = await runtimeFiles(id, RUNTIMES.sql);
     const init = await umdImport<(config: object) => Promise<{ Database: new (data?: Uint8Array) => SqlDatabase }>>(files.js!);
     const SQL = await init({ wasmBinary: files.wasm });
     SqlDatabaseClass = SQL.Database;
-    return new SQL.Database();
+    return SQL.Database;
   })();
+  sqlEngine.catch(() => (sqlEngine = undefined));
+  return sqlEngine;
+}
+
+/** DB-001: the database of a SQLite document — opened, queried, changed, written back. */
+let docDb: SqlDatabase | undefined;
+
+async function runDb(message: DbRequest): Promise<Record<string, unknown>> {
+  if (message.op === 'open') {
+    const Database = await sqlite(message.id);
+    docDb?.close();
+    docDb = new Database(message.bytes ? new Uint8Array(message.bytes) : undefined);
+    docDb.exec('PRAGMA foreign_keys = ON');
+    return {};
+  }
+  if (!docDb) throw new Error('No database open');
+  if (message.op === 'export') {
+    const bytes = docDb.export().slice().buffer;
+    // Exporting ends the statement state of sql.js, not the foreign keys: set again.
+    docDb.exec('PRAGMA foreign_keys = ON');
+    return { bytes, transfer: [bytes] };
+  }
+  const results = docDb.exec(message.sql ?? '', message.params);
+  return { results, changes: docDb.getRowsModified() };
+}
+
+async function runSql(id: number, code: string, project?: RunProject, notes?: NoteTables): Promise<Output> {
+  sqlDb ??= (async () => new (await sqlite(id))())();
   sqlDb.catch(() => (sqlDb = undefined));
   let db = await sqlDb;
   report(id, 'running');
@@ -886,7 +926,20 @@ interface Output {
 let queue: Promise<unknown> = Promise.resolve();
 
 scope.addEventListener('message', (event: MessageEvent) => {
-  const message = event.data as RunRequest | FileReply | CompleteRequest | AnalyzeRequest | ForgetRequest | CommRequest | FetchReply;
+  const message = event.data as RunRequest | FileReply | CompleteRequest | AnalyzeRequest | ForgetRequest | CommRequest | FetchReply | DbRequest;
+  if (message.type === 'db') {
+    // After the cells queued, as they share the engine.
+    queue = queue.then(async () => {
+      try {
+        const reply = await runDb(message);
+        const transfer = (reply.transfer as Transferable[] | undefined) ?? [];
+        scope.postMessage({ type: 'db-result', id: message.id, ...reply }, transfer);
+      } catch (err) {
+        scope.postMessage({ type: 'db-result', id: message.id, error: (err as Error)?.message ?? String(err) });
+      }
+    });
+    return;
+  }
   if (message.type === 'comm') {
     // From a widget's front end, after the cells already queued.
     queue = queue.then(() => receiveComm(message.comm_id, message.data, message.buffers ?? []).catch((err) => console.error(err)));

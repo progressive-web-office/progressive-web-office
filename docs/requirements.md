@@ -661,11 +661,11 @@ integration is ever needed.
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
-| DB-001 | C | — | A SQLite file shall open as a document: its tables listed, their rows shown and changed in a grid, its queries run and kept. |
+| DB-001 | S | 0.2.0 | A SQLite file shall open as a document — SQLite run in the sandbox of the code cells, downloaded after consent and checked — its tables and views listed, their rows shown page by page and changed in a grid, their structure shown, SQL run with its results, foreign keys checked; the document shall be saved as a SQLite file; a new empty database shall be made from the command palette. |
 | DB-002 | S | 0.2.0 | The user shall write a conceptual data model — entities with their attributes, types and identifier, associations with the cardinalities of their entities, roles and attributes — as text kept in a `.mcd` file, its diagram drawn as it is typed and exported as SVG, its mistakes told by line. |
 | DB-003 | S | 0.2.0 | The logical model shall be derived from the conceptual one by the usual rules — an entity a relation keyed by its identifier, a binary association with a side x,1 a foreign key of that side (not null for 1,1, unique for one to one), any other association a relation keyed by the keys of its entities — and shown in the usual notation. |
 | DB-004 | S | 0.2.0 | The physical model shall be the SQL making the tables for SQLite, PostgreSQL or MySQL — types, primary, foreign and unique keys, tables in the order of their references — copied or saved as a `.sql` file of the folder. |
-| DB-005 | C | — | The logical and conceptual models shall be read back from an existing SQLite file. |
+| DB-005 | S | 0.2.0 | The conceptual model shall be read back from the tables of a SQLite database — a table keyed by its references to other tables an association, another table an entity, each of its references an association with a side 1,1 or 0,1 — as a `.mcd` file. |
 
 ## 9w. Digital signage (SIGN)
 
@@ -697,6 +697,16 @@ See [DigitalSignalix](./digitalsignalix.md).
 | CONTACT-005 | S | 0.2.0 | The system shall synchronise contact notes both ways with the address books of a CardDAV server of an account the user added, as CAL-006 does for events. |
 | CONTACT-006 | S | 0.2.0 | The card of a contact shall show its interactions — the events it attends, the lines of daily notes and the other notes naming it — dated, the latest first, and when the user first met it and was last in touch; the user shall note an interaction (meeting, call, e-mail, message, or a kind of their own, with an icon, the kinds already used offered again), written as a dated line of the daily note of its day linked to the contact, the contact's `first met` and `last contact` following. |
 | CONTACT-007 | S | 0.2.0 | AI agents — the assistant, or an agent reached through WebMCP reading the user's e-mail — shall find contacts, read a contact with its interactions, create or update a contact, and note an interaction (creating the contact of an unknown address) through tools, their inputs checked, those changing the notes marked so. |
+
+## 9z. Locking the application (LOCK) — proposal
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| LOCK-001 | C | — | The user shall lock the application with one passkey or more (WebAuthn, user verification required): when it starts, nothing of what the browser keeps shall be shown before a passkey is used. |
+| LOCK-002 | C | — | Where the authenticator gives a secret with the passkey (the PRF extension), what the browser keeps — the files of its private storage, their names, drafts, recent files, settings — shall be encrypted (AES-GCM) with a random data key, wrapped by a key derived from that secret for each passkey. |
+| LOCK-003 | C | — | When the lock is set, a recovery key shall be shown once, to print or keep, which also unwraps the data key; the user shall be told that without a passkey nor the recovery key the data cannot be read. |
+| LOCK-004 | C | — | The application shall lock again after a delay without use chosen by the user, and on demand; locked, the data key shall be forgotten. |
+| LOCK-005 | C | — | Where the authenticator gives no secret, the system shall say that the passkey only locks the application, the data not encrypted, and offer a passphrase instead to encrypt it. |
 
 ## 10. Out of scope (Won't, this time)
 
