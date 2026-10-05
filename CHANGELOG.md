@@ -154,6 +154,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Reminders of events (NOTIF-001): a reminder chosen in the window of an
+  event (alarms of imported or synchronised calendars kept), notified once
+  by the system and in the application while it is open, a click opening
+  the event; turned on, with the reminder of new events, in **Settings →
+  General**.
 - Vaults of passwords (VAULT-001..VAULT-004): a `.kdbx` file — the open
   format of the password managers of every system — opens as a document:
   groups, entries, passwords shown only when asked and copied to the

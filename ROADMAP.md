@@ -246,7 +246,8 @@ any other tool. Planned, the most useful first:
   assistant; other networks reached through the bridges of the user's
   server rather than a client per protocol; calls and video between two
   peer to peer, group calls through the media server of the user's server
-- Notifications (NOTIF-001..004): reminders of events and new messages
+- ✅ Reminders of events notified while the application is open (NOTIF-001,
+  NOTIF-004); next: notifications (NOTIF-002, NOTIF-003): new messages
   while the application is open, the number unread on its icon; when it is
   closed, Web Push through the user's own server (its push gateway, or a
   push server of the user's), the content fetched and decrypted on the

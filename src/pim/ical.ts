@@ -24,7 +24,19 @@ export interface CalEvent {
   /** Occurrences left out, as `start` is written. */
   exceptions?: string[];
   url?: string;
+  /** NOTIF-001: reminders, in minutes before the start (VALARM). */
+  reminders?: number[];
 }
+
+/** The minutes before the start of an alarm's trigger (`-PT10M`, `-P1D`, `PT0S`); undefined after the start or not relative. */
+export function alarmMinutes(trigger: string): number | undefined {
+  const m = /^(-|\+)?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/i.exec(trigger.trim());
+  if (!m) return undefined;
+  const minutes = Number(m[2] ?? 0) * 10080 + Number(m[3] ?? 0) * 1440 + Number(m[4] ?? 0) * 60 + Number(m[5] ?? 0) + Math.floor(Number(m[6] ?? 0) / 60);
+  return m[1] === '-' || minutes === 0 ? minutes : undefined;
+}
+
+const trigger = (minutes: number): string => (minutes === 0 ? 'PT0S' : minutes % 1440 === 0 ? `-P${minutes / 1440}D` : minutes % 60 === 0 ? `-PT${minutes / 60}H` : `-PT${minutes}M`);
 
 // --- lines ---------------------------------------------------------------------
 
@@ -151,7 +163,11 @@ export function readCalendar(text: string): CalEvent[] {
       }
       continue;
     }
-    // The properties of an alarm (VALARM) are not the event's.
+    // The properties of an alarm (VALARM) are not the event's; its trigger is a reminder (NOTIF-001).
+    if (current && depth === 1 && p.name === 'TRIGGER' && !/DATE-TIME/i.test(p.params.VALUE ?? '') && !/END/i.test(p.params.RELATED ?? '')) {
+      const m = alarmMinutes(p.value);
+      if (m !== undefined && !(current.reminders ??= []).includes(m)) current.reminders.push(m);
+    }
     if (!current || depth > 0) continue;
     const text = unescapeText(p.value);
     switch (p.name) {
@@ -248,6 +264,7 @@ export function writeEvent(e: CalEvent, stamp = new Date()): string {
   }
   if (e.categories?.length) lines.push(`CATEGORIES:${e.categories.map(escapeText).join(',')}`);
   for (const who of e.attendees ?? []) lines.push(/@/.test(who) && !/\s/.test(who) ? `ATTENDEE:mailto:${who}` : `ATTENDEE;CN="${who.replace(/"/g, "'")}":invalid:nomail`);
+  for (const m of e.reminders ?? []) lines.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escapeText(e.title)}`, `TRIGGER:${trigger(m)}`, 'END:VALARM');
   lines.push('END:VEVENT');
   return lines.map(fold).join('\r\n');
 }
@@ -312,6 +329,21 @@ export function occurrences(e: Pick<CalEvent, 'start' | 'end' | 'recurrence' | '
 // --- writing back to a server --------------------------------------------------
 
 /** The unfolded lines of a text. */
+/** The lines of a calendar without the alarms of its (first) event. */
+function withoutAlarmsOfEvent(lines: string[]): string[] {
+  const out: string[] = [];
+  let inEvent = false;
+  let inAlarm = false;
+  for (const l of lines) {
+    if (/^BEGIN:VEVENT$/i.test(l)) inEvent = true;
+    if (inEvent && /^BEGIN:VALARM$/i.test(l)) inAlarm = true;
+    if (!inAlarm) out.push(l);
+    if (inAlarm && /^END:VALARM$/i.test(l)) inAlarm = false;
+    if (/^END:VEVENT$/i.test(l)) inEvent = false;
+  }
+  return out;
+}
+
 const unfolded = (text: string): string[] => text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/).filter((l) => l.length);
 const nameOf = (line: string): string => (/^[^:;]+/.exec(line)?.[0] ?? '').toUpperCase();
 
@@ -325,13 +357,26 @@ export function mergeEvent(raw: string, e: CalEvent, stamp = new Date()): string
   const lines = unfolded(raw);
   const before = readCalendar(raw).find((x) => x.uid === e.uid);
   const sameAttendees = JSON.stringify(before?.attendees ?? []) === JSON.stringify(e.attendees ?? []);
+  // The alarms of the calendar kept while the reminders are the same; else ours in their place.
+  const sameAlarms = JSON.stringify([...(before?.reminders ?? [])].sort()) === JSON.stringify([...(e.reminders ?? [])].sort());
+  const withoutAlarms = (ls: string[]): string[] => {
+    const out: string[] = [];
+    let inAlarm = false;
+    for (const l of ls) {
+      if (/^BEGIN:VALARM$/i.test(l)) inAlarm = true;
+      if (!inAlarm) out.push(l);
+      if (/^END:VALARM$/i.test(l)) inAlarm = false;
+    }
+    return out;
+  };
   const known = new Set(['DTSTAMP', 'DTSTART', 'DTEND', 'DURATION', 'SUMMARY', 'LOCATION', 'DESCRIPTION', 'URL', 'RRULE', 'EXDATE', 'CATEGORIES', ...(sameAttendees ? [] : ['ATTENDEE'])]);
-  const ours = unfolded(writeEvent(e, stamp)).filter((l) => !/^(BEGIN|END):VEVENT$/.test(l) && nameOf(l) !== 'UID' && (sameAttendees ? nameOf(l) !== 'ATTENDEE' : true));
+  const written = unfolded(writeEvent(e, stamp));
+  const ours = (sameAlarms ? withoutAlarms(written) : written).filter((l) => !/^(BEGIN|END):VEVENT$/.test(l) && nameOf(l) !== 'UID' && (sameAttendees ? nameOf(l) !== 'ATTENDEE' : true));
   const out: string[] = [];
   let inEvent = false;
   let depth = 0;
   let done = false;
-  for (const line of lines) {
+  for (const line of sameAlarms ? lines : withoutAlarmsOfEvent(lines)) {
     const n = nameOf(line);
     if (!inEvent && line.toUpperCase() === 'BEGIN:VEVENT' && !done) {
       inEvent = true;

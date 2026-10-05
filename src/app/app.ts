@@ -151,6 +151,29 @@ export class App {
       }
     });
     this.showStart();
+    // NOTIF-001: the reminders of the events, while the application is open.
+    void this.startReminders();
+    addEventListener('pwo-reminders-changed', () => void this.startReminders());
+    addEventListener('pwo-open-event', (e) => void this.openEventNote((e as CustomEvent<string>).detail));
+    navigator.serviceWorker?.addEventListener('message', (e: MessageEvent) => {
+      const m = e.data as { type?: string; path?: string } | null;
+      if (m?.type === 'pwo-open-event' && m.path) void this.openEventNote(m.path);
+    });
+  }
+
+  private async startReminders(): Promise<void> {
+    const { startReminders } = await import('../pim/notify');
+    startReminders({
+      provider: async () => this.folder?.provider ?? (await (await import('../fs')).privateStorage('Documents', t('folder.browserStorage')).catch(() => null)),
+      open: (path) => void this.openEventNote(path),
+      notice: (message) => this.showNotice(message),
+    });
+  }
+
+  /** NOTIF-001: the note of an event, from its reminder (of the folder open, else of the browser's storage). */
+  async openEventNote(path: string): Promise<void> {
+    if (!this.folder) await this.openBrowserStorage();
+    if (this.folder) await this.openFromFolder(path);
   }
 
   /** Show an error coming from outside the shell (e.g. a damaged document link). */
@@ -1567,6 +1590,8 @@ export class App {
       noteNames: () => folder.vault.index.notes().map((p) => noteName(p)),
       changed: (paths, event) => {
         void folder.refresh();
+        // NOTIF-001: the reminders follow the events changed.
+        void import('../pim/notify').then(({ remindersChanged }) => remindersChanged());
         // CAL-005: the daily note of its day links to it.
         if (event) void folder.linkEventToDaily(event.day, event.path);
         void Promise.all(paths.map((p) => folder.vault.changed(p))).catch(() => undefined);

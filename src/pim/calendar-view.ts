@@ -6,6 +6,7 @@
  * (CAL-005). Imports and exports iCalendar files (CAL-003).
  */
 import { button, h } from '../app/dom';
+import * as remindersModule from './reminders';
 import { t, type MessageKey } from '../i18n';
 import type { StorageProvider } from '../fs';
 import type { EditorView } from '../app/views';
@@ -75,6 +76,14 @@ function lengthOf(e: CalEvent): number {
   const start = parse(e.start);
   const end = e.end ? parse(e.end) : e.allDay ? addDays(start, 1) : new Date(start.getTime() + 60 * 60_000);
   return Math.max(e.allDay ? 1440 : 15, Math.round((end.getTime() - start.getTime()) / 60_000));
+}
+
+/** NOTIF-001: a reminder in words: at the time, minutes, hours or a day before. */
+export function reminderLabel(m: number): string {
+  if (m === 0) return t('cal.reminderAtTime');
+  if (m % 1440 === 0) return t('cal.reminderDays', { n: m / 1440 });
+  if (m % 60 === 0) return t('cal.reminderHours', { n: m / 60 });
+  return t('cal.reminderMinutes', { n: m });
 }
 
 export class CalendarView implements EditorView {
@@ -510,6 +519,16 @@ export class CalendarView implements EditorView {
       ...(current === 'custom' ? [h('option', { value: 'custom' }, `${t('cal.repeat.custom')} (${e.recurrence})`)] : []),
     );
     repeat.value = current;
+    // NOTIF-001: a reminder; new events take the one of the settings.
+    const { REMINDER_CHOICES, loadReminderSettings } = remindersModule;
+    const firstReminder = stored ? e.reminders?.[0] : loadReminderSettings().defaultMinutes;
+    const reminder = h(
+      'select',
+      { 'aria-label': t('cal.reminder') },
+      h('option', { value: '' }, t('cal.reminderNone')),
+      ...[...new Set([...REMINDER_CHOICES, ...(firstReminder !== undefined ? [firstReminder] : [])])].sort((a, b) => a - b).map((m) => h('option', { value: String(m) }, reminderLabel(m))),
+    );
+    reminder.value = firstReminder === undefined ? '' : String(firstReminder);
     const description = h('textarea', { rows: '4', 'aria-label': t('cal.description') });
     description.value = stored ? stored.text.slice(stored.text.indexOf('\n---\n') + 5).trim() : '';
     const dialog = h('dialog', { class: 'dialog calendar-dialog', 'aria-labelledby': 'calendar-dialog-title' });
@@ -541,6 +560,7 @@ export class CalendarView implements EditorView {
         ...(recurrence && e.exceptions ? { exceptions: e.exceptions } : {}),
         ...(e.categories ? { categories: e.categories } : {}),
         ...(e.url ? { url: e.url } : {}),
+        ...(reminder.value !== '' ? { reminders: [Number(reminder.value), ...(e.reminders ?? []).slice(1)] } : {}),
         ...(e.remote ? { remote: e.remote } : {}),
         ...(!stored && description.value.trim() ? { description: description.value.trim() } : {}),
       };
@@ -567,6 +587,7 @@ export class CalendarView implements EditorView {
       field(t('cal.start'), startDate, startTime),
       field(t('cal.end'), endDate, endTime),
       field(t('cal.repeat'), repeat),
+      field(t('cal.reminder'), reminder),
       field(t('cal.location'), location),
       field(t('cal.attendees'), attendees, names),
       field(t('cal.calendar'), calendar, calendars),

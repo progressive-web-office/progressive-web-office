@@ -107,6 +107,8 @@ export function eventOfNote(text: string, fallbackTitle = ''): (CalEvent & { cal
   set('recurrence', str(values.get('recurrence')));
   set('exceptions', list(values.get('exceptions')));
   set('url', str(values.get('url')));
+  const reminders = (list(values.get('reminders')) ?? []).map((m) => Number(m)).filter((m) => Number.isFinite(m) && m >= 0);
+  set('reminders', reminders);
   set('calendar', str(values.get('calendar')));
   if (description) event.description = description;
   if (href) event.remote = { href, ...(str(values.get('etag')) ? { etag: str(values.get('etag'))! } : {}) };
@@ -134,6 +136,7 @@ export function eventNote(e: CalEvent & { calendar?: string; remote?: Remote }, 
       ['exceptions', e.exceptions],
       ['tags', e.categories],
       ['url', e.url],
+      ['reminders', e.reminders?.length ? e.reminders.map(String) : undefined],
       ['uid', e.uid],
       ['caldav', e.remote?.href],
       ['etag', e.remote?.etag],

@@ -40,3 +40,24 @@ self.addEventListener('fetch', (event) => {
     })(),
   );
 });
+
+/*
+ * NOTIF-001: a click on a reminder of an event brings the application
+ * forward and opens the note of the event (or opens the application).
+ */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const path = event.notification.data && event.notification.data.path;
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const client = windows[0];
+      if (client) {
+        await client.focus();
+        if (path) client.postMessage({ type: 'pwo-open-event', path });
+        return;
+      }
+      await self.clients.openWindow(new URL('./', self.registration.scope).href);
+    })(),
+  );
+});

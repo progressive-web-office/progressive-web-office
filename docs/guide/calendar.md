@@ -114,6 +114,23 @@ What you know of her, met where, about what.
   address book) as notes; **⇩** exports the contacts as a `.vcf` file
   (CONTACT-003).
 
+## Reminders
+
+An event can have a **reminder** (NOTIF-001): at the time, or 5 minutes to a
+day before — **Reminder** in its window; new events take the one chosen in
+**⚙ Settings → General → Reminder of new events**. Reminders of a calendar
+imported or synchronised (its alarms) are kept, and written back.
+
+Tick **Notify the reminders of events** in the settings: the browser asks
+whether the application may notify. While the application is open — even
+in the background — each reminder is shown once, by the system and in the
+application; a click opens the event.
+
+Without a server, a closed application cannot notify: keep it open, or let
+the calendar of your phone remind you of the events synchronised by
+CalDAV. On a phone, notifications need the application installed to the
+home screen.
+
 ## Interactions
 
 The card of a contact gathers its **interactions** (CONTACT-006), the latest

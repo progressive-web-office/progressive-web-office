@@ -58,6 +58,34 @@ function check(value: boolean, onChange: (v: boolean) => void): HTMLInputElement
   return el;
 }
 
+/** NOTIF-001, NOTIF-004: the reminders of events, notified while the application is open. */
+function remindersField(): HTMLElement {
+  const box = h('div', { class: 'settings-field' }, h('p', { class: 'hint' }, t('lock.loading')));
+  void Promise.all([import('../pim/reminders'), import('../pim/notify'), import('../pim/calendar-view')]).then(([r, n, c]) => {
+    const settings = r.loadReminderSettings();
+    const status = h('p', { class: 'hint', role: 'status' });
+    const changed = (): void => {
+      r.saveReminderSettings(settings);
+      dispatchEvent(new Event('pwo-reminders-changed'));
+    };
+    const on = check(settings.enabled, (v) => {
+      settings.enabled = v;
+      changed();
+      if (!v) return;
+      void n.askNotifications().then((p) => {
+        status.textContent = p === 'granted' ? t('remind.allowed') : p === 'unsupported' ? t('remind.unsupported') : t('remind.denied');
+      });
+    });
+    const byDefault = select<string>([['', t('cal.reminderNone')], ...r.REMINDER_CHOICES.map((m) => [String(m), c.reminderLabel(m)] as [string, string])], settings.defaultMinutes === undefined ? '' : String(settings.defaultMinutes), (v) => {
+      if (v === '') delete settings.defaultMinutes;
+      else settings.defaultMinutes = Number(v);
+      changed();
+    });
+    box.replaceChildren(field(t('remind.enable'), on, t('remind.hint')), field(t('remind.default'), byDefault), status);
+  });
+  return box;
+}
+
 /** TEACH-005: the exam mode, started from here (left from its banner). */
 function examField(): HTMLElement {
   const start = button(t('exam.startButton'), async () => {
@@ -92,6 +120,7 @@ function generalPanel(hooks: SettingsHooks): HTMLElement[] {
     // FILE-028, FILE-029.
     field(t('settings.rememberPlaces'), check(placesEnabled(), setPlacesEnabled), t('settings.rememberPlacesHint')),
     field(t('settings.trackOrigin'), check(originsEnabled(), setOriginsEnabled), t('settings.trackOriginHint')),
+    remindersField(),
     ...(inExam() ? [] : [examField()]),
   ];
 }

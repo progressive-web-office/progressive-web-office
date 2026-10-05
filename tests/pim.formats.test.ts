@@ -48,7 +48,7 @@ const ICS = [
 ].join('\r\n');
 
 describe('CAL-003 iCalendar', () => {
-  it('reads events: times of a zone made local, whole days, folded lines, escapes, alarms left out', () => {
+  it('reads events: times of a zone made local, whole days, folded lines, escapes, alarms as reminders (NOTIF-001)', () => {
     const [meeting, holiday] = readCalendar(ICS);
     // 09:00 in Paris in October (UTC+2) is 07:00 UTC.
     expect(meeting).toEqual({
@@ -62,6 +62,7 @@ describe('CAL-003 iCalendar', () => {
       attendees: ['Ada Lovelace', 'charles@example.org'],
       categories: ['work', 'project'],
       recurrence: 'FREQ=WEEKLY;BYDAY=MO;COUNT=4',
+      reminders: [15],
       exceptions: [local('2026-10-12T07:00Z')],
     });
     expect(holiday).toMatchObject({ title: 'All Saints Day', start: '2026-11-01', end: '2026-11-02', allDay: true });
@@ -204,5 +205,25 @@ describe('CAL-001 events filed by day', () => {
     // An event kept elsewhere by the user stays where it is.
     const elsewhere = await saveEvent(provider, { ...first.item, start: '2026-12-01' }, { path: 'Projects/Launch.md', text: '', item: first.item });
     expect(elsewhere.path).toBe('Projects/Launch.md');
+  });
+});
+
+describe('NOTIF-001 reminders of events', () => {
+  it('reads and writes the alarms of events as minutes before their start', async () => {
+    const { alarmMinutes, mergeEvent, readCalendar, writeCalendar } = await import('../src/pim/ical');
+    expect(['-PT10M', '-PT1H', '-P1D', 'PT0S', '-PT1H30M', '-P1W', 'PT15M', 'bad'].map(alarmMinutes)).toEqual([10, 60, 1440, 0, 90, 10080, undefined, undefined]);
+    const text = writeCalendar([{ uid: 'r@pwo', title: 'Review', start: '2026-10-06T14:00', allDay: false, reminders: [10, 1440] }]);
+    expect(text).toContain('BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Review\r\nTRIGGER:-PT10M\r\nEND:VALARM');
+    expect(text).toContain('TRIGGER:-P1D');
+    expect(readCalendar(text)[0]!.reminders).toEqual([10, 1440]);
+    // Written back to a server: its alarm kept while the reminders are the same, else ours in its place.
+    const raw = 'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:r@pwo\r\nDTSTART:20261006T140000\r\nSUMMARY:Review\r\nBEGIN:VALARM\r\nACTION:AUDIO\r\nTRIGGER:-PT10M\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
+    const same = mergeEvent(raw, { uid: 'r@pwo', title: 'Review!', start: '2026-10-06T14:00', allDay: false, reminders: [10] });
+    expect(same.match(/BEGIN:VALARM/g)).toHaveLength(1);
+    expect(same).toContain('ACTION:AUDIO');
+    const changed = mergeEvent(raw, { uid: 'r@pwo', title: 'Review', start: '2026-10-06T14:00', allDay: false, reminders: [30] });
+    expect(changed.match(/BEGIN:VALARM/g)).toHaveLength(1);
+    expect(changed).toContain('TRIGGER:-PT30M');
+    expect(changed).not.toContain('ACTION:AUDIO');
   });
 });

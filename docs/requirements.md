@@ -720,14 +720,14 @@ See [DigitalSignalix](./digitalsignalix.md).
 | MSG-005 | C | — | The user shall call and see a person peer to peer (WebRTC), and join group calls through the media server of their Matrix server. |
 | MSG-006 | C | — | Other networks shall be reached through the bridges of the user's Matrix server, the client staying one, its conversations behind an interface open to other protocols. |
 
-## 9zb. Notifications (NOTIF) — proposal
+## 9zb. Notifications (NOTIF)
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
-| NOTIF-001 | C | — | Where the user allowed it, the system shall notify the reminders of events and new messages while the application is open, even in the background. |
+| NOTIF-001 | S | 0.2.0 | Where the user allowed it, the system shall notify the reminders of events (their alarms, read and written as iCalendar has them; a reminder chosen for new events) while the application is open, even in the background, each once, a click opening the event; new messages too once there are messages (MSG). |
 | NOTIF-002 | C | — | The number of unread messages shall be shown on the icon of the installed application. |
 | NOTIF-003 | C | — | When the application is closed, notifications shall come by Web Push through a server of the user's (the push gateway of their Matrix server, or a push server they run), the content fetched and decrypted on the device, never carried by the push. |
-| NOTIF-004 | C | — | The user shall be told what notifications need on their system (an application installed to the home screen on some phones). |
+| NOTIF-004 | S | 0.2.0 | The user shall be told what notifications need on their system (an application installed to the home screen on some phones). |
 
 ## 9zc. Passwords (VAULT)
 
