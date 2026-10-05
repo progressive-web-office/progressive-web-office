@@ -343,13 +343,14 @@ any other tool. Planned, the most useful first:
   the folder, on a server or synchronised peer to peer between one's own
   devices; shown in a page of its own, without plugins nor code
   (VAULT-001..005)
-- Locking the application with a passkey (LOCK-001..005): nothing
-  of what the browser keeps shown before the passkey (fingerprint, face,
-  PIN of the device, security key); where the device gives a secret with the
-  passkey, everything the browser keeps encrypted with a key derived from
-  it — the files of its storage, drafts, recent files, settings — the data
-  key also opened by a recovery key shown once; locked again after a delay;
-  the backups opened by the passkey as well as by their password
+- ✅ Locking the application with a passkey or a passphrase
+  (LOCK-001..005): nothing of what the browser keeps shown before it is
+  opened; the documents of its storage, recent files, drafts, versions,
+  templates and accounts encrypted with a key the passkey's secret opens,
+  a recovery key shown once opening it too; locked again after a delay;
+  next: the names of the files and the offline copies of shared documents
+  encrypted too (LOCK-006), the backups opened by the passkey as well as by
+  their password
 
 ### Images and drawing
 

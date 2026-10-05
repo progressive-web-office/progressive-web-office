@@ -3,6 +3,7 @@ import { button, h, setStatus as showStatus } from '../app/dom';
 import { ACCEPTED_EXTENSIONS } from '../core/format';
 import { t } from '../i18n';
 import { davRootUrl, WebDavClient, WebDavError, type DavEntry } from './client';
+import { readSecret, writeSecret } from '../lock/session';
 
 export interface DavAccount {
   id: string;
@@ -26,7 +27,7 @@ const KEY = 'pwo.webdav.accounts';
 
 export function loadDavAccounts(): DavAccount[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
+    const raw = JSON.parse(readSecret(KEY) ?? '[]') as unknown;
     return Array.isArray(raw) ? (raw as DavAccount[]).filter((a) => a && typeof a.url === 'string' && typeof a.password === 'string') : [];
   } catch {
     return [];
@@ -35,8 +36,8 @@ export function loadDavAccounts(): DavAccount[] {
 
 function store(accounts: DavAccount[]): void {
   try {
-    if (accounts.length) localStorage.setItem(KEY, JSON.stringify(accounts));
-    else localStorage.removeItem(KEY);
+    if (accounts.length) writeSecret(KEY, JSON.stringify(accounts));
+    else writeSecret(KEY, null);
   } catch {
     /* storage unavailable: the account lives for this session only */
   }

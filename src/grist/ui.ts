@@ -2,6 +2,7 @@
 import { button, h, setStatus } from '../app/dom';
 import { t } from '../i18n';
 import { GristClient, GristError, type GristDoc } from './client';
+import { readSecret, writeSecret } from '../lock/session';
 
 export interface GristAccount {
   id: string;
@@ -13,7 +14,7 @@ const KEY = 'pwo.grist.accounts';
 
 export function loadGristAccounts(): GristAccount[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
+    const raw = JSON.parse(readSecret(KEY) ?? '[]') as unknown;
     return Array.isArray(raw) ? (raw as GristAccount[]).filter((a) => a && typeof a.serverUrl === 'string' && typeof a.apiKey === 'string') : [];
   } catch {
     return [];
@@ -22,8 +23,8 @@ export function loadGristAccounts(): GristAccount[] {
 
 function storeAccounts(accounts: GristAccount[]): void {
   try {
-    if (accounts.length) localStorage.setItem(KEY, JSON.stringify(accounts));
-    else localStorage.removeItem(KEY);
+    if (accounts.length) writeSecret(KEY, JSON.stringify(accounts));
+    else writeSecret(KEY, null);
   } catch {
     /* storage unavailable: the account lives for this session only */
   }

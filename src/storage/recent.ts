@@ -3,6 +3,8 @@
  * stored only in this browser's IndexedDB.
  */
 import type { DocumentFormat } from '../core/format';
+import { seal, unseal } from '../lock/session';
+import { isEncrypted } from '../lock/crypto';
 
 const DB_NAME = 'pwo';
 const DB_VERSION = 4;
@@ -88,7 +90,8 @@ export async function addRecent(file: File, format: DocumentFormat, origin?: str
     format,
     size: file.size,
     lastOpened: Date.now(),
-    data: new Uint8Array(await file.arrayBuffer()),
+    // LOCK-002: sealed while the lock is set.
+    data: await seal(new Uint8Array(await file.arrayBuffer())),
     type: file.type,
     ...(origin ? { origin } : {}),
   };
@@ -111,7 +114,7 @@ export async function renameRecent(oldName: string, newName: string): Promise<nu
 
 export async function getRecent(id: string): Promise<File | undefined> {
   const rec = (await request((await store('recent', 'readonly')).get(id))) as RecentRecord | undefined;
-  return rec ? new File([rec.data as BlobPart], rec.name, { type: rec.type }) : undefined;
+  return rec ? new File([(await unseal(rec.data)) as BlobPart], rec.name, { type: rec.type }) : undefined;
 }
 
 export async function removeRecent(id: string): Promise<void> {
@@ -123,14 +126,15 @@ export async function clearRecent(): Promise<void> {
 }
 
 export async function saveDraft(draft: Draft): Promise<void> {
-  await request((await store('drafts', 'readwrite')).put({ id: 'current', ...draft, savedAt: draft.savedAt ?? Date.now() }));
+  const record = { id: 'current', ...draft, bytes: await seal(draft.bytes), savedAt: draft.savedAt ?? Date.now() };
+  await request((await store('drafts', 'readwrite')).put(record));
 }
 
 export async function loadDraft(): Promise<Draft | undefined> {
   const rec = (await request((await store('drafts', 'readonly')).get('current'))) as (Draft & { id: string }) | undefined;
   if (!rec) return undefined;
   const { id: _id, ...draft } = rec;
-  return draft;
+  return { ...draft, bytes: await unseal(draft.bytes) };
 }
 
 export async function clearDraft(): Promise<void> {
@@ -220,10 +224,39 @@ export async function setBackupFolder(handle: FileSystemDirectoryHandle | undefi
 
 export type RecordStore = 'recent' | 'drafts' | 'templates' | 'versions';
 
+/** LOCK-002: the bytes of a record (`data` or `bytes`), opened or sealed. */
+async function openRecord(r: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const out = { ...r };
+  for (const k of ['data', 'bytes']) if (ArrayBuffer.isView(out[k])) out[k] = await unseal(out[k] as Uint8Array);
+  return out;
+}
+
+export async function sealRecord(r: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const out = { ...r };
+  for (const k of ['data', 'bytes']) if (ArrayBuffer.isView(out[k]) && !isEncrypted(out[k] as Uint8Array)) out[k] = await seal(out[k] as Uint8Array);
+  return out;
+}
+
+/** LOCK-002: every record of the stores sealed (the lock set) or opened (the lock removed), in place. */
+export async function resealRecords(open: boolean): Promise<number> {
+  let n = 0;
+  for (const name of ['recent', 'drafts', 'templates', 'versions'] as RecordStore[]) {
+    const all = (await request((await store(name, 'readonly')).getAll())) as Record<string, unknown>[];
+    for (const r of all) {
+      const next = open ? await openRecord(r) : await sealRecord(r);
+      await request((await store(name, 'readwrite')).put(next));
+      n++;
+    }
+  }
+  return n;
+}
+
 /** Every record of a store, its bytes included. */
 export async function exportRecords(name: RecordStore): Promise<Record<string, unknown>[]> {
   try {
-    return (await request((await store(name, 'readonly')).getAll())) as Record<string, unknown>[];
+    const all = (await request((await store(name, 'readonly')).getAll())) as Record<string, unknown>[];
+    // LOCK-002: given as they are (a backup encrypts them with its own password).
+    return await Promise.all(all.map(openRecord));
   } catch {
     return [];
   }
@@ -236,7 +269,8 @@ export async function importRecords(name: RecordStore, records: Record<string, u
     if (typeof r.id !== 'string') continue;
     const existing = await request((await store(name, 'readonly')).get(r.id));
     if (existing !== undefined) continue;
-    await request((await store(name, 'readwrite')).put(r));
+    const sealed = await sealRecord(r);
+    await request((await store(name, 'readwrite')).put(sealed));
     added++;
   }
   return added;
@@ -254,7 +288,8 @@ export interface UserTemplate {
 /** Keep `bytes` as a template; one with the same name and format is replaced. Returns its id. */
 export async function saveTemplate(name: string, format: DocumentFormat, bytes: Uint8Array): Promise<string> {
   const id = `${name}:${format}`;
-  await request((await store('templates', 'readwrite')).put({ id, name, format, size: bytes.byteLength, savedAt: Date.now(), data: bytes }));
+  const data = await seal(bytes);
+  await request((await store('templates', 'readwrite')).put({ id, name, format, size: bytes.byteLength, savedAt: Date.now(), data }));
   return id;
 }
 
@@ -265,7 +300,7 @@ export async function listTemplates(): Promise<UserTemplate[]> {
 
 export async function loadTemplate(id: string): Promise<Uint8Array | undefined> {
   const rec = (await request((await store('templates', 'readonly')).get(id))) as { data: Uint8Array } | undefined;
-  return rec?.data;
+  return rec ? unseal(rec.data) : undefined;
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
@@ -306,8 +341,10 @@ export async function saveVersion(doc: string, name: string, format: DocumentFor
   all.sort((a, b) => b.savedAt - a.savedAt);
   if (!label && all[0]?.hash === hash) return false;
   const savedAt = Math.max(Date.now(), (all[0]?.savedAt ?? 0) + 1);
+  // Sealed before the transaction (it would end while waiting).
+  const data = await seal(bytes);
   const os = await store('versions', 'readwrite');
-  await request(os.put({ id: `${doc}@${savedAt}`, doc, name, format, size: bytes.byteLength, savedAt, hash, data: bytes, ...(label ? { label } : {}) }));
+  await request(os.put({ id: `${doc}@${savedAt}`, doc, name, format, size: bytes.byteLength, savedAt, hash, data, ...(label ? { label } : {}) }));
   for (const old of all.slice(MAX_VERSIONS - 1)) await request((await store('versions', 'readwrite')).delete(old.id));
   return true;
 }
@@ -324,7 +361,7 @@ export async function moveVersions(fromDoc: string, toDoc: string, name: string)
 
 export async function loadVersion(id: string): Promise<Uint8Array | undefined> {
   const rec = (await request((await store('versions', 'readonly')).get(id))) as { data: Uint8Array } | undefined;
-  return rec?.data;
+  return rec ? unseal(rec.data) : undefined;
 }
 
 export async function deleteVersion(id: string): Promise<void> {

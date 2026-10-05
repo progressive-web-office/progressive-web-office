@@ -178,5 +178,23 @@ export async function privateStorage(dir = '', label = 'Browser storage'): Promi
   for (const seg of normalize(dir).split('/').filter(Boolean)) root = await root.getDirectoryHandle(seg, { create: true });
   // Ask the browser not to evict it under storage pressure.
   void storage.persist?.().catch(() => false);
-  return new DirectoryHandleProvider(root, `opfs:${normalize(dir)}`, label);
+  const provider = new DirectoryHandleProvider(root, `opfs:${normalize(dir)}`, label);
+  return wrapPrivate ? wrapPrivate(provider) : provider;
+}
+
+let wrapPrivate: (<T extends StorageProvider>(provider: T) => T) | undefined;
+
+/**
+ * Wrap every provider of the browser's private storage (the application
+ * seals its files this way, LOCK-002); `undefined` to stop.
+ */
+export function wrapPrivateStorage(wrap: (<T extends StorageProvider>(provider: T) => T) | undefined): void {
+  wrapPrivate = wrap;
+}
+
+/** The browser's private storage as it is kept, never wrapped (to seal or open all of it). */
+export async function rawPrivateStorage(): Promise<DirectoryHandleProvider | null> {
+  const storage = (globalThis as { navigator?: { storage?: StorageManager & { getDirectory?(): Promise<FileSystemDirectoryHandle> } } }).navigator?.storage;
+  if (!storage?.getDirectory) return null;
+  return new DirectoryHandleProvider(await storage.getDirectory(), 'opfs:', 'Browser storage');
 }

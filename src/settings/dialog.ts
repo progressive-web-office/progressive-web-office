@@ -20,8 +20,8 @@ import { loadReactivity, REACTIVITY, saveReactivity } from '../code/settings';
 import { loadToolbarMode, saveToolbarMode } from '../app/tool-groups';
 import { LENGTH_UNITS, loadLengthUnit, loadRulerSides, saveLengthUnit, saveRulerSides } from '../document/units';
 
-export type SettingsCategory = 'general' | 'reading' | 'writing' | 'printing' | 'collab';
-export const CATEGORIES: SettingsCategory[] = ['general', 'reading', 'writing', 'printing', 'collab'];
+export type SettingsCategory = 'general' | 'reading' | 'writing' | 'printing' | 'collab' | 'security';
+export const CATEGORIES: SettingsCategory[] = ['general', 'reading', 'writing', 'printing', 'collab', 'security'];
 
 export interface SettingsHooks {
   /** The interface language changed. */
@@ -164,12 +164,20 @@ function collabPanel(): HTMLElement[] {
   ];
 }
 
+/** LOCK-001..LOCK-005: the lock of the application (loaded when shown). */
+function securityPanel(): HTMLElement[] {
+  const box = h('div', {}, h('p', { class: 'hint' }, t('lock.loading')));
+  void import('../lock/ui').then(({ lockSettings }) => box.replaceChildren(...lockSettings()));
+  return [box];
+}
+
 const PANELS: Record<SettingsCategory, (hooks: SettingsHooks) => HTMLElement[]> = {
   general: generalPanel,
   reading: readingPanel,
   writing: writingPanel,
   printing: printingPanel,
   collab: collabPanel,
+  security: securityPanel,
 };
 
 /** Open the settings window on a category. */

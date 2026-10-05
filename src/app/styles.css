@@ -2006,3 +2006,22 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
   .sqlite-view { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .sqlite-side { border-right: 0; border-bottom: 1px solid var(--border); max-height: 9em; }
 }
+
+/* LOCK-001: the lock screen and its settings. */
+.lock-screen { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--text); padding: 16px; z-index: 1000; }
+.lock-card { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 26em; width: 100%; text-align: center; }
+.lock-card h1 { font-size: 1.4rem; margin: 0; }
+.lock-main { font-size: 1.05rem; padding: 10px 18px; }
+.lock-row { display: flex; gap: 6px; width: 100%; }
+.lock-row input { flex: 1; min-width: 0; }
+.lock-status:empty { display: none; }
+.lock-status { color: var(--danger); margin: 0; }
+.lock-recovery { width: 100%; text-align: left; }
+.lock-recovery summary { cursor: pointer; color: var(--muted); }
+.lock-recovery .lock-row { margin-top: 8px; }
+.lock-recovery-key { font-family: var(--mono, ui-monospace, monospace); font-size: 1.15rem; letter-spacing: 0.05em; padding: 10px; border: 1px dashed var(--border); border-radius: 8px; text-align: center; user-select: all; overflow-wrap: anywhere; }
+.lock-passkeys { list-style: none; padding: 0; margin: 0 0 8px; }
+.lock-passkeys li { display: flex; gap: 8px; align-items: center; }
+.lock-passkeys li button { border: 0; background: none; cursor: pointer; }
+.lock-settings .settings-field { margin-top: 8px; }
+.lock-actions { justify-content: flex-start; }

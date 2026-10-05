@@ -154,6 +154,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Locking the application (LOCK-001..LOCK-005): with a passkey (or a
+  passphrase), set in **Settings → Security**; nothing is shown before it
+  is opened, and what the browser keeps — documents, recent files, drafts,
+  versions, templates, accounts and their passwords — is encrypted with a
+  key the passkey's secret opens, a recovery key shown once opening it too;
+  locked again after a delay without use.
 - SQLite databases as documents (DB-001): a `.sqlite` / `.db` file opens
   with its tables, rows changed in a grid, its structure, and SQL to run
   (a `.sql` file too, such as the SQL of a data model); saved back as a

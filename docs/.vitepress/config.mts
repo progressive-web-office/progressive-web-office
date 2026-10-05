@@ -63,6 +63,7 @@ export default defineConfig({
           { text: 'Git repositories', link: '/guide/git' },
           { text: 'Nextcloud / WebDAV', link: '/guide/cloud' },
           { text: 'Backups', link: '/guide/backup' },
+          { text: 'Locking the application', link: '/guide/lock' },
           { text: 'Syncing my devices', link: '/guide/device-sync' },
           { text: 'Grist', link: '/guide/grist' },
           { text: 'Real-time collaboration', link: '/guide/collaboration' },

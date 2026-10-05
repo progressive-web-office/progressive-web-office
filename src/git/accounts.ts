@@ -3,6 +3,7 @@ import { GitHubClient } from './github';
 import { GiteaClient } from './gitea';
 import { GitLabClient } from './gitlab';
 import type { FetchFn, GitClient, GitProvider } from './types';
+import { readSecret, writeSecret } from '../lock/session';
 
 export interface GitAccount {
   id: string;
@@ -24,7 +25,7 @@ const sessionAccounts: GitAccount[] = [];
 
 function storedAccounts(): GitAccount[] {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '[]') as unknown;
+    const raw = JSON.parse(readSecret(KEY) ?? '[]') as unknown;
     return Array.isArray(raw) ? (raw as GitAccount[]).filter((a) => a && typeof a.token === 'string' && (a.provider === 'github' || a.provider === 'gitlab' || a.provider === 'gitea')) : [];
   } catch {
     return [];
@@ -37,8 +38,8 @@ export function loadAccounts(): GitAccount[] {
 
 function store(accounts: GitAccount[]): void {
   try {
-    if (accounts.length) localStorage.setItem(KEY, JSON.stringify(accounts));
-    else localStorage.removeItem(KEY);
+    if (accounts.length) writeSecret(KEY, JSON.stringify(accounts));
+    else writeSecret(KEY, null);
   } catch {
     /* storage unavailable: the account lives for this session only */
   }

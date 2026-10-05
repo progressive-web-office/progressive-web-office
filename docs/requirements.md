@@ -698,15 +698,16 @@ See [DigitalSignalix](./digitalsignalix.md).
 | CONTACT-006 | S | 0.2.0 | The card of a contact shall show its interactions — the events it attends, the lines of daily notes and the other notes naming it — dated, the latest first, and when the user first met it and was last in touch; the user shall note an interaction (meeting, call, e-mail, message, or a kind of their own, with an icon, the kinds already used offered again), written as a dated line of the daily note of its day linked to the contact, the contact's `first met` and `last contact` following. |
 | CONTACT-007 | S | 0.2.0 | AI agents — the assistant, or an agent reached through WebMCP reading the user's e-mail — shall find contacts, read a contact with its interactions, create or update a contact, and note an interaction (creating the contact of an unknown address) through tools, their inputs checked, those changing the notes marked so. |
 
-## 9z. Locking the application (LOCK) — proposal
+## 9z. Locking the application (LOCK)
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
-| LOCK-001 | C | — | The user shall lock the application with one passkey or more (WebAuthn, user verification required): when it starts, nothing of what the browser keeps shall be shown before a passkey is used. |
-| LOCK-002 | C | — | Where the authenticator gives a secret with the passkey (the PRF extension), what the browser keeps — the files of its private storage, their names, drafts, recent files, settings — shall be encrypted (AES-GCM) with a random data key, wrapped by a key derived from that secret for each passkey. |
-| LOCK-003 | C | — | When the lock is set, a recovery key shall be shown once, to print or keep, which also unwraps the data key; the user shall be told that without a passkey nor the recovery key the data cannot be read. |
-| LOCK-004 | C | — | The application shall lock again after a delay without use chosen by the user, and on demand; locked, the data key shall be forgotten. |
-| LOCK-005 | C | — | Where the authenticator gives no secret, the system shall say that the passkey only locks the application, the data not encrypted, and offer a passphrase instead to encrypt it. |
+| LOCK-001 | S | 0.2.0 | The user shall lock the application with a passkey (WebAuthn, user verification required) or a passphrase: when it starts, nothing of what the browser keeps shall be shown before the lock is opened. |
+| LOCK-002 | S | 0.2.0 | While the lock is set, what the browser keeps — the content of the files of its private storage, recent files, drafts, versions, templates, accounts with their passwords and tokens — shall be encrypted (AES-GCM) with a random data key, wrapped by a key derived from the secret the passkey gives (its PRF extension) or from the passphrase; setting the lock shall encrypt what was kept before, removing it decrypt it all. |
+| LOCK-003 | S | 0.2.0 | When the lock is set, a recovery key shall be shown once, to download or copy and confirmed kept, which also unwraps the data key; the user shall be told that without a passkey, the passphrase nor the recovery key the data cannot be read. |
+| LOCK-004 | S | 0.2.0 | The application shall lock again after a delay without use chosen by the user, and on demand; locked, the data key shall be forgotten and the application started again. |
+| LOCK-005 | S | 0.2.0 | Where the passkey gives no secret, the system shall say so and offer a passphrase, or another passkey, instead; other passkeys shall be added to open the lock, and removed. |
+| LOCK-006 | C | — | The names of the files of the private storage and the offline copies of shared documents shall be encrypted too. |
 
 ## 9za. Messages and calls (MSG) — proposal
 

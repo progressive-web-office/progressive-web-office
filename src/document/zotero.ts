@@ -6,6 +6,7 @@
 import { button, h, setStatus } from '../app/dom';
 import { t } from '../i18n';
 import { entrySummary, parseBibtex, type BibEntry } from './bibliography';
+import { readSecret, writeSecret } from '../lock/session';
 
 export const ZOTERO_API = 'https://api.zotero.org';
 export const ZOTERO_KEY_PAGE = 'https://www.zotero.org/settings/keys/new';
@@ -21,7 +22,7 @@ type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;
 
 export function loadZotero(): ZoteroAccount | undefined {
   try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? 'null') as ZoteroAccount | null;
+    const v = JSON.parse(readSecret(KEY) ?? 'null') as ZoteroAccount | null;
     return v && typeof v.apiKey === 'string' && typeof v.userId === 'number' ? v : undefined;
   } catch {
     return undefined;
@@ -30,8 +31,8 @@ export function loadZotero(): ZoteroAccount | undefined {
 
 export function saveZotero(account: ZoteroAccount | undefined): void {
   try {
-    if (account) localStorage.setItem(KEY, JSON.stringify(account));
-    else localStorage.removeItem(KEY);
+    if (account) writeSecret(KEY, JSON.stringify(account));
+    else writeSecret(KEY, null);
   } catch {
     /* storage unavailable: kept for this session only */
   }
