@@ -708,6 +708,36 @@ See [DigitalSignalix](./digitalsignalix.md).
 | LOCK-004 | C | — | The application shall lock again after a delay without use chosen by the user, and on demand; locked, the data key shall be forgotten. |
 | LOCK-005 | C | — | Where the authenticator gives no secret, the system shall say that the passkey only locks the application, the data not encrypted, and offer a passphrase instead to encrypt it. |
 
+## 9za. Messages and calls (MSG) — proposal
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| MSG-001 | C | — | The user shall sign in to a Matrix server of their choice and read and write in its rooms and direct messages, end-to-end encrypted, their devices verified and their keys backed up; the encryption code shall be downloaded after consent and checked against a pinned SHA-256. |
+| MSG-002 | C | — | The user shall share a document of the application in a room, and open a file of a room as a document. |
+| MSG-003 | C | — | A contact shall hold its Matrix address, its card opening the direct messages with it; a message shall be kept as a line of the daily note of its day, linked to its contact (CONTACT-006). |
+| MSG-004 | C | — | An event of the calendar shall hold its room and its call, joined from the event. |
+| MSG-005 | C | — | The user shall call and see a person peer to peer (WebRTC), and join group calls through the media server of their Matrix server. |
+| MSG-006 | C | — | Other networks shall be reached through the bridges of the user's Matrix server, the client staying one, its conversations behind an interface open to other protocols. |
+
+## 9zb. Notifications (NOTIF) — proposal
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| NOTIF-001 | C | — | Where the user allowed it, the system shall notify the reminders of events and new messages while the application is open, even in the background. |
+| NOTIF-002 | C | — | The number of unread messages shall be shown on the icon of the installed application. |
+| NOTIF-003 | C | — | When the application is closed, notifications shall come by Web Push through a server of the user's (the push gateway of their Matrix server, or a push server they run), the content fetched and decrypted on the device, never carried by the push. |
+| NOTIF-004 | C | — | The user shall be told what notifications need on their system (an application installed to the home screen on some phones). |
+
+## 9zc. Passwords (VAULT) — proposal
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| VAULT-001 | C | — | A vault of passwords in the KDBX 4 format shall open as a document — entries, groups, notes, attachments — and be saved in the same format, readable by the other applications of that format. |
+| VAULT-002 | C | — | The vault shall be unlocked by its master password, a key file, or the passkey of the device where it gives a secret (LOCK-002). |
+| VAULT-003 | C | — | The vault shall give the one-time codes (TOTP) of its entries, generate passwords and passphrases, and copy a value to the clipboard, cleared after a delay. |
+| VAULT-004 | C | — | Where the user agreed, a password shall be checked against known breaches by k-anonymity (only the first characters of its hash sent). |
+| VAULT-005 | C | — | The vault shall be shown in a page of its own, without plugins, code cells nor documents of others, under a strict content security policy. |
+
 ## 10. Out of scope (Won't, this time)
 
 - A collaboration server, user accounts, or storage of documents on a server we operate.

@@ -237,6 +237,21 @@ any other tool. Planned, the most useful first:
   file~~ (DB-005, done)
 - Exercises of modelling with their solution (Teaching)
 
+### Communication
+
+- Messages, files and calls on the Matrix protocol, end-to-end encrypted
+  (MSG-001..006): rooms and direct messages, files shared from the
+  documents, a contact's Matrix address on its card, an event's room and
+  call, a message kept as a line of the daily note, rooms summed up by the
+  assistant; other networks reached through the bridges of the user's
+  server rather than a client per protocol; calls and video between two
+  peer to peer, group calls through the media server of the user's server
+- Notifications (NOTIF-001..004): reminders of events and new messages
+  while the application is open, the number unread on its icon; when it is
+  closed, Web Push through the user's own server (its push gateway, or a
+  push server of the user's), the content fetched and decrypted on the
+  device, never in the push
+
 ### Working on several documents
 
 - Document tabs and a split view: two documents side by side (a copy and
@@ -321,7 +336,14 @@ any other tool. Planned, the most useful first:
   all at once; the last backup's date always visible (BACKUP-001..005);
   automatic backups while the application
   is open (BACKUP-006); next: a Git repository as a destination
-- Locking the application with a passkey (proposal, LOCK-001..005): nothing
+- A vault of passwords kept as a KDBX file — the open format read by the
+  password managers of every system, which fill the passwords in other
+  sites and apps — opened as a document, unlocked by the passkey of the
+  device, its one-time codes (TOTP) and a generator of passwords, kept in
+  the folder, on a server or synchronised peer to peer between one's own
+  devices; shown in a page of its own, without plugins nor code
+  (VAULT-001..005)
+- Locking the application with a passkey (LOCK-001..005): nothing
   of what the browser keeps shown before the passkey (fingerprint, face,
   PIN of the device, security key); where the device gives a secret with the
   passkey, everything the browser keeps encrypted with a key derived from
