@@ -127,6 +127,10 @@ line in the daily note of its day:
 - 14:05 📞 Call — [[Ada Lovelace]]: agreed on the review.
 ```
 
+The kind is yours to choose: type `🍽 Lunch`, `Visit of the lab` — an emoji
+first if you like. The kinds found in the daily notes of the contact and
+those you typed lately are offered again with the ones built in.
+
 The journal stays where things happened, the contact finds them back by its
 link; its note keeps `first met` and `last contact` up to date.
 

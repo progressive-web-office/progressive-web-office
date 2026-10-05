@@ -7,7 +7,7 @@ import { t, type MessageKey } from '../i18n';
 import { readText, type StorageProvider } from '../fs';
 import { dateOfNote, dayKey, loadDailySettings } from '../folder/daily';
 import { listOf, withValues } from './notes';
-import { firstAndLast, interactionLine, timeline, type Interaction, type InteractionKind } from './interactions';
+import { firstAndLast, interactionLine, kindChoice, timeline, type Interaction } from './interactions';
 import { loadEvents, type Stored, type StoredContact } from './store';
 
 export interface PeopleHost {
@@ -39,11 +39,12 @@ export async function contactTimeline(host: PeopleHost, stored: Stored<StoredCon
 
 /**
  * Write an interaction with a contact into the daily note of its day, and
- * keep `first met` and `last contact` of its note up to date.
+ * keep `first met` and `last contact` of its note up to date. The kind is
+ * one of those built in or one of the user's (`🍽 Lunch`).
  */
-export async function logInteraction(host: PeopleHost, stored: Stored<StoredContact>, kind: InteractionKind, when: Date, summary: string): Promise<string> {
+export async function logInteraction(host: PeopleHost, stored: Stored<StoredContact>, kind: string, when: Date, summary: string): Promise<string> {
   if (!host.appendToDaily) throw new Error(t('people.noDaily'));
-  const line = interactionLine(when, kind, t(`people.kind.${kind}` as MessageKey), noteNameOf(stored.path), summary);
+  const line = interactionLine(when, kindChoice(kind, (k) => t(`people.kind.${k}` as MessageKey)), noteNameOf(stored.path), summary);
   const daily = await host.appendToDaily(when, line);
   const day = dayKey(when);
   const text = await readText(host.provider, stored.path).catch(() => stored.text);

@@ -14,7 +14,7 @@ import { loadContacts, loadPimSettings, saveContact, type Stored, type StoredCon
 import { calendarColour } from './calendar-view';
 import type { MessageKey } from '../i18n';
 import type { AgentTool } from '../ai/tools';
-import { INTERACTION_KINDS, KIND_ICON, type InteractionKind } from './interactions';
+import { INTERACTION_KINDS, KIND_ICON, kindsInLines, splitKind, type KindChoice } from './interactions';
 import { contactTimeline, logInteraction } from './people';
 import { pimAgentTools } from './agent-tools';
 
@@ -37,6 +37,28 @@ export interface ContactsHost {
 }
 
 const KIND = 'addressbook';
+const KINDS_KEY = 'pwo.people.kinds';
+
+/** CONTACT-006: the kinds of interaction the user wrote lately, offered again. */
+function rememberedKinds(): KindChoice[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KINDS_KEY) ?? '[]') as unknown;
+    return Array.isArray(saved) ? saved.filter((k): k is string => typeof k === 'string').map(splitKind).filter((k) => k.label) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberKind(kind: string): void {
+  const text = kind.trim();
+  if (!text) return;
+  try {
+    const saved = (JSON.parse(localStorage.getItem(KINDS_KEY) ?? '[]') as unknown[]).filter((k): k is string => typeof k === 'string' && k !== text);
+    localStorage.setItem(KINDS_KEY, JSON.stringify([text, ...saved].slice(0, 30)));
+  } catch {
+    /* not kept */
+  }
+}
 
 const fold = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const initials = (name: string): string =>
@@ -60,6 +82,8 @@ export class ContactsView implements EditorView {
   private contacts: Stored<StoredContact>[] = [];
   private loaded = false;
   private selected: string | undefined;
+  /** The lines of daily notes telling the interactions with the contact shown. */
+  private kindLines: string[] = [];
   private query = '';
   private readonly search = h('input', { type: 'search', class: 'contacts-search', placeholder: t('people.search'), 'aria-label': t('people.search') });
   private readonly list = h('ul', { class: 'contacts-list', role: 'listbox', 'aria-label': t('people.title') });
@@ -198,6 +222,7 @@ export class ContactsView implements EditorView {
     // CONTACT-006: the interactions — events, daily notes, other notes — the latest first.
     const { items, first, last } = await contactTimeline(this.host, stored);
     if (this.selected !== stored.path) return;
+    this.kindLines = items.flatMap((i) => (i.kind === 'daily' && i.context ? [i.context] : []));
     const day = (iso: string): string => new Intl.DateTimeFormat(document.documentElement.lang || undefined, { dateStyle: 'long' }).format(new Date(`${iso.slice(0, 10)}T00:00`));
     const ago = (iso: string): string => {
       const days = Math.round((new Date(new Date().toDateString()).getTime() - new Date(`${iso}T00:00`).getTime()) / 86_400_000);
@@ -232,7 +257,11 @@ export class ContactsView implements EditorView {
   private logDialog(stored: Stored<StoredContact>): void {
     const now = new Date();
     const pad = (n: number): string => String(n).padStart(2, '0');
-    const kind = h('select', { 'aria-label': t('people.kind') }, ...INTERACTION_KINDS.map((k) => h('option', { value: k }, `${KIND_ICON[k]} ${t(`people.kind.${k}` as MessageKey)}`)));
+    // The kinds built in, then those of the user — written before, here or in the daily notes.
+    const builtIn: KindChoice[] = INTERACTION_KINDS.map((k) => ({ icon: KIND_ICON[k], label: t(`people.kind.${k}` as MessageKey) }));
+    const choices = [...builtIn, ...kindsInLines(this.kindLines), ...rememberedKinds()].filter((k, i, all) => all.findIndex((o) => o.label.toLowerCase() === k.label.toLowerCase()) === i);
+    const list = h('datalist', { id: 'contact-log-kinds' }, ...choices.map((k) => h('option', { value: `${k.icon} ${k.label}` })));
+    const kind = h('input', { type: 'text', list: 'contact-log-kinds', 'aria-label': t('people.kind'), placeholder: t('people.kindHint'), autocomplete: 'off' });
     const when = h('input', { type: 'datetime-local', value: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`, 'aria-label': t('people.when') });
     const summary = h('textarea', { rows: '3', 'aria-label': t('people.summary'), placeholder: t('people.summaryHint') });
     const dialog = h('dialog', { class: 'dialog calendar-dialog', 'aria-labelledby': 'contact-log-title' });
@@ -243,7 +272,8 @@ export class ContactsView implements EditorView {
     const save = async (): Promise<void> => {
       close();
       try {
-        await logInteraction(this.host, stored, kind.value as InteractionKind, when.value ? new Date(when.value) : new Date(), summary.value);
+        await logInteraction(this.host, stored, kind.value, when.value ? new Date(when.value) : new Date(), summary.value);
+        rememberKind(kind.value);
         await this.reload();
       } catch (err) {
         this.host.error((err as Error).message);
@@ -253,6 +283,7 @@ export class ContactsView implements EditorView {
     dialog.append(
       h('h2', { id: 'contact-log-title' }, t('people.logTitle', { name: stored.item.name })),
       field(t('people.kind'), kind),
+      list,
       field(t('people.when'), when),
       field(t('people.summary'), summary),
       h('p', { class: 'hint' }, t('people.logHint')),

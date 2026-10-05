@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- The kind of an interaction with a contact is free: besides meeting, call,
+  e-mail and message, type your own (`🍽 Lunch`), an emoji first if you
+  like; the kinds already used are offered again, and agents may use them
+  too (CONTACT-006, CONTACT-007).
+
 - Daily notes are filed by year and month (`Daily notes/2026/10/2026-10-05.md`)
   and events by year, month and day (`Events/2026/10/05/2026-10-05
   Kick-off.md`); an event moved to another day takes its note to that day's

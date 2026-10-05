@@ -1502,6 +1502,7 @@ export const fr: Record<MessageKey, string> = {
   'people.log': 'Noter une interaction',
   'people.logTitle': 'Une interaction avec {name}',
   'people.kind': 'Type',
+  'people.kindHint': 'Réunion, appel, ou le vôtre : 🍽 Déjeuner…',
   'people.when': 'Quand',
   'people.summary': 'Sujet',
   'people.summaryHint': 'De quoi il s’agissait, ce qui a été convenu…',

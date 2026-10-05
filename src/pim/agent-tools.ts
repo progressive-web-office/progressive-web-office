@@ -7,7 +7,7 @@
  */
 import type { AgentTool } from '../ai/tools';
 import { occurrences } from './ical';
-import { INTERACTION_KINDS, type InteractionKind } from './interactions';
+import { INTERACTION_KINDS } from './interactions';
 import { contactTimeline, logInteraction, type PeopleHost } from './people';
 import { loadContacts, loadEvents, saveContact, saveEvent, type StoredContact, type StoredEvent } from './store';
 
@@ -96,7 +96,7 @@ export function pimAgentTools(host: PimToolsHost): AgentTool[] {
         type: 'object',
         properties: {
           name: { type: 'string', description: 'Name or e-mail address of the person' },
-          kind: { type: 'string', enum: INTERACTION_KINDS },
+          kind: { type: 'string', description: `One of ${INTERACTION_KINDS.join(', ')}, or a kind of the user's (a lunch, a visit…), an emoji first if wanted` },
           summary: { type: 'string', description: 'What it was about, in one sentence' },
           when: { type: 'string', description: 'YYYY-MM-DDTHH:mm (local time); now if left out' },
           create_contact: { type: 'boolean', description: 'Create the contact when there is none (default true)' },
@@ -106,8 +106,8 @@ export function pimAgentTools(host: PimToolsHost): AgentTool[] {
       mutates: true,
       run: async (input) => {
         const name = str(input.name);
-        const kind = str(input.kind) as InteractionKind | undefined;
-        if (!name || !kind || !INTERACTION_KINDS.includes(kind)) return `A name and a kind (${INTERACTION_KINDS.join(', ')}) are needed.`;
+        const kind = str(input.kind);
+        if (!name || !kind) return `A name and a kind (${INTERACTION_KINDS.join(', ')}, or another) are needed.`;
         const whenText = str(input.when);
         if (whenText && !TIME.test(whenText)) return 'The time is written YYYY-MM-DDTHH:mm.';
         const when = whenText ? new Date(whenText.slice(0, 16)) : new Date();

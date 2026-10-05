@@ -1500,6 +1500,7 @@ export const en = {
   'people.log': 'Note an interaction',
   'people.logTitle': 'An interaction with {name}',
   'people.kind': 'Kind',
+  'people.kindHint': 'Meeting, call, or your own: 🍽 Lunch…',
   'people.when': 'When',
   'people.summary': 'About',
   'people.summaryHint': 'What it was about, what was agreed…',

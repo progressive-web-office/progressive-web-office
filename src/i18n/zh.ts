@@ -1502,6 +1502,7 @@ export const zh: Record<MessageKey, string> = {
   'people.log': '记录一次互动',
   'people.logTitle': '与 {name} 的互动',
   'people.kind': '类型',
+  'people.kindHint': '会议、电话，或自定义：🍽 午餐…',
   'people.when': '时间',
   'people.summary': '主题',
   'people.summaryHint': '内容是什么，达成了什么…',

@@ -66,17 +66,26 @@ test('creates contacts as notes, shows their events and birthdays, imports and e
   // An interaction: a line of the daily note of its day, linked; the card follows (CONTACT-006).
   await card.getByRole('button', { name: 'Note an interaction' }).click();
   const log = page.getByRole('dialog', { name: 'An interaction with Ada Lovelace' });
-  await log.getByLabel('Kind').selectOption({ label: '📞 Call' });
+  await log.getByLabel('Kind').fill('📞 Call');
   await log.getByLabel('When').fill('2026-10-02T14:05');
   await log.getByLabel('About').fill('Agreed on the review.');
   await log.getByRole('button', { name: 'Save' }).click();
   await expect.poll(() => stored(page, 'Daily notes/2026/10/2026-10-02.md')).toContain('\n- 14:05 📞 Call — [[Ada Lovelace]]: Agreed on the review.\n');
+  // A kind of the user's: written as given, offered again the next time.
+  await card.getByRole('button', { name: 'Note an interaction' }).click();
+  await log.getByLabel('Kind').fill('🍽 Lunch');
+  await log.getByLabel('When').fill('2026-10-01T12:30');
+  await log.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(() => stored(page, 'Daily notes/2026/10/2026-10-01.md')).toContain('\n- 12:30 🍽 Lunch — [[Ada Lovelace]]\n');
+  await card.getByRole('button', { name: 'Note an interaction' }).click();
+  await expect(log.locator('#contact-log-kinds option[value="🍽 Lunch"]')).toHaveCount(1);
+  await log.getByRole('button', { name: 'Cancel' }).click();
   await expect(contacts.locator('.contact-facts')).toContainText('First met');
   await expect(contacts.locator('.contact-facts')).toContainText('Last contact');
   await expect(contacts.locator('.contact-facts')).toContainText('October 2, 2026 (2 days ago)');
   await expect(contacts.locator('.contact-timeline li').first()).toContainText('Engine review');
   await expect(contacts.locator('.contact-timeline')).toContainText('Agreed on the review.');
-  expect(await stored(page, 'People/Ada Lovelace.md')).toContain('first met: 2026-10-02\nlast contact: 2026-10-02\n');
+  expect(await stored(page, 'People/Ada Lovelace.md')).toContain('first met: 2026-10-01\nlast contact: 2026-10-02\n');
   await page.screenshot({ path: 'test-results/contact-interactions.png' });
 
   // A vCard file: its contacts as notes; then the search; then the export.

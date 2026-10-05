@@ -1,12 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { firstAndLast, interactionLine, timeline } from '../src/pim/interactions';
+import { firstAndLast, interactionLine, kindChoice, kindsInLines, timeline, type BuiltInKind } from '../src/pim/interactions';
 
 // CONTACT-006: the interactions with a person, from the events and the notes.
 
 describe('CONTACT-006 interactions', () => {
   it('writes an interaction as a line of a daily note', () => {
-    expect(interactionLine(new Date(2026, 9, 4, 14, 5), 'call', 'Call', 'Ada Lovelace', ' about\nthe review ')).toBe('- 14:05 📞 Call — [[Ada Lovelace]]: about the review');
-    expect(interactionLine(new Date(2026, 9, 4, 9, 0), 'email', 'E-mail', 'Ada Lovelace')).toBe('- 09:00 ✉️ E-mail — [[Ada Lovelace]]');
+    expect(interactionLine(new Date(2026, 9, 4, 14, 5), { icon: '📞', label: 'Call' }, 'Ada Lovelace', ' about\nthe review ')).toBe('- 14:05 📞 Call — [[Ada Lovelace]]: about the review');
+    expect(interactionLine(new Date(2026, 9, 4, 9, 0), { icon: '✉️', label: 'E-mail' }, 'Ada Lovelace')).toBe('- 09:00 ✉️ E-mail — [[Ada Lovelace]]');
+  });
+
+  it('takes the kinds built in, by id or name, and the kinds of the user', () => {
+    const fr: Record<BuiltInKind, string> = { meeting: 'Réunion', call: 'Appel', email: 'E-mail', message: 'Message', other: 'Autre' };
+    const label = (k: BuiltInKind) => fr[k];
+    expect(kindChoice('call', label)).toEqual({ icon: '📞', label: 'Appel' });
+    expect(kindChoice('📞 appel', label)).toEqual({ icon: '📞', label: 'Appel' });
+    expect(kindChoice('reunion', label)).toEqual({ icon: '🤝', label: 'Réunion' });
+    expect(kindChoice('🍽 Déjeuner', label)).toEqual({ icon: '🍽', label: 'Déjeuner' });
+    expect(kindChoice('Visite du labo', label)).toEqual({ icon: '•', label: 'Visite du labo' });
+    expect(kindChoice('  ', label)).toEqual({ icon: '•', label: 'Autre' });
+  });
+
+  it('finds the kinds used in the daily notes, the most used first', () => {
+    expect(
+      kindsInLines([
+        '- 12:30 🍽 Lunch — [[Ada Lovelace]]: the engine',
+        '- 09:00 📞 Call — [[Ada Lovelace]]',
+        '- 12:15 🍽 lunch — [[Ada Lovelace]]',
+        '- 18:00 Visit — [[Ada Lovelace]]',
+        'Lunch with [[Ada Lovelace]].',
+      ]),
+    ).toEqual([
+      { icon: '🍽', label: 'Lunch' },
+      { icon: '📞', label: 'Call' },
+      { icon: '•', label: 'Visit' },
+    ]);
   });
 
   it('puts the events, the daily notes and the other notes in one timeline, the latest first', () => {

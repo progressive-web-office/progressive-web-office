@@ -59,7 +59,10 @@ describe('CONTACT-007 CAL-007 tools of agents', () => {
     expect((ada.interactions as { when: string }[]).map((i) => i.when)).toEqual(['2026-10-04T14:05', '2026-10-02T09:15']);
     expect(await readText(provider, 'People/Ada Lovelace.md')).toContain('first met: 2026-10-02\nlast contact: 2026-10-04\n');
     expect(JSON.parse(await run('find_contacts', { query: 'example.org' }))).toHaveLength(2);
-    expect(await run('log_interaction', { name: 'Ada', kind: 'visit', summary: 'x' })).toMatch(/^A name and a kind/);
+    // A kind of the user's.
+    await run('log_interaction', { name: 'Ada Lovelace', kind: '🍽 Lunch', summary: 'The engine.', when: '2026-10-04T12:30' });
+    expect(await readText(provider, 'Daily notes/2026/10/2026-10-04.md')).toContain('- 12:30 🍽 Lunch — [[Ada Lovelace]]: The engine.\n');
+    expect(await run('log_interaction', { name: 'Ada', summary: 'x' })).toMatch(/^A name and a kind/);
     expect(await run('log_interaction', { name: 'Ada', kind: 'call', summary: 'x', when: 'yesterday' })).toBe('The time is written YYYY-MM-DDTHH:mm.');
   });
 
