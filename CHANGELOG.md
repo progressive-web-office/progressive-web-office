@@ -154,6 +154,13 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Vaults of passwords (VAULT-001..VAULT-004): a `.kdbx` file — the open
+  format of the password managers of every system — opens as a document:
+  groups, entries, passwords shown only when asked and copied to the
+  clipboard for 30 seconds, one-time codes (TOTP), a password generator, a
+  check against known breaches by k-anonymity after consent; opened by its
+  master password, or by the lock of the application; saved in the same
+  format. *New password vault…* makes one.
 - Locking the application (LOCK-001..LOCK-005): with a passkey (or a
   passphrase), set in **Settings → Security**; nothing is shown before it
   is opened, and what the browser keeps — documents, recent files, drafts,

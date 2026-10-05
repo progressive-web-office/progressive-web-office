@@ -6,7 +6,7 @@ import { isMarimo } from '../document/marimo-detect';
 const EMPTY = new Uint8Array();
 import { t } from '../i18n';
 
-export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl' | 'marimo' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf' | 'text' | 'image' | 'sqlite';
+export type DocumentFormat = 'docx' | 'odt' | 'md' | 'mdz' | 'tex' | 'texzip' | 'jl' | 'marimo' | 'xlsx' | 'ods' | 'csv' | 'pptx' | 'odp' | 'pdf' | 'text' | 'image' | 'sqlite' | 'kdbx';
 /** `file`: text and source files (FILE-022) and pictures (FILE-023), which keep their own name and extension. */
 export type DocumentKind = 'document' | 'spreadsheet' | 'presentation' | 'pdf' | 'file';
 
@@ -33,6 +33,7 @@ export const MIME_TYPES: Record<DocumentFormat, string> = {
   text: 'text/plain',
   image: 'application/octet-stream',
   sqlite: 'application/vnd.sqlite3',
+  kdbx: 'application/x-keepass2',
 };
 
 /** Human-readable, translated format name. */
@@ -42,7 +43,7 @@ export function formatLabel(format: DocumentFormat): string {
 
 
 /** File extensions accepted by the open dialog. */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.textpack', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.mcd', '.sqlite', '.sqlite3', '.db', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ora'];
+export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.textpack', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.mcd', '.sqlite', '.sqlite3', '.db', '.kdbx', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ora'];
 
 export function formatKind(format: DocumentFormat): DocumentKind {
   switch (format) {
@@ -67,6 +68,7 @@ export function formatKind(format: DocumentFormat): DocumentKind {
     case 'text':
     case 'image':
     case 'sqlite':
+    case 'kdbx':
       return 'file';
   }
 }
@@ -103,6 +105,8 @@ export function detectFormat(name: string, bytes: Uint8Array): DocumentFormat | 
   if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d])) return 'pdf'; // %PDF-
   if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) return detectZipFormat(bytes);
   if (isPicture(bytes)) return 'image';
+  // VAULT-001: a vault of passwords in the KDBX format (its two signatures).
+  if (bytes.length >= 12 && new DataView(bytes.buffer, bytes.byteOffset, 8).getUint32(0, true) === 0x9aa2d903 && new DataView(bytes.buffer, bytes.byteOffset, 8).getUint32(4, true) === 0xb54bfb67) return 'kdbx';
   // DB-001: a SQLite database ("SQLite format 3" and a zero byte).
   if (bytes.length >= 16 && new TextDecoder().decode(bytes.subarray(0, 16)) === 'SQLite format 3\0') return 'sqlite';
   const ext = extensionOf(name);

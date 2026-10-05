@@ -886,7 +886,7 @@ export class App {
       const name = own ? doc.name : replaceExtension(doc.name, fileExtension(target));
       const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : 'txt';
       // A picture keeps its own type (DRAW-001, DRAW-008).
-      const mimeType = doc.format === 'image' ? ((doc.view as { mediaType?: () => string }).mediaType?.() ?? 'image/png') : doc.format === 'sqlite' ? MIME_TYPES.sqlite : 'text/plain';
+      const mimeType = doc.format === 'image' ? ((doc.view as { mediaType?: () => string }).mediaType?.() ?? 'image/png') : doc.format === 'sqlite' || doc.format === 'kdbx' ? MIME_TYPES[doc.format] : 'text/plain';
       if (await saveFile(bytes, name, target, own ? { mimeType, extension: ext } : undefined)) {
         // The document is now the file saved elsewhere, no longer the one of the folder.
         if (doc.folderPath && format) {
@@ -1583,6 +1583,21 @@ export class App {
     });
     folder.setCurrent(undefined);
     this.setDocument({ name: t('cal.title'), format: 'text', kind: 'file', view });
+  }
+
+  /** VAULT-001: a new vault of passwords, its master password asked twice. */
+  async newVault(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    const { askMasterPassword } = await import('../vault/new');
+    const choice = await askMasterPassword(this.root);
+    if (!choice) return;
+    const [{ newVault }, { VaultView }] = await Promise.all([import('../vault/kdbx'), import('../vault/view')]);
+    const db = await this.withBusy(() => newVault(choice.name, choice.password));
+    const name = `${choice.name}.kdbx`;
+    const view = new VaultView(new Uint8Array(), this.viewContext(), name, db);
+    this.setDocument({ name, format: 'kdbx', kind: formatKind('kdbx'), view });
+    this.dirty = true;
+    this.renderHeader();
   }
 
   /** DB-001: a new, empty SQLite database, to save where the user wants. */
@@ -2854,6 +2869,7 @@ export class App {
         { label: t('people.title'), where: t('daily.notes'), keywords: 'contacts people address book persons contacts personnes carnet d’adresses 联系人 通讯录', run: () => void setTimeout(() => void this.openContactsApp()) },
         { label: t('cal.title'), where: t('daily.notes'), keywords: 'calendar events agenda month week journal calendrier événements agenda mois semaine 日历 事件', run: () => void setTimeout(() => void this.openCalendarApp()) },
         { label: t('daily.todayNote'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien aujourd’hui 日历 每日 今天', run: () => void setTimeout(() => void this.openCalendar(true)) },
+        { label: t('pw.new'), where: t('pw.format'), keywords: 'password vault passwords kdbx otp totp mot de passe coffre 密码 保险库', run: () => void setTimeout(() => void this.newVault()) },
         { label: t('sqlite.new'), where: 'SQLite', keywords: 'sqlite database base de données table sql db 数据库', run: () => void setTimeout(() => void this.newDatabase()) },
         { label: t('dm.new'), where: t('dm.format'), keywords: 'data model database mcd mld mpd merise entity association sql schema modèle de données base entité 数据模型 实体', run: () => void setTimeout(() => void this.newDataModel()) },
         { label: t('views.new'), where: t('daily.notes'), keywords: 'view table cards board kanban query database base vue tableau cartes requête base de données 视图 表格 看板', run: () => void setTimeout(() => void this.newNotesView()) },

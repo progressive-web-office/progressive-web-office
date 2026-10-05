@@ -729,14 +729,14 @@ See [DigitalSignalix](./digitalsignalix.md).
 | NOTIF-003 | C | — | When the application is closed, notifications shall come by Web Push through a server of the user's (the push gateway of their Matrix server, or a push server they run), the content fetched and decrypted on the device, never carried by the push. |
 | NOTIF-004 | C | — | The user shall be told what notifications need on their system (an application installed to the home screen on some phones). |
 
-## 9zc. Passwords (VAULT) — proposal
+## 9zc. Passwords (VAULT)
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
-| VAULT-001 | C | — | A vault of passwords in the KDBX 4 format shall open as a document — entries, groups, notes, attachments — and be saved in the same format, readable by the other applications of that format. |
-| VAULT-002 | C | — | The vault shall be unlocked by its master password, a key file, or the passkey of the device where it gives a secret (LOCK-002). |
-| VAULT-003 | C | — | The vault shall give the one-time codes (TOTP) of its entries, generate passwords and passphrases, and copy a value to the clipboard, cleared after a delay. |
-| VAULT-004 | C | — | Where the user agreed, a password shall be checked against known breaches by k-anonymity (only the first characters of its hash sent). |
+| VAULT-001 | S | 0.2.0 | A vault of passwords in the KDBX 4 format shall open as a document — entries, groups, notes, attachments — and be saved in the same format, readable by the other applications of that format. |
+| VAULT-002 | S | 0.2.0 | The vault shall be unlocked by its master password and key file, or, where the user chose it, by the lock of the application (LOCK-002), the master password kept encrypted by it. |
+| VAULT-003 | S | 0.2.0 | The vault shall give the one-time codes (TOTP) of its entries, generate passwords without bias, and copy a value to the clipboard, cleared after a delay. |
+| VAULT-004 | S | 0.2.0 | Where the user agreed, a password shall be checked against known breaches by k-anonymity (only the first characters of its hash sent). |
 | VAULT-005 | C | — | The vault shall be shown in a page of its own, without plugins, code cells nor documents of others, under a strict content security policy. |
 
 ## 10. Out of scope (Won't, this time)

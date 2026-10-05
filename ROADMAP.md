@@ -336,13 +336,13 @@ any other tool. Planned, the most useful first:
   all at once; the last backup's date always visible (BACKUP-001..005);
   automatic backups while the application
   is open (BACKUP-006); next: a Git repository as a destination
-- A vault of passwords kept as a KDBX file — the open format read by the
+- ✅ A vault of passwords kept as a KDBX file — the open format read by the
   password managers of every system, which fill the passwords in other
   sites and apps — opened as a document, unlocked by the passkey of the
   device, its one-time codes (TOTP) and a generator of passwords, kept in
   the folder, on a server or synchronised peer to peer between one's own
-  devices; shown in a page of its own, without plugins nor code
-  (VAULT-001..005)
+  devices (VAULT-001..004); next: shown in a page of its own, without
+  plugins nor code (VAULT-005), passphrases generated, attachments
 - ✅ Locking the application with a passkey or a passphrase
   (LOCK-001..005): nothing of what the browser keeps shown before it is
   opened; the documents of its storage, recent files, drafts, versions,

@@ -31,6 +31,10 @@ src/
   folder/     folder panel, search, linked notes
   collab/     real-time collaboration (Yjs, WebRTC, Nostr relays)
   share/      QRShare hand-off and received-file checks
+  lock/       lock of the application: passkeys (WebAuthn PRF), keys, sealing
+  vault/      vaults of passwords: KDBX 4 (kdbxweb, Argon2 by hash-wasm), TOTP
+  datamodel/  data models: conceptual, logical, SQL
+  sqlite/     SQLite databases as documents (SQLite in the code sandbox)
 schemas/      JSON Schemas (MDZ manifest)
 e2e/          Playwright end-to-end tests
 ```

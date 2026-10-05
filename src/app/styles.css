@@ -2025,3 +2025,38 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
 .lock-passkeys li button { border: 0; background: none; cursor: pointer; }
 .lock-settings .settings-field { margin-top: 8px; }
 .lock-actions { justify-content: flex-start; }
+
+/* VAULT-001..VAULT-004: a vault of passwords. */
+.vault-view { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 8px 12px; gap: 8px; background: var(--bg); color: var(--text); }
+.vault-status:empty { display: none; }
+.vault-status { margin: 0; }
+.vault-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.vault-locked { max-width: 26em; margin: 10vh auto 0; display: flex; flex-direction: column; gap: 10px; }
+.vault-field { display: flex; flex-direction: column; gap: 4px; }
+.vault-error { color: var(--danger); margin: 0; }
+.vault-error:empty { display: none; }
+.vault-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.vault-bar h2 { margin: 0 8px 0 0; font-size: 1.15rem; }
+.vault-panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(10em, 14em) minmax(12em, 20em) 1fr; gap: 10px; }
+.vault-side, .vault-entries { min-height: 0; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.vault-entries { display: flex; flex-direction: column; }
+.vault-entries input[type='search'] { margin: 6px; }
+.vault-groups, .vault-list { list-style: none; margin: 0; padding: 4px; }
+.vault-groups li, .vault-list li { padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+.vault-list li { display: flex; flex-direction: column; }
+.vault-list li small { color: var(--muted); }
+.vault-groups li:hover, .vault-list li:hover { background: var(--sel); }
+.vault-groups li[aria-selected='true'], .vault-list li[aria-selected='true'] { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.vault-details { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.vault-row { display: grid; grid-template-columns: 9em 1fr auto auto auto; gap: 6px; align-items: center; }
+.vault-row input, .vault-row textarea { min-width: 0; font-family: inherit; }
+.vault-row input[type='password'], .vault-code, .vault-generated { font-family: var(--mono, ui-monospace, monospace); }
+.vault-label { color: var(--muted); }
+.vault-code { font-size: 1.2rem; letter-spacing: 0.06em; }
+.vault-generated { display: block; font-size: 1.1rem; padding: 10px; border: 1px dashed var(--border); border-radius: 8px; overflow-wrap: anywhere; user-select: all; }
+.vault-strength { justify-self: start; }
+@media (max-width: 860px) {
+  .vault-panes { grid-template-columns: 1fr; }
+  .vault-row { grid-template-columns: 1fr auto auto auto; }
+  .vault-label { grid-column: 1 / -1; }
+}

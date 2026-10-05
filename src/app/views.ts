@@ -180,6 +180,10 @@ export async function openView(
       const { TextView } = await import('../files/text-view');
       return new TextView(bytes, ctx, fileName);
     }
+    case 'kdbx': {
+      const { VaultView } = await import('../vault/view');
+      return new VaultView(bytes, ctx, fileName);
+    }
     case 'sqlite': {
       const { SqliteView } = await import('../sqlite/view');
       return new SqliteView(bytes, ctx, fileName);
