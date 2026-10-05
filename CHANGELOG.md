@@ -154,6 +154,12 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Data models (DB-002..DB-004): a `.mcd` file holds a conceptual model
+  written as text — entities, identifiers, associations and their
+  cardinalities — drawn as a diagram as it is typed; the logical model is
+  derived from it (primary and foreign keys), and the SQL of the tables for
+  SQLite, PostgreSQL or MySQL, saved as a `.sql` file to run. *New data
+  model…* in the command palette starts from an example.
 - Views of the notes (NOTE-003): a `.view.yaml` file of the folder shows
   notes as a table, cards or a board of columns by a property, filtered and
   sorted; a cell changed or a card moved writes the property into the note.

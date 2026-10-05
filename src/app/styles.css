@@ -1954,3 +1954,30 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
   .notes-board { flex-direction: column; }
   .notes-board-column { flex: none; width: 100%; box-sizing: border-box; }
 }
+
+/* DB-002..DB-004: a data model at its three levels. */
+.datamodel-view { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 8px 12px; gap: 8px; background: var(--bg); color: var(--text); }
+.datamodel-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.datamodel-tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.datamodel-tabs [role='tab'] { border: 0; border-radius: 0; background: none; padding: 4px 12px; color: var(--text); cursor: pointer; }
+.datamodel-tabs [role='tab'] + [role='tab'] { border-left: 1px solid var(--border); }
+.datamodel-tabs [role='tab'][aria-selected='true'] { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+.datamodel-panel { flex: 1; min-height: 0; overflow: auto; }
+.datamodel-panel[hidden] { display: none; }
+.datamodel-conceptual { display: grid; grid-template-columns: minmax(18em, 2fr) 3fr; gap: 12px; }
+.datamodel-edit { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.datamodel-edit .hint { margin: 0; }
+.datamodel-source { flex: 1; min-height: 16em; font-family: var(--mono, ui-monospace, monospace); font-size: 0.9rem; line-height: 1.45; tab-size: 2; resize: vertical; box-sizing: border-box; width: 100%; }
+.datamodel-errors { margin: 0; padding-left: 1.2em; color: var(--danger); }
+.datamodel-errors:empty { display: none; }
+.datamodel-errors .link { border: 0; background: none; padding: 0; color: inherit; cursor: pointer; text-align: left; text-decoration: underline; font: inherit; }
+.datamodel-diagram-box { overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); min-height: 12em; }
+.datamodel-diagram { display: block; max-width: none; }
+.datamodel-relation { font-family: var(--mono, ui-monospace, monospace); margin: 4px 0; }
+.datamodel-fk { color: var(--accent); }
+.datamodel-sql-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.datamodel-sql-bar label { display: inline-flex; gap: 6px; align-items: center; }
+.datamodel-sql { margin: 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow: auto; font-size: 0.88rem; }
+@media (max-width: 760px) {
+  .datamodel-conceptual { grid-template-columns: 1fr; }
+}

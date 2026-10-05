@@ -225,13 +225,13 @@ any other tool. Planned, the most useful first:
 - A SQLite file (`.sqlite`, `.db`) opened as a document: its tables, their
   rows changed in a grid as in the spreadsheet, its queries kept in it
 - Forms to enter rows, reports made from a document template
-- Data modelling as taught, with three levels kept in step:
-  - the conceptual model (entities, associations, their cardinalities
-    `0,n` / `1,1`…, identifiers), drawn on a canvas and kept as text;
-  - the logical model derived from it (relations, primary and foreign keys,
-    associations made tables), shown as `Order (#id, date, @customer)`;
-  - the physical model: the SQL that makes the tables for SQLite,
-    PostgreSQL or MySQL, applied at once to a SQLite file, or exported
+- ~~Data modelling as taught, with three levels kept in step: the
+  conceptual model written as text beside its diagram, the logical model
+  derived from it, the SQL of the tables for SQLite, PostgreSQL or MySQL~~
+  (DB-002..DB-004, done)
+- Data modelling, next: entities placed by hand on the diagram, weak
+  entities (relative identification), inheritance, the SQL applied at once
+  to a SQLite file
 - The reverse: the logical and conceptual models read back from an existing
   SQLite file
 - Exercises of modelling with their solution (Teaching)

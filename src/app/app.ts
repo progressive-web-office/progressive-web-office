@@ -1585,6 +1585,22 @@ export class App {
     this.setDocument({ name: t('cal.title'), format: 'text', kind: 'file', view });
   }
 
+  /** DB-002: a new data model (an example to start from), in the folder open (else the browser's storage). */
+  async newDataModel(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    if (!this.folder) await this.openBrowserStorage();
+    const folder = this.folder;
+    if (!folder) return;
+    const name = window.prompt(t('dm.newName'), t('dm.format'))?.trim().replace(/[\\/:*?"<>|]/g, '-');
+    if (!name) return;
+    const [{ EXAMPLE_MODEL }, { readText }] = await Promise.all([import('../datamodel/model'), import('../fs')]);
+    let path = `${name}.mcd`;
+    for (let i = 2; await readText(folder.provider, path).then(() => true, () => false); i++) path = `${name} ${i}.mcd`;
+    await folder.provider.write(path, new Blob([EXAMPLE_MODEL]));
+    await folder.refresh();
+    await this.openFromFolder(path);
+  }
+
   /** NOTE-003: a new view of the notes of the folder open (else of the browser's storage), opened at once. */
   async newNotesView(): Promise<void> {
     if (!this.confirmDiscard()) return;
@@ -2828,6 +2844,7 @@ export class App {
         { label: t('people.title'), where: t('daily.notes'), keywords: 'contacts people address book persons contacts personnes carnet d’adresses 联系人 通讯录', run: () => void setTimeout(() => void this.openContactsApp()) },
         { label: t('cal.title'), where: t('daily.notes'), keywords: 'calendar events agenda month week journal calendrier événements agenda mois semaine 日历 事件', run: () => void setTimeout(() => void this.openCalendarApp()) },
         { label: t('daily.todayNote'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien aujourd’hui 日历 每日 今天', run: () => void setTimeout(() => void this.openCalendar(true)) },
+        { label: t('dm.new'), where: t('dm.format'), keywords: 'data model database mcd mld mpd merise entity association sql schema modèle de données base entité 数据模型 实体', run: () => void setTimeout(() => void this.newDataModel()) },
         { label: t('views.new'), where: t('daily.notes'), keywords: 'view table cards board kanban query database base vue tableau cartes requête base de données 视图 表格 看板', run: () => void setTimeout(() => void this.newNotesView()) },
         { label: t('goto.title'), where: t('folder.browserStorage'), keys: ['Ctrl+Shift+O'], keywords: 'go to file open quick aller ouvrir fichier rapide 转到 打开 文件', run: () => void setTimeout(() => void this.goToFile()) },
       ].filter((c) => !labels.has(c.label));

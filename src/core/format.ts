@@ -41,7 +41,7 @@ export function formatLabel(format: DocumentFormat): string {
 
 
 /** File extensions accepted by the open dialog. */
-export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.textpack', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ora'];
+export const ACCEPTED_EXTENSIONS = ['.docx', '.odt', '.md', '.markdown', '.mdz', '.textpack', '.tex', '.jl', '.zip', '.xlsx', '.ods', '.csv', '.tsv', '.pptx', '.odp', '.pdf', '.ott', '.ots', '.otp', '.dotx', '.xltx', '.potx', '.txt', '.c', '.h', '.cpp', '.hpp', '.py', '.java', '.js', '.ts', '.json', '.html', '.css', '.mcd', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ora'];
 
 export function formatKind(format: DocumentFormat): DocumentKind {
   switch (format) {
@@ -117,7 +117,7 @@ export function detectFormat(name: string, bytes: Uint8Array): DocumentFormat | 
 
 /** Text and source files (FILE-022), by extension. */
 const TEXT_EXTENSIONS = new Set(
-  ('txt text log nfo c h cpp cc cxx c++ hpp hh hxx ino py pyw pyi ipynb java kt kts scala groovy gradle js mjs cjs ts mts cts tsx jsx vue svelte ' +
+  ('txt text log nfo mcd c h cpp cc cxx c++ hpp hh hxx ino py pyw pyi ipynb java kt kts scala groovy gradle js mjs cjs ts mts cts tsx jsx vue svelte ' +
     'json jsonc json5 geojson xml xsd xsl xslt html htm xhtml css scss sass less sh bash zsh fish ps1 psm1 bat cmd r rmd qmd m mat jl rs go rb php pl pm lua ' +
     'swift dart hs lhs ml mli fs fsi fsx cs vb sql yaml yml toml ini cfg conf properties env bib bbl sty cls bst dtx ins asm s v sv vhd vhdl ' +
     'f f77 f90 f95 f03 for pas pp adb ads lisp lsp scm ss rkt clj cljs el erl hrl ex exs elm nim zig cmake mk mak diff patch srt vtt rst adoc asciidoc org ' +

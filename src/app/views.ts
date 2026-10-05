@@ -167,6 +167,11 @@ export async function openView(
       return createPdfViewer(bytes, ctx);
     }
     case 'text': {
+      // DB-002: a data model, at its three levels.
+      if (/\.mcd$/i.test(fileName)) {
+        const { DataModelView } = await import('../datamodel/view');
+        return new DataModelView(bytes, ctx, fileName);
+      }
       // NOTE-003: a view of the notes of the folder.
       if (/\.view\.ya?ml$/i.test(fileName)) {
         const { NotesView } = await import('../folder/notes-view');

@@ -657,14 +657,14 @@ integration is ever needed.
 | NOTE-002 | S | 0.2.0 | The notes of the open folder shall be queried in SQL, from a SQL cell of a document of the folder or a `.sql` file of it, as the tables `notes` (path, name, folder, size, modified), `props` (path, key, pos, value — one row per item of a list), `tags`, `links` (resolved to the notes they point to) and `tasks` (path, line, text, done), with the function `prop(path, key)`; the tables shall be made from the index of the notes for each query naming them, as temporary tables, the notes staying the only source. |
 | NOTE-003 | S | 0.2.0 | The user shall make views of the notes of the folder, kept as `.view.yaml` files of the folder — a folder, filters comparing properties (`=`, `!=`, `<`, `<=`, `>`, `>=`, `contains`, `has`, tags, `today`), columns, sort, layout — shown as a table, cards or a board of columns by the value of a property; a cell changed, or a card moved to another column, shall write the property into the note, its other lines unchanged; a note made from the view shall take the values its filters ask for; the format shall be published as a JSON Schema. |
 
-## 9y. Databases (DB) — proposal
+## 9y. Databases (DB)
 
 | ID | Pri | Phase | Requirement |
 |----|-----|-------|-------------|
 | DB-001 | C | — | A SQLite file shall open as a document: its tables listed, their rows shown and changed in a grid, its queries run and kept. |
-| DB-002 | C | — | The user shall draw a conceptual data model — entities with their attributes and identifier, associations with their cardinalities — kept as text in the folder. |
-| DB-003 | C | — | The logical model shall be derived from the conceptual one (relations, primary and foreign keys, associations made tables) and shown in the usual notation. |
-| DB-004 | C | — | The physical model shall be the SQL making the tables (SQLite, PostgreSQL, MySQL), applied to a SQLite file or exported. |
+| DB-002 | S | 0.2.0 | The user shall write a conceptual data model — entities with their attributes, types and identifier, associations with the cardinalities of their entities, roles and attributes — as text kept in a `.mcd` file, its diagram drawn as it is typed and exported as SVG, its mistakes told by line. |
+| DB-003 | S | 0.2.0 | The logical model shall be derived from the conceptual one by the usual rules — an entity a relation keyed by its identifier, a binary association with a side x,1 a foreign key of that side (not null for 1,1, unique for one to one), any other association a relation keyed by the keys of its entities — and shown in the usual notation. |
+| DB-004 | S | 0.2.0 | The physical model shall be the SQL making the tables for SQLite, PostgreSQL or MySQL — types, primary, foreign and unique keys, tables in the order of their references — copied or saved as a `.sql` file of the folder. |
 | DB-005 | C | — | The logical and conceptual models shall be read back from an existing SQLite file. |
 
 ## 9w. Digital signage (SIGN)
