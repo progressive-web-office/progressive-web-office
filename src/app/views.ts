@@ -104,6 +104,8 @@ export interface ViewContext {
   folderSnippets?(): Promise<import('../document/snippets').Snippet[]>;
   /** DOC-036: a folder is open and can be written. */
   folderWritable?(): boolean;
+  /** NOTE-003: the notes of the open folder, for a view of notes of the folder. */
+  noteStore?(): import('../folder/notes-view').NoteStore | undefined;
   /** NOTE-002: the notes of the open folder as tables of SQL, for the SQL code of a file of the folder. */
   noteTables?(): Promise<import('../code/note-tables').NoteTables> | undefined;
   /** CODE-019: the files of the open folder and the path of this file in it, to run it with its project. */
@@ -165,6 +167,11 @@ export async function openView(
       return createPdfViewer(bytes, ctx);
     }
     case 'text': {
+      // NOTE-003: a view of the notes of the folder.
+      if (/\.view\.ya?ml$/i.test(fileName)) {
+        const { NotesView } = await import('../folder/notes-view');
+        return new NotesView(bytes, ctx, fileName);
+      }
       const { TextView } = await import('../files/text-view');
       return new TextView(bytes, ctx, fileName);
     }

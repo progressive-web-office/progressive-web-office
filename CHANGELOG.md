@@ -154,6 +154,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- Views of the notes (NOTE-003): a `.view.yaml` file of the folder shows
+  notes as a table, cards or a board of columns by a property, filtered and
+  sorted; a cell changed or a card moved writes the property into the note.
+  *New view of notes…* in the command palette makes one; its format is a
+  JSON Schema (`notes-view-1.schema.json`).
 - *Home* in the command palette goes back to the start screen (UI-024).
 - The notes of the folder queried in SQL (NOTE-002): from a SQL cell of a
   note or a `.sql` file of the folder, the tables `notes`, `props`, `tags`,

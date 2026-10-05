@@ -141,14 +141,20 @@ export class NoteIndex {
     return task;
   }
 
-  /** Read one note again (it was just saved here). */
+  /** Read one note again (it was just saved here, or made: NOTE-003). */
   refresh(path: string): Promise<void> {
     const task = this.running.then(async () => {
-      if (!this.entries.has(path)) return;
       const text = await this.read(path).catch(() => undefined);
       if (text === undefined) return;
+      const known = this.entries.has(path);
       // Without its size and date: the next update reads it once more, with them.
       this.entries.set(path, noteEntry(path, text));
+      if (!known) {
+        // Kept in path order.
+        const sorted = [...this.entries].sort(([a], [b]) => a.localeCompare(b));
+        this.entries.clear();
+        for (const [k, v] of sorted) this.entries.set(k, v);
+      }
       this.reindexNames();
     });
     this.running = task.catch(() => undefined);

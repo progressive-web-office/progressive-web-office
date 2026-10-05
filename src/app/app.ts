@@ -1130,6 +1130,30 @@ export class App {
       },
       tagColour: (tag) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.tagColour(tag) : null),
       completions: (kind) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.completions(kind, this.current?.folderPath) : undefined),
+      noteStore: () => {
+        const folder = this.folder;
+        const path = this.current?.folderPath;
+        if (!folder || path === undefined) return undefined;
+        return {
+          path,
+          tables: () => folder.vault.indexed().then((index) => index.tables()),
+          read: async (p) => (await import('../fs')).readText(folder.provider, p),
+          write: async (p, text) => {
+            const { dirname } = await import('../fs');
+            for (let d = dirname(p), dirs: string[] = []; ; d = dirname(d)) {
+              if (!d) {
+                for (const x of dirs.reverse()) await folder.provider.mkdir(x).catch(() => undefined);
+                break;
+              }
+              dirs.push(d);
+            }
+            await folder.provider.write(p, new Blob([text]));
+            await folder.vault.changed(p).catch(() => undefined);
+            void folder.refresh();
+          },
+          open: (p) => void this.openFromFolder(p),
+        };
+      },
       noteTables: () => (this.folder && this.current?.folderPath !== undefined ? this.folder.vault.indexed().then((index) => index.tables()) : undefined),
       folderProject: () => {
         const folder = this.folder;
@@ -1559,6 +1583,22 @@ export class App {
     });
     folder.setCurrent(undefined);
     this.setDocument({ name: t('cal.title'), format: 'text', kind: 'file', view });
+  }
+
+  /** NOTE-003: a new view of the notes of the folder open (else of the browser's storage), opened at once. */
+  async newNotesView(): Promise<void> {
+    if (!this.confirmDiscard()) return;
+    if (!this.folder) await this.openBrowserStorage();
+    const folder = this.folder;
+    if (!folder) return;
+    const name = window.prompt(t('views.newViewName'), t('views.format'))?.trim().replace(/[\\/:*?"<>|]/g, '-');
+    if (!name) return;
+    const [{ writeViewSpec, DEFAULT_VIEW }, { readText }] = await Promise.all([import('../folder/note-views'), import('../fs')]);
+    let path = `${name}.view.yaml`;
+    for (let i = 2; await readText(folder.provider, path).then(() => true, () => false); i++) path = `${name} ${i}.view.yaml`;
+    await folder.provider.write(path, new Blob([writeViewSpec({ ...DEFAULT_VIEW, title: name, columns: ['name', 'tags', 'modified'], sort: ['-modified'] })]));
+    await folder.refresh();
+    await this.openFromFolder(path);
   }
 
   /** CONTACT-002: the contacts of the folder open (else of the browser's storage), in place of the document. */
@@ -2788,6 +2828,7 @@ export class App {
         { label: t('people.title'), where: t('daily.notes'), keywords: 'contacts people address book persons contacts personnes carnet d’adresses 联系人 通讯录', run: () => void setTimeout(() => void this.openContactsApp()) },
         { label: t('cal.title'), where: t('daily.notes'), keywords: 'calendar events agenda month week journal calendrier événements agenda mois semaine 日历 事件', run: () => void setTimeout(() => void this.openCalendarApp()) },
         { label: t('daily.todayNote'), where: t('daily.notes'), keywords: 'calendar journal daily notes day today calendrier note du jour quotidien aujourd’hui 日历 每日 今天', run: () => void setTimeout(() => void this.openCalendar(true)) },
+        { label: t('views.new'), where: t('daily.notes'), keywords: 'view table cards board kanban query database base vue tableau cartes requête base de données 视图 表格 看板', run: () => void setTimeout(() => void this.newNotesView()) },
         { label: t('goto.title'), where: t('folder.browserStorage'), keys: ['Ctrl+Shift+O'], keywords: 'go to file open quick aller ouvrir fichier rapide 转到 打开 文件', run: () => void setTimeout(() => void this.goToFile()) },
       ].filter((c) => !labels.has(c.label));
       // TEACH-005: the exam mode, from the palette too.

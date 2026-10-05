@@ -162,9 +162,11 @@ any other tool. Planned, the most useful first:
 - Search operators: `tag:`, `path:`, `file:`, `line:`, `section:`,
   `task:`, `[status:done]`, `OR`, `-`, `/regex/`; a live search written in a
   note
-- Views of notes kept as a file (YAML) — a table whose cells change the
-  properties, cards, a list, a board by status, a calendar by date —
-  filtered, sorted and grouped, with formulas computed without running code
+- ~~Views of notes kept as a file (YAML) — a table whose cells change the
+  properties, cards, a board by status — filtered and sorted~~ (NOTE-003,
+  done)
+- Views: a list, a calendar by date, groups in the table, totals, formulas
+  computed without running code, a view shown inside a note
 - Properties linking notes to each other, and totals over them
 
 **Daily notes and calendar**

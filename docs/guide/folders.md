@@ -206,6 +206,53 @@ to a tag gives it a colour (red, orange, yellow, green, teal, blue, purple,
 grey), used in the list and in the notes; colours are kept in this browser,
 for each folder.
 
+### Views of notes: table, cards, board
+
+A **view** shows notes of the folder side by side (NOTE-003): the projects
+with their status and due date, the people of an organisation, the books
+read. *New view of notes…* in the command palette makes one; it is a file
+of the folder, `Projects.view.yaml`, opened like a document:
+
+- **Table**: one note per row, its properties as columns. Click a column's
+  name to sort by it (again for the largest first); double-click a cell — or
+  <kbd>Enter</kbd> on it — to change the property **in the note itself**.
+- **Cards**: one card per note.
+- **Board**: one column per value of a property (*Columns by*: `status`…).
+  Drag a card to another column, or choose its column in the list of the
+  card: the note's property follows. **＋ New note** in a column makes a note
+  in that column.
+- **Properties shown…** chooses the columns; **Edit the view** shows the
+  file, to write its filters.
+
+```yaml
+title: Projects
+from: Projects
+where:
+  - type = Project
+  - status != archived
+  - due <= 2026-12-31
+columns: [name, status, due, lead, tasks]
+sort: [due]
+layout: board
+group: status
+groups: [todo, doing, done]
+```
+
+- `from`: the folder of the notes, and where notes made from the view go.
+- `where`, one filter per line, all holding: `key = value`, `!=`, `<`,
+  `<=`, `>`, `>=`, `key contains text`, `has key`, `!has key`, `#tag`,
+  `!#tag`; `today` is today's date, and `[[links]]` compare by the name of
+  the note (`lead = Ada Lovelace`). Filters are comparisons, never code.
+- `columns`: the properties, and `name`, `path`, `folder`, `modified`,
+  `tags`, `tasks` (done / total).
+- `sort`: `-` first for the largest first; notes without the value last.
+- `groups`: the columns of the board, in this order, even when empty.
+
+A note made from the view takes what its `=` filters ask for (`type:
+Project`), and the column it was made in. The view keeps only how to show
+the notes: they stay the only source. The format is described by a
+[JSON Schema](https://progressive-web-office.github.io/schemas/notes-view-1.schema.json).
+
 ### Querying the notes in SQL
 
 The notes of the folder can be questioned in SQL (NOTE-002), from a

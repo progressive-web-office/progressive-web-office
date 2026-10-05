@@ -56,6 +56,8 @@ export function withValues(text: string, set: [string, Value][], body?: string):
   }
   const { meta, extra } = writeProperties(props);
   const head = writeFrontMatter(meta, extra).replace(/\n\n$/, '\n');
+  // A note that had a front matter keeps its text as it was, blank lines included.
+  if (body === undefined && f.body !== text) return `${head}${f.body}`;
   const rest = (body ?? f.body).replace(/^\n+/, '');
   return `${head}\n${rest}`;
 }

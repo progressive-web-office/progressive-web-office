@@ -1905,3 +1905,52 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
 .contact-timeline .folder-snippet { margin: 0; }
 .contact-facts { margin-top: -4px; }
 @media (max-width: 700px) { .contact-timeline li { grid-template-columns: 1.5em 1fr; } .contact-when { grid-column: 1 / -1; } }
+
+/* NOTE-003: views of the notes — table, cards, board. */
+.notes-view { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 8px 12px; gap: 8px; background: var(--bg); color: var(--text); }
+.notes-view-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.notes-view-bar h2 { margin: 0 8px 0 0; font-size: 1.15rem; }
+.notes-view-layouts { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.notes-view-layouts button { border: 0; border-radius: 0; }
+.notes-view-layouts button + button { border-left: 1px solid var(--border); }
+.notes-view-layouts button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.notes-view-group { display: inline-flex; gap: 4px; align-items: center; color: var(--muted); font-size: 0.9em; }
+.notes-view-info:empty { display: none; }
+.notes-view-info { margin: 0; }
+.notes-view-info.error { color: var(--danger); }
+.notes-view-source { display: flex; flex-direction: column; gap: 6px; }
+.notes-view-source textarea { font-family: var(--mono, monospace); width: 100%; box-sizing: border-box; }
+.notes-view-body { flex: 1; min-height: 0; overflow: auto; }
+.notes-view-scroll { overflow: auto; }
+.notes-table { border-collapse: collapse; min-width: 100%; background: var(--surface); }
+.notes-table th, .notes-table td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; vertical-align: top; }
+.notes-table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; padding: 0; }
+.notes-table thead button { width: 100%; text-align: left; border: 0; background: none; padding: 4px 8px; font-weight: 600; cursor: pointer; }
+.notes-table tbody th { font-weight: 500; }
+.notes-table td.editable { cursor: text; }
+.notes-table td.editable:hover, .notes-table td.editable:focus { outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent); outline-offset: -2px; }
+.notes-view-cell-edit input { width: 100%; box-sizing: border-box; }
+.notes-view .link { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; font: inherit; }
+.notes-view-unresolved { color: var(--muted); }
+.notes-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(14em, 1fr)); gap: 10px; }
+.notes-card { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.notes-card h3 { margin: 0; font-size: 1rem; }
+.notes-card dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; font-size: 0.9em; }
+.notes-card dt { color: var(--muted); }
+.notes-card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.notes-card.dragging { opacity: 0.5; }
+.notes-board { display: flex; gap: 10px; align-items: flex-start; min-height: 100%; }
+.notes-board-column { flex: 0 0 16em; display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 8px; background: color-mix(in srgb, var(--border) 35%, transparent); max-height: 100%; }
+.notes-board-column.drop { outline: 2px dashed var(--accent); }
+.notes-board-column h3 { margin: 0; display: flex; justify-content: space-between; font-size: 0.95rem; }
+.notes-board-count { color: var(--muted); font-weight: 400; }
+.notes-board-cards { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 2em; }
+.notes-board-cards .notes-card { cursor: grab; }
+.notes-board-move { font-size: 0.8em; align-self: flex-start; }
+.notes-board-add { align-self: flex-start; }
+.notes-view-columns { display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; }
+.notes-view-column { display: flex; gap: 6px; align-items: center; }
+@media (max-width: 640px) {
+  .notes-board { flex-direction: column; }
+  .notes-board-column { flex: none; width: 100%; box-sizing: border-box; }
+}

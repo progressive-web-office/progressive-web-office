@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://progressive-web-office.github.io/schemas/notes-view-1.schema.json",
+  "title": "View of notes, version 1",
+  "description": "A view of the Markdown notes of a folder (NOTE-003), kept as a `.view.yaml` file of the folder: which notes, which properties as columns, their order, and how they are shown. Filters are comparisons, never code.",
+  "type": "object",
+  "properties": {
+    "title": { "type": "string", "description": "The name shown; the file name without `.view.yaml` when absent." },
+    "from": { "type": "string", "description": "The folder of the notes, relative to the folder open, and where notes made from the view go; every note when absent." },
+    "where": {
+      "type": "array",
+      "description": "Filters, all of them holding: `key = value`, `!=`, `<`, `<=`, `>`, `>=`, `key contains text`, `key !contains text`, `has key`, `!has key`, `#tag`, `!#tag`. `today` is the day of today; links compare by the name of the note.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "columns": {
+      "type": "array",
+      "description": "Properties shown, in order; also `name`, `path`, `folder`, `modified`, `tags` and `tasks` (done/total).",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "sort": {
+      "type": "array",
+      "description": "Columns to sort by, the first first; `-` before a column for the largest first. Notes without the value go last.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "layout": { "enum": ["table", "cards", "board"], "description": "How the notes are shown." },
+    "group": { "type": "string", "description": "The property whose values make the columns of a board." },
+    "groups": {
+      "type": "array",
+      "description": "The columns of the board, in this order, shown even when empty; the other values follow.",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}
