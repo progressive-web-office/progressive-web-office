@@ -154,6 +154,7 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- *Home* in the command palette goes back to the start screen (UI-024).
 - The notes of the folder queried in SQL (NOTE-002): from a SQL cell of a
   note or a `.sql` file of the folder, the tables `notes`, `props`, `tags`,
   `links` and `tasks`, and `prop(path, key)` — the people of an

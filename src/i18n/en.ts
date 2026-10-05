@@ -2226,6 +2226,8 @@ export const en = {
   'palette.other': 'Other',
   'palette.categorySep': ': ',
   'palette.button': 'Commands (Ctrl+Shift+P)',
+  'home.title': 'Home',
+  'home.where': 'Start screen',
   'goto.title': 'Go to file…',
   'goto.placeholder': 'Type part of the name or the folder of a document…',
   'goto.none': 'No document by that name.',

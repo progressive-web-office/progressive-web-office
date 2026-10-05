@@ -2228,6 +2228,8 @@ export const fr: Record<MessageKey, string> = {
   'palette.other': 'Autres',
   'palette.categorySep': ' : ',
   'palette.button': 'Commandes (Ctrl+Maj+P)',
+  'home.title': 'Accueil',
+  'home.where': 'Écran d’accueil',
   'goto.title': 'Aller au fichier…',
   'goto.placeholder': "Tapez une partie du nom ou du dossier d'un document…",
   'goto.none': 'Aucun document de ce nom.',

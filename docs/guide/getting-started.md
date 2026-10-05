@@ -198,6 +198,9 @@ Review…), the *Save as* formats, and what the document's context menu offers
   *insert image*, *share*, *docx*, *solution*… Each is shown as
   **Category: Action** — *Share: Sync by QR*, *Insert: Table*.
 
+While a document is open, *Home* goes back to the start screen (the
+document is closed, after asking if it has changes).
+
 <kbd>↑</kbd> <kbd>↓</kbd> choose one, <kbd>Enter</kbd> runs it,
 <kbd>Esc</kbd> closes the palette; on a phone it takes the whole screen. The
 keyboard shortcut of a command, when it has one, is shown beside it: next

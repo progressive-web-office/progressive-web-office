@@ -2778,6 +2778,8 @@ export class App {
       // DEVSYNC-006: one's own devices, without going through their window.
       const where = t('devsync.title');
       const keywords = 'sync synchronise devices appareils synchroniser téléphone phone qr scan invitation 同步 设备 扫描';
+      // UI-024: back to the start screen, the document closed (asked first when it has changes).
+      const home = this.current ? [{ label: t('home.title'), where: t('home.where'), keywords: 'home start welcome close accueil démarrage début fermer 主页 首页 开始', run: () => this.close() }] : [];
       const devices = inExam() ? [] : [
         { label: t('devsync.cmdNow'), where, keywords, run: () => void this.syncDevicesNow() },
         { label: t('devsync.cmdInvite'), where, keywords, run: () => void this.openDeviceSync({ invite: true }) },
@@ -2793,7 +2795,7 @@ export class App {
         const { chooseStartExam } = await import('../exam/ui');
         if (await chooseStartExam(this.root)) location.reload();
       } }];
-      await openPalette(this.root, [...extra, ...shown, ...devices, ...exam]);
+      await openPalette(this.root, [...home, ...extra, ...shown, ...devices, ...exam]);
     } finally {
       this.paletteOpen = false;
     }

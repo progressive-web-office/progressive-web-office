@@ -369,6 +369,7 @@ keyboard. Equations are stored as LaTeX in the document model.
 | UI-021 | S | 0.1.0 | When the user right-clicks in a document, long-presses it on a touch screen or uses the Actions button, the system shall show a menu of the actions available there (clipboard, link, table rows and columns, code cell, insertions including a table of a chosen size), as a sheet at the bottom of the screen on a phone. |
 | UI-022 | S | 0.1.0 | The command palette shall list every action of the screen, including those folded in menus and those of the context menu, each with its category; with nothing typed it shall list them all by category; it shall be opened from a labelled button in the header, and on a phone from a floating button, full screen, kept above the on-screen keyboard. |
 | UI-023 | S | 0.2.0 | The system shall let the user choose the paper of text documents on screen — as the theme of the application, light, or dark (light text on dark paper) — from the View menu, the command palette and the settings; on dark paper the colours of the text shall stay recognisable and pictures keep their own colours; printing, PDF export and saved files shall keep the document's colours. |
+| UI-024 | S | 0.2.0 | The command palette shall offer to go back to the start screen (Home) while a document is open, the document closed as by Close, the user asked first when it has changes. |
 
 ## 9. Quality (QA)
 

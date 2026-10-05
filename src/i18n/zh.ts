@@ -2228,6 +2228,8 @@ export const zh: Record<MessageKey, string> = {
   'palette.other': '其他',
   'palette.categorySep': '：',
   'palette.button': '命令 (Ctrl+Shift+P)',
+  'home.title': '主页',
+  'home.where': '开始屏幕',
   'goto.title': '转到文件…',
   'goto.placeholder': '输入文档名称或文件夹的一部分…',
   'goto.none': '没有该名称的文档。',
