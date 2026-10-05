@@ -21,7 +21,8 @@ async function setup() {
       return out;
     },
     appendToDaily: async (date, line) => {
-      const path = `Daily notes/${date.toISOString().slice(0, 10)}.md`;
+      const p = (n: number) => String(n).padStart(2, '0');
+      const path = `Daily notes/${date.getFullYear()}/${p(date.getMonth() + 1)}/${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}.md`;
       const text = (await readText(provider, path).catch(() => '# Day\n')) + `${line}\n`;
       await provider.write(path, new Blob([text]));
       daily.set(path, text);
@@ -48,11 +49,11 @@ describe('CONTACT-007 CAL-007 tools of agents', () => {
 
   it('tells interactions read in the e-mail, into the daily notes, and gives them back', async () => {
     const { provider, run } = await setup();
-    expect(await run('log_interaction', { name: 'ada@example.org', kind: 'email', summary: 'Sent the notes on the engine.', when: '2026-10-02T09:15' })).toBe('Written in Daily notes/2026-10-02.md, linked to People/Ada Lovelace.md.');
+    expect(await run('log_interaction', { name: 'ada@example.org', kind: 'email', summary: 'Sent the notes on the engine.', when: '2026-10-02T09:15' })).toBe('Written in Daily notes/2026/10/2026-10-02.md, linked to People/Ada Lovelace.md.');
     await run('log_interaction', { name: 'Ada Lovelace', kind: 'call', summary: 'Agreed on the review.', when: '2026-10-04T14:05' });
     // An unknown sender: a contact is made of the address.
-    expect(await run('log_interaction', { name: 'charles@example.org', kind: 'email', summary: 'Asked for a meeting.', when: '2026-10-03T08:00' })).toBe('Written in Daily notes/2026-10-03.md, linked to People/charles@example.org.md.');
-    expect(await readText(provider, 'Daily notes/2026-10-04.md')).toBe('# Day\n- 14:05 📞 Call — [[Ada Lovelace]]: Agreed on the review.\n');
+    expect(await run('log_interaction', { name: 'charles@example.org', kind: 'email', summary: 'Asked for a meeting.', when: '2026-10-03T08:00' })).toBe('Written in Daily notes/2026/10/2026-10-03.md, linked to People/charles@example.org.md.');
+    expect(await readText(provider, 'Daily notes/2026/10/2026-10-04.md')).toBe('# Day\n- 14:05 📞 Call — [[Ada Lovelace]]: Agreed on the review.\n');
     const ada = JSON.parse(await run('get_contact', { name: 'Ada Lovelace' })) as Record<string, unknown>;
     expect(ada).toMatchObject({ name: 'Ada Lovelace', emails: ['ada@example.org'], first_met: '2026-10-02', last_contact: '2026-10-04' });
     expect((ada.interactions as { when: string }[]).map((i) => i.when)).toEqual(['2026-10-04T14:05', '2026-10-02T09:15']);
@@ -74,7 +75,7 @@ describe('CONTACT-007 CAL-007 tools of agents', () => {
 
   it('creates and lists events', async () => {
     const { run } = await setup();
-    expect(await run('create_event', { title: 'Engine review', start: '2026-10-06T14:00', end: '2026-10-06T15:00', attendees: ['Ada Lovelace', 'charles@example.org'] })).toBe('Created Events/2026-10-06 Engine review.md.');
+    expect(await run('create_event', { title: 'Engine review', start: '2026-10-06T14:00', end: '2026-10-06T15:00', attendees: ['Ada Lovelace', 'charles@example.org'] })).toBe('Created Events/2026/10/06/2026-10-06 Engine review.md.');
     await run('create_event', { title: 'Holiday', start: '2026-10-12', end: '2026-10-13' });
     const events = JSON.parse(await run('list_events', { from: '2026-10-01', to: '2026-11-01' })) as Record<string, unknown>[];
     expect(events.map((e) => [e.title, e.start, e.attendees])).toEqual([

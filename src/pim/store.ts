@@ -4,7 +4,7 @@
  * read, written and removed.
  */
 import { readText, walk, type StorageProvider } from '../fs';
-import { contactNote, contactOfNote, contactPath, eventNote, eventOfNote, eventPath, isPersonNote, type Remote } from './notes';
+import { contactNote, contactOfNote, contactPath, eventFolder, eventNote, eventOfNote, eventPath, isPersonNote, type Remote } from './notes';
 import type { CalEvent } from './ical';
 import type { Contact } from './vcard';
 
@@ -41,6 +41,8 @@ export interface Stored<T> {
   path: string;
   text: string;
   item: T;
+  /** Where the note was before it moved to the folder of its new day. */
+  movedFrom?: string;
 }
 
 const baseName = (path: string): string => path.slice(path.lastIndexOf('/') + 1).replace(/\.(md|markdown)$/i, '');
@@ -93,7 +95,17 @@ export async function saveEvent(provider: StorageProvider, event: StoredEvent, a
   const item = { ...event, uid };
   let text = eventNote(item, at?.text ?? '', isNote);
   if (body !== undefined && at) text = text.slice(0, text.indexOf('\n---\n') + 5) + (body.trim() ? `\n${body.trim()}\n` : '');
-  const path = at?.path ?? (await freePath(provider, eventPath(loadPimSettings().events, item)));
+  const folder = loadPimSettings().events;
+  let path = at?.path ?? (await freePath(provider, eventPath(folder, item)));
+  // Moved to another day: its note goes to the folder of that day, under the same name (its links still find it).
+  const day = eventFolder(folder, item.start);
+  const inEvents = !folder || path.startsWith(`${folder}/`);
+  if (at && inEvents && path.slice(0, path.lastIndexOf('/')) !== day) {
+    path = await freePath(provider, `${day}/${path.slice(path.lastIndexOf('/') + 1)}`);
+    await provider.write(path, new Blob([text]));
+    await provider.remove(at.path);
+    return { path, text, item, movedFrom: at.path };
+  }
   await provider.write(path, new Blob([text]));
   return { path, text, item };
 }

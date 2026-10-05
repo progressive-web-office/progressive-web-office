@@ -199,6 +199,13 @@ export function contactNote(c: Contact & { remote?: Remote }, text = '', isNote:
 /** A file name from a title: what file systems refuse taken out. */
 export const safeName = (title: string): string => title.replace(/[\\/:*?"<>|#^[\]]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Untitled';
 
-/** The path of a new event's note: `Events/2026-10-05 Kick-off.md`. */
-export const eventPath = (folder: string, e: Pick<CalEvent, 'start' | 'title'>): string => `${folder ? `${folder}/` : ''}${e.start.slice(0, 10)} ${safeName(e.title)}.md`;
+/** The folder of the events of a day: `Events/2026/10/05`. */
+export const eventFolder = (folder: string, start: string): string => `${folder ? `${folder}/` : ''}${start.slice(0, 4)}/${start.slice(5, 7)}/${start.slice(8, 10)}`;
+
+/**
+ * The path of a new event's note, in the folder of its day:
+ * `Events/2026/10/05/2026-10-05 Kick-off.md` — the day kept in its name, so
+ * that events of the same title on other days have other names to link.
+ */
+export const eventPath = (folder: string, e: Pick<CalEvent, 'start' | 'title'>): string => `${eventFolder(folder, e.start)}/${e.start.slice(0, 10)} ${safeName(e.title)}.md`;
 export const contactPath = (folder: string, c: Pick<Contact, 'name'>): string => `${folder ? `${folder}/` : ''}${safeName(c.name)}.md`;

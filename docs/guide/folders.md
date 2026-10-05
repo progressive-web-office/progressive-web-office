@@ -170,10 +170,11 @@ browser as the folder, then the calendar or today's note.
 
 ::: v-pre
 
-- **Name** — the format of the date, `YYYY-MM-DD` by default: `YYYY` year,
-  `MM` month, `DD` day, `ddd`/`dddd` weekday, `MMMM` month name, `ww` week,
-  `[text]` written as it is. A `/` makes folders: `YYYY/MM/YYYY-MM-DD` files
-  the notes by year and month.
+- **Name** — the format of the date, `YYYY/MM/YYYY-MM-DD` by default: a
+  folder per year and per month (`Daily notes/2026/10/2026-10-05.md`), the
+  note named after its day. `YYYY` year, `MM` month, `DD` day,
+  `ddd`/`dddd` weekday, `MMMM` month name, `ww` week, `[text]` written as it
+  is; each `/` makes a folder — `YYYY-MM-DD` puts them all in one.
 - **Folder** — where the daily notes go, `Daily notes` by default (empty for
   the root of the folder).
 - **Template** — a note copied into each new daily note, its fields filled:

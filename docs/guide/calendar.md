@@ -11,8 +11,11 @@ the start screen, **🗓** beside the small calendar of the folder panel, or
 
 ## Events are notes
 
-Each event is a Markdown note of the `Events` folder (CAL-001), named after
-its day and title (`Events/2026-10-05 Kick-off.md`):
+Each event is a Markdown note of the `Events` folder (CAL-001), filed in a
+folder per year, month and day, and named after its day and title
+(`Events/2026/10/05/2026-10-05 Kick-off.md`); moved to another day, its note
+moves to that day's folder, under the same name, so that the links to it
+still find it:
 
 ```markdown
 ---

@@ -197,7 +197,7 @@ test('shows the backlinks under the page or in the side panel, and links the unl
 test('opens or creates the note of a day from the calendar, named and filed as set (FOLDER-027)', async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 9, 4, 9, 30));
   await fakeFolder(page, {
-    'Journal/2026-10-01.md': '# 2026-10-01\n\nMet the team.\n',
+    'Journal/2026/10/2026-10-01.md': '# 2026-10-01\n\nMet the team.\n',
     'Templates/Day.md': '---\ndate: {{date:YYYY-MM-DD}}\n---\n# {{title}}\n\n## Tasks\n',
     'Project.md': '# Project\n',
   });
@@ -212,7 +212,7 @@ test('opens or creates the note of a day from the calendar, named and filed as s
   await calendar.getByLabel('Folder').press('Enter');
   await calendar.getByLabel('Template').fill('Templates/Day.md');
   await calendar.getByLabel('Template').dispatchEvent('change');
-  await expect(calendar.locator('.daily-example')).toHaveText('Today: Journal/2026-10-04.md — titled “2026-10-04”.');
+  await expect(calendar.locator('.daily-example')).toHaveText('Today: Journal/2026/10/2026-10-04.md — titled “2026-10-04”.');
   await expect(calendar.locator('.daily-day.has-note')).toHaveText(['1']);
   await expect(calendar.locator('.daily-day.today')).toHaveText('4');
 
@@ -222,7 +222,7 @@ test('opens or creates the note of a day from the calendar, named and filed as s
   await calendar.getByRole('button', { name: 'Today', exact: true }).click();
   await expect(page.locator('.ProseMirror h2')).toHaveText('Tasks');
   const folder = () => page.evaluate(() => Object.fromEntries((window as unknown as { __folder: Map<string, string> }).__folder));
-  await expect.poll(async () => (await folder())['Journal/2026-10-04.md']).toBe('---\ndate: 2026-10-04\n---\n# 2026-10-04\n\n## Tasks\n');
+  await expect.poll(async () => (await folder())['Journal/2026/10/2026-10-04.md']).toBe('---\ndate: 2026-10-04\n---\n# 2026-10-04\n\n## Tasks\n');
   await expect(calendar.locator('.daily-day.has-note')).toHaveText(['1', '4']);
 
   // Another name: a sub-folder by month, the day written out.

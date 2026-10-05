@@ -158,7 +158,7 @@ describe('CAL-001 CONTACT-001 events and contacts as notes', () => {
     );
     expect(isEventNote(text)).toBe(true);
     expect(eventOfNote(text)).toEqual({ ...event, calendar: 'Work' });
-    expect(eventPath('Events', event)).toBe('Events/2026-10-05 Kick-off.md');
+    expect(eventPath('Events', event)).toBe('Events/2026/10/05/2026-10-05 Kick-off.md');
   });
 
   it('updates an event note, keeping its other properties and its text', () => {
@@ -185,5 +185,24 @@ describe('CAL-001 CONTACT-001 events and contacts as notes', () => {
   it('sets and removes properties, the others in their place', () => {
     const text = '---\ntitle: A\nb: 1\nc: x\n---\n\nBody\n';
     expect(withValues(text, [['c', undefined], ['d', ['x', 'y']], ['b', '2']])).toBe('---\ntitle: A\nb: "2"\nd:\n  - x\n  - y\n---\n\nBody\n');
+  });
+});
+
+describe('CAL-001 events filed by day', () => {
+  it('files an event in the folder of its day, and moves its note with it, under the same name', async () => {
+    const { MemoryProvider, readText } = await import('../src/fs');
+    const { saveEvent } = await import('../src/pim/store');
+    const provider = new MemoryProvider();
+    const first = await saveEvent(provider, { uid: '', title: 'Kick-off', start: '2026-10-05T09:00', allDay: false });
+    expect(first.path).toBe('Events/2026/10/05/2026-10-05 Kick-off.md');
+    await provider.write(first.path, new Blob([`${first.text}My notes.\n`]));
+    const moved = await saveEvent(provider, { ...first.item, start: '2026-11-02T10:00' }, { ...first, text: await readText(provider, first.path) });
+    expect(moved).toMatchObject({ path: 'Events/2026/11/02/2026-10-05 Kick-off.md', movedFrom: first.path });
+    expect(await readText(provider, moved.path)).toContain('start: 2026-11-02T10:00\n');
+    expect(await readText(provider, moved.path)).toContain('My notes.');
+    await expect(readText(provider, first.path)).rejects.toThrow();
+    // An event kept elsewhere by the user stays where it is.
+    const elsewhere = await saveEvent(provider, { ...first.item, start: '2026-12-01' }, { path: 'Projects/Launch.md', text: '', item: first.item });
+    expect(elsewhere.path).toBe('Projects/Launch.md');
   });
 });

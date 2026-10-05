@@ -59,7 +59,7 @@ test('creates contacts as notes, shows their events and birthdays, imports and e
   await event.getByLabel('Title').fill('Engine review');
   await event.getByLabel('Attendees').fill('Ada Lovelace');
   await event.getByRole('button', { name: 'Save' }).click();
-  await expect.poll(() => stored(page, 'Events/2026-10-06 Engine review.md')).toContain('attendees:\n  - "[[Ada Lovelace]]"\n');
+  await expect.poll(() => stored(page, 'Events/2026/10/06/2026-10-06 Engine review.md')).toContain('attendees:\n  - "[[Ada Lovelace]]"\n');
   await command(page, 'Contacts');
   await expect(contacts.locator('.contact-interactions')).toContainText('Engine review');
 
@@ -70,7 +70,7 @@ test('creates contacts as notes, shows their events and birthdays, imports and e
   await log.getByLabel('When').fill('2026-10-02T14:05');
   await log.getByLabel('About').fill('Agreed on the review.');
   await log.getByRole('button', { name: 'Save' }).click();
-  await expect.poll(() => stored(page, 'Daily notes/2026-10-02.md')).toContain('\n- 14:05 📞 Call — [[Ada Lovelace]]: Agreed on the review.\n');
+  await expect.poll(() => stored(page, 'Daily notes/2026/10/2026-10-02.md')).toContain('\n- 14:05 📞 Call — [[Ada Lovelace]]: Agreed on the review.\n');
   await expect(contacts.locator('.contact-facts')).toContainText('First met');
   await expect(contacts.locator('.contact-facts')).toContainText('Last contact');
   await expect(contacts.locator('.contact-facts')).toContainText('October 2, 2026 (2 days ago)');

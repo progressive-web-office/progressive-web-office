@@ -1,7 +1,7 @@
 /**
  * FOLDER-027: daily notes — one note per day, named after its date in a
- * format the user chooses (`YYYY-MM-DD` by default; a `/` in it makes
- * sub-folders), in a folder (`Daily notes` by default), made from a
+ * format the user chooses (`YYYY/MM/YYYY-MM-DD` by default: a folder per
+ * year and month), in a folder (`Daily notes` by default), made from a
  * template (a front matter of properties by default) — found again by their
  * name to show them on a calendar.
  */
@@ -22,7 +22,7 @@ export interface DailySettings {
 }
 
 const KEY = 'pwo.notes.daily';
-export const DEFAULT_DAILY: DailySettings = { format: 'YYYY-MM-DD', folder: 'Daily notes', template: '', heading: 'full' };
+export const DEFAULT_DAILY: DailySettings = { format: 'YYYY/MM/YYYY-MM-DD', folder: 'Daily notes', template: '', heading: 'full' };
 
 /** The template of daily notes when none is chosen: their properties, the day and the year filled. */
 export const DEFAULT_DAILY_TEMPLATE = `---
@@ -191,7 +191,7 @@ export function formatHeading(date: Date, heading: string, lang?: string): strin
  */
 export function fillTemplate(template: string, date: Date, title: string, settings: DailySettings, lang?: string): string {
   return template.replace(/\{\{\s*(title|date|time|heading)(?::([^}]*))?\s*\}\}/g, (_, field: string, format: string | undefined) =>
-    field === 'title' ? title : field === 'heading' ? formatHeading(date, format?.trim() || settings.heading, lang) : field === 'time' ? formatDate(new Date(), format?.trim() || 'HH:mm', lang) : formatDate(date, format?.trim() || settings.format, lang),
+    field === 'title' ? title : field === 'heading' ? formatHeading(date, format?.trim() || settings.heading, lang) : field === 'time' ? formatDate(new Date(), format?.trim() || 'HH:mm', lang) : formatDate(date, format?.trim() || (settings.format.split('/').pop() ?? settings.format), lang),
   );
 }
 

@@ -39,16 +39,18 @@ test('creates, moves and changes events kept as notes, linked from their daily n
   await dialog.getByRole('button', { name: 'Save' }).click();
   const chip = calendar.locator('.calendar-cell[data-day="2026-10-05"] .calendar-event');
   await expect(chip).toContainText('Kick-off');
-  await expect.poll(() => stored(page, 'Events/2026-10-05 Kick-off.md')).toBe(
+  await expect.poll(() => stored(page, 'Events/2026/10/05/2026-10-05 Kick-off.md')).toBe(
     '---\ntitle: Kick-off\ntype: "[[Event]]"\nstart: 2026-10-05T09:30\nend: 2026-10-05T10:30\nlocation: Room 12\nattendees:\n  - Ada Lovelace\n  - charles@example.org\ncalendar: Work\nuid: ' +
-      (await stored(page, 'Events/2026-10-05 Kick-off.md'))!.match(/uid: (.*)/)![1] +
+      (await stored(page, 'Events/2026/10/05/2026-10-05 Kick-off.md'))!.match(/uid: (.*)/)![1] +
       '\n---\n\nThe agenda.\n',
   );
 
   // Dragged to another day: the same note, moved.
   await chip.dragTo(calendar.locator('.calendar-cell[data-day="2026-10-07"]'), { targetPosition: { x: 50, y: 70 } });
   await expect(calendar.locator('.calendar-cell[data-day="2026-10-07"] .calendar-event')).toContainText('Kick-off');
-  await expect.poll(async () => (await stored(page, 'Events/2026-10-05 Kick-off.md'))?.match(/start: (.*)/)?.[1]).toBe('2026-10-07T09:30');
+  // Its note follows it to the folder of its new day, under the same name.
+  await expect.poll(async () => (await stored(page, 'Events/2026/10/07/2026-10-05 Kick-off.md'))?.match(/start: (.*)/)?.[1]).toBe('2026-10-07T09:30');
+  expect(await stored(page, 'Events/2026/10/05/2026-10-05 Kick-off.md')).toBeUndefined();
 
   // Changed in its window: its other properties and its text kept.
   await calendar.locator('.calendar-cell[data-day="2026-10-07"] .calendar-event').click();
@@ -58,7 +60,7 @@ test('creates, moves and changes events kept as notes, linked from their daily n
   await edit.getByLabel('Repeat').selectOption({ label: 'Every week' });
   await edit.getByRole('button', { name: 'Save' }).click();
   await expect(calendar.locator('.calendar-cell[data-day="2026-10-14"] .calendar-event')).toContainText('Kick-off meeting');
-  const note = (await stored(page, 'Events/2026-10-05 Kick-off.md'))!;
+  const note = (await stored(page, 'Events/2026/10/07/2026-10-05 Kick-off.md'))!;
   expect(note).toContain('title: Kick-off meeting\n');
   expect(note).toContain('recurrence: FREQ=WEEKLY;BYDAY=WE\n');
   expect(note.endsWith('\nThe agenda.\n')).toBe(true);
@@ -77,7 +79,7 @@ test('creates, moves and changes events kept as notes, linked from their daily n
   await calendar.getByRole('button', { name: 'Month', exact: true }).click();
   await calendar.locator('.calendar-cell[data-day="2026-10-14"] .calendar-date').click();
   await expect(page.locator('.doc-name')).toHaveText('2026-10-14.md');
-  await expect.poll(() => stored(page, 'Daily notes/2026-10-14.md')).toContain('events:\n  - "[[2026-10-05 Kick-off]]"\n');
+  await expect.poll(() => stored(page, 'Daily notes/2026/10/2026-10-14.md')).toContain('events:\n  - "[[2026-10-05 Kick-off]]"\n');
   expect(errors).toEqual([]);
 });
 
@@ -96,7 +98,7 @@ test('imports the events of a .ics file as notes and exports them (CAL-003)', as
   });
   await expect(calendar.locator('.calendar-cell[data-day="2026-10-12"] .calendar-event.all-day')).toContainText('Long weekend');
   await expect(calendar.locator('.calendar-cell[data-day="2026-10-13"] .calendar-event')).toHaveCount(0);
-  await expect.poll(() => stored(page, 'Events/2026-11-01 All Saints.md')).toContain('start: 2026-11-01\nend: 2026-11-02\nall day: true\n');
+  await expect.poll(() => stored(page, 'Events/2026/11/01/2026-11-01 All Saints.md')).toContain('start: 2026-11-01\nend: 2026-11-02\nall day: true\n');
   const download = page.waitForEvent('download');
   await calendar.getByRole('button', { name: 'Export the events (.ics)' }).click();
   const ics = await (await download).createReadStream().then(async (s) => {

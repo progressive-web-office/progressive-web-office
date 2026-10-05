@@ -10,6 +10,11 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Changed
 
+- Daily notes are filed by year and month (`Daily notes/2026/10/2026-10-05.md`)
+  and events by year, month and day (`Events/2026/10/05/2026-10-05
+  Kick-off.md`); an event moved to another day takes its note to that day's
+  folder, under the same name (FOLDER-027, CAL-001).
+
 - The repository is now `progressive-web-office/progressive-web-office.github.io`
   and the application is published at the root of
   <https://progressive-web-office.github.io/>, its documentation at `/docs/`:

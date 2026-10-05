@@ -5,7 +5,7 @@
  */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
-import { dailyPath, dateOfNote, dayKey, formatDate, formatHeading, loadDailySettings, saveDailySettings, type DailySettings } from './daily';
+import { DEFAULT_DAILY, dailyPath, dateOfNote, dayKey, formatDate, formatHeading, loadDailySettings, saveDailySettings, type DailySettings } from './daily';
 
 export interface CalendarHooks {
   /** The notes of the folder (paths). */
@@ -133,7 +133,7 @@ export class DailyCalendar {
     return h(
       'div',
       { class: 'daily-settings', role: 'group', 'aria-label': t('daily.settings') },
-      field(t('daily.format'), settings.format, (v) => ({ format: v.trim() || 'YYYY-MM-DD' }), 'YYYY-MM-DD'),
+      field(t('daily.format'), settings.format, (v) => ({ format: v.trim() || DEFAULT_DAILY.format }), DEFAULT_DAILY.format),
       h('p', { class: 'hint' }, t('daily.formatHint')),
       field(t('daily.folder'), settings.folder, (v) => ({ folder: v }), t('daily.root')),
       this.headingField(settings),

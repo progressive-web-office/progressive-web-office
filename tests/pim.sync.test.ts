@@ -124,7 +124,7 @@ describe('CAL-006 CONTACT-005 CalDAV and CardDAV', () => {
     // The server's event is a note, its calendar and its address on the server kept.
     const events = await loadEvents(provider);
     const standup = events.find((e) => e.item.title === 'Stand-up')!;
-    expect(standup.path).toBe('Events/2026-10-05 Stand-up.md');
+    expect(standup.path).toBe('Events/2026/10/05/2026-10-05 Stand-up.md');
     expect(standup.item).toMatchObject({ uid: 'standup@server', calendar: 'Personal', remote: { href: `${ORIGIN}${CAL_HOME}personal/standup.ics`, etag: '"e1"' } });
     // The folder's event is on the server, its note knowing where.
     const review = events.find((e) => e.item.title === 'Review')!;

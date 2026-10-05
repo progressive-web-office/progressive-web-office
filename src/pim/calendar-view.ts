@@ -319,9 +319,9 @@ export class CalendarView implements EditorView {
     try {
       const names = new Set(this.host.noteNames().map((n) => n.toLowerCase()));
       const saved = await saveEvent(this.host.provider, event, at, (name) => names.has(name.toLowerCase()), body);
-      this.events = [...this.events.filter((s) => s.path !== saved.path), saved];
+      this.events = [...this.events.filter((s) => s.path !== saved.path && s.path !== saved.movedFrom), saved];
       this.render();
-      this.host.changed([saved.path], { day: parse(saved.item.start), path: saved.path });
+      this.host.changed([saved.path, ...(saved.movedFrom ? [saved.movedFrom] : [])], { day: parse(saved.item.start), path: saved.path });
     } catch (err) {
       this.host.error((err as Error).message);
     }

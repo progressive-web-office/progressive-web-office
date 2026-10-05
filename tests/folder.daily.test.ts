@@ -18,18 +18,20 @@ describe('FOLDER-027 daily notes', () => {
   });
 
   it('names the note of a day, in its folder, a / making sub-folders', () => {
-    expect(dailyPath(day, DEFAULT_DAILY)).toBe('Daily notes/2026-10-04.md');
-    expect(dailyPath(day, { ...DEFAULT_DAILY, folder: '' })).toBe('2026-10-04.md');
+    // A folder per year and month, by default.
+    expect(dailyPath(day, DEFAULT_DAILY)).toBe('Daily notes/2026/10/2026-10-04.md');
+    expect(dailyPath(day, { ...DEFAULT_DAILY, folder: '' })).toBe('2026/10/2026-10-04.md');
+    expect(dailyPath(day, { ...DEFAULT_DAILY, format: 'YYYY-MM-DD' })).toBe('Daily notes/2026-10-04.md');
     expect(dailyPath(day, { ...DEFAULT_DAILY, folder: '/Journal/', format: 'YYYY/MM/YYYY-MM-DD' })).toBe('Journal/2026/10/2026-10-04.md');
   });
 
   it('finds the day of a note again by its name', () => {
-    expect(dateOfNote('Daily notes/2026-10-04.md', DEFAULT_DAILY)).toBe('2026-10-04');
-    expect(dateOfNote('2026-10-04.md', DEFAULT_DAILY)).toBeUndefined();
-    expect(dateOfNote('2026-10-04.md', { ...DEFAULT_DAILY, folder: '' })).toBe('2026-10-04');
-    expect(dateOfNote('notes/2026-10-04.md', DEFAULT_DAILY)).toBeUndefined();
-    expect(dateOfNote('Daily notes/Project.md', DEFAULT_DAILY)).toBeUndefined();
-    expect(dateOfNote('Daily notes/2026-02-30.md', DEFAULT_DAILY)).toBeUndefined();
+    expect(dateOfNote('Daily notes/2026/10/2026-10-04.md', DEFAULT_DAILY)).toBe('2026-10-04');
+    expect(dateOfNote('Daily notes/2026-10-04.md', DEFAULT_DAILY)).toBeUndefined();
+    expect(dateOfNote('2026-10-04.md', { ...DEFAULT_DAILY, folder: '', format: 'YYYY-MM-DD' })).toBe('2026-10-04');
+    expect(dateOfNote('notes/2026/10/2026-10-04.md', DEFAULT_DAILY)).toBeUndefined();
+    expect(dateOfNote('Daily notes/2026/10/Project.md', DEFAULT_DAILY)).toBeUndefined();
+    expect(dateOfNote('Daily notes/2026/02/2026-02-30.md', DEFAULT_DAILY)).toBeUndefined();
     const journal = { ...DEFAULT_DAILY, folder: 'Journal', format: 'YYYY/MM/[Day] DD.MM.YYYY' };
     expect(dateOfNote(dailyPath(day, journal), journal)).toBe('2026-10-04');
     const named = { ...DEFAULT_DAILY, format: 'dddd D MMMM YYYY' };
