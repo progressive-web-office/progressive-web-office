@@ -520,27 +520,43 @@ export class FolderPanel {
    * its date in the format chosen, in its folder, from its template.
    */
   async openDaily(date: Date): Promise<void> {
+    let path: string;
+    try {
+      path = await this.ensureDaily(date);
+    } catch (err) {
+      return this.hooks.error((err as Error).message);
+    }
+    this.calendar.showMonthOf(date);
+    this.hooks.open(path);
+  }
+
+  /** The path of the daily note of a day, the note written first when there is none. */
+  async ensureDaily(date: Date): Promise<string> {
     const settings = loadDailySettings();
     const lang = document.documentElement.lang || undefined;
     const path = dailyPath(date, settings, lang);
     const existing = this.entries.find((e) => e.kind === 'file' && e.path.toLowerCase() === path.toLowerCase());
-    if (!existing) {
-      if (!this.provider.capabilities.write) return this.hooks.error(t('daily.readOnly'));
-      try {
-        const template = settings.template ? await readText(this.provider, settings.template).catch(() => undefined) : undefined;
-        if (settings.template && template === undefined) this.hooks.error(t('daily.noTemplate', { path: settings.template }));
-        let text = dailyText(date, settings, template, lang);
-        // CAL-005: the events of its day, linked.
-        const events = await this.eventsOn(date);
-        if (events.length && /^events:/m.test(text)) text = withValues(text, [['events', events.map((p) => `[[${noteName(p)}]]`)]]);
-        await this.provider.write(path, new Blob([text]));
-        await this.refresh();
-      } catch (err) {
-        return this.hooks.error((err as Error).message);
-      }
-    }
-    this.calendar.showMonthOf(date);
-    this.hooks.open(existing?.path ?? path);
+    if (existing) return existing.path;
+    if (!this.provider.capabilities.write) throw new Error(t('daily.readOnly'));
+    const template = settings.template ? await readText(this.provider, settings.template).catch(() => undefined) : undefined;
+    if (settings.template && template === undefined) this.hooks.error(t('daily.noTemplate', { path: settings.template }));
+    let text = dailyText(date, settings, template, lang);
+    // CAL-005: the events of its day, linked.
+    const events = await this.eventsOn(date);
+    if (events.length && /^events:/m.test(text)) text = withValues(text, [['events', events.map((p) => `[[${noteName(p)}]]`)]]);
+    await this.provider.write(path, new Blob([text]));
+    await this.refresh();
+    return path;
+  }
+
+  /** CONTACT-006: a line added at the end of the daily note of a day (written first if needed); returns its path. */
+  async appendToDaily(date: Date, line: string): Promise<string> {
+    const path = await this.ensureDaily(date);
+    const text = await readText(this.provider, path);
+    await this.provider.write(path, new Blob([`${text.replace(/\s*$/, '\n')}${/\n-[^\n]*\n$/.test(text.replace(/\s*$/, '\n')) ? '' : '\n'}${line}\n`]));
+    await this.vault.changed(path);
+    await this.hooks.notesChanged?.([path]);
+    return path;
   }
 
   /** CAL-005: the notes of the events of a day. */

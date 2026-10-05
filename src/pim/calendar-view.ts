@@ -9,10 +9,16 @@ import { button, h } from '../app/dom';
 import { t, type MessageKey } from '../i18n';
 import type { StorageProvider } from '../fs';
 import type { EditorView } from '../app/views';
+import type { AgentTool } from '../ai/tools';
+import { pimAgentTools } from './agent-tools';
 import { occurrences, readCalendar, writeCalendar, type CalEvent } from './ical';
 import { loadContacts, loadEvents, loadPimSettings, saveEvent, type Stored, type StoredEvent } from './store';
 
 export interface CalendarHost {
+  /** The notes linking to a note (the interactions of the agents' tools). */
+  backlinks?(path: string): Promise<{ from: string; context: string }[]>;
+  /** CONTACT-006: add a line to the daily note of a day (written first if needed); its path. */
+  appendToDaily?(date: Date, line: string): Promise<string>;
   provider: StorageProvider;
   /** Open a note of the folder. */
   open(path: string): void;
@@ -102,6 +108,20 @@ export class CalendarView implements EditorView {
 
   formatLabel(): string {
     return t('cal.title');
+  }
+
+  /** CAL-007: the calendar and the contacts, for AI agents. */
+  agentTools(): AgentTool[] {
+    return pimAgentTools({
+      provider: this.host.provider,
+      noteNames: () => this.host.noteNames(),
+      backlinks: (path) => this.host.backlinks?.(path) ?? Promise.resolve([]),
+      ...(this.host.appendToDaily ? { appendToDaily: (d: Date, l: string) => this.host.appendToDaily!(d, l) } : {}),
+      changed: (paths) => {
+        this.host.changed(paths);
+        void this.reload();
+      },
+    });
   }
 
   destroy(): void {

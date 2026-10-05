@@ -10,10 +10,17 @@ import { t } from '../i18n';
 import type { StorageProvider } from '../fs';
 import type { EditorView } from '../app/views';
 import { readContacts, writeContacts } from './vcard';
-import { loadContacts, loadEvents, loadPimSettings, saveContact, type Stored, type StoredContact } from './store';
+import { loadContacts, loadPimSettings, saveContact, type Stored, type StoredContact } from './store';
 import { calendarColour } from './calendar-view';
+import type { MessageKey } from '../i18n';
+import type { AgentTool } from '../ai/tools';
+import { INTERACTION_KINDS, KIND_ICON, type InteractionKind } from './interactions';
+import { contactTimeline, logInteraction } from './people';
+import { pimAgentTools } from './agent-tools';
 
 export interface ContactsHost {
+  /** CONTACT-006: add a line to the daily note of a day (written first if needed); its path. */
+  appendToDaily?(date: Date, line: string): Promise<string>;
   provider: StorageProvider;
   open(path: string): void;
   noteNames(): string[];
@@ -39,7 +46,6 @@ const initials = (name: string): string =>
     .slice(0, 2)
     .map((w) => w[0]!.toUpperCase())
     .join('');
-const noteNameOf = (path: string): string => path.slice(path.lastIndexOf('/') + 1).replace(/\.(md|markdown)$/i, '');
 
 /** A birthday as words, with the age it brings this year. */
 function birthdayText(b: string): string {
@@ -168,8 +174,8 @@ export class ContactsView implements EditorView {
     if (c.address) rows.push(row(t('people.address'), c.address));
     if (c.website) rows.push(row(t('people.website'), link(c.website, c.website.replace(/^https?:\/\//, ''))));
     if (c.categories?.length) rows.push(row(t('people.tags'), c.categories.map((x) => `#${x}`).join(' ')));
-    const linked = h('section', { class: 'contact-linked' }, h('h3', {}, t('people.linked')), h('p', { class: 'hint' }, t('cal.loading')));
-    const events = h('section', { class: 'contact-events' });
+    const linked = h('section', { class: 'contact-interactions' }, h('h3', {}, t('people.interactionsTitle')), h('p', { class: 'hint' }, t('cal.loading')));
+    const facts = h('dl', { class: 'contact-fields contact-facts' });
     this.card.replaceChildren(
       h(
         'header',
@@ -180,35 +186,93 @@ export class ContactsView implements EditorView {
       h(
         'div',
         { class: 'contact-actions' },
+        this.host.appendToDaily ? button(t('people.log'), () => this.logDialog(stored), { icon: '🗒', className: 'primary' }) : '',
         button(t('people.edit'), () => this.edit(stored), { icon: '✎' }),
         button(t('cal.openNote'), () => this.host.open(stored.path), { icon: '📝' }),
         button(t('people.delete'), () => void this.remove(stored), { className: 'danger', icon: '🗑' }),
       ),
       h('dl', { class: 'contact-fields' }, ...rows),
-      events,
+      facts,
       linked,
     );
-    // The notes linking to it, and the events it attends (CONTACT-001).
-    const [backlinks, allEvents] = await Promise.all([this.host.backlinks(stored.path).catch(() => []), loadEvents(this.host.provider).catch(() => [])]);
+    // CONTACT-006: the interactions — events, daily notes, other notes — the latest first.
+    const { items, first, last } = await contactTimeline(this.host, stored);
     if (this.selected !== stored.path) return;
-    const name = noteNameOf(stored.path).toLowerCase();
-    const attending = allEvents.filter((e) => (e.item.attendees ?? []).some((a) => a.toLowerCase() === name || a.toLowerCase() === c.name.toLowerCase())).sort((a, b) => b.item.start.localeCompare(a.item.start));
-    const eventPaths = new Set(attending.map((e) => e.path));
-    const others = backlinks.filter((b) => !eventPaths.has(b.from));
-    events.replaceChildren(
-      ...(attending.length
-        ? [
-            h('h3', {}, t('people.events', { n: attending.length })),
-            h('ul', { role: 'list' }, ...attending.slice(0, 20).map((e) => h('li', {}, h('span', { class: 'hint' }, `${e.item.start.slice(0, 10)} `), button(e.item.title, () => this.host.open(e.path), { className: 'link' })))),
-          ]
-        : []),
+    const day = (iso: string): string => new Intl.DateTimeFormat(document.documentElement.lang || undefined, { dateStyle: 'long' }).format(new Date(`${iso.slice(0, 10)}T00:00`));
+    const ago = (iso: string): string => {
+      const days = Math.round((new Date(new Date().toDateString()).getTime() - new Date(`${iso}T00:00`).getTime()) / 86_400_000);
+      return new Intl.RelativeTimeFormat(document.documentElement.lang || undefined, { numeric: 'auto' }).format(-days, 'day');
+    };
+    facts.replaceChildren(
+      ...(first ? [h('div', { class: 'contact-row' }, h('dt', {}, t('people.firstMet')), h('dd', {}, day(first)))] : []),
+      ...(last ? [h('div', { class: 'contact-row' }, h('dt', {}, t('people.lastContact')), h('dd', {}, `${day(last)} (${ago(last)})`))] : []),
     );
+    const icon = { event: '📅', daily: '🗓', note: '📝' } as const;
     linked.replaceChildren(
-      h('h3', {}, t('people.linkedCount', { n: others.length })),
-      others.length
-        ? h('ul', { role: 'list' }, ...others.map((b) => h('li', {}, button(noteNameOf(b.from), () => this.host.open(b.from), { className: 'link' }), h('p', { class: 'folder-snippet' }, b.context))))
+      h('h3', {}, t('people.interactions', { n: items.length })),
+      items.length
+        ? h(
+            'ul',
+            { role: 'list', class: 'contact-timeline' },
+            ...items.slice(0, 100).map((i) =>
+              h(
+                'li',
+                { class: `contact-${i.kind}` },
+                h('span', { class: 'contact-when' }, i.when ? day(i.when) + (i.when.length > 10 ? ` ${i.when.slice(11, 16)}` : '') : '—'),
+                h('span', { 'aria-hidden': 'true' }, icon[i.kind]),
+                h('span', {}, button(i.label, () => this.host.open(i.path), { className: 'link' }), i.context && i.kind !== 'event' ? h('p', { class: 'folder-snippet' }, i.context) : ''),
+              ),
+            ),
+          )
         : h('p', { class: 'hint' }, t('people.noLinks', { name: c.name })),
     );
+  }
+
+  /** CONTACT-006: tell an interaction, written to the daily note of its day. */
+  private logDialog(stored: Stored<StoredContact>): void {
+    const now = new Date();
+    const pad = (n: number): string => String(n).padStart(2, '0');
+    const kind = h('select', { 'aria-label': t('people.kind') }, ...INTERACTION_KINDS.map((k) => h('option', { value: k }, `${KIND_ICON[k]} ${t(`people.kind.${k}` as MessageKey)}`)));
+    const when = h('input', { type: 'datetime-local', value: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`, 'aria-label': t('people.when') });
+    const summary = h('textarea', { rows: '3', 'aria-label': t('people.summary'), placeholder: t('people.summaryHint') });
+    const dialog = h('dialog', { class: 'dialog calendar-dialog', 'aria-labelledby': 'contact-log-title' });
+    const close = (): void => {
+      dialog.close();
+      dialog.remove();
+    };
+    const save = async (): Promise<void> => {
+      close();
+      try {
+        await logInteraction(this.host, stored, kind.value as InteractionKind, when.value ? new Date(when.value) : new Date(), summary.value);
+        await this.reload();
+      } catch (err) {
+        this.host.error((err as Error).message);
+      }
+    };
+    const field = (label: string, el: HTMLElement): HTMLElement => h('label', { class: 'calendar-field' }, h('span', {}, label), h('span', { class: 'calendar-inputs' }, el));
+    dialog.append(
+      h('h2', { id: 'contact-log-title' }, t('people.logTitle', { name: stored.item.name })),
+      field(t('people.kind'), kind),
+      field(t('people.when'), when),
+      field(t('people.summary'), summary),
+      h('p', { class: 'hint' }, t('people.logHint')),
+      h('div', { class: 'dialog-actions' }, button(t('common.cancel'), close), button(t('cal.save'), () => void save(), { className: 'primary' })),
+    );
+    dialog.addEventListener('cancel', (ev) => {
+      ev.preventDefault();
+      close();
+    });
+    this.element.append(dialog);
+    dialog.showModal();
+    summary.focus();
+  }
+
+  /** CONTACT-007: the contacts and the calendar, for AI agents. */
+  agentTools(): AgentTool[] {
+    return pimAgentTools({ ...this.host, changed: (paths) => {
+      this.host.changed(paths);
+      void this.reload();
+    } });
   }
 
   private pathOf(name: string): string {

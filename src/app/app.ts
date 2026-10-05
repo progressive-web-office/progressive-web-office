@@ -1537,6 +1537,8 @@ export class App {
       provider: folder.provider,
       open: (path) => void this.openFromFolder(path),
       openDaily: (date) => void folder.openDaily(date),
+      backlinks: (path) => folder.vault.backlinks(path),
+      appendToDaily: (date, line) => folder.appendToDaily(date, line),
       noteNames: () => folder.vault.index.notes().map((p) => noteName(p)),
       changed: (paths, event) => {
         void folder.refresh();
@@ -1570,6 +1572,7 @@ export class App {
       open: (path) => void this.openFromFolder(path),
       noteNames: () => folder.vault.index.notes().map((p) => noteName(p)),
       backlinks: (path) => folder.vault.backlinks(path),
+      appendToDaily: (date, line) => folder.appendToDaily(date, line),
       changed: (paths) => {
         void folder.refresh();
         void Promise.all(paths.map((p) => folder.vault.changed(p))).catch(() => undefined);

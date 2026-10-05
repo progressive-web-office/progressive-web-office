@@ -5,7 +5,7 @@
  */
 import { button, h } from '../app/dom';
 import { t } from '../i18n';
-import { dailyPath, dateOfNote, dayKey, formatDate, loadDailySettings, saveDailySettings, type DailySettings } from './daily';
+import { dailyPath, dateOfNote, dayKey, formatDate, formatHeading, loadDailySettings, saveDailySettings, type DailySettings } from './daily';
 
 export interface CalendarHooks {
   /** The notes of the folder (paths). */
@@ -95,6 +95,29 @@ export class DailyCalendar {
     );
   }
 
+  /** The title of a new daily note: the date in words of the user's language and region, or by a format. */
+  private headingField(settings: DailySettings): HTMLElement {
+    const today = new Date();
+    const presets = ['full', 'long', 'medium', 'YYYY-MM-DD'];
+    const custom = !presets.includes(settings.heading);
+    const select = h(
+      'select',
+      { 'aria-label': t('daily.heading') },
+      ...presets.map((p) => h('option', { value: p }, formatHeading(today, p, lang()))),
+      h('option', { value: 'custom' }, t('daily.headingCustom')),
+    );
+    select.value = custom ? 'custom' : settings.heading;
+    const input = h('input', { type: 'text', value: custom ? settings.heading : 'dddd D MMMM YYYY', 'aria-label': t('daily.headingFormat'), spellcheck: 'false' });
+    input.hidden = !custom;
+    const save = (heading: string): void => {
+      saveDailySettings({ ...loadDailySettings(), heading: heading.trim() || 'full' });
+      this.render();
+    };
+    select.addEventListener('change', () => (select.value === 'custom' ? save(input.value) : save(select.value)));
+    input.addEventListener('change', () => save(input.value));
+    return h('label', {}, h('span', {}, t('daily.heading')), h('span', { class: 'daily-heading-inputs' }, select, input));
+  }
+
   private settingsForm(settings: DailySettings): HTMLElement {
     const field = (label: string, value: string, change: (v: string) => Partial<DailySettings>, placeholder = ''): HTMLElement => {
       const input = h('input', { type: 'text', value, placeholder, spellcheck: 'false' });
@@ -113,6 +136,7 @@ export class DailyCalendar {
       field(t('daily.format'), settings.format, (v) => ({ format: v.trim() || 'YYYY-MM-DD' }), 'YYYY-MM-DD'),
       h('p', { class: 'hint' }, t('daily.formatHint')),
       field(t('daily.folder'), settings.folder, (v) => ({ folder: v }), t('daily.root')),
+      this.headingField(settings),
       field(t('daily.template'), settings.template, (v) => ({ template: v.trim() }), t('daily.builtIn')),
       this.hooks.createTemplate && !settings.template
         ? h('p', { class: 'hint' }, t('daily.builtInHint'), ' ', button(t('daily.createTemplate'), () => this.hooks.createTemplate?.(), { className: 'daily-create-template' }))

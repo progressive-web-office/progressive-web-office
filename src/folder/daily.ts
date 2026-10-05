@@ -13,13 +13,20 @@ export interface DailySettings {
   folder: string;
   /** A note used as the template of the new daily notes ('' for the one built in). */
   template: string;
+  /**
+   * How the date is written as the title of the note (`{{heading}}`): `full`,
+   * `long` or `medium` in the words of the user's language and region, or a
+   * format of tokens (`dddd D MMMM YYYY`).
+   */
+  heading: string;
 }
 
 const KEY = 'pwo.notes.daily';
-export const DEFAULT_DAILY: DailySettings = { format: 'YYYY-MM-DD', folder: 'Daily notes', template: '' };
+export const DEFAULT_DAILY: DailySettings = { format: 'YYYY-MM-DD', folder: 'Daily notes', template: '', heading: 'full' };
 
 /** The template of daily notes when none is chosen: their properties, the day and the year filled. */
 export const DEFAULT_DAILY_TEMPLATE = `---
+date: {{date:YYYY-MM-DD}}
 timestamp: "{{date:YYYY-MM-DD}}T{{time}}"
 year: "[[{{date:YYYY}}]]"
 MOC:
@@ -35,6 +42,8 @@ references:
 subsequently:
 ---
 
+# {{heading}}
+
 `;
 
 /** Where "Create the template" puts it, to change it as a note. */
@@ -47,6 +56,7 @@ export function loadDailySettings(): DailySettings {
       format: typeof saved.format === 'string' && saved.format.trim() ? saved.format : DEFAULT_DAILY.format,
       folder: typeof saved.folder === 'string' ? cleanFolder(saved.folder) : DEFAULT_DAILY.folder,
       template: typeof saved.template === 'string' ? saved.template : '',
+      heading: typeof saved.heading === 'string' && saved.heading.trim() ? saved.heading : DEFAULT_DAILY.heading,
     };
   } catch {
     return { ...DEFAULT_DAILY };
@@ -163,10 +173,25 @@ export function dailyPath(date: Date, settings: DailySettings, lang?: string): s
   return `${folder ? `${folder}/` : ''}${formatDate(date, settings.format, lang)}.md`;
 }
 
-/** A template with its fields filled: `{{title}}`, `{{date}}`, `{{date:FORMAT}}`, `{{time}}`. */
+/** The date as the title of a daily note: in the words of the language and region, or by a format of tokens. */
+export function formatHeading(date: Date, heading: string, lang?: string): string {
+  const style = heading.trim();
+  if (style === 'full' || style === 'long' || style === 'medium' || style === 'short') {
+    const text = new Intl.DateTimeFormat(lang, { dateStyle: style }).format(date);
+    // "dimanche 4 octobre 2026" → "Dimanche 4 octobre 2026", as a title.
+    return text.charAt(0).toLocaleUpperCase(lang) + text.slice(1);
+  }
+  return formatDate(date, style, lang);
+}
+
+/**
+ * A template with its fields filled: `{{title}}`, `{{date}}`,
+ * `{{date:FORMAT}}`, `{{time}}`, and `{{heading}}` — the date as the title
+ * of the note, as the user set it.
+ */
 export function fillTemplate(template: string, date: Date, title: string, settings: DailySettings, lang?: string): string {
-  return template.replace(/\{\{\s*(title|date|time)(?::([^}]*))?\s*\}\}/g, (_, field: string, format: string | undefined) =>
-    field === 'title' ? title : field === 'time' ? formatDate(new Date(), format?.trim() || 'HH:mm', lang) : formatDate(date, format?.trim() || settings.format, lang),
+  return template.replace(/\{\{\s*(title|date|time|heading)(?::([^}]*))?\s*\}\}/g, (_, field: string, format: string | undefined) =>
+    field === 'title' ? title : field === 'heading' ? formatHeading(date, format?.trim() || settings.heading, lang) : field === 'time' ? formatDate(new Date(), format?.trim() || 'HH:mm', lang) : formatDate(date, format?.trim() || settings.format, lang),
   );
 }
 

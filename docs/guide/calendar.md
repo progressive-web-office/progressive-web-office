@@ -111,6 +111,32 @@ What you know of her, met where, about what.
   address book) as notes; **⇩** exports the contacts as a `.vcf` file
   (CONTACT-003).
 
+## Interactions
+
+The card of a contact gathers its **interactions** (CONTACT-006), the latest
+first: the events it attends, the lines of daily notes naming it, the other
+notes linking to it — with **First met** and **Last contact** above.
+
+**🗒 Note an interaction** (a meeting, a call, an e-mail, a message) writes a
+line in the daily note of its day:
+
+```markdown
+- 14:05 📞 Call — [[Ada Lovelace]]: agreed on the review.
+```
+
+The journal stays where things happened, the contact finds them back by its
+link; its note keeps `first met` and `last contact` up to date.
+
+## AI agents
+
+The assistant — or an agent of yours reached through WebMCP, one reading
+your e-mail for example — has tools for the calendar and the contacts while
+one of them is open (CAL-007, CONTACT-007): find a contact, read it with its
+interactions, create or update it, **note an interaction** (an e-mail read
+or sent goes to the daily note of its day; an unknown sender becomes a
+contact), list and create events. The tools that change notes are marked
+so, and ask before acting as the other tools of the assistant do.
+
 ## Servers: CalDAV and CardDAV
 
 The calendars and address books of a server — Nextcloud, or any CalDAV /

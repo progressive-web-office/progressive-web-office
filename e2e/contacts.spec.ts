@@ -61,7 +61,23 @@ test('creates contacts as notes, shows their events and birthdays, imports and e
   await event.getByRole('button', { name: 'Save' }).click();
   await expect.poll(() => stored(page, 'Events/2026-10-06 Engine review.md')).toContain('attendees:\n  - "[[Ada Lovelace]]"\n');
   await command(page, 'Contacts');
-  await expect(contacts.locator('.contact-events')).toContainText('Engine review');
+  await expect(contacts.locator('.contact-interactions')).toContainText('Engine review');
+
+  // An interaction: a line of the daily note of its day, linked; the card follows (CONTACT-006).
+  await card.getByRole('button', { name: 'Note an interaction' }).click();
+  const log = page.getByRole('dialog', { name: 'An interaction with Ada Lovelace' });
+  await log.getByLabel('Kind').selectOption({ label: '📞 Call' });
+  await log.getByLabel('When').fill('2026-10-02T14:05');
+  await log.getByLabel('About').fill('Agreed on the review.');
+  await log.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(() => stored(page, 'Daily notes/2026-10-02.md')).toContain('\n- 14:05 📞 Call — [[Ada Lovelace]]: Agreed on the review.\n');
+  await expect(contacts.locator('.contact-facts')).toContainText('First met');
+  await expect(contacts.locator('.contact-facts')).toContainText('Last contact');
+  await expect(contacts.locator('.contact-facts')).toContainText('October 2, 2026 (2 days ago)');
+  await expect(contacts.locator('.contact-timeline li').first()).toContainText('Engine review');
+  await expect(contacts.locator('.contact-timeline')).toContainText('Agreed on the review.');
+  expect(await stored(page, 'People/Ada Lovelace.md')).toContain('first met: 2026-10-02\nlast contact: 2026-10-02\n');
+  await page.screenshot({ path: 'test-results/contact-interactions.png' });
 
   // A vCard file: its contacts as notes; then the search; then the export.
   page.once('dialog', (d) => void d.accept());

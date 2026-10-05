@@ -1413,6 +1413,8 @@ body.distraction-free .ai-panel { display: none !important; }
 .daily-settings { display: grid; gap: 4px; margin: 4px 0 8px; }
 .daily-settings label { display: grid; grid-template-columns: 5.5em 1fr; align-items: center; gap: 6px; }
 .daily-settings input { min-width: 0; font: 0.85em ui-monospace, monospace; }
+.daily-heading-inputs { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.daily-heading-inputs select { min-width: 0; }
 .daily-settings .hint { margin: 0; font-size: 0.75rem; }
 .folder-tag { display: inline-flex; align-items: center; gap: 2px; }
 .folder-tag-count { font-size: 0.75rem; color: var(--muted); }
@@ -1879,7 +1881,7 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
 .contact-head h2 { margin: 0; }
 .contact-head .hint { margin: 2px 0 0; }
 .contact-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
-.contact-fields { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 12px; }
+.contact-fields { display: grid; grid-template-columns: 8.5em 1fr; gap: 6px 16px; margin: 0 0 12px; }
 .contact-row { display: contents; }
 .contact-row dt { color: var(--muted); }
 .contact-row dd { margin: 0; overflow-wrap: anywhere; }
@@ -1897,3 +1899,9 @@ button[data-icon]:not(.card):not(.template-card):not(.template-tab):not(.start-l
 .syncing .calendar-sync, .syncing .contacts-sync { animation: pim-spin 1s linear infinite; }
 @keyframes pim-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .syncing .calendar-sync, .syncing .contacts-sync { animation: none; opacity: 0.5; } }
+/* CONTACT-006: the interactions with a contact. */
+.contact-timeline li { display: grid; grid-template-columns: 11em 1.5em 1fr; gap: 6px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+.contact-when { color: var(--muted); font-size: 0.85rem; }
+.contact-timeline .folder-snippet { margin: 0; }
+.contact-facts { margin-top: -4px; }
+@media (max-width: 700px) { .contact-timeline li { grid-template-columns: 1.5em 1fr; } .contact-when { grid-column: 1 / -1; } }

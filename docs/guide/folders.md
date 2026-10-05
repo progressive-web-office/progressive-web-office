@@ -177,13 +177,18 @@ browser as the folder, then the calendar or today's note.
 - **Folder** — where the daily notes go, `Daily notes` by default (empty for
   the root of the folder).
 - **Template** — a note copied into each new daily note, its fields filled:
-  `{{title}}`, `{{date}}`, `{{date:dddd D MMMM}}`, `{{time}}`. Without one,
+  `{{title}}`, `{{date}}`, `{{date:dddd D MMMM}}`, `{{time}}`, `{{heading}}`
+  (the date as a title, see below). Without one,
   a daily note gets the properties built in — `timestamp` (the day, at the
   time it is created), `year` (`[[2026]]`), `MOC`, `type`
   (`[[Daily note]]`), `title`, `description`, `tags` (`#daily`), `see
   also`, `previously`, `events`, `references`, `subsequently`. **Create the
   template, to change it** writes them as `Templates/Daily note.md` and uses
-  that note from then on.
+  that note from then on; its note begins with `date:` and the date as its
+  title (`# Monday, October 5, 2026`).
+- **Title** — how that date is written: in full, long or medium words of
+  your language and region (*Monday, October 5, 2026* / *lundi 5 octobre
+  2026*), as `YYYY-MM-DD`, or in a format of your own.
 
 :::
 

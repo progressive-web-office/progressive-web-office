@@ -41,15 +41,20 @@ describe('FOLDER-027 daily notes', () => {
     expect(fillTemplate('---\ndate: {{date:YYYY-MM-DD}}\n---\n# {{title}}\n\nAt {{time}}', day, '2026-10-04', DEFAULT_DAILY)).toMatch(/^---\ndate: 2026-10-04\n---\n# 2026-10-04\n\nAt \d\d:\d\d$/);
     // Without a template: the properties built in, the day and the year filled.
     const text = dailyText(day, DEFAULT_DAILY, undefined);
-    expect(text).toMatch(/^---\ntimestamp: "2026-10-04T\d\d:\d\d"\nyear: "\[\[2026\]\]"\nMOC:\ntype: "\[\[Daily note\]\]"\ntitle:\ndescription:\ntags:\n {2}- "#daily"\nsee also:\npreviously:\nevents:\nreferences:\nsubsequently:\n---\n\n$/);
+    expect(text).toMatch(/^---\ndate: 2026-10-04\ntimestamp: "2026-10-04T\d\d:\d\d"\nyear: "\[\[2026\]\]"\nMOC:\ntype: "\[\[Daily note\]\]"\ntitle:\ndescription:\ntags:\n {2}- "#daily"\nsee also:\npreviously:\nevents:\nreferences:\nsubsequently:\n---\n\n# Sunday, October 4, 2026\n\n$/);
+    // The title: the date in the words of the language and region, or by a format.
+    expect(dailyText(day, { ...DEFAULT_DAILY, heading: 'long' }, '# {{heading}}', 'fr')).toBe('# 4 octobre 2026');
+    expect(dailyText(day, DEFAULT_DAILY, '# {{heading}}', 'fr')).toBe('# Dimanche 4 octobre 2026');
+    expect(dailyText(day, { ...DEFAULT_DAILY, heading: 'dddd D MMMM' }, '# {{heading}}', 'fr')).toBe('# dimanche 4 octobre');
+    expect(dailyText(day, DEFAULT_DAILY, '# {{heading:YYYY-MM-DD}}')).toBe('# 2026-10-04');
     expect(DEFAULT_DAILY_TEMPLATE).toContain('{{date:YYYY}}');
     expect(dailyText(day, DEFAULT_DAILY, '# {{ date }}')).toBe('# 2026-10-04');
   });
 
   it('keeps its settings', () => {
     expect(loadDailySettings()).toEqual(DEFAULT_DAILY);
-    saveDailySettings({ format: 'DD.MM.YYYY', folder: ' Journal/ ', template: 'Templates/Day.md' });
-    expect(loadDailySettings()).toEqual({ format: 'DD.MM.YYYY', folder: 'Journal', template: 'Templates/Day.md' });
+    saveDailySettings({ format: 'DD.MM.YYYY', folder: ' Journal/ ', template: 'Templates/Day.md', heading: 'long' });
+    expect(loadDailySettings()).toEqual({ format: 'DD.MM.YYYY', folder: 'Journal', template: 'Templates/Day.md', heading: 'long' });
     // The root of the folder, when chosen, stays the root.
     saveDailySettings({ ...DEFAULT_DAILY, folder: '' });
     expect(loadDailySettings().folder).toBe('');
