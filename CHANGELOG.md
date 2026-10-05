@@ -161,7 +161,7 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
   organisation, the tasks still to do, the notes linking to another.
 - The interactions with a contact (CONTACT-006): its card shows the events
   it attends and the daily notes and notes naming it, dated, with when you
-  first met and were last in touch; **Note an interaction** writes a meeting,
+  first met and were last in touch; **Add an interaction** writes a meeting,
   a call, an e-mail or a message as a line of the daily note of its day.
 - Tools for AI agents over the calendar and the contacts (CAL-007,
   CONTACT-007): an agent reading your e-mail can note the interactions, keep

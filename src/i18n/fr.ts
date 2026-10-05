@@ -1499,7 +1499,7 @@ export const fr: Record<MessageKey, string> = {
   'people.lastContact': 'Dernier contact',
   'people.interactionsTitle': 'Interactions',
   'people.interactions': 'Interactions ({n})',
-  'people.log': 'Noter une interaction',
+  'people.log': 'Indiquer une interaction',
   'people.logTitle': 'Une interaction avec {name}',
   'people.kind': 'Type',
   'people.kindHint': 'Réunion, appel, ou le vôtre : 🍽 Déjeuner…',

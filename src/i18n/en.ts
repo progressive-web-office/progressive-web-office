@@ -1497,7 +1497,7 @@ export const en = {
   'people.lastContact': 'Last contact',
   'people.interactionsTitle': 'Interactions',
   'people.interactions': 'Interactions ({n})',
-  'people.log': 'Note an interaction',
+  'people.log': 'Add an interaction',
   'people.logTitle': 'An interaction with {name}',
   'people.kind': 'Kind',
   'people.kindHint': 'Meeting, call, or your own: 🍽 Lunch…',
