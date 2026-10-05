@@ -206,6 +206,40 @@ to a tag gives it a colour (red, orange, yellow, green, teal, blue, purple,
 grey), used in the list and in the notes; colours are kept in this browser,
 for each folder.
 
+### Querying the notes in SQL
+
+The notes of the folder can be questioned in SQL (NOTE-002), from a
+```` ```sql {run} ```` cell of a note — a dashboard — or from a `.sql` file
+of the folder, a query kept to run again. Their front matter, tags, links
+and tasks are tables:
+
+| Table | Columns |
+|-------|---------|
+| `notes` | `path`, `name`, `folder`, `size`, `modified` |
+| `props` | `path`, `key`, `pos`, `value` — one row per item of a list |
+| `tags` | `path`, `tag` (without `#`) |
+| `links` | `source`, `target` (the path of the note, or the name written when there is none), `resolved` |
+| `tasks` | `path`, `line`, `text`, `done` |
+
+`prop(path, key)` gives the (first) value of a property:
+
+```sql
+-- The people, with their organisation.
+SELECT name, prop(path, 'organization') AS organization
+FROM notes WHERE prop(path, 'type') = '[[Person]]' ORDER BY name;
+
+-- The tasks still to do, by note.
+SELECT n.name, k.text FROM tasks k JOIN notes n USING (path) WHERE NOT k.done;
+
+-- The notes linking to Ada.
+SELECT source FROM links WHERE target = 'People/Ada Lovelace.md';
+```
+
+The tables are read from the index of the notes for each query naming them;
+changing them changes no note — the notes stay the only source. SQLite is
+downloaded the first time, after you agreed (see
+[Code cells](./code.md)).
+
 ### Graph of the notes
 
 **🕸** next to the folder's name draws the notes and the links between them

@@ -104,6 +104,8 @@ export interface ViewContext {
   folderSnippets?(): Promise<import('../document/snippets').Snippet[]>;
   /** DOC-036: a folder is open and can be written. */
   folderWritable?(): boolean;
+  /** NOTE-002: the notes of the open folder as tables of SQL, for the SQL code of a file of the folder. */
+  noteTables?(): Promise<import('../code/note-tables').NoteTables> | undefined;
   /** CODE-019: the files of the open folder and the path of this file in it, to run it with its project. */
   folderProject?(): ProjectSource | undefined;
   /** What the view offers in the header changed (e.g. its save variants). */

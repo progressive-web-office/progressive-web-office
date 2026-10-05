@@ -7,6 +7,7 @@
  * `runtimes.ts`, are bundled into it.)
  */
 import { CLANG_BASE, isCpp, RUNTIMES, textTable, umdModule, type Runtime } from './runtimes';
+import { loadNoteTables, usesNoteTables, type NoteTables, type SqlFill } from './note-tables';
 import { runWasi } from './wasi';
 import { cSources, normalise, PROJECT_DIR, resolveModule, rewriteImports, type RunProject } from './project';
 import { MARIMO_SHIM } from './marimo-shim';
@@ -18,6 +19,8 @@ interface RunRequest {
   code: string;
   /** CODE-019: the files of the project the code belongs to. */
   project?: RunProject;
+  /** NOTE-002: the notes of the open folder, as tables of SQL. */
+  notes?: NoteTables;
 }
 interface CompleteRequest {
   type: 'complete';
@@ -764,14 +767,14 @@ async function runLua(id: number, code: string, project?: RunProject): Promise<O
   }
 }
 
-interface SqlDatabase {
+interface SqlDatabase extends SqlFill {
   exec(sql: string): { columns: string[]; values: unknown[][] }[];
   getRowsModified(): number;
 }
 let sqlDb: Promise<SqlDatabase> | undefined;
 let SqlDatabaseClass: (new (data?: Uint8Array) => SqlDatabase) | undefined;
 
-async function runSql(id: number, code: string, project?: RunProject): Promise<Output> {
+async function runSql(id: number, code: string, project?: RunProject, notes?: NoteTables): Promise<Output> {
   sqlDb ??= (async () => {
     const files = await runtimeFiles(id, RUNTIMES.sql);
     const init = await umdImport<(config: object) => Promise<{ Database: new (data?: Uint8Array) => SqlDatabase }>>(files.js!);
@@ -793,6 +796,8 @@ async function runSql(id: number, code: string, project?: RunProject): Promise<O
         code = code.replace(open[0], '');
       }
     } else if (/^[ \t]*\.(read|open)\b/m.test(code)) throw new Error('.read and .open need the file to be part of an open folder');
+    // NOTE-002: the notes of the folder, made again for each query naming them.
+    if (notes && usesNoteTables(code)) loadNoteTables(db, notes);
     const results = db.exec(code);
     const text = results.length ? results.map((r) => textTable(r.columns, r.values)).join('\n\n') : `OK, ${db.getRowsModified()} row(s) changed`;
     return { text: `${text}\n`, images: [] };
@@ -929,7 +934,7 @@ scope.addEventListener('message', (event: MessageEvent) => {
             : message.lang === 'lua'
               ? await runLua(message.id, message.code, message.project)
               : message.lang === 'sql'
-                ? await runSql(message.id, message.code, message.project)
+                ? await runSql(message.id, message.code, message.project, message.notes)
                 : message.lang === 'cpp'
                   ? await runCpp(message.id, message.code, message.project)
                   : await runJavaScript(message.id, message.code, message.project);

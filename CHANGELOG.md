@@ -154,6 +154,10 @@ Roadmap phases are `0.0.x` milestones (see `ROADMAP.md`).
 
 ### Added
 
+- The notes of the folder queried in SQL (NOTE-002): from a SQL cell of a
+  note or a `.sql` file of the folder, the tables `notes`, `props`, `tags`,
+  `links` and `tasks`, and `prop(path, key)` — the people of an
+  organisation, the tasks still to do, the notes linking to another.
 - The interactions with a contact (CONTACT-006): its card shows the events
   it attends and the daily notes and notes naming it, dated, with when you
   first met and were last in touch; **Note an interaction** writes a meeting,

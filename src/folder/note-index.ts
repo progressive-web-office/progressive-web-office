@@ -9,6 +9,9 @@
 import { readText, resolve as resolvePath, type StorageProvider } from '../fs';
 import { frontMatterAliases, frontMatterId, noteId, noteName, parseWikiLinks } from '../document/wiki-links';
 import { noteTags } from './tags';
+import { parseFrontMatter } from '../document/frontmatter';
+import { readProperties } from '../document/note-properties';
+import type { NoteTables } from '../code/note-tables';
 
 export interface NoteLink {
   /** As written: a wiki link target, or the resolved path of a relative Markdown link. */
@@ -24,6 +27,10 @@ export interface NoteEntry {
   aliases: string[];
   tags: string[];
   links: NoteLink[];
+  /** NOTE-002: the properties of its front matter, a list giving one value per item. */
+  props: [key: string, pos: number, value: string | number | null][];
+  /** NOTE-002: its tasks (`- [ ] …`), with their line. */
+  tasks: [line: number, text: string, done: boolean][];
   /** Size and date of the file when read, to read it again only when it changed. */
   size?: number;
   modified?: number;
@@ -55,7 +62,35 @@ export function noteEntry(path: string, text: string): NoteEntry {
   }
   // FOLDER-024: the identifier of the front matter works as an alias.
   const id = frontMatterId(text);
-  return { path, aliases: [...frontMatterAliases(text), ...(id ? [id] : [])], tags: noteTags(text), links };
+  return { path, aliases: [...frontMatterAliases(text), ...(id ? [id] : [])], tags: noteTags(text), links, props: noteProps(text), tasks: noteTasks(text) };
+}
+
+/** NOTE-002: the values of the front matter, as the tables of the notes hold them. */
+function noteProps(text: string): NoteEntry['props'] {
+  if (!/^\uFEFF?---/.test(text)) return [];
+  const { meta, extra } = parseFrontMatter(text);
+  const out: NoteEntry['props'] = [];
+  for (const p of readProperties(meta, extra)) {
+    if (!p.key) continue;
+    const v = p.value;
+    if (v.kind === 'list') v.items.forEach((item, i) => out.push([p.key, i, item]));
+    else out.push([p.key, 0, v.kind === 'text' || v.kind === 'raw' ? v.text || null : v.kind === 'bool' ? (v.value ? 1 : 0) : v.value]);
+  }
+  return out;
+}
+
+/** NOTE-002: the tasks of a note, out of its code blocks. */
+function noteTasks(text: string): NoteEntry['tasks'] {
+  const out: NoteEntry['tasks'] = [];
+  let fence: string | undefined;
+  text.split('\n').forEach((line, i) => {
+    const f = /^\s*(`{3,}|~{3,})/.exec(line)?.[1];
+    if (f && (!fence || f.startsWith(fence))) fence = fence ? undefined : f;
+    if (fence || f) return;
+    const m = /^\s*[-*+]\s+\[([ xX])\]\s+(.*?)\s*$/.exec(line);
+    if (m) out.push([i + 1, m[2]!, m[1] !== ' ']);
+  });
+  return out;
 }
 
 const stemOf = (path: string): string => path.replace(/\.(md|markdown)$/i, '').toLowerCase();
@@ -207,6 +242,30 @@ export class NoteIndex {
     }
     this.graph = { out, in: inn, unresolved };
     return this.graph;
+  }
+
+  /**
+   * NOTE-002: the notes as tables of SQL — notes, properties, tags, links
+   * (resolved to the notes they point to) and tasks.
+   */
+  tables(): NoteTables {
+    const out: NoteTables = { notes: [], props: [], tags: [], links: [], tasks: [] };
+    for (const e of this.entries.values()) {
+      const slash = e.path.lastIndexOf('/');
+      out.notes.push([e.path, noteName(e.path), slash < 0 ? '' : e.path.slice(0, slash), e.size ?? null, e.modified ? new Date(e.modified).toISOString().slice(0, 19) : null]);
+      for (const [key, pos, value] of e.props) out.props.push([e.path, key, pos, value]);
+      for (const tag of e.tags) out.tags.push([e.path, tag.replace(/^#/, '')]);
+      const seen = new Set<string>();
+      for (const l of e.links) {
+        const to = l.path ? (this.entries.has(l.target) ? l.target : undefined) : this.resolve(l.target, e.path);
+        const target = to ?? l.target;
+        if (seen.has(target)) continue;
+        seen.add(target);
+        out.links.push([e.path, target, to ? 1 : 0]);
+      }
+      for (const [line, text, done] of e.tasks) out.tasks.push([e.path, line, text, done ? 1 : 0]);
+    }
+    return out;
   }
 
   /** Links between the notes, each once (FOLDER-018). */

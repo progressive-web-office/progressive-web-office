@@ -61,7 +61,7 @@ export class CodeRunner {
   /** Ask the user before downloading code (packages, widget modules) from `origin`. */
   confirmDownload?: (origin: string) => Promise<boolean>;
 
-  run(lang: CodeLang, code: string, onStatus?: (status: RunStatus) => void, project?: import('./project').RunProject): Promise<RunResult> {
+  run(lang: CodeLang, code: string, onStatus?: (status: RunStatus) => void, project?: import('./project').RunProject, notes?: import('./note-tables').NoteTables): Promise<RunResult> {
     // CODE-018: R runs in a sandbox of its own, which downloads webR itself once the user agreed.
     if (lang === 'r') return this.runR(code, onStatus, project);
     return this.start().then(
@@ -69,7 +69,7 @@ export class CodeRunner {
         new Promise<RunResult>((resolve) => {
           const id = ++this.nextId;
           this.pending.set(id, { resolve, onStatus });
-          this.post({ type: 'run', id, lang, code, ...(project ? { project } : {}) });
+          this.post({ type: 'run', id, lang, code, ...(project ? { project } : {}), ...(notes ? { notes } : {}) });
         }),
     );
   }

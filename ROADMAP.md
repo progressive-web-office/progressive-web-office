@@ -154,6 +154,9 @@ any other tool. Planned, the most useful first:
 
 **Properties and views**
 
+- ~~The notes queried in SQL — tables of notes, properties, tags, links and
+  tasks — from a SQL cell of a note or a `.sql` file of the folder~~
+  (NOTE-002, done)
 - One type per property for the whole folder; a list of all properties with
   their use, renamed everywhere at once
 - Search operators: `tag:`, `path:`, `file:`, `line:`, `section:`,
@@ -214,6 +217,22 @@ any other tool. Planned, the most useful first:
 - Related notes found by meaning, computed on the device only
 - Nothing of these runs code from a note: extensions stay content packs and
   sandboxed plugins (see Plugins)
+
+### Databases
+
+- A SQLite file (`.sqlite`, `.db`) opened as a document: its tables, their
+  rows changed in a grid as in the spreadsheet, its queries kept in it
+- Forms to enter rows, reports made from a document template
+- Data modelling as taught, with three levels kept in step:
+  - the conceptual model (entities, associations, their cardinalities
+    `0,n` / `1,1`…, identifiers), drawn on a canvas and kept as text;
+  - the logical model derived from it (relations, primary and foreign keys,
+    associations made tables), shown as `Order (#id, date, @customer)`;
+  - the physical model: the SQL that makes the tables for SQLite,
+    PostgreSQL or MySQL, applied at once to a SQLite file, or exported
+- The reverse: the logical and conceptual models read back from an existing
+  SQLite file
+- Exercises of modelling with their solution (Teaching)
 
 ### Working on several documents
 

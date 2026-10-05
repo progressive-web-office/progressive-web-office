@@ -4,6 +4,7 @@
  * under their own name, with their BOM and line ends.
  */
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import { usesNoteTables } from '../code/note-tables';
 import { bracketMatching, foldGutter, foldKeymap, indentOnInput, LanguageSupport, syntaxHighlighting, type Language, type StreamLanguage } from '@codemirror/language';
 import { gotoLine, highlightSelectionMatches, search, searchKeymap } from '@codemirror/search';
 import { Compartment, EditorSelection, EditorState, RangeSetBuilder, type Extension } from '@codemirror/state';
@@ -273,6 +274,8 @@ export class TextView implements PwoView {
         status.textContent = s === 'loading-python' ? t('code.loadingPython') : s === 'running' ? t('code.running') : `${t('code.packages')} ${s.slice('packages:'.length)}`;
       },
       project && { files: project.files, entry: project.entry, config: project.config },
+      // NOTE-002: a query of a .sql file of the folder may read its notes.
+      lang === 'sql' && usesNoteTables(code) ? await this.ctx.noteTables?.() : undefined,
     );
     if (this.stopButton) this.stopButton.disabled = true;
     for (const url of this.images) URL.revokeObjectURL(url);

@@ -4,6 +4,7 @@
  * a reliable undo history and precise collaboration.
  */
 import { Fragment, Slice, type Node as PmNode } from 'prosemirror-model';
+import { usesNoteTables } from '../code/note-tables';
 import { EditorState, NodeSelection, TextSelection, type Command, type Transaction } from 'prosemirror-state';
 import { EditorView as PmView } from 'prosemirror-view';
 import { toggleMark } from 'prosemirror-commands';
@@ -1432,10 +1433,13 @@ export class DocumentEditor implements EditorView {
         continue;
       }
       cell.classList.add('running');
-      const result = await runner.run(node.attrs.lang as 'python' | 'javascript', code ?? (node.attrs.cell as string), (status) => {
+      const source = code ?? (node.attrs.cell as string);
+      // NOTE-002: a SQL cell of a note of the folder queries its notes.
+      const notes = node.attrs.lang === 'sql' && usesNoteTables(source) ? await this.ctx.noteTables?.() : undefined;
+      const result = await runner.run(node.attrs.lang as 'python' | 'javascript', source, (status) => {
         const text = status === 'loading-python' ? t('code.loadingPython') : status === 'running' ? t('code.running') : `${t('code.packages')} ${status.slice('packages:'.length)}`;
         ui.setCellStatus(cell, text);
-      });
+      }, undefined, notes);
       const images = result.images.map((png) => addResource(this.doc, png, 'image/png'));
       const widgets = (result.widgets ?? []).map((id) => ({ id }));
       const output = { text: result.text, ...(result.error ? { error: true } : {}), ...(images.length ? { images } : {}), ...(widgets.length ? { widgets } : {}) };

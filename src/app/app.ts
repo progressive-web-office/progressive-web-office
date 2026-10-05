@@ -1130,6 +1130,7 @@ export class App {
       },
       tagColour: (tag) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.tagColour(tag) : null),
       completions: (kind) => (this.folder && /\.(md|markdown)$/i.test(this.current?.folderPath ?? '') ? this.folder.completions(kind, this.current?.folderPath) : undefined),
+      noteTables: () => (this.folder && this.current?.folderPath !== undefined ? this.folder.vault.indexed().then((index) => index.tables()) : undefined),
       folderProject: () => {
         const folder = this.folder;
         const path = this.current?.folderPath;

@@ -653,6 +653,18 @@ integration is ever needed.
 |----|-----|-------|-------------|
 | NOTE-001 | S | 0.2.0 | The front matter of a Markdown note shall be shown above its page as a card of properties, each with its type — text, list, date, number, yes/no, YAML left as it is — tags as coloured chips and `[[links]]` and web addresses drawn as links to follow; each property shall be changed, added or removed in place, the front matter written back in its order with the lines of the others unchanged; the card shall be shown to change, to read, or as the YAML source of the whole front matter, the choice kept, and hidden from the View menu. |
 
+| NOTE-002 | S | 0.2.0 | The notes of the open folder shall be queried in SQL, from a SQL cell of a document of the folder or a `.sql` file of it, as the tables `notes` (path, name, folder, size, modified), `props` (path, key, pos, value — one row per item of a list), `tags`, `links` (resolved to the notes they point to) and `tasks` (path, line, text, done), with the function `prop(path, key)`; the tables shall be made from the index of the notes for each query naming them, as temporary tables, the notes staying the only source. |
+
+## 9y. Databases (DB) — proposal
+
+| ID | Pri | Phase | Requirement |
+|----|-----|-------|-------------|
+| DB-001 | C | — | A SQLite file shall open as a document: its tables listed, their rows shown and changed in a grid, its queries run and kept. |
+| DB-002 | C | — | The user shall draw a conceptual data model — entities with their attributes and identifier, associations with their cardinalities — kept as text in the folder. |
+| DB-003 | C | — | The logical model shall be derived from the conceptual one (relations, primary and foreign keys, associations made tables) and shown in the usual notation. |
+| DB-004 | C | — | The physical model shall be the SQL making the tables (SQLite, PostgreSQL, MySQL), applied to a SQLite file or exported. |
+| DB-005 | C | — | The logical and conceptual models shall be read back from an existing SQLite file. |
+
 ## 9w. Digital signage (SIGN)
 
 See [DigitalSignalix](./digitalsignalix.md).
